@@ -9,10 +9,57 @@
 using namespace std;
 using namespace boost::math;
 using namespace boost;
-	
+		
 int main(int argc, char** argv) {
 
 
+	ofstream ofile3(argv[1]);
+
+	// let's try a Markov Chain!
+	int num=0;
+	double theta = 0;
+	double phi = 0;	
+	double theta2 = 0;
+	double phi2 = 0;	
+	
+	double r =1.0;
+	while (num<10000) {
+		num++;
+		if (num<9000) continue;
+		double w = (1.0*rand()/RAND_MAX);
+		double t = 2*M_PI*(1.0*rand()/RAND_MAX);
+		double p = 2*M_PI*(1.0*rand()/RAND_MAX);
+				
+		if (w<0.5) {
+			theta += t;
+			phi += p;
+		}
+		else {
+			phi += p;
+			theta += t;
+		}
+						
+		double w2 = (1.0*rand()/RAND_MAX);
+		double t2 = 2*M_PI*(1.0*rand()/RAND_MAX);
+		double p2 = 2*M_PI*(1.0*rand()/RAND_MAX);
+		
+		if (w2<0.5) {
+			theta2 += t2;
+			phi2 += p2;
+		}
+		else {
+			phi2 += p2;
+			theta2 += t2;
+		}
+		
+		SphericalCoor3D o(0,phi2,theta2);
+		CartesianCoor3D c(SphericalCoor3D(r,phi,theta));
+		ofile3 << c.x << "\t" << c.y << "\t" << c.z << endl;
+	}
+	
+	ofile3.close();
+
+	return 0;
 
 	ofstream ofile(argv[1]);
 	

@@ -22,7 +22,6 @@
 
 using namespace std;
 
-
 /* CARTESIAN COOR3D CLASS */
 
 //conversion constructor cylinder -> cartesian
