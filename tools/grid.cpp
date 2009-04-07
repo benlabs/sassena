@@ -50,8 +50,8 @@ bool cmpkeyval(keyval_t left,keyval_t right) {
 int main(int argc,char** argv) {
 
 	if (argc!=4) {
-		cerr << "ERROR>> " << "Need three arguments: sort-order scatter-file output-file" << endl;
-		cerr << "ERROR>> " << "sort-order can be: x y z f" << endl;		
+		cerr << "ERROR>> " << "Need three arguments: sort-field(numeric) scatter-file output-file" << endl;
+		cerr << "ERROR>> " << "sort-order can be: 1 2 3 .." << endl;		
 		return -1;
 	}
 
@@ -90,7 +90,7 @@ int main(int argc,char** argv) {
 	bool nl = false;
 	
 		
-		int mod = atoi(argv[1]);
+	int mod = atoi(argv[1]);
 	
 		cout << "sort field is: '" << mod << "'" << endl;
 	
