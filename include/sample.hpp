@@ -44,6 +44,7 @@ public:
         ar & dcdframes;
 		ar & framecache;
 		ar & curframe_i;
+		ar & framecache_max;
 		ar & wrapping;
 		ar & centergroup;
 		ar & background;
@@ -56,6 +57,7 @@ public:
 		
 	std::map<int,DcdFrame> framecache;
 	
+	int framecache_max;
 	int curframe_i;
 	// the currentframe is a cache, a buffer 
 	// this enables the analysis routines to work on a default target
@@ -68,10 +70,10 @@ public:
 	// used for scattering
 	double background;
 
-	Sample() {}
+	Sample() { framecache_max = 2;}
 	// the sample can be initialized with a system information file: e.g. a pdb
-	Sample(std::string filename) : atoms(filename)  { }
-	Sample(std::string filename,std::string fileformat) : atoms(filename,fileformat)  { }
+	Sample(std::string filename) : atoms(filename)  { framecache_max = 2;}
+	Sample(std::string filename,std::string fileformat) : atoms(filename,fileformat)  { framecache_max = 2; }
 
 	void add_frame(std::string filename,std::string filetype);
 
@@ -89,11 +91,13 @@ public:
 	void add_atoms(std::string filename) { return atoms.add(filename); }
 	
 	void read_frame(int framenumber) { 
-//		if (framecache.find(framenumber)!=framecache.end()) {
-		if (false) {
+		if (framecache.find(framenumber)!=framecache.end()) {
 			curframe_i = framenumber;
 		}
 		else {
+			if (framecache.size()>framecache_max) {
+				framecache.clear();
+			}
 			DcdFrame& cf = framecache[framenumber];
 			cf.clear();
 			dcdframes.read(framenumber,cf); 	
