@@ -46,6 +46,7 @@ public:
 		ar & curframe_i;
 		ar & wrapping;
 		ar & centergroup;
+		ar & background;
     }
 	/////////////////// 
 	
