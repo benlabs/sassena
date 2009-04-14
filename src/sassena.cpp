@@ -185,7 +185,7 @@ int main(int argc,char** argv) {
 		}
 	}
 	else {
-		clog << "INFO>> " << "No deuteration" << endl;		
+		clog << "INFO>> " << "No explicit deuteration" << endl;		
 	}
 	
 	// read in frame information

@@ -18,7 +18,6 @@
 // standard header
 #include <string>
 #include <vector>
-#include <list>
 
 // special library headers
 #include <boost/serialization/access.hpp>
@@ -28,13 +27,13 @@
 #include "atom.hpp"
 #include "atoms.hpp"
 
-class Atomselection : public std::list<int> {
+class Atomselection : public std::vector<int> {
 	// make this class serializable to 
 	// allow sample to be transmitted via MPI
     friend class boost::serialization::access;	
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
     {
-		ar & boost::serialization::base_object<std::list<int> >(*this);
+		ar & boost::serialization::base_object<std::vector<int> >(*this);
     }
 	///////////////////
 public:	

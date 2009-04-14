@@ -55,10 +55,10 @@ public:
 	Atomselections atomselections;
 	DcdFrames dcdframes;
 		
-	std::map<int,DcdFrame> framecache;
+	std::map<size_t,DcdFrame> framecache;
 	
-	int framecache_max;
-	int curframe_i;
+	size_t framecache_max;
+	size_t curframe_i;
 	// the currentframe is a cache, a buffer 
 	// this enables the analysis routines to work on a default target
 

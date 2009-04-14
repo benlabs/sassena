@@ -73,6 +73,11 @@ ADD_EXECUTABLE(unit_randomnumbers tests/unit_randomnumbers.cpp src/coor3d.cpp)
 TARGET_LINK_LIBRARIES (unit_randomnumbers ${LIB_DEPENDENCIES})
 INSTALL(TARGETS unit_randomnumbers RUNTIME DESTINATION bin/units)
 
+ADD_EXECUTABLE(unit_singlescatter tests/unit_singlescatter.cpp src/sample.cpp src/frame.cpp src/frames.cpp src/atom.cpp src/atoms.cpp src/atomselection.cpp src/analysis.cpp src/coor3d.cpp src/grid.cpp src/settings.cpp src/scatterdata.cpp)
+TARGET_LINK_LIBRARIES (unit_singlescatter ${LIB_DEPENDENCIES})
+INSTALL(TARGETS unit_singlescatter RUNTIME DESTINATION bin/units)
+
+
 # additional tools:
 ADD_EXECUTABLE(normalize tools/normalize.cpp)
 TARGET_LINK_LIBRARIES (normalize )

@@ -177,22 +177,61 @@ void set_scatteramp(Sample& sample,Atomselection as,CartesianCoor3D q,bool backg
 	}
 }
 
-complex<double> scatter_none(Sample& sample,Atomselection as,CartesianCoor3D q) {
+inline complex<double> scatter_none(Sample& sample,Atomselection as,CartesianCoor3D q) {
 	
-	complex<double> A = complex<double>(0,0);
-	if (q.length()==0) {
-		for (Atomselection::iterator asi=as.begin();asi!=as.end();asi++) {
-			A += sample.atoms[*asi].scatteramp;
-		}
-	}
-	else {
-		for (Atomselection::iterator asi=as.begin();asi!=as.end();asi++) {
-			CartesianCoor3D c = sample.currentframe().coord3D(*asi);
-			A += exp(-1.0*complex<double>(0,c* q)) * sample.atoms[*asi].scatteramp;
-		}	
-	}
+//	complex<double> A = complex<double>(0,0);
+//	if (q.length()==0) {
+//		for (Atomselection::iterator asi=as.begin();asi!=as.end();asi++) {
+//			A += sample.atoms[*asi].scatteramp;
+//		}
+//	}
+//	else {
+//	complex<double> A = complex<double>(0,0);		
+//	for (Atomselection::iterator asi=as.begin();asi!=as.end();asi++) {
+//		CartesianCoor3D c = sample.currentframe().coord3D(*asi);
+//		A += exp(-1.0*complex<double>(0,c* q)) * sample.atoms[*asi].scatteramp;
+//	}
+//	return A;
 
+//	double qx = q.x;
+//	double qy = q.y;
+//	double qz = q.z;
+//
+//complex<double> A = complex<double>(0,0);	
+//	vector<double> tmp;
+//	tmp.resize(as.size(),0);
+//
+//	for (int i=0;i<as.size();i++) {
+//		tmp[i] += sample.currentframe().x[as[i]] * qx;
+//	}	
+//	for (int i=0;i<as.size();i++) {
+//		tmp[i] += sample.currentframe().y[as[i]] * qy;
+//	}	
+//	for (int i=0;i<as.size();i++) {
+//		tmp[i] += sample.currentframe().z[as[i]] * qz;
+//	}	
+//
+//	for (int i=0;i<as.size();i++) {
+//		A += exp(-1.0*complex<double>(0,tmp[i])) * sample.atoms[as[i]].scatteramp;
+//	}	
+//	
+//	return A;	
+		
+	complex<double> A = complex<double>(0,0);		
+	for (Atomselection::iterator asi=as.begin();asi!=as.end();asi++) {
+		CartesianCoor3D c = sample.currentframe().coord3D(*asi);
+		A += exp(-1.0*complex<double>(0,c* q)) * sample.atoms[*asi].scatteramp;
+	}
 	return A;
+
+//	double Aa = 0;		
+//	double Ab = 0;
+//	for (Atomselection::iterator asi=as.begin();asi!=as.end();asi++) {
+//		CartesianCoor3D c = sample.currentframe().coord3D(*asi);
+//		Aa += sample.atoms[*asi].scatteramp * cos(-1.0*(c*q));
+//		Ab += sample.atoms[*asi].scatteramp * sin(-1.0*(c*q));
+//	}	
+//	return complex<double>(Aa,Ab);
 }
 
 double scatter_sphere_bf_rasterlinear     (Sample& sample,Atomselection as,CartesianCoor3D q,double resolution) {
