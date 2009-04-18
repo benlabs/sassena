@@ -9,7 +9,9 @@ PROJECT(Sassena)
 SET(CMAKE_BUILD_TYPE Release)
 
 # some global compiler flags
-ADD_DEFINITIONS(-O3 -fPIC -Wall)
+ADD_DEFINITIONS(-O3 -fPIC -Wall -DBOOST_UBLAS_NDEBUG -DNDEBUG  -funroll-loops -ftree-vectorizer-verbose=3 -pg)
+SET(CMAKE_EXE_LINKER_FLAGS -pg -lc_p)
+
 
 # the elegant way to set up boost
 SET(BOOST_ROOT ${EXTERNAL_ROOT})

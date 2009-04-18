@@ -22,6 +22,11 @@
 #include <boost/accumulators/accumulators.hpp>
 #include <boost/accumulators/statistics.hpp>
 #include <boost/math/special_functions.hpp>
+#include <boost/numeric/ublas/matrix.hpp>
+#include <boost/numeric/ublas/io.hpp>
+#include <boost/numeric/ublas/operation.hpp>
+#include <boost/numeric/ublas/vector.hpp>
+
 
 #include <boost/random/mersenne_twister.hpp>	
 #include <boost/random/uniform_on_sphere.hpp>	
@@ -179,19 +184,57 @@ void set_scatteramp(Sample& sample,Atomselection as,CartesianCoor3D q,bool backg
 
 inline complex<double> scatter_none(Sample& sample,Atomselection as,CartesianCoor3D q) {
 	
-//	complex<double> A = complex<double>(0,0);
-//	if (q.length()==0) {
-//		for (Atomselection::iterator asi=as.begin();asi!=as.end();asi++) {
-//			A += sample.atoms[*asi].scatteramp;
-//		}
-//	}
-//	else {
+	complex<double> A = complex<double>(0,0);
+	if (q.length()==0) {
+		for (Atomselection::iterator asi=as.begin();asi!=as.end();asi++) {
+			A += sample.atoms[*asi].scatteramp;
+		}
+	}
+	
+	else {
 //	complex<double> A = complex<double>(0,0);		
+		const int N = as.size();
+		const int Nmod4 = N % 4;
+		const int Ndiv4 = N / 4;
+		
+	
+		for (int i=0;i<Ndiv4;i++) {
+			CartesianCoor3D c1 = sample.currentframe().coord3D(as[4*i  ]);
+			CartesianCoor3D c2 = sample.currentframe().coord3D(as[4*i+1]);
+			CartesianCoor3D c3 = sample.currentframe().coord3D(as[4*i+2]);
+			CartesianCoor3D c4 = sample.currentframe().coord3D(as[4*i+3]);
+				
+			A += exp(-1.0*complex<double>(0,c1*q)) * sample.atoms[as[4*i  ]].scatteramp;		
+			A += exp(-1.0*complex<double>(0,c2*q)) * sample.atoms[as[4*i+1]].scatteramp;		
+			A += exp(-1.0*complex<double>(0,c3*q)) * sample.atoms[as[4*i+2]].scatteramp;		
+			A += exp(-1.0*complex<double>(0,c4*q)) * sample.atoms[as[4*i+3]].scatteramp;		
+			
+		}
+		if (Nmod4==3) {
+			CartesianCoor3D c1 = sample.currentframe().coord3D(as[N - 3]);
+			CartesianCoor3D c2 = sample.currentframe().coord3D(as[N - 2]);
+			CartesianCoor3D c3 = sample.currentframe().coord3D(as[N - 1]);
+				
+			A += exp(-1.0*complex<double>(0,c1*q)) * sample.atoms[as[N - 3]].scatteramp;		
+			A += exp(-1.0*complex<double>(0,c2*q)) * sample.atoms[as[N - 2]].scatteramp;		
+			A += exp(-1.0*complex<double>(0,c3*q)) * sample.atoms[as[N - 1]].scatteramp;		
+		}
+		else if (Nmod4==2) {
+			CartesianCoor3D c1 = sample.currentframe().coord3D(as[N - 2]);
+			CartesianCoor3D c2 = sample.currentframe().coord3D(as[N - 1]);
+				
+			A += exp(-1.0*complex<double>(0,c1*q)) * sample.atoms[as[N - 2]].scatteramp;		
+			A += exp(-1.0*complex<double>(0,c2*q)) * sample.atoms[as[N - 1]].scatteramp;		
+		}
+		else if (Nmod4==1) {
+			CartesianCoor3D c1 = sample.currentframe().coord3D(as[N - 1  ]);
+				
+			A += exp(-1.0*complex<double>(0,c1*q)) * sample.atoms[as[N - 1  ]].scatteramp;		
+		}
+
 //	for (Atomselection::iterator asi=as.begin();asi!=as.end();asi++) {
-//		CartesianCoor3D c = sample.currentframe().coord3D(*asi);
-//		A += exp(-1.0*complex<double>(0,c* q)) * sample.atoms[*asi].scatteramp;
-//	}
-//	return A;
+	}
+	return A;
 
 //	double qx = q.x;
 //	double qy = q.y;
@@ -216,13 +259,47 @@ inline complex<double> scatter_none(Sample& sample,Atomselection as,CartesianCoo
 //	}	
 //	
 //	return A;	
-		
-	complex<double> A = complex<double>(0,0);		
-	for (Atomselection::iterator asi=as.begin();asi!=as.end();asi++) {
-		CartesianCoor3D c = sample.currentframe().coord3D(*asi);
-		A += exp(-1.0*complex<double>(0,c* q)) * sample.atoms[*asi].scatteramp;
-	}
+
+
+//	complex<double> A = complex<double>(0,0);
+//	boost::numeric::ublas::vector<double> qv(3); qv(0) = q.x; qv(1) = q.y; qv(2) = q.z;
+//	boost::numeric::ublas::vector<double> rvr(sample.currentframe().coord3Dmatrix.size1());
+//	boost::numeric::ublas::vector<double> rvi(sample.currentframe().coord3Dmatrix.size1());	
+//	rvr =  boost::numeric::ublas::prod(sample.currentframe().coord3Dmatrix,qv);
+//	rvi = rvr;
+//	
+//	const int Na = sample.currentframe().coord3Dmatrix.size1();
+//	
+//	for (int j=0;j<Na;j++) {
+//		rvr(j) = cos(rvr(j))*sample.atoms[as[j]].scatteramp;
+//		rvi(j) = -1.0*sin(rvi(j))*sample.atoms[as[j]].scatteramp;	
+//	}
+//	int rvn = rvr.size();
+//	double rvrs = 0;
+//	double rvis = 0;
+//	
+//	for (int i=0;i<rvn;i++) {
+//		rvrs += rvr(i);
+//	}
+//	for (int i=0;i<rvn;i++) {
+//		rvis += rvi(i);
+//	}
+//	
+//	return complex<double>(rvrs,rvis);
+	
+
+//	for (Atomselection::iterator asi=as.begin();asi!=as.end();asi++) {
+//		CartesianCoor3D c = sample.currentframe().coord3D(*asi); 
+//		A += exp(-1.0*complex<double>(0,c*q)) * sample.atoms[*asi].scatteramp;
+//	}
 	return A;
+		
+//	complex<double> A = complex<double>(0,0);
+//	for (Atomselection::iterator asi=as.begin();asi!=as.end();asi++) {
+//		CartesianCoor3D c = sample.currentframe().coord3D(*asi); 
+//		A += exp(-1.0*complex<double>(0,c*q)) * sample.atoms[*asi].scatteramp;
+//	}
+//	return A;
 
 //	double Aa = 0;		
 //	double Ab = 0;
@@ -333,6 +410,73 @@ double scatter_sphere_bf_mc_phiacos        (Sample& sample,Atomselection as,Cart
 
 	return A.real() / num;
 }
+
+//double scatter_sphere_bf_mc_phiacos        (Sample& sample,Atomselection as,CartesianCoor3D q,double resolution) {
+//
+//	SphericalCoor3D qs(q);
+//	
+//	srand(time(NULL));	
+//	
+//	const int N =10;
+//	
+//	// blocking of 10
+//	resolution = resolution /N;
+//	
+//	
+//	int num=0;
+//	complex<double> Aqs(0,0);
+//	double A=0;
+//	while (num<resolution) {
+//		
+//		boost::numeric::ublas::matrix<double> qmatrix(3,N);
+//		for (int i=0;i<N;i++) {
+//			double p = 2*M_PI*(rand()*1.0/RAND_MAX);
+//			double t = acos(2*(rand()*1.0/RAND_MAX)-1);		
+//			CartesianCoor3D q(SphericalCoor3D(qs.r,qs.phi+p,qs.theta+t));
+//			qmatrix(0,i) = q.x; 
+//			qmatrix(1,i) = q.y; 
+//			qmatrix(2,i) = q.z; 
+//		}
+//
+//		boost::numeric::ublas::matrix<double> restrict rqr(sample.currentframe().coord3Dmatrix.size1(),N);
+//		boost::numeric::ublas::matrix<double> restrict rqi(sample.currentframe().coord3Dmatrix.size1(),N);
+//
+//		rqr =  boost::numeric::ublas::prod(sample.currentframe().coord3Dmatrix,qmatrix);
+//		rqi = rqr;
+//		for (int i=0;i<N;i++) {
+//			for (int j=0;j<sample.currentframe().coord3Dmatrix.size1();j++) {
+//				rqr(i,j) = cos(rqr(i,j));				
+//				rqr(i,j) *= sample.atoms[as[j]].scatteramp;
+//				rqi(i,j) = sin(rqi(i,j));
+//				rqi(i,j) *= -1.0*sample.atoms[as[j]].scatteramp;				
+//			}
+//		}
+//
+//		int an = sample.currentframe().coord3Dmatrix.size1();
+//
+//		double ar[N] = {0.0};
+//		double ai[N] = {0.0};		
+//		for (int j=0;j<an;j++) {
+//			for (int i=0;i<N;i++) {
+//				ar[i] += rqr(i,j);
+//			}
+//		}
+//
+//		for (int j=0;j<an;j++) {
+//			for (int i=0;i<N;i++) {
+//				ai[i] += rqi(i,j);
+//			}
+//		}
+//
+//		for (int i=0;i<N;i++) {
+//			A += ar[i]*ar[i]+ai[i]*ai[i];
+//		}
+//		
+//		num++;
+//	}
+//	
+//	return A / (num*N);
+//}
 
 double scatter_sphere_bf_mc_doublesqrt        (Sample& sample,Atomselection as,CartesianCoor3D q,double resolution) {
 

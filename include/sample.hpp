@@ -31,8 +31,6 @@
 
 // this is our "container", the system, the 'sample'. It contains all the information about the atoms and the time information in form of frames
 class Sample {
-	
-public:	
 	/////////////////// MPI related
 	// make this class serializable to 
 	// allow sample to be transmitted via MPI
@@ -51,31 +49,20 @@ public:
     }
 	/////////////////// 
 	
+public:	
+
 	Atoms atoms;
 	Atomselections atomselections;
-	DcdFrames dcdframes;
-		
-	std::map<size_t,DcdFrame> framecache;
+	Frames* frames;
 	
-	size_t framecache_max;
-	size_t curframe_i;
-	// the currentframe is a cache, a buffer 
-	// this enables the analysis routines to work on a default target
-
-	// unit cell behaviour:
-	bool wrapping;
-	std::string centergroup;
-
 	// cache values:
 	// used for scattering
 	double background;
 
-	Sample() { framecache_max = 2;}
+	Sample() { }
 	// the sample can be initialized with a system information file: e.g. a pdb
-	Sample(std::string filename) : atoms(filename)  { framecache_max = 2;}
-	Sample(std::string filename,std::string fileformat) : atoms(filename,fileformat)  { framecache_max = 2; }
-
-	void add_frame(std::string filename,std::string filetype);
+	Sample(std::string filename) : atoms(filename)  { }
+	Sample(std::string filename,std::string fileformat) : atoms(filename,fileformat)  { }
 
 	void add_selection(std::string name, std::string filename, std::string format,std::string select,double select_value) {
 		atomselections[name] = Atomselection(atoms,filename,format,select,select_value);
@@ -90,32 +77,7 @@ public:
 	// default routine for reading structure information from file.
 	void add_atoms(std::string filename) { return atoms.add(filename); }
 	
-	void read_frame(int framenumber) { 
-		if (framecache.find(framenumber)!=framecache.end()) {
-			curframe_i = framenumber;
-		}
-		else {
-			if (framecache.size()>framecache_max) {
-				framecache.clear();
-			}
-			DcdFrame& cf = framecache[framenumber];
-			cf.clear();
-			dcdframes.read(framenumber,cf); 	
-			if (wrapping) {
-				cf.origin = cf.cofm(atoms,atomselections[centergroup]);
-				cf.wrap(); 					
-			}	
-		}
-		curframe_i = framenumber;
-	}
-	
-	DcdFrame& currentframe() { 
-		return framecache[curframe_i];	
-	}
-	
 	void deuter(std::string group);
-	
-	void write_frame(std::string filename, std::string af = "pdb") { atoms.write(filename,currentframe(),af); }	
 };
 
 #endif

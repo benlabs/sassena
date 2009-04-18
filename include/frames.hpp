@@ -28,25 +28,24 @@
 
 // other headers
 #include "atoms.hpp"
+#include "atomselection.hpp"
 #include "frame.hpp"
 
-class DcdHeader {	
+class FrameFilePosLocator {
 public:
-	int32_t headsize;
-	int32_t fingerprint;
-	int32_t number_of_frames;
-	int32_t dummy1;
-	int32_t timesteps_between_frames;
-	char buf1[24];
-	float size_of_timestep;
-	int32_t flag_ext_block1;
-	int32_t flag_ext_block2;
-	// size1 == size2
+	// context
+	long frame_number_offset;
+
+	// file dependent
+	long number_of_frames;
+	std::string filename;	
+	// seek position where data starts within file
+	std::streamoff init_byte_pos;
 };
 
 // byte_pos of frame N:
 // init_byte_pos + block_size_byte*(N-1)
-class DcdFramesetDescriptor {
+class DCDFrameFilePosLocator : public FrameFilePosLocator {
 	// make this class serializable to 
 	// allow sample to be transmitted via MPI
     friend class boost::serialization::access;	
@@ -68,14 +67,10 @@ class DcdFramesetDescriptor {
     }
 	///////////////////
 public:
-	long frame_number_offset;
 
-	std::string filename;
-	long number_of_frames;
 	long number_of_atoms;
 	long flag_ext_block1;
 	long flag_ext_block2;
-	std::streamoff init_byte_pos;
 	std::streamoff block_size_byte;
 	std::streamoff x_byte_offset;
 	std::streamoff y_byte_offset;
@@ -84,52 +79,51 @@ public:
 	std::streamoff block2_byte_offset;
 };
 
-// need to install serialize for std::streampos and std::streamoff
-namespace boost {
-namespace serialization {
-
-//template<class Archive> 
-//void serialize(Archive & ar, std::fstream::off_type & g, const unsigned int version)
-//{
-//
-//}
-
-} // namespace serialization
-} // namespace boost
-
-//
-
-
-class DcdFrames {
-	// make this class serializable to 
-	// allow sample to be transmitted via MPI
-    friend class boost::serialization::access;	
+class Frames {
+	friend class boost::serialization::access;	
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
     {
-        ar & total_frames;
-        ar & framesets;
+		// define this
+		throw;
     }
-	/////////////////// 
+	///////////////////
 	
-private:
-	public:
-	long total_frames;
-	// this list helps mapping the absolute frame numbers to the file index
-	std::vector<DcdFramesetDescriptor> framesets;
+	std::vector<FrameFilePosLocator> framefileposlocators;	
+	
+	std::map<size_t,Frame> framecache;
 
-	// this is a helper function. It delivers the right descriptor for a given framenumber
-	bool find_FramesetDescriptor(int framenumber,DcdFramesetDescriptor& dcd_desc);
+	size_t framecache_max;
+	size_t currentframe_i;
+
+	// find framefileposlocator for given framenumber
+	FrameFilePosLocator& find_locator(int framenumber);
+public:
+	// unit cell behaviour:
+	bool wrapping;
+	std::string centergroup;
 
 
-	DcdFrames() :  total_frames(0) {}
-	DcdFrames(const std::string filename,Atoms& atoms) :  total_frames(0) { add_file(filename,atoms); }
-	~DcdFrames() {}
+	Frames() : framecache_max(2);
+	
+	size_t size();
+	
+	virtual void add_file(const std::string filename,Atoms& atoms);
+	void load(int framenumber,std::vector<Atomselection>& atomselections = {});
+	Frame& current();
+	
+//	void write(std::string filename, std::string af = "pdb") { atoms.write(filename,currentframe(),af); }	
+	
+	void clear_cache();
+};
 
-	void add_file(const std::string filename,Atoms& atoms,int recursion_trigger = 5);
-	int number_of_framesets() { return framesets.size(); }
-	int number_of_frames() { return total_frames; }
+// specializations:
+// DCD
+// ...
 
-	void read(int frame_number,DcdFrame& blank_frame);
+class DCDFrames : public Frames {
+	void read_data(int framenumber,Frame& cf);
+public:
+	void add_file(const std::string filename,Atoms& atoms);
 };
 
 

@@ -57,6 +57,11 @@ int main(int argc,char** argv) {
 	// read in configuration file, delete command line arguments
 	if (!Settings::read(argc,argv)) { cerr << "Error reading the configuration" << endl; throw; }
 
+#ifdef NDEBUG
+	clog << "INFO>> " << "NON-DEBUG MODE ACTIVATED" << endl;
+#else 
+	clog << "INFO>> " << "DEBUG MODE ACTIVATED" << endl;
+#endif
 
    clog << "INFO>> " << "Reading structure from: " << (const char *) Settings::get("main")["sample"]["structure"]["file"] << endl;
 

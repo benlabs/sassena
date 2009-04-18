@@ -21,19 +21,31 @@
 // special library headers
 #include <boost/serialization/access.hpp>
 #include <boost/serialization/vector.hpp>
+#include <boost/numeric/ublas/matrix.hpp>
+#include <boost/numeric/ublas/io.hpp>
 
 // other headers
 #include "atoms.hpp"
 #include "coor3d.hpp"
 
+class DcdHeader {	
+public:
+	int32_t headsize;
+	int32_t fingerprint;
+	int32_t number_of_frames;
+	int32_t dummy1;
+	int32_t timesteps_between_frames;
+	char buf1[24];
+	float size_of_timestep;
+	int32_t flag_ext_block1;
+	int32_t flag_ext_block2;
+	// size1 == size2
+};
+
 //forward declaration...
 class Atoms;
 class Atomselection;
 
-class Frame {
-public:
-	std::vector<CartesianCoor3D> coor3D;
-};
 
 class DcdFrame {
 	// make this class serializable to 
@@ -60,6 +72,7 @@ public:
 	std::vector<double> y;
 	std::vector<double> z;
 
+	boost::numeric::ublas::matrix<double> coord3Dmatrix;
 
 	int number_of_atoms;
 	
@@ -74,7 +87,7 @@ public:
 	double unit_cell_volume() { std::vector<CartesianCoor3D> uc = unit_cell(); return (uc[0].cross_product(uc[1]))*uc[2]; }
 	bool has_unit_cell() { return unit_cell_status; }
 
-	void clear() { block1.clear(); block2.clear(); x.clear(); y.clear(); z.clear(); unit_cell_status=false;}
+	void clear() { block1.clear(); block2.clear(); x.clear(); y.clear(); z.clear(); coord3Dmatrix.clear(); unit_cell_status=false;}
 
 //	cartcoord_t coord(int i) { return cartcoord_t(x[i],y[i],z[i]); }
 	CartesianCoor3D coord3D(int i); 

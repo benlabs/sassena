@@ -25,7 +25,6 @@
 // other headers
 #include "atom.hpp"
 #include "atoms.hpp"
-#include "sample.hpp"
 #include "settings.hpp"
 
 using namespace std;

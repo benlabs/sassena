@@ -191,7 +191,13 @@ int main(int argc,char** argv) {
 	// read in frame information
 	for (int i=0;i<Settings::get("main")["sample"]["frames"].getLength();i++) {
 		clog << "INFO>> " << "Reading frames from: " << (const char *) Settings::get("main")["sample"]["frames"][i]["file"] << endl;
-		sample.add_frame(Settings::get("main")["sample"]["frames"][i]["file"],Settings::get("main")["sample"]["frames"][i]["type"]);
+//		ifstream dcdfilelist(Settings::get_filepath(dcdfilename).c_str());
+//		std::string line;
+//
+//		while (getline(dcdfilelist,line)) {
+//			add_file(line,atoms,(recursion_trigger-1));
+//		}
+//		sample.add_frame(Settings::get("main")["sample"]["frames"][i]["file"],Settings::get("main")["sample"]["frames"][i]["type"]);
 	}
 
 	// select wrapping behaviour
@@ -531,7 +537,7 @@ void main_slave(boost::mpi::environment& env, boost::mpi::communicator& world,in
 			vector<pair<ScatterdataKey,double> > keyvals;		
 			world.recv(0,MPI_TAG_SCATTER,keys);
 			string target = Settings::get("main")["scattering"]["target"];
-			
+
 			for (vector<ScatterdataKey>::iterator ki=keys.begin();ki!=keys.end();ki++) {
 							
 				sample.read_frame(ki->second);				
