@@ -59,6 +59,7 @@ double scatter(Sample& sample,Atomselection as,CartesianCoor3D q) {
 	} 
 	if (avtype=="none") {
 		complex<double> s = Analysis::scatter_none(sample,as,q);
+		cout << "TEST>> " << s.real() << "\t" << s.imag() << endl;
 	 	return abs(conj(s)*s);
 	}
 	else if (avtype=="sphere") {
