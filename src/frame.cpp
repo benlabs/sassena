@@ -21,46 +21,109 @@
 #include "atomselection.hpp"
 #include "coor3d.hpp"
 
-
 using namespace std;
 
-vector<CartesianCoor3D> DcdFrame::unit_cell() {
-	vector<CartesianCoor3D> c;
-	c.push_back( CartesianCoor3D(block1[0],0,0)                 );
-	c.push_back( CartesianCoor3D(block1[1],block1[2],0)         );
-	c.push_back( CartesianCoor3D(block1[3],block1[4],block1[5]) );
-	return c;
+void Frame::clear() { 
+	x.clear(); 
+	y.clear(); 
+	z.clear(); 
+	unitcell.clear();
 }
 
-CartesianCoor3D DcdFrame::coord3D(int i) { 
+
+void Frame::push_selection(Atomselection& as) {
+	// create empty coordinate set
+	CoordinateSet& cs = coordinate_sets[as.name];
+
+	// try to take advantage of hardware pipelining, each array individually
+	for (size_t i=0;i<number_of_atoms;i++) {
+			if (as.booleanarray[i]) cs.x.push_back(x[i]);
+	}
+
+	for (size_t i=0;i<number_of_atoms;i++) {
+			if (as.booleanarray[i]) cs.y.push_back(y[i]);
+	}
+
+	for (size_t i=0;i<number_of_atoms;i++) {
+			if (as.booleanarray[i]) cs.z.push_back(z[i]);
+	}
+
+	for (size_t i=0;i<number_of_atoms;i++) {
+			if (as.booleanarray[i]) cs.indexes.push_back(i);
+	}
+	
+	
+}
+
+void Frame::push_selections(std::vector<Atomselection>& ass) {
+
+	// temp asssociation table
+	std::vector<pair<CoordinateSet*,Atomselection*> > cooras;
+
+	for (std::vector<Atomselection>::iterator asi=ass.begin();asi!=ass.end();asi++) {
+		// create empty coordinate set
+		CoordinateSet* csp = &(coordinate_sets[asi->name]);
+		cooras.push_back(pair<CoordinateSet*,Atomselection*>(csp,&(*asi)));
+	}
+	
+	// try to take advantage of hardware pipelining, each array individually
+	for (size_t i=0;i<number_of_atoms;i++) {
+		for (std::vector<pair<CoordinateSet*,Atomselection*> >::iterator csi=cooras.begin();csi!=cooras.end();csi++) {
+			if (csi->second->booleanarray[i]) csi->first->x.push_back(x[i]);
+		}
+	}
+
+	for (size_t i=0;i<number_of_atoms;i++) {
+		for (std::vector<pair<CoordinateSet*,Atomselection*> >::iterator csi=cooras.begin();csi!=cooras.end();csi++) {
+			if (csi->second->booleanarray[i]) csi->first->y.push_back(y[i]);
+		}
+	}
+
+	for (size_t i=0;i<number_of_atoms;i++) {
+		for (std::vector<pair<CoordinateSet*,Atomselection*> >::iterator csi=cooras.begin();csi!=cooras.end();csi++) {
+			if (csi->second->booleanarray[i]) csi->first->z.push_back(z[i]);
+		}
+	}
+
+	for (size_t i=0;i<number_of_atoms;i++) {
+		for (std::vector<pair<CoordinateSet*,Atomselection*> >::iterator csi=cooras.begin();csi!=cooras.end();csi++) {
+			if (csi->second->booleanarray[i]) csi->first->indexes.push_back(i);
+		}
+	}
+	
+}
+
+CartesianCoor3D Frame::coord3D(size_t i) { 
 	return CartesianCoor3D(x[i],y[i],z[i]);	
 }
 
-
-CartesianCoor3D DcdFrame::cofm(Atoms& atoms, Atomselection& as) {
-	double xt,yt,zt,m,mi;
-	xt = yt = zt = 0.0;
-	m = 0.0;
+CartesianCoor3D Frame::cofm(Atoms& atoms, Atomselection& as) {
 
 	if (as.empty()) {
 		cerr << "Warning! Computing Center of Mass for an empty atomselection" << endl;
 		cerr << "Setting Center of mass to (0,0,0)" << endl;		
 		return CartesianCoor3D(0,0,0);
 	}
+	
 
-	for (Atomselection::iterator asi=as.begin();asi!=as.end();asi++) {
-		mi = atoms[*asi].mass;
-		m += mi; 
-		xt += x[*asi]*mi;	yt += y[*asi]*mi; zt += z[*asi]*mi;
+	double xt,yt,zt,m,mi;
+	xt = yt = zt = 0.0;
+	m = 0.0;
+
+	for (size_t i=0;i<as.size();i++) {
+		mi = atoms[as[i]].mass;
+		m += mi;
+		xt += x[as[i]]*mi;
+		yt += y[as[i]]*mi;
+		zt += z[as[i]]*mi;
 	}
-
-
+	
 	return CartesianCoor3D(xt/m,yt/m,zt/m);
 }
 
 // Map each atom back to the origin unit cell
-void DcdFrame::wrap() {
-	vector<CartesianCoor3D> uc = unit_cell();
+void Frame::wrap() {
+	std::vector<CartesianCoor3D>& uc = unitcell;
 	double uc0l = uc[0].length();
 	double uc1l = uc[1].length();
 	double uc2l = uc[2].length();
@@ -68,7 +131,7 @@ void DcdFrame::wrap() {
 	CartesianCoor3D uc1n = uc[1]/uc1l;
 	CartesianCoor3D uc2n = uc[2]/uc2l;
 
-	for (int i=0;i<number_of_atoms;i++) {
+	for (size_t i=0;i<number_of_atoms;i++) {
 		CartesianCoor3D c = coord3D(i) - origin;
 
 	double cuc0n = (c*uc0n);
@@ -113,17 +176,6 @@ void DcdFrame::wrap() {
 	origin = CartesianCoor3D(0,0,0);
 }
 
-// shift system origin to center of mass...
-//void DcdFrame::shift() {
-//	for (int i=0;i<number_of_atoms;i++) {
-//		CartesianCoor3D c = coord3D(i) - origin;
-//
-//		x[i] = c.x;
-//		y[i] = c.y;
-//		z[i] = c.z;
-//	}
-//	origin = CartesianCoor3D(0,0,0);
-//}
 
 // end of file
 

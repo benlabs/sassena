@@ -25,90 +25,74 @@
 #include <boost/serialization/access.hpp>
 #include <boost/serialization/string.hpp>
 #include <boost/serialization/vector.hpp>
+#include <boost/serialization/map.hpp>
+#include <boost/serialization/serialization.hpp>
 
 // other headers
 #include "atoms.hpp"
 #include "atomselection.hpp"
 #include "frame.hpp"
 
-class FrameFilePosLocator {
-public:
-	// context
-	long frame_number_offset;
+// Forward:
+class Frameset;
+class DCDFrameset;
 
-	// file dependent
-	long number_of_frames;
-	std::string filename;	
-	// seek position where data starts within file
-	std::streamoff init_byte_pos;
-};
 
-// byte_pos of frame N:
-// init_byte_pos + block_size_byte*(N-1)
-class DCDFrameFilePosLocator : public FrameFilePosLocator {
-	// make this class serializable to 
-	// allow sample to be transmitted via MPI
-    friend class boost::serialization::access;	
-	template<class Archive> void serialize(Archive & ar, const unsigned int version)
-    {
-    	ar &  frame_number_offset;
-     	ar &  filename;
-     	ar &  number_of_frames;
-     	ar &  number_of_atoms;
-     	ar &  flag_ext_block1;
-     	ar &  flag_ext_block2;
-     	ar &  init_byte_pos;
-     	ar &  block_size_byte;
-     	ar &  x_byte_offset;
-     	ar &  y_byte_offset;
-     	ar &  z_byte_offset;
-     	ar &  block1_byte_offset;
-     	ar &  block2_byte_offset;
-    }
-	///////////////////
-public:
-
-	long number_of_atoms;
-	long flag_ext_block1;
-	long flag_ext_block2;
-	std::streamoff block_size_byte;
-	std::streamoff x_byte_offset;
-	std::streamoff y_byte_offset;
-	std::streamoff z_byte_offset;
-	std::streamoff block1_byte_offset;
-	std::streamoff block2_byte_offset;
-};
+////////////////////////////////////////////////////////////////////////////////
+// wrapper class to 'store' frames in
+////////////////////////////////////////////////////////////////////////////////
 
 class Frames {
 	friend class boost::serialization::access;	
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
     {
-		// define this
-		throw;
+		ar & framecache;
+		ar & framecache_max;
+		ar & currentframe_i;
+		ar & number_of_frames;
+		ar & wrapping;
+		ar & centergroup_selection;
+		// list all possible derived classes for Frameset
+        ar.register_type(static_cast<DCDFrameset*>(NULL));
+		ar & framesets;
     }
 	///////////////////
 	
-	std::vector<FrameFilePosLocator> framefileposlocators;	
+//	std::vector<FrameFilePosLocator> framefileposlocators;	
+	std::vector<Frameset*> framesets;
 	
 	std::map<size_t,Frame> framecache;
 
 	size_t framecache_max;
 	size_t currentframe_i;
 
-	// find framefileposlocator for given framenumber
-	FrameFilePosLocator& find_locator(int framenumber);
+	size_t number_of_frames;
+
+	// maps a global framenumber to a specific framseet
+	Frameset& find_frameset(size_t framenumber);
+
+	// translate global framenumber into frameset specific one
+	size_t scope_framenumber(size_t framenumber);
+	void test_framenumber();
+	
 public:
 	// unit cell behaviour:
 	bool wrapping;
-	std::string centergroup;
+	Atomselection centergroup_selection;
 
-
-	Frames() : framecache_max(2);
+	Frames() : framecache_max(2) {}
+	~Frames();
 	
 	size_t size();
+
+	// push a frameset, frameset is specialized
+	void add_frameset(const std::string filename,const std::string filetype,Atoms& atoms);
+
+	// load a frame into the framecache, set as current
+	void load(size_t framenumber,Atoms& atoms,std::map<std::string,Atomselection>& atomselections);
+	void load(size_t framenumber,Atoms& atoms,Atomselection& atomselection);
 	
-	virtual void add_file(const std::string filename,Atoms& atoms);
-	void load(int framenumber,std::vector<Atomselection>& atomselections = {});
+	// retrieve the current frame
 	Frame& current();
 	
 //	void write(std::string filename, std::string af = "pdb") { atoms.write(filename,currentframe(),af); }	
@@ -116,15 +100,93 @@ public:
 	void clear_cache();
 };
 
-// specializations:
-// DCD
-// ...
 
-class DCDFrames : public Frames {
-	void read_data(int framenumber,Frame& cf);
+////////////////////////////////////////////////////////////////////////////////
+// abstraction class. real frameset has to be format dependent
+////////////////////////////////////////////////////////////////////////////////
+
+class Frameset {
+	friend class boost::serialization::access;	
+	template<class Archive> void serialize(Archive & ar, const unsigned int version)
+    {
+		ar & frame_number_offset;
+		ar & number_of_frames;
+    }
 public:
-	void add_file(const std::string filename,Atoms& atoms);
+	virtual ~Frameset() {}
+	
+	size_t frame_number_offset;
+	size_t number_of_frames;
+	
+	// derived classes have to support this!
+	virtual void read_frame(size_t internalframenumber,Frame& cf) {}
 };
 
+////////////////////////////////////////////////////////////////////////////////
+// specialized framesets, format dependent
+////////////////////////////////////////////////////////////////////////////////
+
+// DCD Frameset and dependents
+
+class DCDHeader {	
+public:
+	int32_t headsize;
+	int32_t fingerprint;
+	int32_t number_of_frames;
+	int32_t dummy1;
+	int32_t timesteps_between_frames;
+	char buf1[24];
+	float size_of_timestep;
+	int32_t flag_ext_block1;
+	int32_t flag_ext_block2;
+	// size1 == size2
+};
+
+class DCDFrameset : public Frameset {
+	friend class boost::serialization::access;	
+	template<class Archive> void serialize(Archive & ar, const unsigned int version)
+    {
+		ar & boost::serialization::base_object<Frameset>(*this);
+		ar & filename;
+		ar & init_byte_pos;
+		ar & number_of_atoms;
+		ar & flag_ext_block1;
+		ar & flag_ext_block2;
+		ar & block_size_byte;
+		ar & x_byte_offset;
+		ar & y_byte_offset;
+		ar & z_byte_offset;
+		ar & block1_byte_offset;
+		ar & block2_byte_offset;
+    }
+
+	std::string filename;	
+	// seek position where data starts within file
+	std::streamoff init_byte_pos;
+	
+	long number_of_atoms;
+	unsigned long flag_ext_block1;
+	unsigned long flag_ext_block2;
+	std::streamoff block_size_byte;
+	std::streamoff x_byte_offset;
+	std::streamoff y_byte_offset;
+	std::streamoff z_byte_offset;
+	std::streamoff block1_byte_offset;
+	std::streamoff block2_byte_offset;
+
+	bool detect(const std::string filename);	
+public:
+	
+	// allow construction w/o reading file -> call init manually
+	DCDFrameset() {}
+	void init(std::string filename,size_t framenumber_offset);
+
+	// this constructor should be called by default
+	DCDFrameset(std::string filename,size_t frame_number_offset) { init(filename,frame_number_offset); }
+	
+	// internalframenumber used for positioning file pointer, data loaded into Frame argument
+	void read_frame(size_t internalframenumber,Frame& cf);
+	
+};
 
 #endif

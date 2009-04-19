@@ -16,85 +16,87 @@
 #include "common.hpp"
 
 // standard header
+#include <string>
 #include <vector>
 
 // special library headers
 #include <boost/serialization/access.hpp>
 #include <boost/serialization/vector.hpp>
+#include <boost/serialization/map.hpp>
 #include <boost/numeric/ublas/matrix.hpp>
 #include <boost/numeric/ublas/io.hpp>
 
 // other headers
 #include "atoms.hpp"
+#include "atomselection.hpp"
 #include "coor3d.hpp"
 
-class DcdHeader {	
-public:
-	int32_t headsize;
-	int32_t fingerprint;
-	int32_t number_of_frames;
-	int32_t dummy1;
-	int32_t timesteps_between_frames;
-	char buf1[24];
-	float size_of_timestep;
-	int32_t flag_ext_block1;
-	int32_t flag_ext_block2;
-	// size1 == size2
-};
-
 //forward declaration...
+class Atom;
 class Atoms;
 class Atomselection;
 
+////////////////////////////////////////////////////////////////////////////////
+// 
+////////////////////////////////////////////////////////////////////////////////
 
-class DcdFrame {
-	// make this class serializable to 
-	// allow sample to be transmitted via MPI
-    friend class boost::serialization::access;	
+// This class is used by Frame to store selection specific coordinate arrays
+class CoordinateSet {
+	friend class boost::serialization::access;	
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
     {
-        ar & block1;
-        ar & block2;
-        ar & x;
-        ar & y;
-        ar & z;
-        ar & number_of_atoms;
-        ar & unit_cell_status;
-        ar & origin;
+		ar & x;
+		ar & y;
+		ar & z;
+		ar & indexes;
     }
-	///////////////////
 public:
-	// block1 contains a triangular matrix:
-	// X1 Y1 Y2 Z1 Z2 Z3
-	std::vector<double> block1;
-	std::vector<double> block2;
-	std::vector<double> x;
-	std::vector<double> y;
-	std::vector<double> z;
-
-	boost::numeric::ublas::matrix<double> coord3Dmatrix;
-
-	int number_of_atoms;
+	std::vector<double> x; // x-coordinates
+	std::vector<double> y; // y-coordinates
+	std::vector<double> z; // z-coordinates
 	
-	bool unit_cell_status;
-
-	DcdFrame() {}
-	~DcdFrame() {}
-
-	std::vector<CartesianCoor3D> unit_cell();
-	CartesianCoor3D origin;
-	
-	double unit_cell_volume() { std::vector<CartesianCoor3D> uc = unit_cell(); return (uc[0].cross_product(uc[1]))*uc[2]; }
-	bool has_unit_cell() { return unit_cell_status; }
-
-	void clear() { block1.clear(); block2.clear(); x.clear(); y.clear(); z.clear(); coord3Dmatrix.clear(); unit_cell_status=false;}
-
-//	cartcoord_t coord(int i) { return cartcoord_t(x[i],y[i],z[i]); }
-	CartesianCoor3D coord3D(int i); 
-	CartesianCoor3D cofm(Atoms& atoms, Atomselection& as); 
-	void wrap();
-//	void shift();		
+	std::vector<size_t> indexes; // the real indexes , for back translation
 };
 
+class Frame {
+	friend class boost::serialization::access;	
+	template<class Archive> void serialize(Archive & ar, const unsigned int version)
+    {
+		ar & number_of_atoms;
+		ar & t;
+		ar & origin;
+		ar & x;
+		ar & y;
+		ar & z;
+		ar & unitcell;
+		ar & coordinate_sets;
+    }
+	
+public:
+	size_t number_of_atoms; //store this for performance
+	
+	double t; // time information
+	
+	CartesianCoor3D origin; // this is
+	
+	std::vector<double> x; // x-coordinates
+	std::vector<double> y; // y-coordinates
+	std::vector<double> z; // z-coordinates
+	
+	// base vectors of the unit cell
+	std::vector<CartesianCoor3D> unitcell;
+	
+	void clear(); // make frame 'empty'
+	void wrap(); // wrap coordinates back to origin cell
+	
+	CartesianCoor3D coord3D(size_t i); // get coordinates for i'th atom
+	
+	// center of mass, needs masses from atoms, atomselection allows to select subgroup
+	CartesianCoor3D cofm(Atoms& atoms, Atomselection& as);
+	
+	std::map<std::string,CoordinateSet> coordinate_sets;
+	void push_selections(std::vector<Atomselection>& as);
+	void push_selection(Atomselection& as);	
+};
 
 #endif

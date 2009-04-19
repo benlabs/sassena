@@ -26,42 +26,34 @@
 // other headers
 #include "atom.hpp"
 #include "atoms.hpp"
+class Atoms;
 
-class Atomselection : public std::vector<int> {
+class Atomselection : public std::vector<size_t> {
 	// make this class serializable to 
 	// allow sample to be transmitted via MPI
     friend class boost::serialization::access;	
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
     {
-		ar & boost::serialization::base_object<std::vector<int> >(*this);
+		ar & boost::serialization::base_object<std::vector<size_t> >(*this);
+		ar & booleanarray;
+		ar & name;
     }
 	///////////////////
 public:	
+	std::vector<bool> booleanarray; // map an atom index position to a yes/no value
+	std::string name;
+	
 	enum PDBSELECT {SEGID,RESID,RESNAME,BETA};
 
-	Atomselection(Atoms& atoms,std::string filename,std::string format,std::string select,double select_value);
-	Atomselection(Atoms& atoms,std::string filename,std::string format);
-	// selects by index+length
-	Atomselection(Atoms::iterator f,int length);
-	// selects by range
-	Atomselection(Atoms::iterator f, Atoms::iterator l);
-	// select my "atomname" match
-	Atomselection(Atoms::iterator f,Atoms::iterator l, std::string match);
-	// select whole set of atoms, w/ match
-//	Atomselection(std::string match);
-	// select whole set of atoms	
-	Atomselection(Atoms& atoms);
-	Atomselection() {};
-	
-	void add(Atom& atom);
-	void readpdb(Atoms& atoms,std::string pdbname,PDBSELECT select);
-		
-	// 
-//	void truncate_sphere(CartesianCoor3D origin,double radius);
-//	void truncate_sshell(CartesianCoor3D origin,double radiusinner,double radiusouter);
+	Atomselection(Atoms& atoms,std::string filename,std::string format,std::string select,double select_value,std::string name="");
+	Atomselection(Atoms& atoms,std::string filename,std::string format,std::string name="");
+	Atomselection(Atoms& atoms,bool select = false,std::string name="");
 
-//	void truncate_cylinder(Sample& sample,CartesianCoor3D origin,CartesianCoor3D zaxis,double radius);
-//	void truncate_cshell(Sample& sample,CartesianCoor3D origin,CartesianCoor3D zaxis,double radiusinner,double radiusouter);
+	// empty atomselection is actually invalid!
+	Atomselection() {}
+	
+	void add(const Atom& atom);
+	void remove(const Atom& atom);
 	
 };
 

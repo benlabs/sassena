@@ -25,7 +25,6 @@
 // other headers
 #include "atoms.hpp"
 #include "atomselection.hpp"
-#include "atomselections.hpp"
 #include "frame.hpp"
 #include "frames.hpp"
 
@@ -37,23 +36,19 @@ class Sample {
     friend class boost::serialization::access;	
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
     {
-        ar & atoms;
-        ar & atomselections;
-        ar & dcdframes;
-		ar & framecache;
-		ar & curframe_i;
-		ar & framecache_max;
-		ar & wrapping;
-		ar & centergroup;
+		ar & atoms;
+		ar & atomselections;
+		ar & frames;
 		ar & background;
+		
     }
 	/////////////////// 
 	
 public:	
 
 	Atoms atoms;
-	Atomselections atomselections;
-	Frames* frames;
+	std::map<std::string,Atomselection> atomselections;
+	Frames frames;
 	
 	// cache values:
 	// used for scattering
@@ -65,13 +60,13 @@ public:
 	Sample(std::string filename,std::string fileformat) : atoms(filename,fileformat)  { }
 
 	void add_selection(std::string name, std::string filename, std::string format,std::string select,double select_value) {
-		atomselections[name] = Atomselection(atoms,filename,format,select,select_value);
+		atomselections[name] = Atomselection(atoms,filename,format,select,select_value,name);
 	}
 	void add_selection(std::string name, std::string filename, std::string format) {
-		atomselections[name] = Atomselection(atoms,filename,format);		
+		atomselections[name] = Atomselection(atoms,filename,format,name);
 	}
-	void add_selection(std::string name, Atoms::iterator b, Atoms::iterator e) {
-		atomselections[name] = Atomselection(b,e);
+	void add_selection(std::string name,bool select) {
+		atomselections[name] = Atomselection(atoms,select,name);	
 	}
 	
 	// default routine for reading structure information from file.

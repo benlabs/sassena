@@ -29,8 +29,8 @@
 #include "atom.hpp"
 #include "frame.hpp"
 
-// forward declaration...
-class DcdFrame;
+class Atom;
+class Frame;
 
 class Atoms : public std::vector<Atom> {
 	// make this class serializable to 
@@ -51,7 +51,7 @@ public:
 	void read_solvent( std::ifstream& input, std::string fileformat = "pdb");
 	void read_deuter( std::ifstream& input, std::string fileformat = "pdb");
 
-	void write( std::string filename,DcdFrame& frame, std::string fileformat = "pdb");
+	void write( std::string filename,Frame& frame, std::string fileformat = "pdb");
 	void print_statistics();
 
 	void add(std::string filename, std::string fileformat = "pdb");

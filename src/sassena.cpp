@@ -168,7 +168,7 @@ int main(int argc,char** argv) {
 	// add custom selections here ( if not already set! )
 	if (sample.atomselections.find("system")==sample.atomselections.end()) {
 		// this shortcut creates a full selection
-		sample.add_selection("system",sample.atoms.begin(),sample.atoms.end());		
+		sample.add_selection("system",true);		
 	}
 	
 	// apply deuteration
@@ -191,6 +191,7 @@ int main(int argc,char** argv) {
 	// read in frame information
 	for (int i=0;i<Settings::get("main")["sample"]["frames"].getLength();i++) {
 		clog << "INFO>> " << "Reading frames from: " << (const char *) Settings::get("main")["sample"]["frames"][i]["file"] << endl;
+        sample.frames.add_frameset(Settings::get("main")["sample"]["frames"][i]["file"],Settings::get("main")["sample"]["frames"][i]["type"],sample.atoms);
 //		ifstream dcdfilelist(Settings::get_filepath(dcdfilename).c_str());
 //		std::string line;
 //
@@ -200,16 +201,19 @@ int main(int argc,char** argv) {
 //		sample.add_frame(Settings::get("main")["sample"]["frames"][i]["file"],Settings::get("main")["sample"]["frames"][i]["type"]);
 	}
 
+
 	// select wrapping behaviour
 	if (Settings::get("main")["sample"]["pbc"]["wrapping"]) {
-		sample.wrapping = true;
-		sample.centergroup = (const char *) Settings::get("main")["sample"]["pbc"]["center"];
-		clog << "INFO>> " << "Turned wrapping ON with center group " << sample.centergroup << endl;				
+		sample.frames.wrapping = true;
+		string centergroup = (const char *) Settings::get("main")["sample"]["pbc"]["center"];
+		sample.frames.centergroup_selection = sample.atomselections[centergroup];
+		clog << "INFO>> " << "Turned wrapping ON with center group " << centergroup << endl;				
 	}
 	else {
-		sample.wrapping = false;		
+		sample.frames.wrapping = false;		
 		clog << "INFO>> " << "Turned wrapping OFF "  << endl;						
 	}
+
 
 
 	//------------------------------------------//
@@ -286,7 +290,7 @@ int main(int argc,char** argv) {
 	if (Settings::get("main")["scattering"].exists("framestride")) {
 		framestride = Settings::get("main")["scattering"]["framestride"];
 	}
-	for(int i=0;i<sample.dcdframes.number_of_frames();i+= framestride) {
+	for(size_t i=0;i<sample.frames.size();i+= framestride) {
 		frames.push_back(i);
 	}	
 
@@ -540,7 +544,7 @@ void main_slave(boost::mpi::environment& env, boost::mpi::communicator& world,in
 
 			for (vector<ScatterdataKey>::iterator ki=keys.begin();ki!=keys.end();ki++) {
 							
-				sample.read_frame(ki->second);				
+				sample.frames.load(ki->second,sample.atoms,sample.atomselections[target]);				
 				gettimeofday(&start, 0);
 				Analysis::set_scatteramp(sample,sample.atomselections[target],ki->first,true);
 				

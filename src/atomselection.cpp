@@ -29,50 +29,20 @@
 
 using namespace std;
 
-	// selects by range
-Atomselection::Atomselection(Atoms::iterator f,Atoms::iterator l) {
-		for(Atoms::iterator ai=f;ai!=l;ai++) {
-			push_back(ai->index);
-		}
-	}
-	
-	// selects by index+length
-Atomselection::Atomselection(Atoms::iterator f,int length) {
-	int i=0;
-		for (Atoms::iterator ai=f;i<length;ai++,i++) {
-			push_back(ai->index);
-		}
-	}
-	// select my "atomname" match
-Atomselection::Atomselection(Atoms::iterator f,Atoms::iterator l, std::string match) {
-		boost::regex e(match);
-		for(Atoms::iterator ai=f;ai!=l;ai++) {
-			if (regex_match(ai->name,e)) {
-				push_back(ai->index);
-			}
-		}
-	}
-	// select whole set of atoms:
-//Atomselection::Atomselection( std::string match) : sample(&s) {
-//		boost::regex e(match);
-//		for(Atoms::iterator ai=s.atoms.begin();ai!=s.atoms.end();ai++) {
-//			if (regex_match(ai->name,e)) {
-//				push_back(&(*ai));
-//			}
-//		}
-//	}
-	
-Atomselection::Atomselection(Atoms& atoms) {
+Atomselection::Atomselection(Atoms& atoms,bool select,std::string aname) {
+	if (select) {
 		for(Atoms::iterator ai=atoms.begin();ai!=atoms.end();ai++) {
 			push_back(ai->index);
 		}
+		booleanarray.resize(atoms.size(),true);		
 	}
-	
-void Atomselection::add(Atom& atom) {
-	push_back(atom.index);
+	else {
+		booleanarray.resize(atoms.size(),false);		
+	}
+	name = aname;
 }
 
-Atomselection::Atomselection(Atoms& atoms,std::string filename,std::string format,std::string select,double select_value) {
+Atomselection::Atomselection(Atoms& atoms,std::string filename,std::string format,std::string select,double select_value,std::string aname) {
 	if (format=="pdb") {
 		ifstream pdbfile(Settings::get_filepath(filename).c_str());
 		int linecounter = 0;
@@ -82,7 +52,10 @@ Atomselection::Atomselection(Atoms& atoms,std::string filename,std::string forma
 				if (line.substr(0,6)=="ATOM  ") {
 					try {
 						beta = atof(line.substr(60,65).c_str());
-						if (beta==select_value) push_back(atoms[linecounter].index);
+						if (beta==select_value) {
+							push_back(atoms[linecounter].index);
+						}
+						
 					} catch (...) { cerr << "Error at reading atomselection line:" << endl << line << endl; throw; }
 					linecounter++;				
 				}
@@ -92,10 +65,16 @@ Atomselection::Atomselection(Atoms& atoms,std::string filename,std::string forma
 			throw("atomselection only supports beta at the moment");
 		}
 	}
+	
+	booleanarray.resize(atoms.size(),false);
+	for (Atoms::iterator ai=atoms.begin();ai!=atoms.end();ai++) {
+		booleanarray[ ai->index ] = true;
+	}
+	name = aname;
 }
 
 
-Atomselection::Atomselection(Atoms& atoms,std::string filename,std::string format) {
+Atomselection::Atomselection(Atoms& atoms,std::string filename,std::string format,std::string aname) {
 	if (format=="pdb") {
 		ifstream pdbfile(Settings::get_filepath(filename).c_str());
 		int linecounter = 0;
@@ -109,46 +88,23 @@ Atomselection::Atomselection(Atoms& atoms,std::string filename,std::string forma
 			}			
 		}
 	}
+	
+	booleanarray.resize(atoms.size(),false);
+	for (Atoms::iterator ai=atoms.begin();ai!=atoms.end();ai++) {
+		booleanarray[ ai->index ] = true;
+	}
+	name = aname;
 }
 
+void Atomselection::add(const Atom& atom) {
+	push_back(atom.index);
+	booleanarray[atom.index]=true;
+}
 
-void Atomselection::readpdb(Atoms& atoms,std::string pdbname,PDBSELECT select) {
-	ifstream pdbfile(Settings::get_filepath(pdbname).c_str());
-	int linecounter = 0;
-	if (select==BETA) {
-		string line; double beta;
-		while (getline(pdbfile,line)) {
-			if (line.substr(0,6)=="ATOM  ") {
-				try {
-					beta = atof(line.substr(60,65).c_str());
-					if (beta==1.0) push_back(atoms[linecounter].index);
-				} catch (...) { cerr << "Error at reading atomselection line:" << endl << line << endl; throw; }
-				linecounter++;				
-			}
-		}
-	}
-	else {
-		throw("atomselection only supports beta at the moment");
-	}
-}	
-
-//void Atomselection::truncate_cylinder(Sample& sample, CartesianCoor3D origin,CartesianCoor3D zaxis,double radius) {
-//	for (Atomselection::iterator asi=begin();asi!=end();asi++) {
-//		CylinderCoor3D c = sample->currentframe.coord3D((*asi)->index);
-//		if ( c.r > radius ) {
-//			erase(asi);
-//		}
-//	}
-//}
-//
-//void Atomselection::truncate_cshell(Sample& sample, CartesianCoor3D origin,CartesianCoor3D zaxis,double radiusinner,double radiusouter) {
-//	for(Atomselection::iterator asi=begin();asi!=end();asi++) {
-//		CylinderCoor3D c = sample->currentframe.coord3D((*asi)->index);
-//		if ((c.r< radiusinner) || (c.r > radiusouter) ) {
-//			erase(asi);
-//		}
-//	}
-//}
-//
+void Atomselection::remove(const Atom& atom) {
+	iterator ai = find(begin(),end(),atom.index);
+	erase(ai);
+	booleanarray[atom.index]=false;
+}
 
 // end of file

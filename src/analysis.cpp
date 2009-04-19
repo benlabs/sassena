@@ -59,7 +59,6 @@ double scatter(Sample& sample,Atomselection as,CartesianCoor3D q) {
 	} 
 	if (avtype=="none") {
 		complex<double> s = Analysis::scatter_none(sample,as,q);
-		cout << "TEST>> " << s.real() << "\t" << s.imag() << endl;
 	 	return abs(conj(s)*s);
 	}
 	else if (avtype=="sphere") {
@@ -200,10 +199,10 @@ inline complex<double> scatter_none(Sample& sample,Atomselection as,CartesianCoo
 		
 	
 		for (int i=0;i<Ndiv4;i++) {
-			CartesianCoor3D c1 = sample.currentframe().coord3D(as[4*i  ]);
-			CartesianCoor3D c2 = sample.currentframe().coord3D(as[4*i+1]);
-			CartesianCoor3D c3 = sample.currentframe().coord3D(as[4*i+2]);
-			CartesianCoor3D c4 = sample.currentframe().coord3D(as[4*i+3]);
+			CartesianCoor3D c1 = sample.frames.current().coord3D(as[4*i  ]);
+			CartesianCoor3D c2 = sample.frames.current().coord3D(as[4*i+1]);
+			CartesianCoor3D c3 = sample.frames.current().coord3D(as[4*i+2]);
+			CartesianCoor3D c4 = sample.frames.current().coord3D(as[4*i+3]);
 				
 			A += exp(-1.0*complex<double>(0,c1*q)) * sample.atoms[as[4*i  ]].scatteramp;		
 			A += exp(-1.0*complex<double>(0,c2*q)) * sample.atoms[as[4*i+1]].scatteramp;		
@@ -212,23 +211,23 @@ inline complex<double> scatter_none(Sample& sample,Atomselection as,CartesianCoo
 			
 		}
 		if (Nmod4==3) {
-			CartesianCoor3D c1 = sample.currentframe().coord3D(as[N - 3]);
-			CartesianCoor3D c2 = sample.currentframe().coord3D(as[N - 2]);
-			CartesianCoor3D c3 = sample.currentframe().coord3D(as[N - 1]);
+			CartesianCoor3D c1 = sample.frames.current().coord3D(as[N - 3]);
+			CartesianCoor3D c2 = sample.frames.current().coord3D(as[N - 2]);
+			CartesianCoor3D c3 = sample.frames.current().coord3D(as[N - 1]);
 				
 			A += exp(-1.0*complex<double>(0,c1*q)) * sample.atoms[as[N - 3]].scatteramp;		
 			A += exp(-1.0*complex<double>(0,c2*q)) * sample.atoms[as[N - 2]].scatteramp;		
 			A += exp(-1.0*complex<double>(0,c3*q)) * sample.atoms[as[N - 1]].scatteramp;		
 		}
 		else if (Nmod4==2) {
-			CartesianCoor3D c1 = sample.currentframe().coord3D(as[N - 2]);
-			CartesianCoor3D c2 = sample.currentframe().coord3D(as[N - 1]);
+			CartesianCoor3D c1 = sample.frames.current().coord3D(as[N - 2]);
+			CartesianCoor3D c2 = sample.frames.current().coord3D(as[N - 1]);
 				
 			A += exp(-1.0*complex<double>(0,c1*q)) * sample.atoms[as[N - 2]].scatteramp;		
 			A += exp(-1.0*complex<double>(0,c2*q)) * sample.atoms[as[N - 1]].scatteramp;		
 		}
 		else if (Nmod4==1) {
-			CartesianCoor3D c1 = sample.currentframe().coord3D(as[N - 1  ]);
+			CartesianCoor3D c1 = sample.frames.current().coord3D(as[N - 1  ]);
 				
 			A += exp(-1.0*complex<double>(0,c1*q)) * sample.atoms[as[N - 1  ]].scatteramp;		
 		}
@@ -246,13 +245,13 @@ inline complex<double> scatter_none(Sample& sample,Atomselection as,CartesianCoo
 //	tmp.resize(as.size(),0);
 //
 //	for (int i=0;i<as.size();i++) {
-//		tmp[i] += sample.currentframe().x[as[i]] * qx;
+//		tmp[i] += sample.frames.current().x[as[i]] * qx;
 //	}	
 //	for (int i=0;i<as.size();i++) {
-//		tmp[i] += sample.currentframe().y[as[i]] * qy;
+//		tmp[i] += sample.frames.current().y[as[i]] * qy;
 //	}	
 //	for (int i=0;i<as.size();i++) {
-//		tmp[i] += sample.currentframe().z[as[i]] * qz;
+//		tmp[i] += sample.frames.current().z[as[i]] * qz;
 //	}	
 //
 //	for (int i=0;i<as.size();i++) {
@@ -264,12 +263,12 @@ inline complex<double> scatter_none(Sample& sample,Atomselection as,CartesianCoo
 
 //	complex<double> A = complex<double>(0,0);
 //	boost::numeric::ublas::vector<double> qv(3); qv(0) = q.x; qv(1) = q.y; qv(2) = q.z;
-//	boost::numeric::ublas::vector<double> rvr(sample.currentframe().coord3Dmatrix.size1());
-//	boost::numeric::ublas::vector<double> rvi(sample.currentframe().coord3Dmatrix.size1());	
-//	rvr =  boost::numeric::ublas::prod(sample.currentframe().coord3Dmatrix,qv);
+//	boost::numeric::ublas::vector<double> rvr(sample.frames.current().coord3Dmatrix.size1());
+//	boost::numeric::ublas::vector<double> rvi(sample.frames.current().coord3Dmatrix.size1());	
+//	rvr =  boost::numeric::ublas::prod(sample.frames.current().coord3Dmatrix,qv);
 //	rvi = rvr;
 //	
-//	const int Na = sample.currentframe().coord3Dmatrix.size1();
+//	const int Na = sample.frames.current().coord3Dmatrix.size1();
 //	
 //	for (int j=0;j<Na;j++) {
 //		rvr(j) = cos(rvr(j))*sample.atoms[as[j]].scatteramp;
@@ -290,14 +289,14 @@ inline complex<double> scatter_none(Sample& sample,Atomselection as,CartesianCoo
 	
 
 //	for (Atomselection::iterator asi=as.begin();asi!=as.end();asi++) {
-//		CartesianCoor3D c = sample.currentframe().coord3D(*asi); 
+//		CartesianCoor3D c = sample.frames.current().coord3D(*asi); 
 //		A += exp(-1.0*complex<double>(0,c*q)) * sample.atoms[*asi].scatteramp;
 //	}
 	return A;
 		
 //	complex<double> A = complex<double>(0,0);
 //	for (Atomselection::iterator asi=as.begin();asi!=as.end();asi++) {
-//		CartesianCoor3D c = sample.currentframe().coord3D(*asi); 
+//		CartesianCoor3D c = sample.frames.current().coord3D(*asi); 
 //		A += exp(-1.0*complex<double>(0,c*q)) * sample.atoms[*asi].scatteramp;
 //	}
 //	return A;
@@ -305,7 +304,7 @@ inline complex<double> scatter_none(Sample& sample,Atomselection as,CartesianCoo
 //	double Aa = 0;		
 //	double Ab = 0;
 //	for (Atomselection::iterator asi=as.begin();asi!=as.end();asi++) {
-//		CartesianCoor3D c = sample.currentframe().coord3D(*asi);
+//		CartesianCoor3D c = sample.frames.current().coord3D(*asi);
 //		Aa += sample.atoms[*asi].scatteramp * cos(-1.0*(c*q));
 //		Ab += sample.atoms[*asi].scatteramp * sin(-1.0*(c*q));
 //	}	
@@ -439,13 +438,13 @@ double scatter_sphere_bf_mc_phiacos        (Sample& sample,Atomselection as,Cart
 //			qmatrix(2,i) = q.z; 
 //		}
 //
-//		boost::numeric::ublas::matrix<double> restrict rqr(sample.currentframe().coord3Dmatrix.size1(),N);
-//		boost::numeric::ublas::matrix<double> restrict rqi(sample.currentframe().coord3Dmatrix.size1(),N);
+//		boost::numeric::ublas::matrix<double> restrict rqr(sample.frames.current().coord3Dmatrix.size1(),N);
+//		boost::numeric::ublas::matrix<double> restrict rqi(sample.frames.current().coord3Dmatrix.size1(),N);
 //
-//		rqr =  boost::numeric::ublas::prod(sample.currentframe().coord3Dmatrix,qmatrix);
+//		rqr =  boost::numeric::ublas::prod(sample.frames.current().coord3Dmatrix,qmatrix);
 //		rqi = rqr;
 //		for (int i=0;i<N;i++) {
-//			for (int j=0;j<sample.currentframe().coord3Dmatrix.size1();j++) {
+//			for (int j=0;j<sample.frames.current().coord3Dmatrix.size1();j++) {
 //				rqr(i,j) = cos(rqr(i,j));				
 //				rqr(i,j) *= sample.atoms[as[j]].scatteramp;
 //				rqi(i,j) = sin(rqi(i,j));
@@ -453,7 +452,7 @@ double scatter_sphere_bf_mc_phiacos        (Sample& sample,Atomselection as,Cart
 //			}
 //		}
 //
-//		int an = sample.currentframe().coord3Dmatrix.size1();
+//		int an = sample.frames.current().coord3Dmatrix.size1();
 //
 //		double ar[N] = {0.0};
 //		double ai[N] = {0.0};		
@@ -585,7 +584,7 @@ double scatter_sphere_multipole (Sample& sample,Atomselection as,CartesianCoor3D
   	}
 
   	for (Atomselection::iterator asi=as.begin();asi!=as.end();asi++) {
-		SphericalCoor3D c = sample.currentframe().coord3D(*asi);
+		SphericalCoor3D c = sample.frames.current().coord3D(*asi);
 		double esf = sample.atoms[*asi].scatteramp;
 
 		for (int l=0;l<=lmax;l++) {
@@ -653,7 +652,7 @@ double scatter_cylinder_multipole(Sample& sample,Atomselection as,CartesianCoor3
 	D.resize(lmax+1,complex<double>(0,0));
 
 	for (Atomselection::iterator asi=as.begin();asi!=as.end();asi++) {
-		CylinderCoor3D c = sample.currentframe().coord3D(*asi);
+		CylinderCoor3D c = sample.frames.current().coord3D(*asi);
 
 		double esf = atoms[*asi].scatteramp;
 		
@@ -687,9 +686,8 @@ double scatter_cylinder_multipole(Sample& sample,Atomselection as,CartesianCoor3
 
 complex<double> background(Sample& sample,int resolution, double hlayer, CartesianCoor3D q,map<string,vector<double> >& kappas) {
 	
-	vector<CartesianCoor3D> uc = sample.currentframe().unit_cell();
-	CartesianCoor3D origin = sample.currentframe().origin;
-	
+	vector<CartesianCoor3D> uc = sample.frames.current().unitcell;
+	CartesianCoor3D origin = sample.frames.current().origin;
 	
 	string gi = Settings::get("main")["scattering"]["background"]["include"]; // name of background group
 	string ge = Settings::get("main")["scattering"]["background"]["exclude"]; // name of particle group
@@ -707,13 +705,13 @@ complex<double> background(Sample& sample,int resolution, double hlayer, Cartesi
 	Grid3D<bool> systemgrid(resolution,uc,origin,false);
 
 	for(Atomselection::iterator asi=as_system.begin();asi!=as_system.end();asi++) {
-		CartesianCoor3D c = sample.currentframe().coord3D(*asi);
+		CartesianCoor3D c = sample.frames.current().coord3D(*asi);
 		Gridkey3D gk = grid.get_cell(c);
 		grid[gk].push_back(*asi);
 	}	
 		
 	for(Atomselection::iterator asi=as_particle.begin();asi!=as_particle.end();asi++) {
-		CartesianCoor3D c = sample.currentframe().coord3D(*asi);
+		CartesianCoor3D c = sample.frames.current().coord3D(*asi);
 		CartesianCoor3D hc(hlayer,hlayer,hlayer);
 		vector<Gridkey3D> gks =particlegrid.get_cells(c,hc);
 		
@@ -721,9 +719,8 @@ complex<double> background(Sample& sample,int resolution, double hlayer, Cartesi
 			particlegrid[*gki]=true;			
 		}
 	}	
-
 	for(Atomselection::iterator asi=as_solvent.begin();asi!=as_solvent.end();asi++) {
-		CartesianCoor3D c = sample.currentframe().coord3D(*asi);
+		CartesianCoor3D c = sample.frames.current().coord3D(*asi);
 		Gridkey3D gk = grid.get_cell(c);
 		
 		solventgrid[gk]=true;
@@ -734,10 +731,9 @@ complex<double> background(Sample& sample,int resolution, double hlayer, Cartesi
 		if (gi->second) {
 			solventgrid[Gridkey3D(gi->first.ix,gi->first.iy,gi->first.iz)]=false;
 		}
-	}
-	
+	}	
 	// build an atomselection...
-	Atomselection as_solvent_trunc;
+	Atomselection as_solvent_trunc(sample.atoms,false);
 	int numsolatoms=0;
 	double solventvolume=0;
 	for(Grid3D<bool>::iterator gi=solventgrid.begin();gi!=solventgrid.end();gi++) {
@@ -750,7 +746,6 @@ complex<double> background(Sample& sample,int resolution, double hlayer, Cartesi
 			solventvolume+= solventgrid.element_volume();
 		}
 	}	
-	
 	
 	// calculate scattering amplitude...
 	set_scatteramp(sample,as_solvent_trunc,q,false);		
@@ -767,7 +762,7 @@ complex<double> background(Sample& sample,int resolution, double hlayer, Cartesi
 	// build a solvent exclusive grid..
 
 	for(Atomselection::iterator asi=as_solvent.begin();asi!=as_solvent.end();asi++) {
-		CartesianCoor3D c = sample.currentframe().coord3D(*asi);
+		CartesianCoor3D c = sample.frames.current().coord3D(*asi);
 		Gridkey3D gk = solgrid.get_cell(c);
 		
 		solgrid[gk].push_back(*asi);
@@ -776,7 +771,7 @@ complex<double> background(Sample& sample,int resolution, double hlayer, Cartesi
 
 	// build a particle exclusive grid..
 	for(Atomselection::iterator asi=as_particle.begin();asi!=as_particle.end();asi++) {
-		CartesianCoor3D c = sample.currentframe().coord3D(*asi);
+		CartesianCoor3D c = sample.frames.current().coord3D(*asi);
 		Gridkey3D gk = partgrid.get_cell(c);
 		
 		partgrid[gk].push_back(*asi);
@@ -897,19 +892,20 @@ pair<double,double> background_avg(Sample& sample,int resolution,double hydratio
 		framestride = Settings::get("main")["scattering"]["background"]["framestride"];
 	}
 	
-	int totalframes = (sample.dcdframes.number_of_frames()/framestride) + 1;
-	if ((sample.dcdframes.number_of_frames() % framestride) ==0) totalframes--;
+	int totalframes = (sample.frames.size()/framestride) + 1;
+	if ((sample.frames.size() % framestride) ==0) totalframes--;
 	clog << "INFO>> " << "Average background density over " << totalframes << " frames" << endl;
 
 	clog << "INFO>> " << "Progress(%): ";
 	int progress=0;
-	for(int i=0;i<sample.dcdframes.number_of_frames();i+= framestride) {
-		int percent = (i*100/sample.dcdframes.number_of_frames());
+	for(size_t i=0;i<sample.frames.size();i+= framestride) {
+		int percent = (i*100/sample.frames.size());
 		if ( percent >= progress  ) {
 			progress = 10*(percent/10) + 10;
 			clog << percent << " ";
 		}
-		sample.read_frame(i);
+				
+		sample.frames.load(i,sample.atoms,sample.atomselections);
    	 	complex<double> b0v = Analysis::background(sample,resolution,hydration,q,kappas);
 		acc_RE(b0v.real()); acc_IM(b0v.imag());
 	}
@@ -971,19 +967,19 @@ pair<double,double> background_avg(Sample& sample,int resolution,double hydratio
 //	bool first = true;
 //	for (vector<Atom>::iterator atom_i=sample.atoms.begin();atom_i!=sample.atoms.end();atom_i++,counter++) {
 //		if (first) {
-//			xmin = xmax = sample.currentframe().x[counter];
-//			ymin = ymax = sample.currentframe().y[counter];
-//			zmin = zmax = sample.currentframe().z[counter];
+//			xmin = xmax = sample.frames.current().x[counter];
+//			ymin = ymax = sample.frames.current().y[counter];
+//			zmin = zmax = sample.frames.current().z[counter];
 //			first = false;
 //		}
 //		else {
-//			if (xmin>sample.currentframe().x[counter]) xmin = sample.currentframe().x[counter];
-//			if (ymin>sample.currentframe().y[counter]) ymin = sample.currentframe().y[counter];
-//			if (zmin>sample.currentframe().z[counter]) zmin = sample.currentframe().z[counter];
+//			if (xmin>sample.frames.current().x[counter]) xmin = sample.frames.current().x[counter];
+//			if (ymin>sample.frames.current().y[counter]) ymin = sample.frames.current().y[counter];
+//			if (zmin>sample.frames.current().z[counter]) zmin = sample.frames.current().z[counter];
 //                     
-//			if (xmax<sample.currentframe().x[counter]) xmax = sample.currentframe().x[counter];
-//			if (ymax<sample.currentframe().y[counter]) ymax = sample.currentframe().y[counter];
-//			if (zmax<sample.currentframe().z[counter]) zmax = sample.currentframe().z[counter];
+//			if (xmax<sample.frames.current().x[counter]) xmax = sample.frames.current().x[counter];
+//			if (ymax<sample.frames.current().y[counter]) ymax = sample.frames.current().y[counter];
+//			if (zmax<sample.frames.current().z[counter]) zmax = sample.frames.current().z[counter];
 //		}
 //	}
 //
@@ -999,10 +995,10 @@ pair<double,double> background_avg(Sample& sample,int resolution,double hydratio
 //	for (int i=0;i<sample.dcdframes.number_of_frames();i++) {
 //		// load currentframe
 //		sample.read_frame(i);
-//		if (sample.currentframe().block1.empty()) { cerr << "minimum_cell not working for unit-cell less dcds" << endl; throw;}
-//		tmp.x = sample.currentframe().block1[0];
-//		tmp.y = sqrt(sample.currentframe().block1[1]*sample.currentframe().block1[1]+ sample.currentframe().block1[2]*sample.currentframe().block1[2]);
-//		tmp.z = sqrt(sample.currentframe().block1[3]*sample.currentframe().block1[3]+sample.currentframe().block1[4]*sample.currentframe().block1[4]+ sample.currentframe().block1[5]*sample.currentframe().block1[5]);
+//		if (sample.frames.current().block1.empty()) { cerr << "minimum_cell not working for unit-cell less dcds" << endl; throw;}
+//		tmp.x = sample.frames.current().block1[0];
+//		tmp.y = sqrt(sample.frames.current().block1[1]*sample.frames.current().block1[1]+ sample.frames.current().block1[2]*sample.frames.current().block1[2]);
+//		tmp.z = sqrt(sample.frames.current().block1[3]*sample.frames.current().block1[3]+sample.frames.current().block1[4]*sample.frames.current().block1[4]+ sample.frames.current().block1[5]*sample.frames.current().block1[5]);
 //
 //		if (first) {
 //			first = false;
@@ -1024,37 +1020,37 @@ pair<double,double> background_avg(Sample& sample,int resolution,double hydratio
 //
 //	bool firstatom = true; bool firstparticle = true;
 //	vector<Atom>::iterator ai = sample.atoms.begin();
-//	for (size_t j=0;j<sample.currentframe().x.size();j++,ai++) {
+//	for (size_t j=0;j<sample.frames.current().x.size();j++,ai++) {
 //		if (ai->particle) {
 //			if (firstparticle) {
-//			pmin.x = pmax.x = sample.currentframe().x[j];
-//			pmin.y = pmax.y = sample.currentframe().y[j];
-//			pmin.z = pmax.z = sample.currentframe().z[j];
+//			pmin.x = pmax.x = sample.frames.current().x[j];
+//			pmin.y = pmax.y = sample.frames.current().y[j];
+//			pmin.z = pmax.z = sample.frames.current().z[j];
 //			firstparticle = false;
 //			}
 //
-//			if (pmin.x>sample.currentframe().x[j]) pmin.x = sample.currentframe().x[j];
-//			if (pmin.y>sample.currentframe().y[j]) pmin.y = sample.currentframe().y[j];
-//			if (pmin.z>sample.currentframe().z[j]) pmin.z = sample.currentframe().z[j];
+//			if (pmin.x>sample.frames.current().x[j]) pmin.x = sample.frames.current().x[j];
+//			if (pmin.y>sample.frames.current().y[j]) pmin.y = sample.frames.current().y[j];
+//			if (pmin.z>sample.frames.current().z[j]) pmin.z = sample.frames.current().z[j];
 //
-//			if (pmax.x<sample.currentframe().x[j]) pmax.x = sample.currentframe().x[j];
-//			if (pmax.y<sample.currentframe().y[j]) pmax.y = sample.currentframe().y[j];
-//			if (pmax.z<sample.currentframe().z[j]) pmax.z = sample.currentframe().z[j];
+//			if (pmax.x<sample.frames.current().x[j]) pmax.x = sample.frames.current().x[j];
+//			if (pmax.y<sample.frames.current().y[j]) pmax.y = sample.frames.current().y[j];
+//			if (pmax.z<sample.frames.current().z[j]) pmax.z = sample.frames.current().z[j];
 //		}
 //		if (firstatom) {
-//		smin.x = smax.x = sample.currentframe().x[j];
-//		smin.y = smax.y = sample.currentframe().y[j];
-//		smin.z = smax.z = sample.currentframe().z[j];
+//		smin.x = smax.x = sample.frames.current().x[j];
+//		smin.y = smax.y = sample.frames.current().y[j];
+//		smin.z = smax.z = sample.frames.current().z[j];
 //		firstatom = false;
 //		}
 //
-//		if (smin.x>sample.currentframe().x[j]) smin.x = sample.currentframe().x[j];
-//		if (smin.y>sample.currentframe().y[j]) smin.y = sample.currentframe().y[j];
-//		if (smin.z>sample.currentframe().z[j]) smin.z = sample.currentframe().z[j];
+//		if (smin.x>sample.frames.current().x[j]) smin.x = sample.frames.current().x[j];
+//		if (smin.y>sample.frames.current().y[j]) smin.y = sample.frames.current().y[j];
+//		if (smin.z>sample.frames.current().z[j]) smin.z = sample.frames.current().z[j];
 //                                                      
-//		if (smax.x<sample.currentframe().x[j]) smax.x = sample.currentframe().x[j];
-//		if (smax.y<sample.currentframe().y[j]) smax.y = sample.currentframe().y[j];
-//		if (smax.z<sample.currentframe().z[j]) smax.z = sample.currentframe().z[j];
+//		if (smax.x<sample.frames.current().x[j]) smax.x = sample.frames.current().x[j];
+//		if (smax.y<sample.frames.current().y[j]) smax.y = sample.frames.current().y[j];
+//		if (smax.z<sample.frames.current().z[j]) smax.z = sample.frames.current().z[j];
 //	}		
 //	
 //	return pair< cartrect,cartrect>(cartrect(smin,smax), cartrect(pmin,pmax));
@@ -1076,9 +1072,9 @@ pair<double,double> background_avg(Sample& sample,int resolution,double hydratio
 //	double total=0;
 //	int counter = 0;
 //	for (vector<Atom>::iterator ai = sample.atoms.begin();ai!=sample.atoms.end();ai++,counter++) {
-//		double xd = sample.currentframe().x[counter];
-//		double yd = sample.currentframe().y[counter];
-//		double zd = sample.currentframe().z[counter];	
+//		double xd = sample.frames.current().x[counter];
+//		double yd = sample.frames.current().y[counter];
+//		double zd = sample.frames.current().z[counter];	
 //		double r = 0;
 //		r = sqrt(xd*xd+yd*yd);
 //		double ev = sqrt(powf(M_PI,3))*powf(Settings::get("excluded_volumes")[ai->name],3);
@@ -1098,8 +1094,8 @@ pair<double,double> background_avg(Sample& sample,int resolution,double hydratio
 //	double kappa_s, kappa_p;
 //		// volume of the cylinder shell: V = PI * (router-rinner)^2 * z
 //		double length;
-//		if (sample.currentframe().has_unit_cell()) {
-////			length = sample.currentframe().unit_cell().z;
+//		if (sample.frames.current().has_unit_cell()) {
+////			length = sample.frames.current().unit_cell().z;
 //		}
 //		else {
 //			pair< cartrect,cartrect> borders = scan_borders(sample);
@@ -1117,14 +1113,14 @@ pair<double,double> background_avg(Sample& sample,int resolution,double hydratio
 //double Analysis::density(Atomselection& as_solvent,int resolution) {
 //	Sample& sample = *(as_solvent.sample);
 //	
-//	vector<CartesianCoor3D> uc = sample.currentframe().unit_cell();
-//	CartesianCoor3D origin = sample.currentframe().origin;
+//	vector<CartesianCoor3D> uc = sample.frames.current().unit_cell();
+//	CartesianCoor3D origin = sample.frames.current().origin;
 //	
 //	vector<int> v; // an empty vector to initialize vGrid3D	
 //	vGrid3D grid(resolution,uc,origin,v);
 //		
 //	for(Atomselection::iterator asi=as_solvent.begin();asi!=as_solvent.end();asi++) {
-//		CartesianCoor3D c = as_solvent.sample->currentframe().coord3D((*asi)->index);
+//		CartesianCoor3D c = as_solvent.sample->frames.current().coord3D((*asi)->index);
 //		Gridkey3D gk = grid.get_cell(c);
 //		grid[gk].push_back((*asi)->index);
 //	}

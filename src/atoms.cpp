@@ -210,7 +210,7 @@ string Atoms::guess_atomname(const string atomname,string fileformat,map<string,
 	}
 }
 
-void Atoms::write(string filename,DcdFrame& frame, string fileformat) {
+void Atoms::write(string filename,Frame& frame, string fileformat) {
 
 	ofstream ofile(filename.c_str());
 

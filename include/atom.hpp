@@ -69,7 +69,7 @@ public:
 	std::string charge;
 			
 	std::string name;	
-	int index;
+	size_t index;
 	double mass;
 	double excluded_volume;
 	double scatteramp;
