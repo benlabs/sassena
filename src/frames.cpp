@@ -186,9 +186,9 @@ void DCDFrameset::init(std::string fn,size_t fno) {
 	dcdfile.seekg(marker,ios_base::cur);
 	dcdfile.read((char*) &marker,sizeof(int32_t));
 
-	long noa;
+	int32_t noa;
 	dcdfile.read((char*) &marker,sizeof(int32_t));
-	dcdfile.read((char*) &noa,sizeof(long));
+	dcdfile.read((char*) &noa,sizeof(int32_t));
 	dcdfile.read((char*) &marker,sizeof(int32_t));
 
 //	if (number_of_atoms!=atoms.size()) { cerr << "Atom number mismatch (dcd)" << number_of_atoms << " vs. (pdb)" << atoms.size() << endl; throw; }
@@ -274,22 +274,22 @@ void DCDFrameset::read_frame(size_t internalframenumber,Frame& cf) {
 	cf.number_of_atoms = number_of_atoms;
 
 	dcdfile.seekg(init_byte_pos+internalframenumber*block_size_byte+x_byte_offset,ios_base::beg);
-	for (int i=0;i<number_of_atoms;i++) {
+	for (int32_t i=0;i<number_of_atoms;i++) {
 		float temp; dcdfile.read((char*) &temp,sizeof(float)); cf.x.push_back(temp);
 	}
 	dcdfile.seekg(init_byte_pos+internalframenumber*block_size_byte+y_byte_offset,ios_base::beg);
-	for (int i=0;i<number_of_atoms;i++) {
+	for (int32_t i=0;i<number_of_atoms;i++) {
 		float temp; dcdfile.read((char*) &temp,sizeof(float)); cf.y.push_back(temp);
 	}
 	dcdfile.seekg(init_byte_pos+internalframenumber*block_size_byte+z_byte_offset,ios_base::beg);
-	for (int i=0;i<number_of_atoms;i++) {
+	for (int32_t i=0;i<number_of_atoms;i++) {
 		float temp; dcdfile.read((char*) &temp,sizeof(float)); cf.z.push_back(temp);
 	}
 
 	// This block has unknown feature
 	if (flag_ext_block2) {
 		dcdfile.seekg(init_byte_pos+internalframenumber*block_size_byte+block2_byte_offset,ios_base::beg);
-		for (int i=0;i<number_of_atoms;i++) {
+		for (int32_t i=0;i<number_of_atoms;i++) {
 			float temp; dcdfile.read((char*) &temp,sizeof(float));
 			// skip it
 			// cf.block2.push_back(temp);
