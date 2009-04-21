@@ -33,7 +33,7 @@ SET(LIB_DEPENDENCIES ${CONFIG_LIBRARIES} ${Boost_LIBRARIES})
 INCLUDE_DIRECTORIES( ${Sassena_SOURCE_DIR}/include)
 MESSAGE(STATUS "sassena_source_dir= " ${Sassena_INCLUDE_DIRS})
 
-ADD_EXECUTABLE(sassena src/sassena.cpp src/sample.cpp src/frame.cpp src/frames.cpp src/atom.cpp src/atoms.cpp src/atomselection.cpp src/analysis.cpp src/coor3d.cpp src/grid.cpp src/settings.cpp src/scatterdata.cpp)
+ADD_EXECUTABLE(sassena src/sassena.cpp src/sample.cpp src/frame.cpp src/frames.cpp src/atom.cpp src/atoms.cpp src/atomselection.cpp src/analysis.cpp src/coor3d.cpp src/grid.cpp src/settings.cpp src/scatterdata.cpp src/tasks.cpp)
 
 TARGET_LINK_LIBRARIES (sassena ${LIB_DEPENDENCIES})
 
@@ -74,6 +74,11 @@ INSTALL(TARGETS unit_triangulation RUNTIME DESTINATION bin/units)
 ADD_EXECUTABLE(unit_randomnumbers tests/unit_randomnumbers.cpp src/coor3d.cpp)
 TARGET_LINK_LIBRARIES (unit_randomnumbers ${LIB_DEPENDENCIES})
 INSTALL(TARGETS unit_randomnumbers RUNTIME DESTINATION bin/units)
+
+ADD_EXECUTABLE(unit_ranklogic tests/unit_ranklogic.cpp src/tasks.cpp src/coor3d.cpp)
+TARGET_LINK_LIBRARIES (unit_ranklogic ${LIB_DEPENDENCIES})
+INSTALL(TARGETS unit_ranklogic RUNTIME DESTINATION bin/units)
+
 
 # additional tools:
 ADD_EXECUTABLE(normalize tools/normalize.cpp)

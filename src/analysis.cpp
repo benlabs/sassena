@@ -48,66 +48,187 @@ using namespace boost::math;
 
 namespace Analysis {
 
-double scatter(Sample& sample,Atomselection as,CartesianCoor3D q) {
+void qvectors_unfold_sphere(std::string avvectors, CartesianCoor3D q, uint32_t qseed,double resolution, vector<CartesianCoor3D>& qvectors) {
+	
+	SphericalCoor3D qs(q);
+	
+	// we can't unfold a point:
+	if (qs.r==0.0) return;
+	
+	const double M_2PI = 2*M_PI;	
+	const double radincr = resolution*(M_2PI)/360;		
+	const double arcincr = radincr*qs.r;
+
+	int num=0;
+
+	srand(qseed);
+
+	if (avvectors=="rasterlinear") {
+		for (double t=0;t<M_PI;t+=radincr) {	
+			for (double p=0;p<M_2PI;p+=radincr) {
+				qvectors.push_back( SphericalCoor3D(qs.r,qs.phi+p,qs.theta+t) );
+		    }
+		}		
+	}
+	else if (avvectors=="rastersurface") {
+		double thetal = M_PI*qs.r; // this is the max distance we "walk on the sphere in theta direction"
+		for (double t=0;((t==0) || (t<thetal));t+=arcincr) {	
+			double dtheta = (t/thetal)*M_PI;
+			double phil = 2*M_PI*sin(dtheta)*qs.r; // this is the max distance we "walk on the sphere in phi direction"		
+			if (phil>0) {
+				for (double p=0;p<phil;p+=arcincr) {
+					double dphi = (p/phil)*2*M_PI;
+					qvectors.push_back( SphericalCoor3D(qs.r,qs.phi+dphi,qs.theta+dtheta) );
+			    }
+			}
+			else {
+				qvectors.push_back( SphericalCoor3D(qs.r,qs.phi,qs.theta+dtheta) );
+			}
+		}
+	}
+	else if (avvectors=="triangulation") {
+		
+		DrawSphereHelper d(CartesianCoor3D(0,0,0),qs.r,resolution*qs.r);
+		d.draw();
+
+		for(vector<CartesianCoor3D>::iterator vi=d.vectors.begin();vi!=d.vectors.end();vi++) {
+			qvectors.push_back( SphericalCoor3D(qs.r,qs.phi+SphericalCoor3D(*vi).phi,qs.theta+SphericalCoor3D(*vi).theta) );
+		}
+	}
+	else if (avvectors=="mcphiacos") {
+		int num=0;
+		while (num<resolution) {
+			double p = 2*M_PI*(rand()*1.0/RAND_MAX);
+			double t = acos(2*(rand()*1.0/RAND_MAX)-1);		
+			qvectors.push_back( SphericalCoor3D(qs.r,qs.phi+p,qs.theta+t) );
+			num++;
+		}
+	}
+	else if (avvectors=="mcdoublesqrt") {
+		double x1,x2;
+		while (num<resolution) {
+			x1 = (2.0*rand()*1.0/RAND_MAX) - 1.0;
+			x2 = (2.0*rand()*1.0/RAND_MAX) - 1.0;
+			double xl = powf(x1,2) + powf(x2,2);
+			if ( xl >= 1.0 ) continue;
+
+			double x = 2*x1* sqrt(1-xl);
+			double y = 2*x2* sqrt(1-xl) / xl;
+			double z = 1-2*xl;
+
+			SphericalCoor3D s = CartesianCoor3D(x,y,z);
+			qvectors.push_back( SphericalCoor3D(qs.r,qs.phi+s.phi,qs.theta+s.theta) );
+			num++;
+		}
+	}
+	else if (avvectors=="mcquaternion") {
+		double x0,x1,x2,x3;
+		
+		while (num<resolution) {
+			x0 = (2.0*rand()*1.0/RAND_MAX) - 1.0;
+			x1 = (2.0*rand()*1.0/RAND_MAX) - 1.0;
+			x2 = (2.0*rand()*1.0/RAND_MAX) - 1.0;
+			x3 = (2.0*rand()*1.0/RAND_MAX) - 1.0;
+			double xl = powf(x0,2) + powf(x1,2) + powf(x2,2) + powf(x3,2);
+			if ( xl >= 1.0 ) continue;
+
+			double x = 2* (x1*x3+x0*x2) / xl;
+			double y = 2* (x2*x3-x0*x1) / xl;
+			double z = 2* (powf(x0,2)+powf(x3,2)-powf(x1,2)+powf(x2,2)) / xl;
+
+			SphericalCoor3D s = CartesianCoor3D(x,y,z);
+			qvectors.push_back( SphericalCoor3D(qs.r,qs.phi+s.phi,qs.theta+s.theta) );
+			num++;
+		}
+	}
+	else if (avvectors=="mcboostunisphere") {
+		
+		boost::mt19937 rng; // that's my random number generator
+		rng.seed(qseed);
+		boost::uniform_on_sphere<double> s(3); // that's my distribution
+		boost::variate_generator<boost::mt19937&, boost::uniform_on_sphere<double> > mysphere(rng,s);
+
+		while (num<resolution) {
+
+			vector<double> r = mysphere();
+
+			double x = r[0];
+			double y = r[1];
+			double z = r[2];
+
+			SphericalCoor3D s = CartesianCoor3D(x,y,z);
+			qvectors.push_back( SphericalCoor3D(qs.r,qs.phi+s.phi,qs.theta+s.theta) );
+			num++;
+		}
+	}
+
+
+	
+}
+
+void qvectors_unfold_cylinder(std::string avvectors, CartesianCoor3D q, uint32_t qseed,double resolution, vector<CartesianCoor3D>& qvectors) {
+	
+	srand(qseed);
+	
+	const double M_2PI = 2*M_PI;
+	const double radincr = (M_2PI*resolution)/360;			
+	
+	CylinderCoor3D qs(q);
+	
+	// we can't unfold a line:
+	if (qs.r==0.0) return;
+	
+	// resolution is in degree, coordinates are in rad
+	
+	for (double phi=0;phi<M_2PI;phi+=radincr) {
+		qvectors.push_back( CylinderCoor3D(qs.r,qs.phi+phi,qs.z) );	
+	}
+}
+
+void scatter(Sample& sample,Atomselection as,CartesianCoor3D q,uint32_t qseed, std::vector<std::complex<double> >& scattering_amplitudes) {
 
 	libconfig::Setting& s = Settings::get("main")["scattering"]["average"];
+	
+	vector<CartesianCoor3D> qvectors;
 
 	string avtype = s["type"]; 
 	double resolution = -1.0;
 	if (s.exists("resolution")) {
 		resolution = s["resolution"];
 	} 
+
 	if (avtype=="none") {
+		// qseed not used here
 		complex<double> s = Analysis::scatter_none(sample,as,q);
-	 	return abs(conj(s)*s);
+		scattering_amplitudes.push_back(s);
 	}
 	else if (avtype=="sphere") {
 		string avmethod = s["method"];
 		if (avmethod=="bruteforce") {
+			if (resolution==-1.0) resolution=1.0;
+
 			string avvectors = s["vectors"];
-			if (avvectors=="rasterlinear") {
-				if (resolution==-1.0) resolution=1.0;
-   				return Analysis::scatter_sphere_bf_rasterlinear(sample,as,q,resolution);			
-			}
-			if (avvectors=="rastersurface") {
-				if (resolution==-1.0) resolution=1.0;
-   				return Analysis::scatter_sphere_bf_rastersurface(sample,as,q,resolution);			
-			}
-			if (avvectors=="triangulation") {
-				if (resolution==-1.0) resolution=1.0;
-   				return Analysis::scatter_sphere_bf_triangulation(sample,as,q,resolution);			
-			}
-			if (avvectors=="mcphiacos") {
-				if (resolution==-1.0) resolution=1.0;
-   				return Analysis::scatter_sphere_bf_mc_phiacos(sample,as,q,resolution);			
-			}			
-			if (avvectors=="mcdoublesqrt") {
-				if (resolution==-1.0) resolution=1.0;
-   				return Analysis::scatter_sphere_bf_mc_doublesqrt(sample,as,q,resolution);			
-			}						
-			if (avvectors=="mcquaternion") {
-				if (resolution==-1.0) resolution=1.0;
-   				return Analysis::scatter_sphere_bf_mc_quaternion(sample,as,q,resolution);			
-			}
-			if (avvectors=="mcboostunisphere") {
-				if (resolution==-1.0) resolution=1.0;
-   				return Analysis::scatter_sphere_bf_mc_boostunisphere(sample,as,q,resolution);			
-			}			
+			qvectors_unfold_sphere(avvectors,q,qseed,resolution,qvectors);
+			
+			Analysis::scatter_vectors(sample,as,qvectors,scattering_amplitudes);						
 		}
 		if (avmethod=="multipole") {
 			if (resolution==-1.0) resolution=17.0;
-   			return Analysis::scatter_sphere_multipole(sample,as,q,resolution);			
+   			Analysis::scatter_sphere_multipole(sample,as,q,resolution,scattering_amplitudes);			
 		}		
 	}
 	else if (avtype=="cylinder") {
 		string avmethod = s["method"];		
 		if (avmethod=="bruteforce") {
-			if (resolution==-1.0) resolution=360.0;
-   			return Analysis::scatter_cylinder_bf(sample,as,q,resolution);			
+			if (resolution==-1.0) resolution=1.0;
+			string avvectors = s["vectors"];
+			qvectors_unfold_cylinder(avvectors,q,qseed,resolution,qvectors);
+			
+			Analysis::scatter_vectors(sample,as,qvectors,scattering_amplitudes);		
 		}
 		if (avmethod=="multipole") {
 			if (resolution==-1.0) resolution=10.0;
-   			return Analysis::scatter_cylinder_multipole(sample,as,q,resolution);			
+   			Analysis::scatter_cylinder_multipole(sample,as,q,resolution,scattering_amplitudes);			
 		}
 	}	
 	else {
@@ -115,7 +236,7 @@ double scatter(Sample& sample,Atomselection as,CartesianCoor3D q) {
 		throw;
 	}
 	
-	return 0; // satisfy compiler
+	return; 
 }
 
 void set_scatteramp(Sample& sample,Atomselection as,CartesianCoor3D q,bool background) {
@@ -182,7 +303,9 @@ void set_scatteramp(Sample& sample,Atomselection as,CartesianCoor3D q,bool backg
 	}
 }
 
-inline complex<double> scatter_none(Sample& sample,Atomselection as,CartesianCoor3D q) {
+inline complex<double> scatter_none(Sample& sample,Atomselection as,CartesianCoor3D& q) {
+	
+	CoordinateSet& cs = sample.frames.current().coordinate_sets[as.name];
 	
 	complex<double> A = complex<double>(0,0);
 	if (q.length()==0) {
@@ -192,45 +315,54 @@ inline complex<double> scatter_none(Sample& sample,Atomselection as,CartesianCoo
 	}
 	
 	else {
-//	complex<double> A = complex<double>(0,0);		
-		const int N = as.size();
-		const int Nmod4 = N % 4;
-		const int Ndiv4 = N / 4;
+
+
+		for (size_t i=0;i<cs.x.size();i++) {
+			double s = sample.atoms[cs.indexes[i]].scatteramp;
+
+			CartesianCoor3D c(cs.x[i],cs.y[i],cs.z[i]);
+			A += exp(-1.0*complex<double>(0,c*q)) * s;
+		}
 		
-	
-		for (int i=0;i<Ndiv4;i++) {
-			CartesianCoor3D c1 = sample.frames.current().coord3D(as[4*i  ]);
-			CartesianCoor3D c2 = sample.frames.current().coord3D(as[4*i+1]);
-			CartesianCoor3D c3 = sample.frames.current().coord3D(as[4*i+2]);
-			CartesianCoor3D c4 = sample.frames.current().coord3D(as[4*i+3]);
-				
-			A += exp(-1.0*complex<double>(0,c1*q)) * sample.atoms[as[4*i  ]].scatteramp;		
-			A += exp(-1.0*complex<double>(0,c2*q)) * sample.atoms[as[4*i+1]].scatteramp;		
-			A += exp(-1.0*complex<double>(0,c3*q)) * sample.atoms[as[4*i+2]].scatteramp;		
-			A += exp(-1.0*complex<double>(0,c4*q)) * sample.atoms[as[4*i+3]].scatteramp;		
-			
-		}
-		if (Nmod4==3) {
-			CartesianCoor3D c1 = sample.frames.current().coord3D(as[N - 3]);
-			CartesianCoor3D c2 = sample.frames.current().coord3D(as[N - 2]);
-			CartesianCoor3D c3 = sample.frames.current().coord3D(as[N - 1]);
-				
-			A += exp(-1.0*complex<double>(0,c1*q)) * sample.atoms[as[N - 3]].scatteramp;		
-			A += exp(-1.0*complex<double>(0,c2*q)) * sample.atoms[as[N - 2]].scatteramp;		
-			A += exp(-1.0*complex<double>(0,c3*q)) * sample.atoms[as[N - 1]].scatteramp;		
-		}
-		else if (Nmod4==2) {
-			CartesianCoor3D c1 = sample.frames.current().coord3D(as[N - 2]);
-			CartesianCoor3D c2 = sample.frames.current().coord3D(as[N - 1]);
-				
-			A += exp(-1.0*complex<double>(0,c1*q)) * sample.atoms[as[N - 2]].scatteramp;		
-			A += exp(-1.0*complex<double>(0,c2*q)) * sample.atoms[as[N - 1]].scatteramp;		
-		}
-		else if (Nmod4==1) {
-			CartesianCoor3D c1 = sample.frames.current().coord3D(as[N - 1  ]);
-				
-			A += exp(-1.0*complex<double>(0,c1*q)) * sample.atoms[as[N - 1  ]].scatteramp;		
-		}
+//	complex<double> A = complex<double>(0,0);		
+//		const int N = as.size();
+//		const int Nmod4 = N % 4;
+//		const int Ndiv4 = N / 4;
+//		
+//	
+//		for (int i=0;i<Ndiv4;i++) {
+//			CartesianCoor3D c1 = sample.frames.current().coord3D(as[4*i  ]);
+//			CartesianCoor3D c2 = sample.frames.current().coord3D(as[4*i+1]);
+//			CartesianCoor3D c3 = sample.frames.current().coord3D(as[4*i+2]);
+//			CartesianCoor3D c4 = sample.frames.current().coord3D(as[4*i+3]);
+//				
+//			A += exp(-1.0*complex<double>(0,c1*q)) * sample.atoms[as[4*i  ]].scatteramp;		
+//			A += exp(-1.0*complex<double>(0,c2*q)) * sample.atoms[as[4*i+1]].scatteramp;		
+//			A += exp(-1.0*complex<double>(0,c3*q)) * sample.atoms[as[4*i+2]].scatteramp;		
+//			A += exp(-1.0*complex<double>(0,c4*q)) * sample.atoms[as[4*i+3]].scatteramp;		
+//			
+//		}
+//		if (Nmod4==3) {
+//			CartesianCoor3D c1 = sample.frames.current().coord3D(as[N - 3]);
+//			CartesianCoor3D c2 = sample.frames.current().coord3D(as[N - 2]);
+//			CartesianCoor3D c3 = sample.frames.current().coord3D(as[N - 1]);
+//				
+//			A += exp(-1.0*complex<double>(0,c1*q)) * sample.atoms[as[N - 3]].scatteramp;		
+//			A += exp(-1.0*complex<double>(0,c2*q)) * sample.atoms[as[N - 2]].scatteramp;		
+//			A += exp(-1.0*complex<double>(0,c3*q)) * sample.atoms[as[N - 1]].scatteramp;		
+//		}
+//		else if (Nmod4==2) {
+//			CartesianCoor3D c1 = sample.frames.current().coord3D(as[N - 2]);
+//			CartesianCoor3D c2 = sample.frames.current().coord3D(as[N - 1]);
+//				
+//			A += exp(-1.0*complex<double>(0,c1*q)) * sample.atoms[as[N - 2]].scatteramp;		
+//			A += exp(-1.0*complex<double>(0,c2*q)) * sample.atoms[as[N - 1]].scatteramp;		
+//		}
+//		else if (Nmod4==1) {
+//			CartesianCoor3D c1 = sample.frames.current().coord3D(as[N - 1  ]);
+//				
+//			A += exp(-1.0*complex<double>(0,c1*q)) * sample.atoms[as[N - 1  ]].scatteramp;		
+//		}
 
 //	for (Atomselection::iterator asi=as.begin();asi!=as.end();asi++) {
 	}
@@ -311,266 +443,15 @@ inline complex<double> scatter_none(Sample& sample,Atomselection as,CartesianCoo
 //	return complex<double>(Aa,Ab);
 }
 
-double scatter_sphere_bf_rasterlinear     (Sample& sample,Atomselection as,CartesianCoor3D q,double resolution) {
+void scatter_vectors (Sample& sample,Atomselection as,std::vector<CartesianCoor3D>& qvectors,std::vector<std::complex<double> >& scattering_amplitudes) {
 
-	SphericalCoor3D qs(q);
-	
-	const double M_2PI = 2*M_PI;	
-	const double radincr = resolution*(M_2PI)/360;	
-	int num=0;
-	complex<double> Aqs(0,0);
-	complex<double> A=0;
-	for (double t=0;t<M_PI;t+=radincr) {	
-		for (double p=0;p<M_2PI;p+=radincr) {
-			SphericalCoor3D c(qs.r,qs.phi+p,qs.theta+t);
-			Aqs = scatter_none(sample,as,c);
-			A += conj(Aqs)*Aqs;
-			num++;
-	    }
+	for(size_t i = 0; i < qvectors.size(); ++i)
+	{
+		scattering_amplitudes.push_back( scatter_none(sample,as,qvectors[i]) );
 	}
-
-	return A.real() / num;
 }
 
-double scatter_sphere_bf_rastersurface     (Sample& sample,Atomselection as,CartesianCoor3D q,double resolution) {
-	// this function wraps scatter
-	// spherical averaging is achieved by rotation of the q vector
-
-	SphericalCoor3D qs(q);
-	
-	const double M_2PI = 2*M_PI;	
-	const double radincr = resolution*(M_2PI)/360;	
-	const double arcincr = radincr*qs.r;
-	int num=0;
-	complex<double> Aqs(0,0);
-	complex<double> A=0;
-	double thetal = M_PI*qs.r; // this is the max distance we "walk on the sphere in theta direction"
-	for (double t=0;((t==0) || (t<thetal));t+=arcincr) {	
-		double dtheta = (t/thetal)*M_PI;
-		double phil = 2*M_PI*sin(dtheta)*qs.r; // this is the max distance we "walk on the sphere in phi direction"		
-		if (phil>0) {
-			for (double p=0;p<phil;p+=arcincr) {
-				double dphi = (p/phil)*2*M_PI;
-				SphericalCoor3D c(qs.r,qs.phi+dphi,qs.theta+dtheta);
-				Aqs = scatter_none(sample,as,c);
-				A += conj(Aqs)*Aqs;
-				num++;
-		    }
-		}
-		else {
-			SphericalCoor3D c(qs.r,qs.phi,qs.theta+dtheta);
-			Aqs = scatter_none(sample,as,c);
-			A += conj(Aqs)*Aqs;
-			num++;
-		}
-	}
-
-	return A.real() / num;
-}
-
-double scatter_sphere_bf_triangulation        (Sample& sample,Atomselection as,CartesianCoor3D q,double resolution) {
-	// this function wraps scatter
-	// spherical averaging is achieved by rotation of the q vector
-	
-	SphericalCoor3D qs(q);
-	 
-	int num=0;
-	complex<double> Aqs(0,0);
-	complex<double> A=0;
-
-	DrawSphereHelper d(CartesianCoor3D(0,0,0),qs.r,resolution*qs.r);
-	d.draw();
-
-	for(vector<CartesianCoor3D>::iterator vi=d.vectors.begin();vi!=d.vectors.end();vi++) {
-		SphericalCoor3D c(qs.r,qs.phi+SphericalCoor3D(*vi).phi,qs.theta+SphericalCoor3D(*vi).theta);
-		Aqs = scatter_none(sample,as,c);
-		A += conj(Aqs)*Aqs;
-		num++;	
-	}
-	return A.real() / num;
-}
-
-double scatter_sphere_bf_mc_phiacos        (Sample& sample,Atomselection as,CartesianCoor3D q,double resolution) {
-
-	SphericalCoor3D qs(q);
-	
-	srand(time(NULL));	
-	
-	int num=0;
-	complex<double> Aqs(0,0);
-	complex<double> A=0;
-	while (num<resolution) {
-		double p = 2*M_PI*(rand()*1.0/RAND_MAX);
-		double t = acos(2*(rand()*1.0/RAND_MAX)-1);		
-		SphericalCoor3D c(qs.r,qs.phi+p,qs.theta+t);
-		Aqs = scatter_none(sample,as,c);
-		A += conj(Aqs)*Aqs;
-		num++;
-	}
-
-	return A.real() / num;
-}
-
-//double scatter_sphere_bf_mc_phiacos        (Sample& sample,Atomselection as,CartesianCoor3D q,double resolution) {
-//
-//	SphericalCoor3D qs(q);
-//	
-//	srand(time(NULL));	
-//	
-//	const int N =10;
-//	
-//	// blocking of 10
-//	resolution = resolution /N;
-//	
-//	
-//	int num=0;
-//	complex<double> Aqs(0,0);
-//	double A=0;
-//	while (num<resolution) {
-//		
-//		boost::numeric::ublas::matrix<double> qmatrix(3,N);
-//		for (int i=0;i<N;i++) {
-//			double p = 2*M_PI*(rand()*1.0/RAND_MAX);
-//			double t = acos(2*(rand()*1.0/RAND_MAX)-1);		
-//			CartesianCoor3D q(SphericalCoor3D(qs.r,qs.phi+p,qs.theta+t));
-//			qmatrix(0,i) = q.x; 
-//			qmatrix(1,i) = q.y; 
-//			qmatrix(2,i) = q.z; 
-//		}
-//
-//		boost::numeric::ublas::matrix<double> restrict rqr(sample.frames.current().coord3Dmatrix.size1(),N);
-//		boost::numeric::ublas::matrix<double> restrict rqi(sample.frames.current().coord3Dmatrix.size1(),N);
-//
-//		rqr =  boost::numeric::ublas::prod(sample.frames.current().coord3Dmatrix,qmatrix);
-//		rqi = rqr;
-//		for (int i=0;i<N;i++) {
-//			for (int j=0;j<sample.frames.current().coord3Dmatrix.size1();j++) {
-//				rqr(i,j) = cos(rqr(i,j));				
-//				rqr(i,j) *= sample.atoms[as[j]].scatteramp;
-//				rqi(i,j) = sin(rqi(i,j));
-//				rqi(i,j) *= -1.0*sample.atoms[as[j]].scatteramp;				
-//			}
-//		}
-//
-//		int an = sample.frames.current().coord3Dmatrix.size1();
-//
-//		double ar[N] = {0.0};
-//		double ai[N] = {0.0};		
-//		for (int j=0;j<an;j++) {
-//			for (int i=0;i<N;i++) {
-//				ar[i] += rqr(i,j);
-//			}
-//		}
-//
-//		for (int j=0;j<an;j++) {
-//			for (int i=0;i<N;i++) {
-//				ai[i] += rqi(i,j);
-//			}
-//		}
-//
-//		for (int i=0;i<N;i++) {
-//			A += ar[i]*ar[i]+ai[i]*ai[i];
-//		}
-//		
-//		num++;
-//	}
-//	
-//	return A / (num*N);
-//}
-
-double scatter_sphere_bf_mc_doublesqrt        (Sample& sample,Atomselection as,CartesianCoor3D q,double resolution) {
-
-	SphericalCoor3D qs(q);
-	
-	srand(time(NULL));
-	
-	double x1,x2;
-	
-	int num=0;
-	complex<double> Aqs(0,0);
-	complex<double> A=0;
-	while (num<resolution) {
-		x1 = (2.0*rand()*1.0/RAND_MAX) - 1.0;
-		x2 = (2.0*rand()*1.0/RAND_MAX) - 1.0;
-		double xl = powf(x1,2) + powf(x2,2);
-		if ( xl >= 1.0 ) continue;
-
-		double x = 2*x1* sqrt(1-xl);
-		double y = 2*x2* sqrt(1-xl) / xl;
-		double z = 1-2*xl;
-
-		SphericalCoor3D s = CartesianCoor3D(x,y,z);
-		SphericalCoor3D c(qs.r,qs.phi+s.phi,qs.theta+s.theta);
-		Aqs = scatter_none(sample,as,c);
-		A += conj(Aqs)*Aqs;
-		num++;
-	}
-
-	return A.real() / num;
-}
-
-double scatter_sphere_bf_mc_quaternion        (Sample& sample,Atomselection as,CartesianCoor3D q,double resolution) {
-
-	SphericalCoor3D qs(q);
-	
-	double x0,x1,x2,x3;
-	
-	srand(time(NULL));
-	
-	int num=0;
-	complex<double> Aqs(0,0);
-	complex<double> A=0;
-	while (num<resolution) {
-		x0 = (2.0*rand()*1.0/RAND_MAX) - 1.0;
-		x1 = (2.0*rand()*1.0/RAND_MAX) - 1.0;
-		x2 = (2.0*rand()*1.0/RAND_MAX) - 1.0;
-		x3 = (2.0*rand()*1.0/RAND_MAX) - 1.0;
-		double xl = powf(x0,2) + powf(x1,2) + powf(x2,2) + powf(x3,2);
-		if ( xl >= 1.0 ) continue;
-
-		double x = 2* (x1*x3+x0*x2) / xl;
-		double y = 2* (x2*x3-x0*x1) / xl;
-		double z = 2* (powf(x0,2)+powf(x3,2)-powf(x1,2)+powf(x2,2)) / xl;
-
-		SphericalCoor3D s = CartesianCoor3D(x,y,z);
-		SphericalCoor3D c(qs.r,qs.phi+s.phi,qs.theta+s.theta);
-		Aqs = scatter_none(sample,as,c);
-		A += conj(Aqs)*Aqs;
-		num++;
-	}
-
-	return A.real() / num;
-}
-
-double scatter_sphere_bf_mc_boostunisphere        (Sample& sample,Atomselection as,CartesianCoor3D q,double resolution) {
-	SphericalCoor3D qs(q);
-	
-	boost::mt19937 rng; // that's my random number generator
-	boost::uniform_on_sphere<double> s(3); // that's my distribution
-	boost::variate_generator<boost::mt19937&, boost::uniform_on_sphere<double> > mysphere(rng,s);
-	
-	int num=0;
-	complex<double> Aqs(0,0);
-	complex<double> A=0;
-	while (num<resolution) {
-
-		vector<double> r = mysphere();
-
-		double x = r[0];
-		double y = r[1];
-		double z = r[2];
-
-		SphericalCoor3D s = CartesianCoor3D(x,y,z);
-		SphericalCoor3D c(qs.r,qs.phi+s.phi,qs.theta+s.theta);
-		Aqs = scatter_none(sample,as,c);
-		A += conj(Aqs)*Aqs;
-		num++;
-	}
-
-	return A.real() / num;
-}
-
-double scatter_sphere_multipole (Sample& sample,Atomselection as,CartesianCoor3D q,double resolution) {
+void scatter_sphere_multipole (Sample& sample,Atomselection as,CartesianCoor3D q,double resolution,std::vector<std::complex<double> >& scattering_amplitudes) {
 
 	using namespace boost::numeric::ublas::detail;
 	
@@ -602,42 +483,14 @@ double scatter_sphere_multipole (Sample& sample,Atomselection as,CartesianCoor3D
 	}
 
 
-	double	almvq = 0;
 	for (int l=0;l<=lmax;l++) {
 		for (int m=-l;m<=l;m++) { 
-			almvq += (conj(almv[l][m+l])*(almv[l][m+l])).real(); 
+			scattering_amplitudes.push_back( almv[l][m+l] / sqrt(4.0*M_PI) ); // maybe need to multiply w/ lmax^2
 		}
 	}
-
-	return almvq / (4.0*M_PI);
 }
 
-double scatter_cylinder_bf(Sample& sample,Atomselection as,CartesianCoor3D q,double resolution) {	
-	// this function wraps scatter
-	// spherical averaging is achieved by rotation of the q vector
-	
-	const double M_2PI = 2*M_PI;
-	const double radincr = (M_2PI*resolution)/360;			
-	int num=0;
-	CylinderCoor3D qs(q);
-	complex<double> Aq1(0,0);
-	complex<double> Aq2(0,0);	
-	complex<double> A=0;
-	// resolution is in degree, coordinates are in rad
-	for (double phi=0;phi<M_2PI;phi+=radincr) {
-		CylinderCoor3D c(qs.r,qs.phi+phi,qs.z);
-		Aq1=scatter_none(sample,as,c);
-		A += conj(Aq1)*Aq1;
-//		A += Aq1;
-		num++;
-	}
-	return A.real()/num;
-//	Aqs /= num;
-//	return Aqs;
-//	return (conj(A)*A).real() / num;
-}
-
-double scatter_cylinder_multipole(Sample& sample,Atomselection as,CartesianCoor3D q,double resolution) {
+void scatter_cylinder_multipole(Sample& sample,Atomselection as,CartesianCoor3D q,double resolution,std::vector<std::complex<double> >& scattering_amplitudes) {
 
 	Atoms& atoms = sample.atoms;
 	
@@ -675,12 +528,13 @@ double scatter_cylinder_multipole(Sample& sample,Atomselection as,CartesianCoor3
 		}
 	}
 
-	double Aq = (conj(A[0])*A[0]).real();
+	scattering_amplitudes.push_back( A[0] ); // maybe need to multiply w/ lmax*4 + 1		
 	for (int l=1;l<=lmax;l++) {
-		Aq += 0.5*( conj(A[l])*A[l] + conj(B[l])*B[l] + conj(C[l])*C[l] + conj(D[l])*D[l]).real();
+		scattering_amplitudes.push_back( sqrt(0.5)*A[l] ); // maybe need to multiply w/ lmax*4 + 1		
+		scattering_amplitudes.push_back( sqrt(0.5)*B[l] ); // maybe need to multiply w/ lmax*4 + 1		
+		scattering_amplitudes.push_back( sqrt(0.5)*C[l] ); // maybe need to multiply w/ lmax*4 + 1		
+		scattering_amplitudes.push_back( sqrt(0.5)*D[l] ); // maybe need to multiply w/ lmax*4 + 1		
 	}
-
-	return Aq;
 
 }
 
