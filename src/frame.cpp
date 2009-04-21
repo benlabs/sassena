@@ -36,19 +36,19 @@ void Frame::push_selection(Atomselection& as) {
 	CoordinateSet& cs = coordinate_sets[as.name];
 
 	// try to take advantage of hardware pipelining, each array individually
-	for (size_t i=0;i<number_of_atoms;i++) {
+	for (int32_t i=0;i<number_of_atoms;i++) {
 			if (as.booleanarray[i]) cs.x.push_back(x[i]);
 	}
 
-	for (size_t i=0;i<number_of_atoms;i++) {
+	for (int32_t i=0;i<number_of_atoms;i++) {
 			if (as.booleanarray[i]) cs.y.push_back(y[i]);
 	}
 
-	for (size_t i=0;i<number_of_atoms;i++) {
+	for (int32_t i=0;i<number_of_atoms;i++) {
 			if (as.booleanarray[i]) cs.z.push_back(z[i]);
 	}
 
-	for (size_t i=0;i<number_of_atoms;i++) {
+	for (int32_t i=0;i<number_of_atoms;i++) {
 			if (as.booleanarray[i]) cs.indexes.push_back(i);
 	}
 	
@@ -67,25 +67,25 @@ void Frame::push_selections(std::vector<Atomselection>& ass) {
 	}
 	
 	// try to take advantage of hardware pipelining, each array individually
-	for (size_t i=0;i<number_of_atoms;i++) {
+	for (int32_t i=0;i<number_of_atoms;i++) {
 		for (std::vector<pair<CoordinateSet*,Atomselection*> >::iterator csi=cooras.begin();csi!=cooras.end();csi++) {
 			if (csi->second->booleanarray[i]) csi->first->x.push_back(x[i]);
 		}
 	}
 
-	for (size_t i=0;i<number_of_atoms;i++) {
+	for (int32_t i=0;i<number_of_atoms;i++) {
 		for (std::vector<pair<CoordinateSet*,Atomselection*> >::iterator csi=cooras.begin();csi!=cooras.end();csi++) {
 			if (csi->second->booleanarray[i]) csi->first->y.push_back(y[i]);
 		}
 	}
 
-	for (size_t i=0;i<number_of_atoms;i++) {
+	for (int32_t i=0;i<number_of_atoms;i++) {
 		for (std::vector<pair<CoordinateSet*,Atomselection*> >::iterator csi=cooras.begin();csi!=cooras.end();csi++) {
 			if (csi->second->booleanarray[i]) csi->first->z.push_back(z[i]);
 		}
 	}
 
-	for (size_t i=0;i<number_of_atoms;i++) {
+	for (int32_t i=0;i<number_of_atoms;i++) {
 		for (std::vector<pair<CoordinateSet*,Atomselection*> >::iterator csi=cooras.begin();csi!=cooras.end();csi++) {
 			if (csi->second->booleanarray[i]) csi->first->indexes.push_back(i);
 		}
@@ -131,7 +131,7 @@ void Frame::wrap() {
 	CartesianCoor3D uc1n = uc[1]/uc1l;
 	CartesianCoor3D uc2n = uc[2]/uc2l;
 
-	for (size_t i=0;i<number_of_atoms;i++) {
+	for (int32_t i=0;i<number_of_atoms;i++) {
 		CartesianCoor3D c = coord3D(i) - origin;
 
 	double cuc0n = (c*uc0n);

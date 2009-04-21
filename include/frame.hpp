@@ -73,7 +73,7 @@ class Frame {
     }
 	
 public:
-	size_t number_of_atoms; //store this for performance
+	long number_of_atoms; //store this for performance
 	
 	double t; // time information
 	
