@@ -24,8 +24,7 @@
 // special library headers
 #include <boost/regex.hpp>
 #include <boost/accumulators/accumulators.hpp>
-#include <boost/accumulators/statistics/mean.hpp>
-#include <boost/accumulators/statistics/variance.hpp>
+#include <boost/accumulators/statistics.hpp>
 #include <boost/archive/text_oarchive.hpp>
 #include <boost/archive/text_iarchive.hpp>
 #include <boost/filesystem.hpp>
