@@ -80,7 +80,7 @@ public:
 	bool wrapping;
 	Atomselection centergroup_selection;
 
-	Frames() : framecache_max(2) {}
+	Frames() : framecache_max(2), currentframe_i(-1), number_of_frames(0) {}
 	~Frames();
 	
 	size_t size();

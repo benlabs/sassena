@@ -26,7 +26,7 @@ using namespace std;
 
 void Frames::test_framenumber() {
 	if ((currentframe_i>=size()) || (currentframe_i<0)) {
-		cerr << "ERROR>> " << " currentframe integer out of bound" << endl;
+		cerr << "ERROR>> " << " currentframe (" << currentframe_i << ") integer out of bound" << endl;
 	}
 }
 
@@ -37,8 +37,6 @@ Frames::~Frames() {
 }
 
 void Frames::add_frameset(const std::string filename,const std::string filetype,Atoms& atoms) {
-	// get current total number of frames -> offset
-	// set offset
 	
 	// Detect frame type
 	if (filetype=="dcd") {
@@ -52,6 +50,7 @@ void Frames::add_frameset(const std::string filename,const std::string filetype,
 		cerr << "ERROR>> filetype '" << filetype << "' not supported." << endl;
 		throw;
 	}
+	
 }
 
 size_t Frames::size() {
