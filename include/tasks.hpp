@@ -33,6 +33,7 @@
 class Task {
 public:
 	size_t id;
+	size_t color;
 	CartesianCoor3D q;
 	
 	double result;
@@ -43,13 +44,16 @@ public:
 	std::vector<std::pair<int,int> > rftable; // maps a rank to a frame, a rank can have multiple frames
 	
 	std::string mode;
+	
+	int timeunits();
+	std::vector<int> frames(int rank); // return frames for the given rank
 };
 
 class Tasks : public std::vector<Task> {
 	void generate_independent_tasks(std::vector<int>& frames,std::vector<CartesianCoor3D>& qqq,size_t nn,std::string mode);
 	void generate_tasks_by_framecoupling(std::vector<int>& frames,std::vector<CartesianCoor3D>& qqq,size_t nn,std::string mode);
-
-
+	
+	size_t colors;
 public:
 	Tasks() {}
 	Tasks(std::vector<int>& frames,std::vector<CartesianCoor3D>& qqq,size_t nn,std::string mode);

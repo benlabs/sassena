@@ -111,6 +111,11 @@ TARGET_LINK_LIBRARIES (unit_ranklogic ${LIB_DEPENDENCIES})
 INSTALL(TARGETS unit_ranklogic RUNTIME DESTINATION bin/units)
 
 
+ADD_EXECUTABLE(unit_sasstest tests/unit_sasstest.cpp src/sample.cpp src/frame.cpp src/frames.cpp src/atom.cpp src/atoms.cpp src/atomselection.cpp src/coor3d.cpp src/settings.cpp src/tasks.cpp)
+TARGET_LINK_LIBRARIES (unit_sasstest ${LIB_DEPENDENCIES})
+INSTALL(TARGETS unit_sasstest RUNTIME DESTINATION bin/units)
+
+
 # additional tools:
 ADD_EXECUTABLE(normalize tools/normalize.cpp)
 TARGET_LINK_LIBRARIES (normalize )
@@ -119,6 +124,10 @@ INSTALL(TARGETS normalize RUNTIME DESTINATION bin/tools)
 ADD_EXECUTABLE(grid tools/grid.cpp src/coor3d.cpp)
 TARGET_LINK_LIBRARIES (grid )
 INSTALL(TARGETS grid RUNTIME DESTINATION bin/tools)
+
+ADD_EXECUTABLE(grid_frames tools/grid_frames.cpp src/coor3d.cpp)
+TARGET_LINK_LIBRARIES (grid_frames )
+INSTALL(TARGETS grid_frames RUNTIME DESTINATION bin/tools)
 
 
 # additional tools:

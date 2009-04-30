@@ -4,35 +4,70 @@
 
 using namespace std;
 
+int Task::timeunits() {
+	map<int,int> nodecounttable;
+	for(size_t i = 0; i < rftable.size(); ++i)
+	{
+		if (nodecounttable.find(rftable[i].first)!=nodecounttable.end()) {
+			nodecounttable[rftable[i].first] = nodecounttable[rftable[i].first] + 1;
+		}
+		else {
+			nodecounttable[rftable[i].first] = 1;
+		}
+	}
+	int max=1;
+	for(map<int,int>::iterator ncti = nodecounttable.begin(); ncti!=nodecounttable.end();ncti++)
+	{
+		max = (ncti->second>max) ? ncti->second : max;
+	}
+	return max;
+}
+
+std::vector<int> Task::frames(int rank) {
+	vector<int> result;
+	for(size_t i = 0; i < rftable.size(); ++i)
+	{
+		if (rftable[i].first==rank) result.push_back(rftable[i].second);
+	}
+	return result;
+}
+
 Tasks::Tasks(std::vector<int>& frames,std::vector<CartesianCoor3D>& qqq,size_t nn,std::string mode) {
 
-	if (mode=="none") {
+	if (mode=="time") {
+		generate_tasks_by_framecoupling(frames,qqq,nn,mode);
+	}
+	else if (mode=="none") {
 		generate_independent_tasks(frames,qqq,nn,mode);
 	}
 	else {
-		generate_tasks_by_framecoupling(frames,qqq,nn,mode);
+		cerr << "ERROR>> " << "Correlation type not understood" << endl;
+		throw;
 	}
 };
 
 void Tasks::print() {
-		for(size_t i = 0; i < size(); ++i)
-		{
-			Task& t = this->at(i);
-			clog << "INFO>> " << "(id=" << t.id << ") " << "q=" << t.q << "\t" << "{";
-			for(size_t j = 0; j < t.rftable.size(); ++j)
-			{
-				pair<int,int> rf = t.rftable[j];
-				clog << rf.first << ",";
-			}
-			clog << "}" << "=>" << "{";
-			for(size_t j = 0; j < t.rftable.size(); ++j)
-			{
-				pair<int,int> rf = t.rftable[j];
-				clog << rf.second << ",";
-			}	
-			clog << "}" ;
-			clog << endl;
-		}
+//		for(size_t i = 0; i < size(); ++i)
+//		{
+//			Task& t = this->at(i);
+//			clog << "INFO>> " << "(id=" << t.id << "," << "color=" << t.color << ") " << "q=" << t.q << "\t" << "{";
+//			for(size_t j = 0; j < t.rftable.size(); ++j)
+//			{
+//				pair<int,int> rf = t.rftable[j];
+//				clog << rf.first << ",";
+//			}
+//			clog << "}" << "=>" << "{";
+//			for(size_t j = 0; j < t.rftable.size(); ++j)
+//			{
+//				pair<int,int> rf = t.rftable[j];
+//				clog << rf.second << ",";
+//			}	
+//			clog << "}" ;
+//			clog << endl;
+//		}
+		clog << "INFO>> " << "Total number of tasks: " << size() << endl;
+		clog << "INFO>> " << "Number of simultaneous jobs allowed: " << colors << endl;
+		
 }
 
 void Tasks::generate_independent_tasks(std::vector<int>& frames,std::vector<CartesianCoor3D>& qqq,size_t nn,std::string mode)  {
@@ -51,6 +86,7 @@ void Tasks::generate_independent_tasks(std::vector<int>& frames,std::vector<Cart
 	}
 	
 	size_t q=0;
+	size_t color =0;
 	while (q<nq) {
 		
 		for(size_t f = 0; f < nf; ++f)
@@ -64,8 +100,6 @@ void Tasks::generate_independent_tasks(std::vector<int>& frames,std::vector<Cart
 				}
 			}
 			
-
-
 			Task tm;
 			tm.q = qqq[q];
 			int thisnode = idlenodes.front();
@@ -74,20 +108,16 @@ void Tasks::generate_independent_tasks(std::vector<int>& frames,std::vector<Cart
 			tm.rftable.push_back(make_pair(thisnode,f));
 			tm.id = current_task_id++;
 			tm.mode = mode;
+			tm.color = 0;
 			push_back(tm);
 			
 		}	
 
-		q++;
+		q++; 
 
-// not necessary for independent tasks:
-		// align nodes to frame boundary
-//		if ( idlenodes.size() < nf ) {
-//			idlenodes.clear();
-//		}
-	}	
+	}
+	colors = nn; // indicates the number of simultaneous indepentend tasks	
 }
-
 
 void Tasks::generate_tasks_by_framecoupling(std::vector<int>& frames,std::vector<CartesianCoor3D>& qqq,size_t nn,std::string mode) {
 	// nn = number of nodes in total
@@ -105,7 +135,9 @@ void Tasks::generate_tasks_by_framecoupling(std::vector<int>& frames,std::vector
 	}
 	
 	size_t q=0;
-	while (q<nq) {
+	size_t color=0;
+	size_t max_color = 0;
+	while (true) {
 		
 		// try to increase total idlenodes to at least number of frames
 		while (idlenodes.size()<nf) {
@@ -115,7 +147,7 @@ void Tasks::generate_tasks_by_framecoupling(std::vector<int>& frames,std::vector
 				idlenodes.push_back(i);
 			}
 		}
-			
+				
 		Task tm;
 		tm.q = qqq[q];
 		for(size_t f = 0; f < nf; ++f)
@@ -127,14 +159,19 @@ void Tasks::generate_tasks_by_framecoupling(std::vector<int>& frames,std::vector
 		}	
 		tm.id = current_task_id++;
 		tm.mode = mode;
+		tm.color = color;
 		push_back(tm);
-		q++;
+		q++; if (q>=nq) break;
+		color++;
 
 		// align nodes to frame boundary
 		if ( idlenodes.size() < nf ) {
 			idlenodes.clear();
+			if (max_color<color) max_color=color;
+			color=0;			
 		}
 	}
+	colors = max_color;
 }
 
 Tasks Tasks::scope(int rank) {

@@ -150,7 +150,11 @@ double Settings::get_volume(string atomname) {
 }
 
 void Settings::get_qqqvectors(std::vector<CartesianCoor3D>& qqqvectors) {
+	
+	// lookup section to use:
 	string qqqvectors_method = Settings::get("main")["scattering"]["vectors"]["method"];
+	
+	
 	
 	if (qqqvectors_method=="linear") {	
 		libconfig::Setting& s = Settings::get("main")["scattering"]["vectors"]["linear"];
@@ -239,7 +243,6 @@ void Settings::get_qqqvectors(std::vector<CartesianCoor3D>& qqqvectors) {
 				}
 			}
 		}
-		
 	}	
 	else if (qqqvectors_method=="file") {
 		string qqqfilename = Settings::get("main")["scattering"]["vectors"]["file"];

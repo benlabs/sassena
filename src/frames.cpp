@@ -24,9 +24,9 @@
 using namespace std;
 
 
-void Frames::test_framenumber() {
-	if ((currentframe_i>=size()) || (currentframe_i<0)) {
-		cerr << "ERROR>> " << " currentframe (" << currentframe_i << ") integer out of bound" << endl;
+void Frames::test_framenumber(size_t framenumber) {
+	if ((framenumber>=size()) || (framenumber<0)) {
+		cerr << "ERROR>> " << " framenumber (" << framenumber << ") integer out of bound" << endl;
 	}
 }
 
@@ -58,7 +58,7 @@ size_t Frames::size() {
 }
 
 Frameset& Frames::find_frameset(size_t framenumber) {
-	test_framenumber();
+	test_framenumber(framenumber);
 	for (size_t i=0;i<framesets.size();i++) {
 		if (framesets[i]->frame_number_offset<=framenumber) {
 			if ((framenumber-framesets[i]->frame_number_offset)<framesets[i]->number_of_frames) return *framesets[i];
@@ -144,7 +144,7 @@ void Frames::load(size_t framenumber,Atoms& atoms,Atomselection& atomselection) 
 
 
 Frame& Frames::current() {
-	test_framenumber();
+	test_framenumber(currentframe_i);
 	return framecache[currentframe_i];
 }
 
@@ -186,9 +186,9 @@ void DCDFrameset::init(std::string fn,size_t fno) {
 	dcdfile.seekg(marker,ios_base::cur);
 	dcdfile.read((char*) &marker,sizeof(int32_t));
 
-	int32_t noa;
+	uint32_t noa;
 	dcdfile.read((char*) &marker,sizeof(int32_t));
-	dcdfile.read((char*) &noa,sizeof(int32_t));
+	dcdfile.read((char*) &noa,sizeof(uint32_t));
 	dcdfile.read((char*) &marker,sizeof(int32_t));
 
 //	if (number_of_atoms!=atoms.size()) { cerr << "Atom number mismatch (dcd)" << number_of_atoms << " vs. (pdb)" << atoms.size() << endl; throw; }

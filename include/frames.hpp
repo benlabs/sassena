@@ -73,7 +73,7 @@ class Frames {
 
 	// translate global framenumber into frameset specific one
 	size_t scope_framenumber(size_t framenumber);
-	void test_framenumber();
+	void test_framenumber(size_t framenumber);
 	
 public:
 	// unit cell behaviour:

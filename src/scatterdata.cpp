@@ -60,13 +60,16 @@ bool ScatterdataKey::operator<(const ScatterdataKey that) const{
 template <class V> void Scatterdata<V>::write_plain(string fname,string format) {
 	
 	ofstream ofile(fname.c_str());
-	
+
+	// break w/ changes in frames;
+	size_t lastframe = this->begin()->first.second;
 	for (typename Scatterdata<V>::iterator si=this->begin();si!=this->end();si++) {
 		// review this... declare a prooper "trajectory format!"
 		// espeically clarify whether complex number should be written and how the standard deviations are interpreted
 		const ScatterdataKey& key = si->first;
 		const V& value = si->second;
 		
+		if (key.second != lastframe) { lastframe = key.second; ofile << endl; }
 		if (format == "txt") {
 			ofile <<  key.first.x << "\t" <<  key.first.y << "\t" <<  key.first.z << "\t" << key.second << "\t" << value <<  endl;			
 		}

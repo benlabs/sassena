@@ -31,6 +31,9 @@
 #include <boost/mpi.hpp>
 #include <libconfig.h++>
 #include <boost/math/special_functions.hpp>
+#include <boost/serialization/complex.hpp>
+#include <boost/serialization/map.hpp>
+#include <boost/serialization/vector.hpp>
 
 // other headers
 #include "analysis.hpp"
@@ -65,6 +68,40 @@ enum MPI_VALUES {
 
 //forward
 void main_slave(boost::mpi::environment& env, boost::mpi::communicator& world,int argc,char** argv);
+
+void print_eta(int percent,int progress,timeval start,timeval end) {
+		gettimeofday(&end, 0);
+		int seconds = (end.tv_sec-start.tv_sec);
+		int microseconds = (end.tv_usec-start.tv_usec);
+		microseconds = (microseconds < 0) ? 1000000+microseconds : microseconds;
+		seconds = (microseconds < 0) ? seconds-1 : seconds;
+		double etotal = 100 * ( seconds + (microseconds/1000000.0) ) / percent;
+		double eta = etotal - seconds + (microseconds/1000000.0);
+		clog << "INFO>> " << "Progress: " << percent << "%" << " , ETOTAL(s): " <<  etotal  << " , ETA(s): " <<  eta  << endl;
+}
+
+vector<int> get_step_assignments(size_t thisrank,size_t nodes, size_t frames) {
+	
+	vector<int> result; 
+	size_t current_step_size=0;
+	size_t current_node = nodes-1;
+	int step_var=1; // go forward
+	while(current_step_size<=frames) {
+		if (thisrank==current_node) result.push_back(current_step_size);
+		current_node += step_var;					
+		if ( (current_node<0) ) {
+			current_node=0;
+			step_var *= -1.0; // reflect
+		} 
+		if (current_node>nodes-1) {
+			current_node=nodes-1;
+			step_var *= -1.0; // reflect
+		}
+		current_step_size++;
+	}
+	
+	return result;
+}
 
 int main(int argc,char** argv) {
 
@@ -127,7 +164,6 @@ int main(int argc,char** argv) {
 		clog << "INFO>> " << "Reading configuration file " << argv[1] << endl;
 		// read in configuration file, delete command line arguments
 		if (!Settings::read(argc,argv)) { cerr << "Error reading the configuration" << endl; throw; }
-
 
 	   clog << "INFO>> " << "Reading structure from: " << (const char *) Settings::get("main")["sample"]["structure"]["file"] << endl;
 
@@ -300,7 +336,14 @@ int main(int argc,char** argv) {
 	int taskcounter = 0; int progress = 0;
 	
 	// generate Tasks
-	string mode = "none";
+	string mode;
+	if (Settings::get("main")["scattering"].exists("correlation")) {
+		mode = (const char * ) Settings::get("main")["scattering"]["correlation"]["type"];
+	}
+	else {
+		mode = "none";
+	}
+	
 	Tasks tasks(frames,qqqvectors,world.size(),mode);
 	if (rank==0) { 
 		clog << "INFO>> " << "Task assignment:" << endl;		
@@ -309,71 +352,134 @@ int main(int argc,char** argv) {
 	
 	Tasks my_tasks = tasks.scope(rank);
 		
+	// get color(current worker class ID) from first task
+	boost::mpi::communicator local = world.split(my_tasks[0].color);
+	
 	vector<pair<ScatterdataKey,double> > keyvals;
 	string target = Settings::get("main")["scattering"]["target"];
 
 	gettimeofday(&start, 0);
+	int progess = 0;
+	
+	map<pair<CartesianCoor3D,size_t>, double > qF_Task_results; // used if mode = "none"
+	map<pair<CartesianCoor3D,size_t>, double > q_Task_results; // used if mode = "time"
 	
 	for (Tasks::iterator ti=my_tasks.begin();ti!=my_tasks.end();ti++) {
 
-		if (rank==0) {
-			int percent = int(taskcounter*100/my_tasks.size())  ;	
-			if ( percent >= progress  ) {
-				gettimeofday(&end, 0);				
-				int seconds = (end.tv_sec-start.tv_sec);
-				int microseconds = (end.tv_usec-start.tv_usec);
-				microseconds = (microseconds < 0) ? 1000000+microseconds : microseconds;
-				seconds = (microseconds < 0) ? seconds-1 : seconds;								
-				double etotal = 100 * ( seconds + (microseconds/1000000.0) ) / percent;
-				double eta = etotal - seconds + (microseconds/1000000.0);
-				clog << "INFO>> " << "Progress: " << percent << "%" << " , ETOTAL(s): " <<  etotal  << " , ETA(s): " <<  eta  << endl;			
-				if (percent<10) {
-					progress = 1*(percent/1) + 1;									
-				}
-				else {
-					progress = 10*(percent/10) + 10;									
+			if (rank==0) {
+				int percent = int(taskcounter*100/my_tasks.size())  ;
+				if ( percent >= progress  ) {
+					print_eta(percent,progess,start,end);
+					if (percent<10) {
+						progress = 1*(percent/1) + 1;									
+					}
+					else {
+						progress = 10*(percent/10) + 10;									
+					}
 				}				
-			}	
-		}
-
+			}
 		
-		int frame = ti->rftable[0].second;
-		sample.frames.load(frame,sample.atoms,sample.atomselections[target]);				
-		Analysis::set_scatteramp(sample,sample.atomselections[target],ti->q,true);
+			vector<int> frames_i = ti->frames(rank);
+			map<int,vector<complex<double> > > scatbyframe;
+			
+			// iterate through all frames this node is supposed to do
+			for(size_t i = 0; i < frames_i.size(); ++i)
+			{
+				sample.frames.load(frames_i[i],sample.atoms,sample.atomselections[target]);				
+				Analysis::set_scatteramp(sample,sample.atomselections[target],ti->q,true);
+
+				// holds the scattering amplitudes for the current frame:
+				vector<complex<double> >& scat = scatbyframe[frames_i[i]];
+				uint32_t qseed = 1; // ti->qseed
+				Analysis::scatter(sample,sample.atomselections[target],ti->q,qseed,scat);		
+			}
 
 		if (ti->mode=="none") {
-			vector<complex<double> > scat;
-			// in "none" mode, the scattering intensity is simply the squared amplitude
-			uint32_t qseed = 1; // ti->qseed
-			Analysis::scatter(sample,sample.atomselections[target],ti->q,qseed,scat);		
 			
-			double scatsum=0;
-			for(size_t i = 0; i < scat.size(); ++i)
-			{
-				scatsum += abs(conj(scat[i])*scat[i]);
+			// no correlation -> instanenous scattering intensity
+			for(map<int,vector<complex<double> > >::iterator sbfi=scatbyframe.begin();sbfi!=scatbyframe.end();sbfi++) {
+				double scatsum=0;				
+				for(vector<complex<double> >::iterator si=sbfi->second.begin();si!=sbfi->second.end();si++) {
+					scatsum += abs(conj(*si)*(*si));
+				}
+				qF_Task_results[make_pair(ti->q,sbfi->first)] = scatsum/(sbfi->second.size()); 
 			}
-			keyvals.push_back(make_pair(ScatterdataKey(ti->q,frame),scatsum));
-			
 		}
-		else {
-			// holds the scattering amplitudes for the current frame:
-			vector<complex<double> > scat;
-			// when doing dynamic scattering
-			// each task has associated frames
-			// these define the neighborhood
-			// a commuincation scheme has to aggregrate per-vector results on one node
-			// then do a FFT convolution
-			//the scattering amplitudes have to be aggregrated, then communicated
-//			Analysis::scatter(sample,sample.atomselections[target],ti->q,t->qseed,scat);		
-//			
-//			double scatsum=0;
-//			for(size_t i = 0; i < scat.size(); ++i)
-//			{
-//				scatsum += abs(conj(scat[i])*scat[i]);
-//			}
-//			keyvals.push_back(make_pair(ScatterdataKey(qqq,frame),scatsum));
+		else if (mode=="time") {
+
+			// check size of vector<scattering amplitudes>, this is the size of unfolded q vectors
+			size_t aqscount = 0;
+			for(map<int,vector<complex<double> > >::iterator sbfi=scatbyframe.begin();sbfi!=scatbyframe.end();sbfi++) {
+				if (aqscount==0) aqscount = sbfi->second.size(); else if (aqscount!=sbfi->second.size()) throw;
+			}
 			
+			for(size_t asqi = 0; asqi < aqscount; ++asqi)
+			{
+				// communicate current aqs
+				vector<pair<int,complex<double> > > aqs_by_frame;				
+				for(map<int,vector<complex<double> > >::iterator sbfi=scatbyframe.begin();sbfi!=scatbyframe.end();sbfi++)
+				{
+					aqs_by_frame.push_back(make_pair(sbfi->first,sbfi->second[asqi]));
+				}
+				vector<vector<pair<int,complex<double> > > > vector_in,vector_out;
+				vector_in.resize(local.size(),aqs_by_frame);
+				
+				boost::mpi::all_to_all(local,vector_in,vector_out);
+				
+				// decompose vector_out into new table: frame <-> Aqs, use frame number as implicit position
+				vector<complex<double> > aqs; aqs.resize(frames.size());
+				for(size_t i = 0; i < vector_out.size(); ++i)
+				{
+					for(size_t j = 0; j < vector_out[i].size(); ++j)
+					{
+						aqs[vector_out[i][j].first]=vector_out[i][j].second;
+					}
+				}
+				
+				// now determine which correlation 'step' WE need to do:
+				vector<int> stepsizes = get_step_assignments(local.rank(),local.size(),frames.size()/2); // frames.size()/2 is the length of the correlation we are interested in...
+
+				map<int,complex<double> > my_AAconj;
 			
+				for(vector<int>::iterator ssi=stepsizes.begin();ssi!=stepsizes.end();ssi++) {
+					complex<double> AAconj_sum=0;
+					int AAconj_count=0;					
+					size_t current_frame=0;
+					while( (current_frame+(*ssi))<frames.size()) {
+						AAconj_sum += aqs[current_frame]*conj(aqs[current_frame+(*ssi)]); // do we have to take the "REAL" part only?
+						AAconj_count++;
+						current_frame++;
+					}
+					my_AAconj[*ssi] = AAconj_sum / double(AAconj_count);
+				}
+				
+				vector<map<int,complex<double> > > all_AAconj;
+				boost::mpi::gather(local,my_AAconj,all_AAconj,0);
+								
+				if (local.rank()==0) {
+					// reorder results, use stepsize as implicit index
+//					vector<complex<double> > AAconj_series; AAconj_series.resize((frames.size()/2)+((frames.size()+1)%2)); // correlation length = size
+
+					vector<complex<double> > AAconj_series; AAconj_series.resize((frames.size()/2)+1); // correlation length = size					
+					for(vector<map<int,complex<double> > >::iterator ai=all_AAconj.begin();ai!=all_AAconj.end();ai++) {
+						for(map<int,complex<double> >::iterator aii=ai->begin();aii!=ai->end();aii++) {
+							AAconj_series[aii->first]=aii->second;
+						}
+					}
+//					ofstream ofile("test.dat",ios_base::app);
+					for(size_t i = 0; i < AAconj_series.size(); ++i)
+					{
+						q_Task_results[make_pair(ti->q,i)] = AAconj_series[i].real(); 
+						// check THIS! take the real part or do a conj-multiply?
+//						ofile << ti->q.x << "\t" << ti->q.y << "t" << ti->q.z << "\t" << i << "\t" << AAconj_series[i].real() << endl;
+					}
+//					ofile << endl;
+				}
+				
+			}
+
+			// wait for all nodes to finish, before communicating
+			local.barrier();
 		}
 
 		taskcounter++;
@@ -381,28 +487,36 @@ int main(int argc,char** argv) {
 	
 	// wait for all nodes to finish their computations....
 	world.barrier();
-	
+
+	// make node 0 empty
+	if (rank==0) sample.frames.clear_cache();
+
+	// we can use one type of result table right now...
 	Scatterdata<double> scat;
-	
-	// aggregate results on node 0
-	if (rank==0) {
-		for (vector<pair<ScatterdataKey,double> >::iterator kvi=keyvals.begin();kvi!=keyvals.end();kvi++) {
-			scat[kvi->first]=kvi->second;
-		}		
-		for(int i = 1; i < size; ++i)
-		{
-			// receive keyvals and push to own array
-			
-			vector<pair<ScatterdataKey,double> > local_keyvals;				
-			world.recv(i,MPI_TAG_SCATTERRESULT,local_keyvals);
-			for (vector<pair<ScatterdataKey,double> >::iterator kvi=local_keyvals.begin();kvi!=local_keyvals.end();kvi++) {
-				scat[kvi->first]=kvi->second;
-			}				
-			
+
+	// aggregate all results on node 0
+	// distinguish between different modes
+	if (mode=="none") {
+		vector<map<pair<CartesianCoor3D,size_t>, double > > all_qF_Task_results; // used if mode = "none"
+		boost::mpi::gather(world,qF_Task_results,all_qF_Task_results,0);
+		// re-sort everything
+		for(vector< map<pair<CartesianCoor3D,size_t>, double > >::iterator ar=all_qF_Task_results.begin();ar!=all_qF_Task_results.end();ar++) {
+			for(map<pair<CartesianCoor3D,size_t>,double>::iterator mi=ar->begin();mi!=ar->end();mi++) {
+				scat[ScatterdataKey(mi->first.first,mi->first.second)]=mi->second;				
+			}
 		}
-	}
-	else {
-		world.send(0, MPI_TAG_SCATTERRESULT, keyvals);
+
+	} 
+	else if (mode=="time") {
+		vector< map<pair<CartesianCoor3D,size_t>, double > > all_q_Task_results; // used if mode = "time"
+		boost::mpi::gather(world,q_Task_results,all_q_Task_results,0);
+		// re-sort everything
+		for(vector< map<pair<CartesianCoor3D,size_t>, double > >::iterator ar=all_q_Task_results.begin();ar!=all_q_Task_results.end();ar++) {
+			for(map<pair<CartesianCoor3D,size_t>,double>::iterator mi=ar->begin();mi!=ar->end();mi++) {
+				scat[ScatterdataKey(mi->first.first,mi->first.second)]=mi->second;				
+			}
+		}
+		
 	}
 	
 	//------------------------------------------//
@@ -441,7 +555,7 @@ int main(int argc,char** argv) {
 						stringstream ffname; ffname << prefix << settings_name << "." << outformat;
 						string typestring = (char const *) (*setting)[i]["type"];
 						clog << "INFO>> " << "Writing results to " << ffname.str() << " via method " << typestring << " in format: " << outformat << endl;
-
+						
 						if (typestring == "plain") {
 							scat.write_plain(ffname.str(),outformat);
 						}

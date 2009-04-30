@@ -107,8 +107,8 @@ void qvectors_unfold_sphere(std::string avvectors, CartesianCoor3D q, uint32_t q
 	else if (avvectors=="mcdoublesqrt") {
 		double x1,x2;
 		while (num<resolution) {
-			x1 = (2.0*rand()*1.0/RAND_MAX) - 1.0;
-			x2 = (2.0*rand()*1.0/RAND_MAX) - 1.0;
+			x1 = (2.0*(rand()*1.0/RAND_MAX)) - 1.0;
+			x2 = (2.0*(rand()*1.0/RAND_MAX)) - 1.0;
 			double xl = powf(x1,2) + powf(x2,2);
 			if ( xl >= 1.0 ) continue;
 
@@ -125,10 +125,10 @@ void qvectors_unfold_sphere(std::string avvectors, CartesianCoor3D q, uint32_t q
 		double x0,x1,x2,x3;
 		
 		while (num<resolution) {
-			x0 = (2.0*rand()*1.0/RAND_MAX) - 1.0;
-			x1 = (2.0*rand()*1.0/RAND_MAX) - 1.0;
-			x2 = (2.0*rand()*1.0/RAND_MAX) - 1.0;
-			x3 = (2.0*rand()*1.0/RAND_MAX) - 1.0;
+			x0 = (2.0*(rand()*1.0/RAND_MAX)) - 1.0;
+			x1 = (2.0*(rand()*1.0/RAND_MAX)) - 1.0;
+			x2 = (2.0*(rand()*1.0/RAND_MAX)) - 1.0;
+			x3 = (2.0*(rand()*1.0/RAND_MAX)) - 1.0;
 			double xl = powf(x0,2) + powf(x1,2) + powf(x2,2) + powf(x3,2);
 			if ( xl >= 1.0 ) continue;
 
@@ -247,7 +247,10 @@ void set_scatteramp(Sample& sample,Atomselection as,CartesianCoor3D q,bool backg
 	map<pair<string,double>,double> esfquicklookup;
 
 	string probetype =  (const char *) Settings::get("main")["scattering"]["probe"]["type"];
-	string m = (const char *) Settings::get("main")["scattering"]["probe"]["method"];
+	string m = "constant";
+	if (Settings::get("main")["scattering"]["probe"].exists("method")) {
+		m = (const char *) Settings::get("main")["scattering"]["probe"]["method"];		
+	}
 				
 	for (Atomselection::iterator asi=as.begin();asi!=as.end();asi++) {
 		
@@ -256,10 +259,7 @@ void set_scatteramp(Sample& sample,Atomselection as,CartesianCoor3D q,bool backg
 			sf = sfquicklookup[atoms[*asi].name];	
 		}
 		else {
-			if (m == "constant") {
-				sf = Settings::get("scattering_factors")[probetype][atoms[*asi].name];
-			} 
-			else if (m == "slater")
+			if (m == "slater")
 			{
 				cerr<< "ERROR>> " << "slater xray not supported yet" << endl;
 				throw;
@@ -276,7 +276,14 @@ void set_scatteramp(Sample& sample,Atomselection as,CartesianCoor3D q,bool backg
 				sf = ( a1*exp(-b1*arg2)+a2*exp(-b2*arg2)+a3*exp(-b3*arg2)+a4*exp(-b4*arg2)+c ) ;
 			}
 			else {
-				cerr << "ERROR>> " << " method to calculate scattering factors not understood" << endl;
+				// ok , try to do a constant lookup by default
+				try {
+					sf = Settings::get("scattering_factors")[probetype][m][atoms[*asi].name];
+				}
+				catch(...) {
+					cerr << "ERROR>> " << " scattering factor for atom '" << atoms[*asi].name << "' not found" << endl;
+					throw;
+				}
 			}
 
 			sfquicklookup[atoms[*asi].name]= sf;

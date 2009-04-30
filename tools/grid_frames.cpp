@@ -19,28 +19,34 @@ using namespace std;
 // and sorts it acoording to isolines 
 //
 ////////////////////////////////////////////////////////////////////////////////
-typedef pair<CartesianCoor3D,pair<double,double> > keyval_t;
+typedef pair<pair<CartesianCoor3D,size_t>,pair<double,double> > keyval_t;
 typedef list<keyval_t> scatlist_t;
 	
 bool cmpkeyval(keyval_t left,keyval_t right) {
 	// then cluster by vectors
 	// x being first iso line
-	if (left.first.x < right.first.x)
+	if (left.first.first.x < right.first.first.x)
 		return true;
 
-	if (left.first.x > right.first.x)
+	if (left.first.first.x > right.first.first.x)
 		return false;
 		
-	if (left.first.y < right.first.y)
+	if (left.first.first.y < right.first.first.y)
 		return true;
 
-	if (left.first.y > right.first.y)
+	if (left.first.first.y > right.first.first.y)
 		return false;
 
-	if (left.first.z < right.first.z)
+	if (left.first.first.z < right.first.first.z)
 		return true;
 
-	if (left.first.z > right.first.z)
+	if (left.first.first.z > right.first.first.z)
+		return false;
+
+	if (left.first.second < right.first.second)
+		return true;
+
+	if (left.first.second > right.first.second)
 		return false;
 
 
@@ -67,12 +73,12 @@ int main(int argc,char** argv) {
 	string line;
 	while (true) {
 		keyval_t keyval;
-        float qx,qy,qz,fsquared,fsquared_dev;
-		ifile >> qx >> qy >> qz >> fsquared >> fsquared_dev;
+        float qx,qy,qz,fr,fsquared;
+		ifile >> qx >> qy >> qz >> fr >> fsquared;
 		if ( ifile.eof() ) break;			
 					
-		keyval.first = CartesianCoor3D(qx,qy,qz);
-		keyval.second = make_pair(fsquared,fsquared_dev);
+		keyval.first = make_pair(CartesianCoor3D(qx,qy,qz),fr);
+		keyval.second = make_pair(fsquared,0.0);
 		scat.push_back(keyval);
 	}
 	
@@ -80,13 +86,15 @@ int main(int argc,char** argv) {
 	scat.sort(cmpkeyval);
 	
 	
-	double lastx = scat.begin()->first.x;
-	double lasty = scat.begin()->first.y;	
-	double lastz = scat.begin()->first.z;	
+	double lastx = scat.begin()->first.first.x;
+	double lasty = scat.begin()->first.first.y;	
+	double lastz = scat.begin()->first.first.z;	
+	double lastfr = scat.begin()->first.second;
 	clog << "INFO>> " << "Writing values to file"<< argv[3] <<  endl;
 	int xcount =0;
 	int ycount =0;	
 	int zcount =0;		
+	int frcount =0;	
 	bool nl = false;
 	
 		
@@ -98,54 +106,68 @@ int main(int argc,char** argv) {
 
 		xcount++;
 		
-		if (lastx!=si->first.x)
+		if (lastx!=si->first.first.x)
 		{ 
 			ycount++;
 		}	
 
-		if (lasty!=si->first.y)
+		if (lasty!=si->first.first.y)
 		{ 
 			zcount++;
-		}		
+		}	
+
+		if (lastfr!=si->first.second)
+		{ 
+			frcount++;
+		}			
 
 		if (mod == 1) {
-			if ( (lastx!=si->first.x) &&  nl)
+			if ( (lastx!=si->first.first.x) &&  nl)
 			{ 
 				ofile << endl;		
 				nl=false;
 			}
 		}
 		else if (mod==2) {
-			if ( (lasty!=si->first.y) &&  nl)
+			if ( (lasty!=si->first.first.y) &&  nl)
 			{ 
 				ofile << endl;		
 				nl=false;
 			}	
 		}
 		else if (mod==3) {
-			if ( (lastz!=si->first.z) &&  nl)
+			if ( (lastz!=si->first.first.z) &&  nl)
 			{ 
 				ofile << endl;		
 				nl=false;
 			}	
-		}		
+		}	
+		else if (mod==4) {
+			if ( (lastfr!=si->first.second) &&  nl)
+			{ 
+				ofile << endl;		
+				nl=false;
+			}	
+		}			
 		else {
 			cerr << "ERROR>> " << "sort token not understood" << endl;
 			throw;
 		}
 		
-		lastx = si->first.x;
- 		lasty = si->first.y;
- 		lastz = si->first.z;
-
+		lastx = si->first.first.x;
+ 		lasty = si->first.first.y;
+ 		lastz = si->first.first.z;
+ 		lastfr = si->first.second;
 		if ((xcount % skip)!=0) continue;
 		if ((ycount % skip)!=0) continue;
 		if ((zcount % skip)!=0) continue;
+		if ((frcount % skip)!=0) continue;
 		
 		nl = true;
-		ofile << si->first.x << "\t";
-		ofile << si->first.y << "\t";
-		ofile << si->first.z << "\t";
+		ofile << si->first.first.x << "\t";
+		ofile << si->first.first.y << "\t";
+		ofile << si->first.first.z << "\t";
+		ofile << si->first.second << "\t";		
 		ofile << si->second.first << "\t"; 
 		ofile << si->second.second;
 		ofile << endl;
