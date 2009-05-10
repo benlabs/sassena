@@ -36,7 +36,7 @@ Frames::~Frames() {
 	}	
 }
 
-void Frames::add_frameset(const std::string filename,const std::string filetype,Atoms& atoms) {
+size_t Frames::add_frameset(const std::string filename,const std::string filetype,Atoms& atoms) {
 	
 	// Detect frame type
 	if (filetype=="dcd") {
@@ -45,12 +45,45 @@ void Frames::add_frameset(const std::string filename,const std::string filetype,
 		framesets.push_back(fsp);
 		// increase frame counter
 		number_of_frames += fsp->number_of_frames;
+		return fsp->number_of_frames;
+	}
+	else if (filetype=="dcdlist") {
+		// read text file line by line
+		ifstream listfile(filename.c_str());
+		string line;
+		size_t total_number_of_frames = 0;
+		while (listfile >> line) {
+			// skip empty lines or lines prepended w/ a '#' !
+			if ((line.size() >0) && (line.substr(0,1) == "#")) continue;
+			total_number_of_frames += add_frameset(line.c_str(), "dcd", atoms);
+		}
+		return total_number_of_frames;
+	}
+	else if (filetype=="pdb") {
+		Frameset* fsp = new PDBFrameset(filename,number_of_frames);
+		framesets.push_back(fsp);
+		// increase frame counter
+		number_of_frames += fsp->number_of_frames;
+		return fsp->number_of_frames;		
+	}
+	else if (filetype=="pdblist") {
+		// read text file line by line
+		ifstream listfile(filename.c_str());
+		string line;
+		size_t total_number_of_frames = 0;		
+		while (listfile >> line) {
+			// skip empty lines or lines prepended w/ a '#' !
+			if ((line.size() >0) && (line.substr(0,1) == "#")) continue;			
+			total_number_of_frames += add_frameset(line.c_str(), "pdb", atoms);
+		}
+		return total_number_of_frames;		
 	}
 	else {
 		cerr << "ERROR>> filetype '" << filetype << "' not supported." << endl;
 		throw;
 	}
 	
+	return -1; 
 }
 
 size_t Frames::size() {
@@ -297,5 +330,122 @@ void DCDFrameset::read_frame(size_t internalframenumber,Frame& cf) {
 	}
 
 }
+
+// PDB Frameset implementation:
+
+
+// constructor = analyze file and store frame locator information
+void PDBFrameset::init(std::string fn,size_t fno) {
+	
+	// general information
+	frame_number_offset = fno;
+	filename = fn;
+	
+	// test if dcd file, if not throw!
+	if (!detect(fn)) {
+		cerr << "ERROR>> " << "file '" << fn << "' appears not to be a PDB file" << endl;
+		throw;
+	}
+	
+	// locator specific information
+	
+	ifstream pdbfile(Settings::get_filepath(filename).c_str());
+
+	string line; 
+	bool lastentryisater = true;
+	size_t curter = 0;
+	while (getline(pdbfile,line)) {
+		if ( line.substr(0,6) == "ATOM  " ) { 
+			lastentryisater = false;
+		}
+		if ( line.substr(0,3) == "END" ) { 
+			curter++;
+			lastentryisater = true;
+		}
+	}
+	if (!lastentryisater) curter++;
+
+	number_of_frames = curter;
+}
+
+bool PDBFrameset::detect(const string filename) {
+	ifstream pdbfile(Settings::get_filepath(filename).c_str());
+	string line; 
+	bool atomentry=false;
+	while (getline(pdbfile,line)) {
+		if ( line.substr(0,6) == "ATOM  " ) { 
+			atomentry = true;
+			break;
+		}
+	}
+	if (atomentry) return true; else return false;
+}
+
+void PDBFrameset::read_frame(size_t internalframenumber,Frame& cf) {
+
+	ifstream pdbfile(Settings::get_filepath(filename).c_str());
+	
+	vector<CartesianCoor3D> uc(3); 
+	
+	// skip 'END' lines equal to value of internalframenumber
+	
+	// only scan if internalframenumber>0
+	if (internalframenumber>0) {
+		string line; 
+		bool terfound = false;
+		size_t curter = 0;
+		while (getline(pdbfile,line)) {
+			// if entry == crystal -> unit cell, this determines the unit cell as the latest CRYS entry...
+			if ( line.substr(0,6) == "CRYST1" ) { 			
+				double a = atof(line.substr(6,9).c_str());
+				double b = atof(line.substr(15,9).c_str());
+				double c = atof(line.substr(24,9).c_str());
+				double alpha = atof(line.substr(33,7).c_str()) * 2 * M_PI / 360 ;
+				double beta =  atof(line.substr(40,7).c_str()) * 2 * M_PI / 360 ;
+				double gamma = atof(line.substr(47,7).c_str()) * 2 * M_PI / 360 ;															
+				uc[0]=CartesianCoor3D(a,0,0);
+				uc[1]=CartesianCoor3D(b*cos(gamma),b*sin(gamma),0);
+				uc[2]=CartesianCoor3D(c*cos(beta),c*cos(alpha)*sin(beta),c*sin(alpha)*sin(beta));
+			}			
+			
+			if ( line.substr(0,3) == "END" ) curter++;
+			if (curter==internalframenumber) break; 
+		}
+	}
+	// now pdbfile points to the right location
+	
+	size_t number_of_atom_entries = 0;
+	string line;
+	while (getline(pdbfile,line)) {
+		
+		// if entry == crystal -> unit cell
+		if ( line.substr(0,6) == "CRYST1" ) {
+			double a = atof(line.substr(6,9).c_str());
+			double b = atof(line.substr(15,9).c_str());
+			double c = atof(line.substr(24,9).c_str());
+			double alpha = atof(line.substr(33,7).c_str()) * 2 * M_PI / 360 ;
+			double beta =  atof(line.substr(40,7).c_str()) * 2 * M_PI / 360 ;
+			double gamma = atof(line.substr(47,7).c_str()) * 2 * M_PI / 360 ;															
+			uc[0]=CartesianCoor3D(a,0,0);
+			uc[1]=CartesianCoor3D(b*cos(gamma),b*sin(gamma),0);
+			uc[2]=CartesianCoor3D(c*cos(beta),c*cos(alpha)*sin(beta),c*sin(alpha)*sin(beta));
+		}
+						
+		// if entry == atom -> coordinates
+		if ( line.substr(0,6) == "ATOM  " ) {
+			number_of_atom_entries++;			
+			cf.x.push_back(atof(line.substr(30,8).c_str()) );
+			cf.y.push_back(atof(line.substr(38,8).c_str()) );
+			cf.z.push_back(atof(line.substr(46,8).c_str()) );
+		}
+		
+		// if entry == END -> break
+		if ( line.substr(0,3) == "END" ) break;
+	}
+
+	cf.unitcell = uc;
+	cf.number_of_atoms = number_of_atom_entries;
+}
+
 
 // end of file

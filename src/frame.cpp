@@ -130,7 +130,7 @@ void Frame::wrap() {
 	CartesianCoor3D uc0n = uc[0]/uc0l;
 	CartesianCoor3D uc1n = uc[1]/uc1l;
 	CartesianCoor3D uc2n = uc[2]/uc2l;
-
+	
 	for (int32_t i=0;i<number_of_atoms;i++) {
 		CartesianCoor3D c = coord3D(i) - origin;
 
@@ -157,10 +157,15 @@ void Frame::wrap() {
 		(c.x<-uc0l/2) || 
 		(c.y<-uc1l/2) ||
 		(c.z<-uc2l/2)) {
-			cerr << "wrapping didn't work" << endl;
-			cerr << "coordinates:" << x[i] << ", " << y[i] << ", " << z[i] << endl;
-			cerr << "coordinates/c:" << c.x << ", " << c.y << ", " << c.z << endl;			
-			cerr << "index: " << i<< endl;
+			cerr << "ERROR>> " << "wrapping didn't work" << endl;
+			cerr << "ERROR>> " << "unit cell parameters correct?" << endl;			
+			cerr << "ERROR>> " << "uc[0]: " << uc[0] << endl;
+			cerr << "ERROR>> " << "uc[1]: " << uc[1] << endl;
+			cerr << "ERROR>> " << "uc[2]: " << uc[2] << endl;
+			cerr << "ERROR>> " << "origin: " << origin << endl;
+			cerr << "ERROR>> " << "coordinates/original:" << x[i] << ", " << y[i] << ", " << z[i] << endl;
+			cerr << "ERROR>> " << "coordinates/translated:" << c.x << ", " << c.y << ", " << c.z << endl;			
+			cerr << "ERROR>> " << "atom index: " << i << endl;
 			throw("");
 		}
 

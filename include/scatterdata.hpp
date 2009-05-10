@@ -28,26 +28,26 @@
 // other headers
 #include "coor3d.hpp"
 
-class ScatterdataKey : public std::pair<CartesianCoor3D,size_t> {
-	// make this class serializable to 
-	// allow sample to be transmitted via MPI
-    friend class boost::serialization::access;	
-	template<class Archive> void serialize(Archive & ar, const unsigned int version)
-    {
-		ar & boost::serialization::base_object<std::pair<CartesianCoor3D,size_t> >(*this);
-    }
-	///////////////////
-	
-public:
-	ScatterdataKey() {}
-	ScatterdataKey(CartesianCoor3D q, size_t frame) { this->first = q; this->second = frame; }	
-	
-	bool operator <(const ScatterdataKey that) const;
-};
+//class ScatterdataKey : public std::pair<CartesianCoor3D,size_t> {
+//	// make this class serializable to 
+//	// allow sample to be transmitted via MPI
+//    friend class boost::serialization::access;	
+//	template<class Archive> void serialize(Archive & ar, const unsigned int version)
+//    {
+//		ar & boost::serialization::base_object<std::pair<CartesianCoor3D,size_t> >(*this);
+//    }
+//	///////////////////
+//	
+//public:
+//	ScatterdataKey() {}
+//	ScatterdataKey(CartesianCoor3D q, size_t frame) { this->first = q; this->second = frame; }	
+//	
+//	bool operator <(const ScatterdataKey that) const;
+//};
 
-template <class V> class Scatterdata : public std::map<ScatterdataKey,V> {
+template <class V> class Scatterdata : public std::map<CartesianCoor3D,std::map<size_t,V> > {
 	
-	std::map<ScatterdataKey,std::pair<V,V> > average();
+	std::map<CartesianCoor3D,std::pair<V,V> > average();
 
 public:
 	void write_plain(std::string fname,std::string format);

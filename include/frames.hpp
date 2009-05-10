@@ -36,6 +36,7 @@
 // Forward:
 class Frameset;
 class DCDFrameset;
+class PDBFrameset;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -54,6 +55,7 @@ class Frames {
 		ar & centergroup_selection;
 		// list all possible derived classes for Frameset
         ar.register_type(static_cast<DCDFrameset*>(NULL));
+        ar.register_type(static_cast<PDBFrameset*>(NULL));
 		ar & framesets;
     }
 	///////////////////
@@ -86,7 +88,7 @@ public:
 	size_t size();
 
 	// push a frameset, frameset is specialized
-	void add_frameset(const std::string filename,const std::string filetype,Atoms& atoms);
+	size_t add_frameset(const std::string filename,const std::string filetype,Atoms& atoms);
 
 	// load a frame into the framecache, set as current
 	void load(size_t framenumber,Atoms& atoms,std::map<std::string,Atomselection>& atomselections);
@@ -183,6 +185,36 @@ public:
 
 	// this constructor should be called by default
 	DCDFrameset(std::string filename,size_t frame_number_offset) { init(filename,frame_number_offset); }
+	
+	// internalframenumber used for positioning file pointer, data loaded into Frame argument
+	void read_frame(size_t internalframenumber,Frame& cf);
+	
+};
+
+
+// PDB Frameset and dependents
+
+class PDBFrameset : public Frameset {
+	friend class boost::serialization::access;	
+	template<class Archive> void serialize(Archive & ar, const unsigned int version)
+    {
+		ar & boost::serialization::base_object<Frameset>(*this);
+		ar & filename;
+		ar & number_of_atoms;
+    }
+
+	std::string filename;
+	long number_of_atoms;
+	
+	bool detect(const std::string filename);	
+public:
+	
+	// allow construction w/o reading file -> call init manually
+	PDBFrameset() {}
+	void init(std::string filename,size_t framenumber_offset);
+
+	// this constructor should be called by default
+	PDBFrameset(std::string filename,size_t frame_number_offset) { init(filename,frame_number_offset); }
 	
 	// internalframenumber used for positioning file pointer, data loaded into Frame argument
 	void read_frame(size_t internalframenumber,Frame& cf);

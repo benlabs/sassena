@@ -185,60 +185,6 @@ void qvectors_unfold_cylinder(std::string avvectors, CartesianCoor3D q, uint32_t
 	}
 }
 
-void scatter(Sample& sample,Atomselection as,CartesianCoor3D q,uint32_t qseed, std::vector<std::complex<double> >& scattering_amplitudes) {
-
-	libconfig::Setting& s = Settings::get("main")["scattering"]["average"];
-	
-	vector<CartesianCoor3D> qvectors;
-
-	string avtype = s["type"]; 
-	double resolution = -1.0;
-	if (s.exists("resolution")) {
-		resolution = s["resolution"];
-	} 
-
-	if (avtype=="none") {
-		// qseed not used here
-		complex<double> s = Analysis::scatter_none(sample,as,q);
-		scattering_amplitudes.push_back(s);
-	}
-	else if (avtype=="sphere") {
-		string avmethod = s["method"];
-		if (avmethod=="bruteforce") {
-			if (resolution==-1.0) resolution=1.0;
-
-			string avvectors = s["vectors"];
-			qvectors_unfold_sphere(avvectors,q,qseed,resolution,qvectors);
-			
-			Analysis::scatter_vectors(sample,as,qvectors,scattering_amplitudes);						
-		}
-		if (avmethod=="multipole") {
-			if (resolution==-1.0) resolution=17.0;
-   			Analysis::scatter_sphere_multipole(sample,as,q,resolution,scattering_amplitudes);			
-		}		
-	}
-	else if (avtype=="cylinder") {
-		string avmethod = s["method"];		
-		if (avmethod=="bruteforce") {
-			if (resolution==-1.0) resolution=1.0;
-			string avvectors = s["vectors"];
-			qvectors_unfold_cylinder(avvectors,q,qseed,resolution,qvectors);
-			
-			Analysis::scatter_vectors(sample,as,qvectors,scattering_amplitudes);		
-		}
-		if (avmethod=="multipole") {
-			if (resolution==-1.0) resolution=10.0;
-   			Analysis::scatter_cylinder_multipole(sample,as,q,resolution,scattering_amplitudes);			
-		}
-	}	
-	else {
-		cerr << "ERROR>> " << "unrecognized averaging type. Use 'none' if no averaging is to be done" << endl;
-		throw;
-	}
-	
-	return; 
-}
-
 void set_scatteramp(Sample& sample,Atomselection as,CartesianCoor3D q,bool background) {
 	
 	Atoms& atoms = sample.atoms;
@@ -307,6 +253,20 @@ void set_scatteramp(Sample& sample,Atomselection as,CartesianCoor3D q,bool backg
 		else {
 			atoms[*asi].scatteramp = sf;
 		}
+	}
+}
+
+
+
+void scatter_none(Sample& sample,Atomselection as,CartesianCoor3D& q,std::vector<std::complex<double> >& aqs) {
+	
+	CoordinateSet& cs = sample.frames.current().coordinate_sets[as.name];
+
+	for (size_t i=0;i<cs.x.size();i++) {
+		double s = sample.atoms[cs.indexes[i]].scatteramp;
+
+		CartesianCoor3D c(cs.x[i],cs.y[i],cs.z[i]);
+		aqs.push_back( exp(-1.0*complex<double>(0,c*q)) * s );
 	}
 }
 
@@ -448,6 +408,17 @@ inline complex<double> scatter_none(Sample& sample,Atomselection as,CartesianCoo
 //		Ab += sample.atoms[*asi].scatteramp * sin(-1.0*(c*q));
 //	}	
 //	return complex<double>(Aa,Ab);
+}
+
+
+void scatter_vectors (Sample& sample,Atomselection as,std::vector<CartesianCoor3D>& qvectors,std::vector<vector<std::complex<double> > >& scattering_amplitudes) {
+
+	scattering_amplitudes.resize(qvectors.size());
+	for(size_t i = 0; i < qvectors.size(); ++i)
+	{
+		vector<complex<double> >& scat = scattering_amplitudes[i];
+		scatter_none(sample,as,qvectors[i],scat);
+	}
 }
 
 void scatter_vectors (Sample& sample,Atomselection as,std::vector<CartesianCoor3D>& qvectors,std::vector<std::complex<double> >& scattering_amplitudes) {

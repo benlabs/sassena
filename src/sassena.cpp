@@ -215,7 +215,8 @@ int main(int argc,char** argv) {
 		// read in frame information
 		for (int i=0;i<Settings::get("main")["sample"]["frames"].getLength();i++) {
 			clog << "INFO>> " << "Reading frames from: " << (const char *) Settings::get("main")["sample"]["frames"][i]["file"] << endl;
-	        sample.frames.add_frameset(Settings::get("main")["sample"]["frames"][i]["file"],Settings::get("main")["sample"]["frames"][i]["type"],sample.atoms);
+	        size_t nof = sample.frames.add_frameset(Settings::get("main")["sample"]["frames"][i]["file"],Settings::get("main")["sample"]["frames"][i]["type"],sample.atoms);
+			clog << "INFO>> " << "Found " << nof << " frames" << endl;			
 	//		ifstream dcdfilelist(Settings::get_filepath(dcdfilename).c_str());
 	//		std::string line;
 	//
@@ -224,7 +225,8 @@ int main(int argc,char** argv) {
 	//		}
 	//		sample.add_frame(Settings::get("main")["sample"]["frames"][i]["file"],Settings::get("main")["sample"]["frames"][i]["type"]);
 		}
-
+		// final statement: total number of frames
+		clog << "INFO>> " << "Total number of frames found: " << sample.frames.size() << endl;			
 
 		// select wrapping behaviour
 		if (Settings::get("main")["sample"]["pbc"]["wrapping"]) {
@@ -343,7 +345,7 @@ int main(int argc,char** argv) {
 	else {
 		mode = "none";
 	}
-	
+
 	Tasks tasks(frames,qqqvectors,world.size(),mode);
 	if (rank==0) { 
 		clog << "INFO>> " << "Task assignment:" << endl;		
@@ -353,9 +355,10 @@ int main(int argc,char** argv) {
 	Tasks my_tasks = tasks.scope(rank);
 		
 	// get color(current worker class ID) from first task
+	// fix this for cases where my_tasks is empty!
 	boost::mpi::communicator local = world.split(my_tasks[0].color);
 	
-	vector<pair<ScatterdataKey,double> > keyvals;
+//	map<CartesianCoor3D<map<size_t,double> > keyvals;
 	string target = Settings::get("main")["scattering"]["target"];
 
 	gettimeofday(&start, 0);
@@ -366,6 +369,7 @@ int main(int argc,char** argv) {
 	
 	for (Tasks::iterator ti=my_tasks.begin();ti!=my_tasks.end();ti++) {
 
+			// progress indicator
 			if (rank==0) {
 				int percent = int(taskcounter*100/my_tasks.size())  ;
 				if ( percent >= progress  ) {
@@ -378,109 +382,361 @@ int main(int argc,char** argv) {
 					}
 				}				
 			}
-		
-			vector<int> frames_i = ti->frames(rank);
-			map<int,vector<complex<double> > > scatbyframe;
-			
-			// iterate through all frames this node is supposed to do
-			for(size_t i = 0; i < frames_i.size(); ++i)
-			{
-				sample.frames.load(frames_i[i],sample.atoms,sample.atomselections[target]);				
-				Analysis::set_scatteramp(sample,sample.atomselections[target],ti->q,true);
 
-				// holds the scattering amplitudes for the current frame:
-				vector<complex<double> >& scat = scatbyframe[frames_i[i]];
-				uint32_t qseed = 1; // ti->qseed
-				Analysis::scatter(sample,sample.atomselections[target],ti->q,qseed,scat);		
-			}
-
-		if (ti->mode=="none") {
+			// set scattering amplitudes for current q vector
+			Analysis::set_scatteramp(sample,sample.atomselections[target],ti->q,true);
 			
-			// no correlation -> instanenous scattering intensity
-			for(map<int,vector<complex<double> > >::iterator sbfi=scatbyframe.begin();sbfi!=scatbyframe.end();sbfi++) {
-				double scatsum=0;				
-				for(vector<complex<double> >::iterator si=sbfi->second.begin();si!=sbfi->second.end();si++) {
-					scatsum += abs(conj(*si)*(*si));
+			// generate q-vector list for orientational averaging
+			vector<CartesianCoor3D> qvectors;
+
+			if (Settings::get("main")["scattering"].exists("average")) {
+			
+				libconfig::Setting& s = Settings::get("main")["scattering"]["average"];
+				double resolution = -1.0;
+				if (s.exists("resolution")) {
+					resolution = s["resolution"];
+				} 
+
+				string avtype = s["type"]; 
+			
+				uint32_t qseed = 1; // ti->qseed			
+				if (avtype=="none") {
+					qvectors.push_back(ti->q);
 				}
-				qF_Task_results[make_pair(ti->q,sbfi->first)] = scatsum/(sbfi->second.size()); 
-			}
-		}
-		else if (mode=="time") {
+				else if (avtype=="sphere") {
+					string avmethod = s["method"];
+					if (avmethod=="bruteforce") {
+						if (resolution==-1.0) resolution=1.0;
 
-			// check size of vector<scattering amplitudes>, this is the size of unfolded q vectors
-			size_t aqscount = 0;
-			for(map<int,vector<complex<double> > >::iterator sbfi=scatbyframe.begin();sbfi!=scatbyframe.end();sbfi++) {
-				if (aqscount==0) aqscount = sbfi->second.size(); else if (aqscount!=sbfi->second.size()) throw;
-			}
-			
-			for(size_t asqi = 0; asqi < aqscount; ++asqi)
-			{
-				// communicate current aqs
-				vector<pair<int,complex<double> > > aqs_by_frame;				
-				for(map<int,vector<complex<double> > >::iterator sbfi=scatbyframe.begin();sbfi!=scatbyframe.end();sbfi++)
-				{
-					aqs_by_frame.push_back(make_pair(sbfi->first,sbfi->second[asqi]));
+						string avvectors = s["vectors"];
+						Analysis::qvectors_unfold_sphere(avvectors,ti->q,qseed,resolution,qvectors);
+					}
+					if (avmethod=="multipole") {
+						// don't unfold. 
+						// multipole expansion works on one qvector
+					}		
 				}
-				vector<vector<pair<int,complex<double> > > > vector_in,vector_out;
-				vector_in.resize(local.size(),aqs_by_frame);
-				
-				boost::mpi::all_to_all(local,vector_in,vector_out);
-				
-				// decompose vector_out into new table: frame <-> Aqs, use frame number as implicit position
-				vector<complex<double> > aqs; aqs.resize(frames.size());
-				for(size_t i = 0; i < vector_out.size(); ++i)
-				{
-					for(size_t j = 0; j < vector_out[i].size(); ++j)
+				else if (avtype=="cylinder") {
+					string avmethod = s["method"];		
+					if (avmethod=="bruteforce") {
+						if (resolution==-1.0) resolution=1.0;
+						string avvectors = s["vectors"];
+						Analysis::qvectors_unfold_cylinder(avvectors,ti->q,qseed,resolution,qvectors);
+					}
+					if (avmethod=="multipole") {
+						// don't unfold. 
+						// multipole expansion works on one qvector
+					}
+				}	
+				else {
+					cerr << "ERROR>> " << "unrecognized averaging type. Use 'none' if no averaging is to be done" << endl;
+					throw;
+				}
+			
+			}
+			else {
+				qvectors.push_back(ti->q);
+			}
+
+			// block qqqvectors;
+			size_t qvector_blocking = 10;
+			
+			for(size_t qvector_block = 0; qvector_block <= (qvectors.size()/qvector_blocking); ++qvector_block) {
+
+
+				vector<int> frames_i = ti->frames(rank);
+				std::string interference_type = Settings::get("main")["scattering"]["interference"]["type"];
+				if (interference_type == "self") {
+
+					map<int,vector<vector<complex<double> > > > scatbyframe; // frame -> qvectors/atoms/amplitude
+			
+					// iterate through all frames this node is supposed to do
+					for(size_t i = 0; i < frames_i.size(); ++i)
 					{
-						aqs[vector_out[i][j].first]=vector_out[i][j].second;
-					}
-				}
-				
-				// now determine which correlation 'step' WE need to do:
-				vector<int> stepsizes = get_step_assignments(local.rank(),local.size(),frames.size()/2); // frames.size()/2 is the length of the correlation we are interested in...
+						Atomselection& as = sample.atomselections[target];
+						sample.frames.load(frames_i[i],sample.atoms,sample.atomselections[target]);				
 
-				map<int,complex<double> > my_AAconj;
-			
-				for(vector<int>::iterator ssi=stepsizes.begin();ssi!=stepsizes.end();ssi++) {
-					complex<double> AAconj_sum=0;
-					int AAconj_count=0;					
-					size_t current_frame=0;
-					while( (current_frame+(*ssi))<frames.size()) {
-						AAconj_sum += aqs[current_frame]*conj(aqs[current_frame+(*ssi)]); // do we have to take the "REAL" part only?
-						AAconj_count++;
-						current_frame++;
-					}
-					my_AAconj[*ssi] = AAconj_sum / double(AAconj_count);
-				}
-				
-				vector<map<int,complex<double> > > all_AAconj;
-				boost::mpi::gather(local,my_AAconj,all_AAconj,0);
-								
-				if (local.rank()==0) {
-					// reorder results, use stepsize as implicit index
-//					vector<complex<double> > AAconj_series; AAconj_series.resize((frames.size()/2)+((frames.size()+1)%2)); // correlation length = size
+						// holds the scattering amplitudes for the current frame:
+						vector<vector<complex<double> > >& scattering_amplitudes = scatbyframe[frames_i[i]];
 
-					vector<complex<double> > AAconj_series; AAconj_series.resize((frames.size()/2)+1); // correlation length = size					
-					for(vector<map<int,complex<double> > >::iterator ai=all_AAconj.begin();ai!=all_AAconj.end();ai++) {
-						for(map<int,complex<double> >::iterator aii=ai->begin();aii!=ai->end();aii++) {
-							AAconj_series[aii->first]=aii->second;
+						libconfig::Setting& s = Settings::get("main")["scattering"]["average"];
+						string avtype = s["type"]; 						
+						if (avtype=="none") {
+							// qseed not used here
+							vector<complex<double> > scat;
+							Analysis::scatter_none(sample,as,ti->q,scat);
+							scattering_amplitudes.push_back(scat);
+						}
+						else if (avtype=="sphere") {
+							string avmethod = s["method"];
+							if (avmethod=="bruteforce") {
+								Analysis::scatter_vectors(sample,as,qvectors,scattering_amplitudes);						
+							}
+							if (avmethod=="multipole") {
+//								if (resolution==-1.0) resolution=17.0;
+								throw;
+//					   			Analysis::scatter_sphere_multipole(sample,as,ti->q,resolution,scattering_amplitudes);			
+							}		
+						}
+						else if (avtype=="cylinder") {
+							string avmethod = s["method"];		
+							if (avmethod=="bruteforce") {
+								Analysis::scatter_vectors(sample,as,qvectors,scattering_amplitudes);		
+							}
+							if (avmethod=="multipole") {
+//								if (resolution==-1.0) resolution=10.0;
+								throw;
+//					   			Analysis::scatter_cylinder_multipole(sample,as,ti->q,resolution,scattering_amplitudes);			
+							}
+						}	
+						else {
+							cerr << "ERROR>> " << "unrecognized averaging type. Use 'none' if no averaging is to be done" << endl;
+							throw;
+						}	
+					} // frames processed
+
+					// aggregate results
+					if (ti->mode=="none") {
+
+						// no correlation -> instanenous scattering intensity
+						for(map<int,vector<vector<complex<double> > > >::iterator sbfi=scatbyframe.begin();sbfi!=scatbyframe.end();sbfi++) {
+							double scatsum=0;				
+							for(vector<vector<complex<double> > >::iterator si=sbfi->second.begin();si!=sbfi->second.end();si++) {
+								for(vector<complex<double> >::iterator si2=si->begin();si2!=si->end();si2++) {							
+									scatsum += abs(conj(*si2)*(*si2));
+								}
+							}
+							qF_Task_results[make_pair(ti->q,sbfi->first)] = scatsum/(sbfi->second.size()); 
 						}
 					}
-//					ofstream ofile("test.dat",ios_base::app);
-					for(size_t i = 0; i < AAconj_series.size(); ++i)
-					{
-						q_Task_results[make_pair(ti->q,i)] = AAconj_series[i].real(); 
-						// check THIS! take the real part or do a conj-multiply?
-//						ofile << ti->q.x << "\t" << ti->q.y << "t" << ti->q.z << "\t" << i << "\t" << AAconj_series[i].real() << endl;
-					}
-//					ofile << endl;
-				}
-				
-			}
+					else if (mode=="time") {
 
-			// wait for all nodes to finish, before communicating
-			local.barrier();
-		}
+						// check size of vector<scattering amplitudes>, this is the size of unfolded q vectors
+						size_t aqscount = 0;
+						for(map<int,vector<vector<complex<double> > > >::iterator sbfi=scatbyframe.begin();sbfi!=scatbyframe.end();sbfi++) {
+							if (aqscount==0) aqscount = sbfi->second.size(); else if (aqscount!=sbfi->second.size()) throw;
+						}
+
+						for(size_t asqi = 0; asqi < aqscount; ++asqi)
+						{
+						// communicate vector of current aqs
+
+							// sbfi->first = frame; sbfi->second = qvector/atoms/scattering-amplitudes
+							vector<pair<int,vector<complex<double> > > > aq_vectors_by_frame;				
+							for(map<int,vector<vector<complex<double> > > >::iterator sbfi=scatbyframe.begin();sbfi!=scatbyframe.end();sbfi++)
+							{
+								aq_vectors_by_frame.push_back(make_pair(sbfi->first,sbfi->second[asqi]));
+							}
+							vector<vector<pair<int,vector<complex<double> > > > > vector_in,vector_out;
+							vector_in.resize(local.size(),aq_vectors_by_frame);
+
+							boost::mpi::all_to_all(local,vector_in,vector_out);
+
+							// decompose vector_out into new table: frame <-> Aqs, use frame number as implicit position
+							vector<vector<complex<double> > > aq_vectors; aq_vectors.resize(frames.size());
+							for(size_t i = 0; i < vector_out.size(); ++i)
+							{
+								for(size_t j = 0; j < vector_out[i].size(); ++j)
+								{
+									aq_vectors[vector_out[i][j].first]=vector_out[i][j].second;
+								}
+							}
+
+							// now determine which correlation 'step' WE need to do:
+							vector<int> stepsizes = get_step_assignments(local.rank(),local.size(),frames.size()/2); // frames.size()/2 is the length of the correlation we are interested in...
+
+							map<int,complex<double> > my_AAconj;
+
+							for(vector<int>::iterator ssi=stepsizes.begin();ssi!=stepsizes.end();ssi++) {
+								complex<double> AAconj_sum=0;
+								int AAconj_count=0;					
+								size_t current_frame=0;
+								while( (current_frame+(*ssi))<frames.size()) {
+									// do a vector-vector multiply here:
+									for(size_t i = 0; i < aq_vectors[current_frame].size(); ++i)
+									{
+										AAconj_sum += aq_vectors[current_frame][i]*conj(aq_vectors[current_frame+(*ssi)][i]);
+									}
+									// vector-vector multiply finished.
+									AAconj_count++;
+									current_frame++;
+								}
+								my_AAconj[*ssi] = AAconj_sum / double(AAconj_count);
+							}
+
+							vector<map<int,complex<double> > > all_AAconj;
+							boost::mpi::gather(local,my_AAconj,all_AAconj,0);
+
+							if (local.rank()==0) {
+								// reorder results, use stepsize as implicit index
+			//					vector<complex<double> > AAconj_series; AAconj_series.resize((frames.size()/2)+((frames.size()+1)%2)); // correlation length = size
+
+								vector<complex<double> > AAconj_series; AAconj_series.resize((frames.size()/2)+1); // correlation length = size					
+								for(vector<map<int,complex<double> > >::iterator ai=all_AAconj.begin();ai!=all_AAconj.end();ai++) {
+									for(map<int,complex<double> >::iterator aii=ai->begin();aii!=ai->end();aii++) {
+										AAconj_series[aii->first]=aii->second;
+									}
+								}
+			//					ofstream ofile("test.dat",ios_base::app);
+								for(size_t i = 0; i < AAconj_series.size(); ++i)
+								{
+									q_Task_results[make_pair(ti->q,i)] = AAconj_series[i].real(); 
+									// check THIS! take the real part or do a conj-multiply?
+			//						ofile << ti->q.x << "\t" << ti->q.y << "t" << ti->q.z << "\t" << i << "\t" << AAconj_series[i].real() << endl;
+								}
+			//					ofile << endl;
+							}
+
+						}
+
+						// wait for all nodes to finish, before communicating
+						local.barrier();
+					}
+
+					
+				}
+				else if (interference_type == "all") {
+
+					map<int,vector<complex<double> > > scatbyframe; // frame -> qvectors/amplitude
+			
+					// iterate through all frames this node is supposed to do
+					for(size_t i = 0; i < frames_i.size(); ++i)
+					{
+						sample.frames.load(frames_i[i],sample.atoms,sample.atomselections[target]);				
+
+						Atomselection& as = sample.atomselections[target];
+						// holds the scattering amplitudes for the current frame:
+						vector<complex<double> >& scattering_amplitudes = scatbyframe[frames_i[i]];
+						
+						libconfig::Setting& s = Settings::get("main")["scattering"]["average"];
+						double resolution = -1.0;
+						if (s.exists("resolution")) {
+							resolution = s["resolution"];
+						}						
+						string avtype = s["type"]; 							
+						if (avtype=="none") {
+							// qseed not used here
+							complex<double> scat = Analysis::scatter_none(sample,as,ti->q);
+							scattering_amplitudes.push_back(scat);
+						}
+						else if (avtype=="sphere") {
+							string avmethod = s["method"];
+							if (avmethod=="bruteforce") {
+								Analysis::scatter_vectors(sample,as,qvectors,scattering_amplitudes);						
+							}
+							if (avmethod=="multipole") {
+								if (resolution==-1.0) resolution=17.0;
+					   			Analysis::scatter_sphere_multipole(sample,as,ti->q,resolution,scattering_amplitudes);			
+							}		
+						}
+						else if (avtype=="cylinder") {
+							string avmethod = s["method"];		
+							if (avmethod=="bruteforce") {
+								Analysis::scatter_vectors(sample,as,qvectors,scattering_amplitudes);		
+							}
+							if (avmethod=="multipole") {
+								if (resolution==-1.0) resolution=10.0;
+					   			Analysis::scatter_cylinder_multipole(sample,as,ti->q,resolution,scattering_amplitudes);			
+							}
+						}	
+						else {
+							cerr << "ERROR>> " << "unrecognized averaging type. Use 'none' if no averaging is to be done" << endl;
+							throw;
+						}	
+					} // frames processed...
+					
+					// aggregate results
+					if (ti->mode=="none") {
+
+						// no correlation -> instanenous scattering intensity
+						for(map<int,vector<complex<double> > >::iterator sbfi=scatbyframe.begin();sbfi!=scatbyframe.end();sbfi++) {
+							double scatsum=0;				
+							for(vector<complex<double> >::iterator si=sbfi->second.begin();si!=sbfi->second.end();si++) {
+								scatsum += abs(conj(*si)*(*si));
+							}
+							qF_Task_results[make_pair(ti->q,sbfi->first)] = scatsum/(sbfi->second.size()); 
+						}
+					}
+					else if (mode=="time") {
+
+						// check size of vector<scattering amplitudes>, this is the size of unfolded q vectors
+						size_t aqscount = 0;
+						for(map<int,vector<complex<double> > >::iterator sbfi=scatbyframe.begin();sbfi!=scatbyframe.end();sbfi++) {
+							if (aqscount==0) aqscount = sbfi->second.size(); else if (aqscount!=sbfi->second.size()) throw;
+						}
+
+						for(size_t asqi = 0; asqi < aqscount; ++asqi)
+						{
+							// communicate current aqs
+							vector<pair<int,complex<double> > > aqs_by_frame;				
+							for(map<int,vector<complex<double> > >::iterator sbfi=scatbyframe.begin();sbfi!=scatbyframe.end();sbfi++)
+							{
+								aqs_by_frame.push_back(make_pair(sbfi->first,sbfi->second[asqi]));
+							}
+							vector<vector<pair<int,complex<double> > > > vector_in,vector_out;
+							vector_in.resize(local.size(),aqs_by_frame);
+
+							boost::mpi::all_to_all(local,vector_in,vector_out);
+
+							// decompose vector_out into new table: frame <-> Aqs, use frame number as implicit position
+							vector<complex<double> > aqs; aqs.resize(frames.size());
+							for(size_t i = 0; i < vector_out.size(); ++i)
+							{
+								for(size_t j = 0; j < vector_out[i].size(); ++j)
+								{
+									aqs[vector_out[i][j].first]=vector_out[i][j].second;
+								}
+							}
+
+							// now determine which correlation 'step' WE need to do:
+							vector<int> stepsizes = get_step_assignments(local.rank(),local.size(),frames.size()/2); // frames.size()/2 is the length of the correlation we are interested in...
+
+							map<int,complex<double> > my_AAconj;
+
+							for(vector<int>::iterator ssi=stepsizes.begin();ssi!=stepsizes.end();ssi++) {
+								complex<double> AAconj_sum=0;
+								int AAconj_count=0;					
+								size_t current_frame=0;
+								while( (current_frame+(*ssi))<frames.size()) {
+									AAconj_sum += aqs[current_frame]*conj(aqs[current_frame+(*ssi)]); // do we have to take the "REAL" part only?
+									AAconj_count++;
+									current_frame++;
+								}
+								my_AAconj[*ssi] = AAconj_sum / double(AAconj_count);
+							}
+
+							vector<map<int,complex<double> > > all_AAconj;
+							boost::mpi::gather(local,my_AAconj,all_AAconj,0);
+
+							if (local.rank()==0) {
+								// reorder results, use stepsize as implicit index
+			//					vector<complex<double> > AAconj_series; AAconj_series.resize((frames.size()/2)+((frames.size()+1)%2)); // correlation length = size
+
+								vector<complex<double> > AAconj_series; AAconj_series.resize((frames.size()/2)+1); // correlation length = size					
+								for(vector<map<int,complex<double> > >::iterator ai=all_AAconj.begin();ai!=all_AAconj.end();ai++) {
+									for(map<int,complex<double> >::iterator aii=ai->begin();aii!=ai->end();aii++) {
+										AAconj_series[aii->first]=aii->second;
+									}
+								}
+			//					ofstream ofile("test.dat",ios_base::app);
+								for(size_t i = 0; i < AAconj_series.size(); ++i)
+								{
+									q_Task_results[make_pair(ti->q,i)] = AAconj_series[i].real(); 
+									// check THIS! take the real part or do a conj-multiply?
+			//						ofile << ti->q.x << "\t" << ti->q.y << "t" << ti->q.z << "\t" << i << "\t" << AAconj_series[i].real() << endl;
+								}
+			//					ofile << endl;
+							}
+
+						}
+
+						// wait for all nodes to finish, before communicating
+						local.barrier();
+					}
+							
+				}
+			
+			}
 
 		taskcounter++;
 	}
@@ -502,7 +758,7 @@ int main(int argc,char** argv) {
 		// re-sort everything
 		for(vector< map<pair<CartesianCoor3D,size_t>, double > >::iterator ar=all_qF_Task_results.begin();ar!=all_qF_Task_results.end();ar++) {
 			for(map<pair<CartesianCoor3D,size_t>,double>::iterator mi=ar->begin();mi!=ar->end();mi++) {
-				scat[ScatterdataKey(mi->first.first,mi->first.second)]=mi->second;				
+				scat[mi->first.first][mi->first.second]=mi->second;				
 			}
 		}
 
@@ -513,7 +769,7 @@ int main(int argc,char** argv) {
 		// re-sort everything
 		for(vector< map<pair<CartesianCoor3D,size_t>, double > >::iterator ar=all_q_Task_results.begin();ar!=all_q_Task_results.end();ar++) {
 			for(map<pair<CartesianCoor3D,size_t>,double>::iterator mi=ar->begin();mi!=ar->end();mi++) {
-				scat[ScatterdataKey(mi->first.first,mi->first.second)]=mi->second;				
+				scat[mi->first.first][mi->first.second]=mi->second;								
 			}
 		}
 		
@@ -555,7 +811,7 @@ int main(int argc,char** argv) {
 						stringstream ffname; ffname << prefix << settings_name << "." << outformat;
 						string typestring = (char const *) (*setting)[i]["type"];
 						clog << "INFO>> " << "Writing results to " << ffname.str() << " via method " << typestring << " in format: " << outformat << endl;
-						
+
 						if (typestring == "plain") {
 							scat.write_plain(ffname.str(),outformat);
 						}
@@ -576,13 +832,11 @@ int main(int argc,char** argv) {
 		
 			if (outputerror) {
 				clog << "INFO>> " << "Trajectory format not understood. Dumping to standard log." << endl;
-				clog << "INFO>> " << "FORMAT: qx qy qz frame I" << endl;		
 				scat.dump(clog.rdbuf());			
 			}
 		}
 		catch (...) {
 			cerr << "ERROR>> " << "An Error occured during output. Dumping any results to stdlog" << endl;
-			clog << "INFO>> " << "FORMAT: qx qy qz frame I" << endl;		
 			scat.dump(clog.rdbuf());
 		}
 	
