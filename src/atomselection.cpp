@@ -67,8 +67,8 @@ Atomselection::Atomselection(Atoms& atoms,std::string filename,std::string forma
 	}
 	
 	booleanarray.resize(atoms.size(),false);
-	for (Atoms::iterator ai=atoms.begin();ai!=atoms.end();ai++) {
-		booleanarray[ ai->index ] = true;
+	for (iterator ai=this->begin();ai!=this->end();ai++) {
+		booleanarray[ *ai ] = true;
 	}
 	name = aname;
 }
@@ -90,8 +90,8 @@ Atomselection::Atomselection(Atoms& atoms,std::string filename,std::string forma
 	}
 	
 	booleanarray.resize(atoms.size(),false);
-	for (Atoms::iterator ai=atoms.begin();ai!=atoms.end();ai++) {
-		booleanarray[ ai->index ] = true;
+	for (iterator ai=this->begin();ai!=this->end();ai++) {
+		booleanarray[ *ai ] = true;
 	}
 	name = aname;
 }

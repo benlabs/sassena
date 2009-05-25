@@ -361,6 +361,8 @@ int main(int argc,char** argv) {
 //	map<CartesianCoor3D<map<size_t,double> > keyvals;
 	string target = Settings::get("main")["scattering"]["target"];
 
+	clog << "INFO>> " << "Scattering target selection: " << target << endl;
+
 	gettimeofday(&start, 0);
 	int progess = 0;
 	
@@ -616,7 +618,6 @@ int main(int argc,char** argv) {
 						if (avtype=="none") {
 							// qseed not used here
 							complex<double> scat = Analysis::scatter_none(sample,as,ti->q);
-							clog << "INFO>> " << "calculating scattering for " << ti->q << ":" << scat << endl;							
 							scattering_amplitudes.push_back(scat);
 						}
 						else if (avtype=="sphere") {

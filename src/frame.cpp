@@ -37,21 +37,20 @@ void Frame::push_selection(Atomselection& as) {
 
 	// try to take advantage of hardware pipelining, each array individually
 	for (int32_t i=0;i<number_of_atoms;i++) {
-			if (as.booleanarray[i]) cs.x.push_back(x[i]);
+		if (as.booleanarray[i]) { cs.x.push_back(x[i]); }
 	}
 
 	for (int32_t i=0;i<number_of_atoms;i++) {
-			if (as.booleanarray[i]) cs.y.push_back(y[i]);
+		if (as.booleanarray[i]) { cs.y.push_back(y[i]); }
 	}
 
 	for (int32_t i=0;i<number_of_atoms;i++) {
-			if (as.booleanarray[i]) cs.z.push_back(z[i]);
+		if (as.booleanarray[i]) { cs.z.push_back(z[i]); }
 	}
 
 	for (int32_t i=0;i<number_of_atoms;i++) {
-			if (as.booleanarray[i]) cs.indexes.push_back(i);
+		if (as.booleanarray[i]) { cs.indexes.push_back(i); }
 	}
-	
 	
 }
 

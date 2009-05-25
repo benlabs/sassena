@@ -281,13 +281,11 @@ complex<double> scatter_none(Sample& sample,Atomselection as,CartesianCoor3D& q)
 	}
 	
 	else {
-
-
 		for (size_t i=0;i<cs.x.size();i++) {
 			double s = sample.atoms[cs.indexes[i]].scatteramp;
 
 			CartesianCoor3D c(cs.x[i],cs.y[i],cs.z[i]);
-			A += exp(-1.0*complex<double>(0,c*q)) * s;
+			A += exp(-1.0*complex<double>(0,c*q)) * s;		
 		}
 		
 //	complex<double> A = complex<double>(0,0);		
