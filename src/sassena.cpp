@@ -443,7 +443,6 @@ int main(int argc,char** argv) {
 			
 			for(size_t qvector_block = 0; qvector_block <= (qvectors.size()/qvector_blocking); ++qvector_block) {
 
-
 				vector<int> frames_i = ti->frames(rank);
 				std::string interference_type = Settings::get("main")["scattering"]["interference"]["type"];
 				if (interference_type == "self") {
@@ -616,6 +615,7 @@ int main(int argc,char** argv) {
 						string avtype = s["type"]; 							
 						if (avtype=="none") {
 							// qseed not used here
+							clog << "INFO>> " << "calculating scattering for " << ti->q << " ..." << endl;
 							complex<double> scat = Analysis::scatter_none(sample,as,ti->q);
 							scattering_amplitudes.push_back(scat);
 						}
@@ -650,11 +650,11 @@ int main(int argc,char** argv) {
 
 						// no correlation -> instanenous scattering intensity
 						for(map<int,vector<complex<double> > >::iterator sbfi=scatbyframe.begin();sbfi!=scatbyframe.end();sbfi++) {
-							double scatsum=0;				
+							complex<double> scatsum=0;				
 							for(vector<complex<double> >::iterator si=sbfi->second.begin();si!=sbfi->second.end();si++) {
-								scatsum += abs(conj(*si)*(*si));
+								scatsum += *si;
 							}
-							qF_Task_results[make_pair(ti->q,sbfi->first)] = scatsum/(sbfi->second.size()); 
+							qF_Task_results[make_pair(ti->q,sbfi->first)] = abs(conj(scatsum)*(scatsum)) /(sbfi->second.size()); 
 						}
 					}
 					else if (mode=="time") {

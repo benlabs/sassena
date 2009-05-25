@@ -257,7 +257,6 @@ void set_scatteramp(Sample& sample,Atomselection as,CartesianCoor3D q,bool backg
 }
 
 
-
 void scatter_none(Sample& sample,Atomselection as,CartesianCoor3D& q,std::vector<std::complex<double> >& aqs) {
 	
 	CoordinateSet& cs = sample.frames.current().coordinate_sets[as.name];
@@ -270,7 +269,7 @@ void scatter_none(Sample& sample,Atomselection as,CartesianCoor3D& q,std::vector
 	}
 }
 
-inline complex<double> scatter_none(Sample& sample,Atomselection as,CartesianCoor3D& q) {
+complex<double> scatter_none(Sample& sample,Atomselection as,CartesianCoor3D& q) {
 	
 	CoordinateSet& cs = sample.frames.current().coordinate_sets[as.name];
 	
