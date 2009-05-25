@@ -615,8 +615,8 @@ int main(int argc,char** argv) {
 						string avtype = s["type"]; 							
 						if (avtype=="none") {
 							// qseed not used here
-							clog << "INFO>> " << "calculating scattering for " << ti->q << " ..." << endl;
 							complex<double> scat = Analysis::scatter_none(sample,as,ti->q);
+							clog << "INFO>> " << "calculating scattering for " << ti->q << ":" << scat << endl;							
 							scattering_amplitudes.push_back(scat);
 						}
 						else if (avtype=="sphere") {
@@ -646,15 +646,16 @@ int main(int argc,char** argv) {
 					} // frames processed...
 					
 					// aggregate results
+					// this corresponds to orientational averaging
 					if (ti->mode=="none") {
 
 						// no correlation -> instanenous scattering intensity
 						for(map<int,vector<complex<double> > >::iterator sbfi=scatbyframe.begin();sbfi!=scatbyframe.end();sbfi++) {
-							complex<double> scatsum=0;				
+							double scatsum=0;				
 							for(vector<complex<double> >::iterator si=sbfi->second.begin();si!=sbfi->second.end();si++) {
-								scatsum += *si;
+								scatsum += abs(conj(*si)*(*si));
 							}
-							qF_Task_results[make_pair(ti->q,sbfi->first)] = abs(conj(scatsum)*(scatsum)) /(sbfi->second.size()); 
+							qF_Task_results[make_pair(ti->q,sbfi->first)] = scatsum/(sbfi->second.size()); 
 						}
 					}
 					else if (mode=="time") {
