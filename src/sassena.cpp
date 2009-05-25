@@ -443,7 +443,14 @@ int main(int argc,char** argv) {
 			// block qqqvectors;
 			size_t qvector_blocking = 10;
 			
-			for(size_t qvector_block = 0; qvector_block <= (qvectors.size()/qvector_blocking); ++qvector_block) {
+//			for(size_t qvector_block = 0; qvector_block <= (qvectors.size()/qvector_blocking); ++qvector_block) {
+//				size_t qii = 0;
+//				vector<CartesianCoor3D> qvectors_sub;
+//				while ( (qvector_blocking*qvector_block + qii)<qvectors.size() && (qii<qvector_blocking) ) {
+//					qvectors_sub.push_back( qvectors.at(qvector_blocking*qvector_block + qii) );
+//					qii++;
+//				}
+//				// first element: qvectors[qvector_blocking*qvector_block + i ]
 
 				vector<int> frames_i = ti->frames(rank);
 				std::string interference_type = Settings::get("main")["scattering"]["interference"]["type"];
@@ -738,7 +745,7 @@ int main(int argc,char** argv) {
 							
 				}
 			
-			}
+//			} // qvectors blocking end
 
 		taskcounter++;
 	}

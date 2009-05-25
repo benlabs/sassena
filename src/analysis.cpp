@@ -457,10 +457,11 @@ void scatter_sphere_multipole (Sample& sample,Atomselection as,CartesianCoor3D q
 	
 	}
 
-
+	// we need to multiply w/ (lmax+1)^2 here b/c single ampltiudes are average-summed
+	double lmax1sqr = (lmax+1)*(lmax+1) / sqrt(4.0*M_PI);
 	for (int l=0;l<=lmax;l++) {
 		for (int m=-l;m<=l;m++) { 
-			scattering_amplitudes.push_back( almv[l][m+l] / sqrt(4.0*M_PI) ); // maybe need to multiply w/ lmax^2
+			scattering_amplitudes.push_back( lmax1sqr*(almv[l][m+l]) ); 
 		}
 	}
 }
@@ -503,12 +504,14 @@ void scatter_cylinder_multipole(Sample& sample,Atomselection as,CartesianCoor3D 
 		}
 	}
 
-	scattering_amplitudes.push_back( A[0] ); // maybe need to multiply w/ lmax*4 + 1		
+	// we need to multiply w/ (lmax*4+1) here b/c single ampltiudes are average-summed
+	scattering_amplitudes.push_back( double(4*lmax+1)* A[0] ); 		
+	double lmax41sqr = (4*lmax+1)*sqrt(0.5);	
 	for (int l=1;l<=lmax;l++) {
-		scattering_amplitudes.push_back( sqrt(0.5)*A[l] ); // maybe need to multiply w/ lmax*4 + 1		
-		scattering_amplitudes.push_back( sqrt(0.5)*B[l] ); // maybe need to multiply w/ lmax*4 + 1		
-		scattering_amplitudes.push_back( sqrt(0.5)*C[l] ); // maybe need to multiply w/ lmax*4 + 1		
-		scattering_amplitudes.push_back( sqrt(0.5)*D[l] ); // maybe need to multiply w/ lmax*4 + 1		
+		scattering_amplitudes.push_back( lmax41sqr*A[l] ); 		
+		scattering_amplitudes.push_back( lmax41sqr*B[l] ); 		
+		scattering_amplitudes.push_back( lmax41sqr*C[l] ); 		
+		scattering_amplitudes.push_back( lmax41sqr*D[l] ); 		
 	}
 
 }
