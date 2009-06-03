@@ -375,8 +375,10 @@ int main(int argc,char** argv) {
 //	map<CartesianCoor3D<map<size_t,double> > keyvals;
 	string target = Settings::get("main")["scattering"]["target"];
 
-	clog << "INFO>> " << "Scattering target selection: " << target << endl;
-
+	if (rank==0) { 
+		clog << "INFO>> " << "Scattering target selection: " << target << endl;
+	}
+	
 	timer.stop("task preparation");
 
 	gettimeofday(&start, 0);
@@ -984,8 +986,9 @@ int main(int argc,char** argv) {
 	
 	}
 	
-	clog << "INFO>> Successfully finished... Have a nice day!"<< endl;
-		
+	if (rank==0) { 	
+		clog << "INFO>> Successfully finished... Have a nice day!"<< endl;
+	}
 	return 0;
 }
 
