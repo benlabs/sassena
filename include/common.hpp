@@ -12,6 +12,10 @@
 #ifndef COMMON_HPP_
 #define COMMON_HPP_
 
+#ifdef CMAKE_CXX_COMPILER_ENV_VAR
+// needed for xdrfile module
+#define C_PLUSPLUS
+#endif
 // standard header
 #include <map>
 

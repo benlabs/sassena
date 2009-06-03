@@ -23,7 +23,27 @@
 using namespace std;
 
 /* CARTESIAN COOR3D CLASS */
+bool CartesianCoor3D::operator<(const CartesianCoor3D& that) const{
+	if (this->x < that.x)
+		return true;
 
+	if (this->x > that.x)
+		return false;
+
+	if (this->y < that.y)
+		return true;
+
+	if (this->y > that.y)
+		return false;
+
+	if (this->z < that.z)
+		return true;
+
+	if (this->z > that.z)
+		return false;
+
+	return false;
+}
 //conversion constructor cylinder -> cartesian
 CartesianCoor3D::CartesianCoor3D(CylinderCoor3D cc) {
 	x = cc.r*cos(cc.phi);
@@ -79,14 +99,6 @@ CartesianCoor3D operator*(const CartesianCoor3D& that,const double lambda) {
 
 CartesianCoor3D operator/(const CartesianCoor3D& that, const double lambda) {
 	return CartesianCoor3D(that.x/lambda,that.y/lambda,that.z/lambda);
-}
-
-// necessary for use in maps:
-bool CartesianCoor3D::operator<(const CartesianCoor3D& that) const {
-	if (x<that.x) return true;
-	if (y<that.y) return true;
-	if (z<that.z) return true;
-	return false;
 }
 
 

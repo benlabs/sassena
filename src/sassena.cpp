@@ -42,6 +42,7 @@
 #include "scatterdata.hpp"
 #include "settings.hpp"
 #include "tasks.hpp"
+#include "timer.hpp"
 
 using namespace std;
 using namespace boost;
@@ -73,8 +74,8 @@ void print_eta(int percent,int progress,timeval start,timeval end) {
 		gettimeofday(&end, 0);
 		int seconds = (end.tv_sec-start.tv_sec);
 		int microseconds = (end.tv_usec-start.tv_usec);
-		microseconds = (microseconds < 0) ? 1000000+microseconds : microseconds;
 		seconds = (microseconds < 0) ? seconds-1 : seconds;
+		microseconds = (microseconds < 0) ? 1000000+microseconds : microseconds;		
 		double etotal = 100 * ( seconds + (microseconds/1000000.0) ) / percent;
 		double eta = etotal - seconds + (microseconds/1000000.0);
 		clog << "INFO>> " << "Progress: " << percent << "%" << " , ETOTAL(s): " <<  etotal  << " , ETA(s): " <<  eta  << endl;
@@ -128,6 +129,9 @@ int main(int argc,char** argv) {
 
 	Sample sample;
 
+	Timer timer;
+	timer.start("total");
+	
 	if (rank==0) {
 		//------------------------------------------//
 		//
@@ -161,6 +165,8 @@ int main(int argc,char** argv) {
 		//
 		//------------------------------------------//	
 	
+		timer.start("sample::setup");
+		
 		clog << "INFO>> " << "Reading configuration file " << argv[1] << endl;
 		// read in configuration file, delete command line arguments
 		if (!Settings::read(argc,argv)) { cerr << "Error reading the configuration" << endl; throw; }
@@ -174,19 +180,16 @@ int main(int argc,char** argv) {
 	   libconfig::Setting* sgroups = &Settings::get("main")["sample"]["groups"];
 	   for (int i=0;i<sgroups->getLength();i++) {
 
-			string gn = (*sgroups)[i].getName(); // groupname
+//			string gn = (*sgroups)[i].getName(); // groupname
+			string gn = "";
+			if ((*sgroups)[i].exists("name")) gn = (char const*) (*sgroups)[i]["name"]; // groupname
 			string fn = (*sgroups)[i]["file"]; // filename
 			string ft = (*sgroups)[i]["type"]; // filetype
-			if ((*sgroups)[i].exists("select")) {
-				string sn = (*sgroups)[i]["select"]; // selection field name
-				double sv = (*sgroups)[i]["select_value"]; // selection field value, positive match			
-				sample.add_selection(gn,fn,ft,sn,sv);
-			}
-			else {
-				sample.add_selection(gn,fn,ft);			
-			}
-
-			clog << "INFO>> " << "Adding selection: " << gn << endl;	
+			string sn = "";
+			if ((*sgroups)[i].exists("select")) sn =(char const*)  (*sgroups)[i]["select"]; // selection field name
+			double sv = 0.0;
+			if ((*sgroups)[i].exists("select_value")) sv = (*sgroups)[i]["select_value"]; // selection field value, positive match								
+			sample.add_selection(gn,fn,ft,sn,sv);		
 		}
 	
 		// add custom selections here ( if not already set! )
@@ -240,7 +243,7 @@ int main(int argc,char** argv) {
 			clog << "INFO>> " << "Turned wrapping OFF "  << endl;						
 		}
 
-
+		timer.stop("sample::setup");
 
 		//------------------------------------------//
 		//
@@ -248,6 +251,8 @@ int main(int argc,char** argv) {
 		//
 		//------------------------------------------//
 	
+		timer.start("sample::preparation");
+
 		string m = Settings::get("main")["scattering"]["background"]["method"];
 		bool rescale = Settings::get("main")["scattering"]["background"]["rescale"];
 		// rescale automatically triggers background analysis routine. Maybe independent in the future...
@@ -278,7 +283,9 @@ int main(int argc,char** argv) {
 			// switch off background correction, i.e. assume system in vaccuum
 			sample.background = 0.0;
 		}
-
+		
+		timer.stop("sample::preparation");
+		
 		//------------------------------------------//
 		//
 		// Communication of the sample
@@ -295,7 +302,12 @@ int main(int argc,char** argv) {
 
 		world.barrier();
 
+		timer.start("sample::communication");
+
 		broadcast(world,sample,0);
+		
+		timer.stop("sample::communication");
+		
 	}
 	else {
 
@@ -322,6 +334,8 @@ int main(int argc,char** argv) {
 	// prepare an array for all qqqvectors here:
 	std::vector<CartesianCoor3D> qqqvectors;
 	std::vector<int> frames;
+	
+	timer.start("task preparation");
 	
 	// fill qqqvectors
 	Settings::get_qqqvectors(qqqvectors);
@@ -363,6 +377,8 @@ int main(int argc,char** argv) {
 
 	clog << "INFO>> " << "Scattering target selection: " << target << endl;
 
+	timer.stop("task preparation");
+
 	gettimeofday(&start, 0);
 	int progess = 0;
 	
@@ -384,13 +400,20 @@ int main(int argc,char** argv) {
 					}
 				}				
 			}
+			timer.start("scatter");
+
+			timer.start("scatter::scatteramp");
 
 			// set scattering amplitudes for current q vector
 			Analysis::set_scatteramp(sample,sample.atomselections[target],ti->q,true);
+
+			timer.stop("scatter::scatteramp");
 			
 			// generate q-vector list for orientational averaging
 			vector<CartesianCoor3D> qvectors;
-
+			
+			timer.start("scatter::qvector-unfold");
+						
 			if (Settings::get("main")["scattering"].exists("average")) {
 			
 				libconfig::Setting& s = Settings::get("main")["scattering"]["average"];
@@ -439,6 +462,8 @@ int main(int argc,char** argv) {
 			else {
 				qvectors.push_back(ti->q);
 			}
+			
+			timer.stop("scatter::qvector-unfold");
 
 			// block qqqvectors;
 			size_t qvector_blocking = 10;
@@ -462,13 +487,21 @@ int main(int argc,char** argv) {
 					for(size_t i = 0; i < frames_i.size(); ++i)
 					{
 						Atomselection& as = sample.atomselections[target];
+						
+						timer.start("scatter::loadframe");
+						
 						sample.frames.load(frames_i[i],sample.atoms,sample.atomselections[target]);				
+
+						timer.stop("scatter::loadframe");
 
 						// holds the scattering amplitudes for the current frame:
 						vector<vector<complex<double> > >& scattering_amplitudes = scatbyframe[frames_i[i]];
 
 						libconfig::Setting& s = Settings::get("main")["scattering"]["average"];
-						string avtype = s["type"]; 						
+						string avtype = s["type"]; 	
+
+						timer.start("scatter::compute");
+					
 						if (avtype=="none") {
 							// qseed not used here
 							vector<complex<double> > scat;
@@ -501,7 +534,13 @@ int main(int argc,char** argv) {
 							cerr << "ERROR>> " << "unrecognized averaging type. Use 'none' if no averaging is to be done" << endl;
 							throw;
 						}	
+
+						timer.stop("scatter::compute");
+
 					} // frames processed
+
+
+					timer.start("scatter::aggregate");
 
 					// aggregate results
 					if (ti->mode=="none") {
@@ -599,6 +638,9 @@ int main(int argc,char** argv) {
 
 						// wait for all nodes to finish, before communicating
 						local.barrier();
+					
+						timer.stop("scatter::aggregate");
+						
 					}
 
 					
@@ -610,7 +652,11 @@ int main(int argc,char** argv) {
 					// iterate through all frames this node is supposed to do
 					for(size_t i = 0; i < frames_i.size(); ++i)
 					{
+						timer.start("scatter::loadframe");
+											
 						sample.frames.load(frames_i[i],sample.atoms,sample.atomselections[target]);				
+
+						timer.stop("scatter::loadframe");
 
 						Atomselection& as = sample.atomselections[target];
 						// holds the scattering amplitudes for the current frame:
@@ -621,7 +667,10 @@ int main(int argc,char** argv) {
 						if (s.exists("resolution")) {
 							resolution = s["resolution"];
 						}						
-						string avtype = s["type"]; 							
+						string avtype = s["type"]; 	
+						
+						timer.start("scatter::compute");
+												
 						if (avtype=="none") {
 							// qseed not used here
 							complex<double> scat = Analysis::scatter_none(sample,as,ti->q);
@@ -651,7 +700,13 @@ int main(int argc,char** argv) {
 							cerr << "ERROR>> " << "unrecognized averaging type. Use 'none' if no averaging is to be done" << endl;
 							throw;
 						}	
+						
+						timer.stop("scatter::compute");
+						
 					} // frames processed...
+					
+					
+					timer.start("scatter::aggregate");
 					
 					// aggregate results
 					// this corresponds to orientational averaging
@@ -674,6 +729,7 @@ int main(int argc,char** argv) {
 							if (aqscount==0) aqscount = sbfi->second.size(); else if (aqscount!=sbfi->second.size()) throw;
 						}
 
+
 						for(size_t asqi = 0; asqi < aqscount; ++asqi)
 						{
 							// communicate current aqs
@@ -685,12 +741,13 @@ int main(int argc,char** argv) {
 							vector<vector<pair<int,complex<double> > > > vector_in,vector_out;
 							vector_in.resize(local.size(),aqs_by_frame);
 
+							timer.start("scatter::agg::correlate");
+
 							boost::mpi::all_to_all(local,vector_in,vector_out);
 
 							// decompose vector_out into new table: frame <-> Aqs, use frame number as implicit position
 							vector<complex<double> > aqs; aqs.resize(frames.size());
-							for(size_t i = 0; i < vector_out.size(); ++i)
-							{
+							for(size_t i = 0; i < vector_out.size(); ++i) {
 								for(size_t j = 0; j < vector_out[i].size(); ++j)
 								{
 									aqs[vector_out[i][j].first]=vector_out[i][j].second;
@@ -736,22 +793,30 @@ int main(int argc,char** argv) {
 								}
 			//					ofile << endl;
 							}
+							
+							timer.stop("scatter::agg::correlate");							
 
 						}
 
 						// wait for all nodes to finish, before communicating
 						local.barrier();
+						
 					}
+					timer.stop("scatter::aggregrate");
 							
 				}
 			
 //			} // qvectors blocking end
+
+		timer.stop("scatter");
 
 		taskcounter++;
 	}
 	
 	// wait for all nodes to finish their computations....
 	world.barrier();
+
+	timer.start("result::aggregrate");
 
 	// make node 0 empty
 	if (rank==0) sample.frames.clear_cache();
@@ -784,11 +849,15 @@ int main(int argc,char** argv) {
 		
 	}
 	
+	timer.start("result::aggregrate");
+	
 	//------------------------------------------//
 	//
 	// Output
 	//
 	//------------------------------------------//	
+
+	timer.start("result::output");
 
 	if (rank==0) {
 		// make sure after hard work, results are NOT lost...
@@ -849,8 +918,7 @@ int main(int argc,char** argv) {
 			scat.dump(clog.rdbuf());
 		}
 	
-		clog << "INFO>> Successfully finished... Have a nice day!"<< endl;
-	
+
 	//------------------------------------------//
 	//
 	// Send hangups to all compute nodes...
@@ -863,12 +931,61 @@ int main(int argc,char** argv) {
 	
 	}
 	
+	timer.stop("result::output");
+
 	//------------------------------------------//
 	//
 	// Finished
 	//
 	//------------------------------------------//	
 	
+	timer.stop("total");
+	
+	if (rank==0) {
+		vector<string> keys = timer.keys();
+				
+		clog << "INFO>> " << "                                                                         " << endl;
+		clog << "INFO>> " << "                    Performance Analysis                                 " << endl;
+		clog << "INFO>> " << "-------------------------------------------------------------------------" << endl;
+		clog << "INFO>> " << " mean and total runtimes:                                                " << endl;				
+		clog << "INFO>> " << "-------------------------------------------------------------------------" << endl;
+		clog << "INFO>> ";
+		clog << setw(31) << " measure |";
+		clog << setw(12) << " total |";
+		clog << setw(10) << " count |";
+		clog << setw(10) << " mean |";
+		clog << setw(10) << " stddev ";
+		clog << endl;
+		clog << "INFO>> " << "-------------------------------------------------------------------------" << endl;		
+		for (vector<string>::iterator ki=keys.begin();ki!=keys.end();ki++) {
+			clog << "INFO>> " << setw(29) << *ki << " |" << "\t" ;
+			clog << setiosflags(ios::fixed) << setprecision(3) << setw(8) << timer.sum(*ki)            << " |";	
+			clog << setiosflags(ios::fixed) << setprecision(0) << setw(8) << timer.count(*ki)          << " |";		
+			clog << setiosflags(ios::fixed) << setprecision(3) << setw(8) << timer.mean(*ki)           << " |";
+			clog << setiosflags(ios::fixed) << setprecision(3) << setw(8) << sqrt(timer.variance(*ki)) << endl;
+		}
+		clog << "INFO>> " << "-------------------------------------------------------------------------" << endl;		
+
+		clog << "INFO>> " << "-------------------------------------------------------------------------" << endl;
+		clog << "INFO>> " << " watermarks:                                                " << endl;				
+		clog << "INFO>> " << "-------------------------------------------------------------------------" << endl;
+		clog << "INFO>> ";
+		clog << setw(31) << " measure |";
+		clog << setw(12) << " min |";
+		clog << setw(10) << " max ";
+		clog << endl;
+		clog << "INFO>> " << "-------------------------------------------------------------------------" << endl;		
+		for (vector<string>::iterator ki=keys.begin();ki!=keys.end();ki++) {
+			clog << "INFO>> " << setw(29) << *ki << " |" << "\t" ;
+			clog << setiosflags(ios::fixed) << setprecision(3) << setw(8) << timer.min(*ki)            << " |";	
+			clog << setiosflags(ios::fixed) << setprecision(3) << setw(8) << timer.max(*ki)            << endl;
+		}
+		clog << "INFO>> " << "-------------------------------------------------------------------------" << endl;		
+	
+	}
+	
+	clog << "INFO>> Successfully finished... Have a nice day!"<< endl;
+		
 	return 0;
 }
 

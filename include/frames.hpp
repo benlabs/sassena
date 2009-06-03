@@ -37,7 +37,8 @@
 class Frameset;
 class DCDFrameset;
 class PDBFrameset;
-
+class TRRFrameset;
+class XTCFrameset;
 
 ////////////////////////////////////////////////////////////////////////////////
 // wrapper class to 'store' frames in
@@ -56,6 +57,8 @@ class Frames {
 		// list all possible derived classes for Frameset
         ar.register_type(static_cast<DCDFrameset*>(NULL));
         ar.register_type(static_cast<PDBFrameset*>(NULL));
+        ar.register_type(static_cast<XTCFrameset*>(NULL));
+        ar.register_type(static_cast<TRRFrameset*>(NULL));
 		ar & framesets;
     }
 	///////////////////
@@ -215,6 +218,70 @@ public:
 
 	// this constructor should be called by default
 	PDBFrameset(std::string filename,size_t frame_number_offset) { init(filename,frame_number_offset); }
+	
+	// internalframenumber used for positioning file pointer, data loaded into Frame argument
+	void read_frame(size_t internalframenumber,Frame& cf);
+	
+};
+
+
+// XTC Frameset and dependents
+
+class XTCFrameset : public Frameset {
+	friend class boost::serialization::access;	
+	template<class Archive> void serialize(Archive & ar, const unsigned int version)
+    {
+		ar & boost::serialization::base_object<Frameset>(*this);
+		ar & filename;
+		ar & number_of_atoms;
+    }
+
+	std::string filename;
+	long number_of_atoms;
+	
+	std::vector<std::ios::pos_type> frame_byte_offsets;	
+	
+	bool detect(const std::string filename);	
+public:
+	
+	// allow construction w/o reading file -> call init manually
+	XTCFrameset() {}
+	void init(std::string filename,size_t framenumber_offset);
+
+	// this constructor should be called by default
+	XTCFrameset(std::string filename,size_t frame_number_offset) { init(filename,frame_number_offset); }
+	
+	// internalframenumber used for positioning file pointer, data loaded into Frame argument
+	void read_frame(size_t internalframenumber,Frame& cf);
+	
+};
+
+
+// TRR Frameset and dependents
+
+class TRRFrameset : public Frameset {
+	friend class boost::serialization::access;	
+	template<class Archive> void serialize(Archive & ar, const unsigned int version)
+    {
+		ar & boost::serialization::base_object<Frameset>(*this);
+		ar & filename;
+		ar & number_of_atoms;
+    }
+
+	std::string filename;
+	long number_of_atoms;
+	
+	std::vector<std::ios::pos_type> frame_byte_offsets;		
+	
+	bool detect(const std::string filename);	
+public:
+	
+	// allow construction w/o reading file -> call init manually
+	TRRFrameset() {}
+	void init(std::string filename,size_t framenumber_offset);
+
+	// this constructor should be called by default
+	TRRFrameset(std::string filename,size_t frame_number_offset) { init(filename,frame_number_offset); }
 	
 	// internalframenumber used for positioning file pointer, data loaded into Frame argument
 	void read_frame(size_t internalframenumber,Frame& cf);

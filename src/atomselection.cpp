@@ -42,6 +42,18 @@ Atomselection::Atomselection(Atoms& atoms,bool select,std::string aname) {
 	name = aname;
 }
 
+
+Atomselection::Atomselection(Atoms& atoms,std::vector<size_t> indexes,std::string aname) {
+	booleanarray.resize(atoms.size(),false);					
+			
+	for(std::vector<size_t>::iterator ii=indexes.begin();ii!=indexes.end();ii++) {
+			push_back(*ii);		
+			booleanarray[*ii] = true;
+	}
+	name = aname;
+}
+
+
 Atomselection::Atomselection(Atoms& atoms,std::string filename,std::string format,std::string select,double select_value,std::string aname) {
 	if (format=="pdb") {
 		ifstream pdbfile(Settings::get_filepath(filename).c_str());
@@ -88,7 +100,7 @@ Atomselection::Atomselection(Atoms& atoms,std::string filename,std::string forma
 			}			
 		}
 	}
-	
+
 	booleanarray.resize(atoms.size(),false);
 	for (iterator ai=this->begin();ai!=this->end();ai++) {
 		booleanarray[ *ai ] = true;

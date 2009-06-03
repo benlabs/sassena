@@ -67,8 +67,8 @@ int main(int argc,char** argv) {
 	string line;
 	while (true) {
 		keyval_t keyval;
-        float qx,qy,qz,fsquared,fsquared_dev;
-		ifile >> qx >> qy >> qz >> fsquared >> fsquared_dev;
+        float qx,qy,qz,norm,fsquared,fsquared_dev;
+		ifile >> qx >> qy >> qz >> norm >> fsquared >> fsquared_dev;
 		if ( ifile.eof() ) break;			
 					
 		keyval.first = CartesianCoor3D(qx,qy,qz);

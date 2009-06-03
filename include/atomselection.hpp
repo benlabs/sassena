@@ -48,6 +48,7 @@ public:
 	Atomselection(Atoms& atoms,std::string filename,std::string format,std::string select,double select_value,std::string name="");
 	Atomselection(Atoms& atoms,std::string filename,std::string format,std::string name="");
 	Atomselection(Atoms& atoms,bool select = false,std::string name="");
+	Atomselection(Atoms& atoms,std::vector<size_t> indexes,std::string name="");
 
 	// empty atomselection is actually invalid!
 	Atomselection() {}

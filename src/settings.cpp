@@ -155,8 +155,17 @@ void Settings::get_qqqvectors(std::vector<CartesianCoor3D>& qqqvectors) {
 	string qqqvectors_method = Settings::get("main")["scattering"]["vectors"]["method"];
 	
 	
-	
-	if (qqqvectors_method=="linear") {	
+	if (qqqvectors_method=="single") {	
+		libconfig::Setting& s = Settings::get("main")["scattering"]["vectors"]["single"];
+		double x = s["direction"][0];
+		double y = s["direction"][1];
+		double z = s["direction"][2];		
+		CartesianCoor3D direction(x,y,z);
+		
+		double scal = s["scale"];				
+		qqqvectors.push_back(scal*direction);
+	}
+	else if (qqqvectors_method=="linear") {	
 		libconfig::Setting& s = Settings::get("main")["scattering"]["vectors"]["linear"];
 		double x = s["direction"][0];
 		double y = s["direction"][1];
@@ -166,9 +175,11 @@ void Settings::get_qqqvectors(std::vector<CartesianCoor3D>& qqqvectors) {
 		double from = s["from"];		
 		double to = s["to"];				
 		int points = s["points"];
+		double exponent = 1.0;
+		if (s.exists("exponent")) exponent = s["exponent"];
 		
 		for (int i=0;i<points;i++) {		
-			double scal = from + i*(to-from)/(points-1);
+			double scal = from + powf((i*1.0/(points-1)),exponent)*(to-from);
 			qqqvectors.push_back(scal*direction);
 		}
 	}
@@ -184,6 +195,10 @@ void Settings::get_qqqvectors(std::vector<CartesianCoor3D>& qqqvectors) {
 		double from2 = s2["from"];
 		double to1 = s1["to"];
 		double to2 = s2["to"];
+		double exponent1 = 1.0;
+		double exponent2 = 1.0;		
+		if (s1.exists("exponent")) exponent1 = s1["exponent"];
+		if (s2.exists("exponent")) exponent2 = s2["exponent"];
 		
 		double x1 = s1["direction"][0];
 		double y1 = s1["direction"][1];
@@ -195,13 +210,12 @@ void Settings::get_qqqvectors(std::vector<CartesianCoor3D>& qqqvectors) {
 		CartesianCoor3D d2(x2,y2,z2);
 		
 		for (int i=0;i<p1;i++) {		
-			double scal1 = from1 + i*(to1-from1)/(p1-1);
+			double scal1 = from1 + powf((i*1.0/(p1-1)),exponent1)*(to1-from1);
 			for (int j=0;j<p2;j++) {			
-				double scal2 = from2 + j*(to2-from2)/(p2-1);				
+				double scal2 = from2 + powf((j*1.0/(p2-1)),exponent2)*(to2-from2);
 				qqqvectors.push_back(scal1*d1+scal2*d2);
 			}
 		}
-		
 	}
 	else if (qqqvectors_method=="cube") {
 		libconfig::Setting& setting = Settings::get("main")["scattering"]["vectors"]["cube"];
@@ -219,7 +233,13 @@ void Settings::get_qqqvectors(std::vector<CartesianCoor3D>& qqqvectors) {
 		double to1 = s1["to"];
 		double to2 = s2["to"];
 		double to3 = s3["to"];
-		
+		double exponent1 = 1.0;
+		double exponent2 = 1.0;		
+		double exponent3 = 1.0;				
+		if (s1.exists("exponent")) exponent1 = s1["exponent"];
+		if (s2.exists("exponent")) exponent2 = s2["exponent"];
+		if (s3.exists("exponent")) exponent3 = s3["exponent"];
+				
 		double x1 = s1["direction"][0];
 		double y1 = s1["direction"][1];
 		double z1 = s1["direction"][2];		
@@ -234,11 +254,11 @@ void Settings::get_qqqvectors(std::vector<CartesianCoor3D>& qqqvectors) {
 		CartesianCoor3D d3(x3,y3,z3);
 				
 		for (int i=0;i<p1;i++) {		
-			double scal1 = from1 + i*(to1-from1)/(p1-1);
+			double scal1 = from1 + powf((i*1.0/(p1-1)),exponent1)*(to1-from1);
 			for (int j=0;j<p2;j++) {			
-				double scal2 = from2 + j*(to2-from2)/(p2-1);				
+				double scal2 = from2 + powf((j*1.0/(p2-1)),exponent2)*(to2-from2);				
 				for (int k=0;k<p3;k++) {			
-					double scal3 = from3 + k*(to3-from3)/(p3-1);
+					double scal3 = from3 + powf((k*1.0/(p3-1)),exponent3)*(to3-from3);									
 					qqqvectors.push_back(scal1*d1+scal2*d2+scal3*d3);
 				}
 			}

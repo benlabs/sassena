@@ -16,6 +16,9 @@
 #include <fstream>
 
 // special library headers
+#include "xdrfile/xdrfile.h"
+#include "xdrfile/xdrfile_xtc.h"
+#include "xdrfile/xdrfile_trr.h"
 
 // other headers
 #include "atomselection.hpp"
@@ -78,6 +81,22 @@ size_t Frames::add_frameset(const std::string filename,const std::string filetyp
 		}
 		return total_number_of_frames;		
 	}
+	else if (filetype=="xtc") {
+		// create an empty frameset and then initialize w/ filename
+		Frameset* fsp = new XTCFrameset(filename,number_of_frames);
+		framesets.push_back(fsp);
+		// increase frame counter
+		number_of_frames += fsp->number_of_frames;
+		return fsp->number_of_frames;
+	}	
+	else if (filetype=="trr") {
+		// create an empty frameset and then initialize w/ filename
+		Frameset* fsp = new TRRFrameset(filename,number_of_frames);
+		framesets.push_back(fsp);
+		// increase frame counter
+		number_of_frames += fsp->number_of_frames;
+		return fsp->number_of_frames;
+	}		
 	else {
 		cerr << "ERROR>> filetype '" << filetype << "' not supported." << endl;
 		throw;
@@ -328,7 +347,6 @@ void DCDFrameset::read_frame(size_t internalframenumber,Frame& cf) {
 			// cf.block2.push_back(temp);
 		}
 	}
-
 }
 
 // PDB Frameset implementation:
@@ -445,6 +463,254 @@ void PDBFrameset::read_frame(size_t internalframenumber,Frame& cf) {
 
 	cf.unitcell = uc;
 	cf.number_of_atoms = number_of_atom_entries;
+}
+
+
+// XTC Frameset implementation:
+
+// constructor = analyze file and store frame locator information
+void XTCFrameset::init(std::string fn,size_t fno) {
+	
+	// general information
+	frame_number_offset = fno;
+	filename = fn;
+	
+	// test if xtc file, if not throw!
+	if (!detect(fn)) {
+		cerr << "ERROR>> " << "file '" << fn << "' appears not to be a XTC file" << endl;
+		throw;
+	}
+	
+	// locator specific information
+		
+	string full_filename = Settings::get_filepath(filename);
+	char* full_filename_c = (char*) malloc(sizeof(char)*(full_filename.size()+1));
+	strcpy(full_filename_c,full_filename.c_str());
+//    XDRFILE* xdrfile =  xdrfile_open(fn.c_str(),'r');	
+
+  	/* This function returns the number of atoms in the xtc file in *natoms */
+	int natoms = 0;
+  	int retval = read_xtc_natoms(full_filename_c,&natoms);
+	
+	number_of_atoms = natoms;
+	
+	number_of_frames = 0;
+	
+    XDRFILE* p_xdrfile =  xdrfile_open(full_filename.c_str(),"r");	
+	FILE* fp = get_filepointer(p_xdrfile);
+	int step =0; float t =0;
+	float prec =  1000.0;
+	rvec* coords = (rvec*) malloc(sizeof(rvec)*natoms);
+	matrix box; 	
+
+	while (retval = read_xtc(p_xdrfile,natoms,&step,&t,box,coords,&prec) == exdrOK) {
+		frame_byte_offsets.push_back(ftell( fp ));
+		number_of_frames++;
+	}
+//	retval = read_xtc(p_xdrfile,natoms,&step,&t,box,coords,&prec);
+//	retval = read_xtc(p_xdrfile,natoms,&step,&t,box,coords,&prec);	
+//	retval = read_xtc(p_xdrfile,natoms,&step,&t,box,coords,&prec);		
+//	retval = read_xtc(p_xdrfile,natoms,&step,&t,box,coords,&prec);		
+//	
+//	long firstFrame = ftell( fp );
+//	fseek( fp, 0L, SEEK_END );
+//	long endPos = ftell( fp );
+	
+//	ifstream xdrfile(full_filename.c_str(),ios::binary);
+//	xdrfile.seekg(0,ios::end);
+//	ios::pos_type pos = xdrfile.tellg();
+	free(coords);
+	free(full_filename_c);
+
+	return;
+}
+
+bool XTCFrameset::detect(const string filename) {
+
+	// try to open w/ xdr_open 
+	string full_filename = Settings::get_filepath(filename);
+	char* full_filename_c = (char*) malloc(sizeof(char)*(full_filename.size()+1));
+	strcpy(full_filename_c,full_filename.c_str());
+	//    XDRFILE* xdrfile =  xdrfile_open(fn.c_str(),'r');	
+
+  	/* This function returns the number of atoms in the xtc file in *natoms */
+	int natoms = 0;
+  	int retval = read_xtc_natoms(full_filename_c,&natoms);
+
+	free(full_filename_c);
+	
+	if (retval==exdrOK) return true; else return false;
+}
+
+void XTCFrameset::read_frame(size_t internalframenumber,Frame& cf) {
+
+	// open xdr file
+
+	string full_filename = Settings::get_filepath(filename);
+	char* full_filename_c = (char*) malloc(sizeof(char)*(full_filename.size()+1));
+	strcpy(full_filename_c,full_filename.c_str());
+
+	
+	// read a specific frame
+    XDRFILE* p_xdrfile =  xdrfile_open(full_filename.c_str(),"r");	
+	FILE* fp = get_filepointer(p_xdrfile);
+	int step =0; float t =0;
+	float prec =  1000.0;
+	rvec* coords = (rvec*) malloc(sizeof(rvec)*number_of_atoms);
+	matrix box; 	
+	
+	fseek( fp, frame_byte_offsets[internalframenumber] , SEEK_SET );
+
+	int retval = read_xtc(p_xdrfile,number_of_atoms,&step,&t,box,coords,&prec);
+		
+	vector<CartesianCoor3D> uc(3); 
+
+	uc[0] = 10.0* CartesianCoor3D(box[0][0],box[0][1],box[0][2]);
+	uc[1] = 10.0* CartesianCoor3D(box[1][0],box[1][1],box[1][2]);
+	uc[2] = 10.0* CartesianCoor3D(box[2][0],box[2][1],box[2][2]);
+
+	for(size_t i = 0; i < number_of_atoms; ++i)
+	{
+		cf.x.push_back(10.0* coords[i][0]);
+		cf.y.push_back(10.0* coords[i][1]);
+		cf.z.push_back(10.0* coords[i][2]);				
+	}
+	
+
+	cf.unitcell = uc;
+	cf.number_of_atoms = number_of_atoms;
+	
+	free(coords);
+	free(full_filename_c);
+	
+	xdrfile_close(p_xdrfile);
+	return;
+
+}
+
+
+
+// TRR Frameset implementation:
+
+// constructor = analyze file and store frame locator information
+void TRRFrameset::init(std::string fn,size_t fno) {
+	
+	// general information
+	frame_number_offset = fno;
+	filename = fn;
+	
+	// test if xtc file, if not throw!
+	if (!detect(fn)) {
+		cerr << "ERROR>> " << "file '" << fn << "' appears not to be a XTC file" << endl;
+		throw;
+	}
+	
+	// locator specific information
+		
+	string full_filename = Settings::get_filepath(filename);
+	char* full_filename_c = (char*) malloc(sizeof(char)*(full_filename.size()+1));
+	strcpy(full_filename_c,full_filename.c_str());
+//    XDRFILE* xdrfile =  xdrfile_open(fn.c_str(),'r');	
+
+  	/* This function returns the number of atoms in the xtc file in *natoms */
+	int natoms = 0;
+  	int retval = read_trr_natoms(full_filename_c,&natoms);
+	
+	number_of_atoms = natoms;
+	
+	number_of_frames = 0;
+	
+    XDRFILE* p_xdrfile =  xdrfile_open(full_filename.c_str(),"r");	
+	FILE* fp = get_filepointer(p_xdrfile);
+	int step =0; float t =0;
+	float lambda = 0;
+	rvec* coords = (rvec*) malloc(sizeof(rvec)*natoms);
+	matrix box; 	
+
+	while (retval = read_trr(p_xdrfile,natoms,&step,&t,&lambda,box,coords,NULL,NULL) == exdrOK) {
+		frame_byte_offsets.push_back(ftell( fp ));
+		number_of_frames++;
+	}
+//	retval = read_xtc(p_xdrfile,natoms,&step,&t,box,coords,&prec);
+//	retval = read_xtc(p_xdrfile,natoms,&step,&t,box,coords,&prec);	
+//	retval = read_xtc(p_xdrfile,natoms,&step,&t,box,coords,&prec);		
+//	retval = read_xtc(p_xdrfile,natoms,&step,&t,box,coords,&prec);		
+//	
+//	long firstFrame = ftell( fp );
+//	fseek( fp, 0L, SEEK_END );
+//	long endPos = ftell( fp );
+	
+//	ifstream xdrfile(full_filename.c_str(),ios::binary);
+//	xdrfile.seekg(0,ios::end);
+//	ios::pos_type pos = xdrfile.tellg();
+	free(coords);
+	free(full_filename_c);
+
+	return;
+}
+
+bool TRRFrameset::detect(const string filename) {
+
+	// try to open w/ xdr_open 
+	string full_filename = Settings::get_filepath(filename);
+	char* full_filename_c = (char*) malloc(sizeof(char)*(full_filename.size()+1));
+	strcpy(full_filename_c,full_filename.c_str());
+	//    XDRFILE* xdrfile =  xdrfile_open(fn.c_str(),'r');	
+
+  	/* This function returns the number of atoms in the xtc file in *natoms */
+	int natoms = 0;
+  	int retval = read_trr_natoms(full_filename_c,&natoms);
+
+	free(full_filename_c);
+	
+	if (retval==exdrOK) return true; else return false;
+}
+
+void TRRFrameset::read_frame(size_t internalframenumber,Frame& cf) {
+
+
+	// open xdr file
+
+	string full_filename = Settings::get_filepath(filename);
+	char* full_filename_c = (char*) malloc(sizeof(char)*(full_filename.size()+1));
+	strcpy(full_filename_c,full_filename.c_str());
+
+	
+	// read a specific frame
+    XDRFILE* p_xdrfile =  xdrfile_open(full_filename.c_str(),"r");	
+	FILE* fp = get_filepointer(p_xdrfile);
+	int step =0; float t =0;
+	float lambda = 0;
+	rvec* coords = (rvec*) malloc(sizeof(rvec)*number_of_atoms);
+	matrix box; 	
+	
+	fseek( fp, frame_byte_offsets[internalframenumber] , SEEK_SET );
+
+	int retval = read_trr(p_xdrfile,number_of_atoms,&step,&t,&lambda,box,coords,NULL,NULL);
+		
+	vector<CartesianCoor3D> uc(3); 
+
+	uc[0] = 10.0* CartesianCoor3D(box[0][0],box[0][1],box[0][2]);
+	uc[1] = 10.0* CartesianCoor3D(box[1][0],box[1][1],box[1][2]);
+	uc[2] = 10.0* CartesianCoor3D(box[2][0],box[2][1],box[2][2]);
+
+	for(size_t i = 0; i < number_of_atoms; ++i)
+	{
+		cf.x.push_back(10.0* coords[i][0]);
+		cf.y.push_back(10.0* coords[i][1]);
+		cf.z.push_back(10.0* coords[i][2]);				
+	}
+	
+
+	cf.unitcell = uc;
+	cf.number_of_atoms = number_of_atoms;
+	
+	free(coords);
+	free(full_filename_c);
+	
+	xdrfile_close(p_xdrfile);
+	return;
+
 }
 
 

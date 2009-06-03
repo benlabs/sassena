@@ -59,15 +59,8 @@ public:
 	Sample(std::string filename) : atoms(filename)  { }
 	Sample(std::string filename,std::string fileformat) : atoms(filename,fileformat)  { }
 
-	void add_selection(std::string name, std::string filename, std::string format,std::string select,double select_value) {
-		atomselections[name] = Atomselection(atoms,filename,format,select,select_value,name);
-	}
-	void add_selection(std::string name, std::string filename, std::string format) {
-		atomselections[name] = Atomselection(atoms,filename,format,name);
-	}
-	void add_selection(std::string name,bool select) {
-		atomselections[name] = Atomselection(atoms,select,name);	
-	}
+	void add_selection(std::string name, std::string filename, std::string format,std::string select,double select_value);
+	void add_selection(std::string name,bool select);
 	
 	// default routine for reading structure information from file.
 	void add_atoms(std::string filename,std::string fileformat) { return atoms.add(filename,fileformat); }

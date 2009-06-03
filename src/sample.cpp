@@ -13,6 +13,8 @@
 #include "sample.hpp"
 
 // standard header
+#include <fstream>
+#include <sstream>
 
 // special library headers
 
@@ -66,6 +68,63 @@ void Sample::deuter(std::string group,double coverage,int seed = -1) {
 	{
 		if (deuterarray[i]) atoms[as[i]].name = "deuterium";
 	}
+}
+
+void Sample::add_selection(std::string name, std::string filename, std::string format,std::string select,double select_value) {
+	if (format=="ndx") {
+			ifstream ndxfile(Settings::get_filepath(filename).c_str());
+			int linecounter = 0;
+			string line; 
+			map<string,vector<size_t> > indexes;
+			int bracketcounter =0;
+			string name = "";
+			while (getline(ndxfile,line)) {
+				size_t pos = line.find("[");
+				if ( pos !=string::npos )  {
+					size_t pos2 = line.find("]");
+					if (pos2==string::npos) {
+						cerr << "ERROR>> " << "ndx file is missing closing bracket" << endl;
+						throw;
+					}
+					stringstream cleannamestream(line.substr(pos+1,pos2-pos));
+					string cleanname; cleannamestream >> cleanname;
+					name = cleanname;
+				}
+				else if (name!="") {
+					stringstream thisline(line);
+					size_t index=0;
+					while (thisline>>index) {
+						indexes[name].push_back(index);
+					}
+				}					
+			}
+			if (select!="") {
+				if (indexes.find(select)!=indexes.end()) {
+					atomselections[select] = Atomselection(atoms,indexes[select],select);									
+					clog << "INFO>> " << "Adding selection: " << select << endl;						
+				}
+			}
+			else {
+				for (map<string,vector<size_t> >::iterator ii=indexes.begin();ii!=indexes.end();ii++) {
+					atomselections[ii->first] = Atomselection(atoms,ii->second,ii->first);									
+					clog << "INFO>> " << "Adding selection: " << ii->first << endl;
+				}					
+			}
+	}
+	else if (format=="pdb") {
+		if (name=="") {
+			cerr << "ERROR>> " << "pdb selection entries must specify a name for the selection" << endl;
+			throw;
+		}
+		atomselections[name] = Atomselection(atoms,filename,format,select,select_value,name);			
+		clog << "INFO>> " << "Adding selection: " << name << endl;	
+		
+	}
+
+}
+
+void Sample::add_selection(std::string name,bool select) {
+	atomselections[name] = Atomselection(atoms,select,name);	
 }
 
 // end of file
