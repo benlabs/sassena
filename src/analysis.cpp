@@ -66,7 +66,8 @@ void qvectors_unfold_sphere(std::string avvectors, CartesianCoor3D q, uint32_t q
 	if (avvectors=="rasterlinear") {
 		for (double t=0;t<M_PI;t+=radincr) {	
 			for (double p=0;p<M_2PI;p+=radincr) {
-				qvectors.push_back( SphericalCoor3D(qs.r,qs.phi+p,qs.theta+t) );
+				// take length from scattering vector and angles from unisphere												
+				qvectors.push_back( SphericalCoor3D(qs.r,p,t) );
 		    }
 		}		
 	}
@@ -78,7 +79,8 @@ void qvectors_unfold_sphere(std::string avvectors, CartesianCoor3D q, uint32_t q
 			if (phil>0) {
 				for (double p=0;p<phil;p+=arcincr) {
 					double dphi = (p/phil)*2*M_PI;
-					qvectors.push_back( SphericalCoor3D(qs.r,qs.phi+dphi,qs.theta+dtheta) );
+					// take length from scattering vector and angles from unisphere								
+					qvectors.push_back( SphericalCoor3D(qs.r,dphi,dtheta) );
 			    }
 			}
 			else {
@@ -92,7 +94,8 @@ void qvectors_unfold_sphere(std::string avvectors, CartesianCoor3D q, uint32_t q
 		d.draw();
 
 		for(vector<CartesianCoor3D>::iterator vi=d.vectors.begin();vi!=d.vectors.end();vi++) {
-			qvectors.push_back( SphericalCoor3D(qs.r,qs.phi+SphericalCoor3D(*vi).phi,qs.theta+SphericalCoor3D(*vi).theta) );
+			// take length from scattering vector and angles from unisphere						
+			qvectors.push_back( SphericalCoor3D(qs.r,SphericalCoor3D(*vi).phi,SphericalCoor3D(*vi).theta) );
 		}
 	}
 	else if (avvectors=="mcphiacos") {
@@ -100,7 +103,10 @@ void qvectors_unfold_sphere(std::string avvectors, CartesianCoor3D q, uint32_t q
 		while (num<resolution) {
 			double p = 2*M_PI*(rand()*1.0/RAND_MAX);
 			double t = acos(2*(rand()*1.0/RAND_MAX)-1);		
-			qvectors.push_back( SphericalCoor3D(qs.r,qs.phi+p,qs.theta+t) );
+			
+			// take length from scattering vector and angles from unisphere			
+			qvectors.push_back( SphericalCoor3D(qs.r,p,t) );
+
 			num++;
 		}
 	}
@@ -117,7 +123,9 @@ void qvectors_unfold_sphere(std::string avvectors, CartesianCoor3D q, uint32_t q
 			double z = 1-2*xl;
 
 			SphericalCoor3D s = CartesianCoor3D(x,y,z);
-			qvectors.push_back( SphericalCoor3D(qs.r,qs.phi+s.phi,qs.theta+s.theta) );
+			// take length from scattering vector and angles from unisphere			
+			qvectors.push_back( SphericalCoor3D(qs.r,s.phi,s.theta) );
+
 			num++;
 		}
 	}
@@ -137,14 +145,15 @@ void qvectors_unfold_sphere(std::string avvectors, CartesianCoor3D q, uint32_t q
 			double z = 2* (powf(x0,2)+powf(x3,2)-powf(x1,2)+powf(x2,2)) / xl;
 
 			SphericalCoor3D s = CartesianCoor3D(x,y,z);
-			qvectors.push_back( SphericalCoor3D(qs.r,qs.phi+s.phi,qs.theta+s.theta) );
+			// take length from scattering vector and angles from unisphere			
+			qvectors.push_back( SphericalCoor3D(qs.r,s.phi,s.theta) );
 			num++;
 		}
 	}
 	else if (avvectors=="mcboostunisphere") {
 		
 		boost::mt19937 rng; // that's my random number generator
-		rng.seed(qseed);
+		rng.seed(qseed);		
 		boost::uniform_on_sphere<double> s(3); // that's my distribution
 		boost::variate_generator<boost::mt19937&, boost::uniform_on_sphere<double> > mysphere(rng,s);
 
@@ -155,9 +164,11 @@ void qvectors_unfold_sphere(std::string avvectors, CartesianCoor3D q, uint32_t q
 			double x = r[0];
 			double y = r[1];
 			double z = r[2];
-
+			
 			SphericalCoor3D s = CartesianCoor3D(x,y,z);
-			qvectors.push_back( SphericalCoor3D(qs.r,qs.phi+s.phi,qs.theta+s.theta) );
+			// take length from scattering vector and angles from unisphere			
+			qvectors.push_back( SphericalCoor3D(qs.r,s.phi,s.theta) ); 
+			
 			num++;
 		}
 	}
@@ -181,7 +192,8 @@ void qvectors_unfold_cylinder(std::string avvectors, CartesianCoor3D q, uint32_t
 	// resolution is in degree, coordinates are in rad
 	
 	for (double phi=0;phi<M_2PI;phi+=radincr) {
-		qvectors.push_back( CylinderCoor3D(qs.r,qs.phi+phi,qs.z) );	
+		// take length from scattering vector and angles from unisphere										
+		qvectors.push_back( CylinderCoor3D(qs.r,phi,qs.z) );	
 	}
 }
 

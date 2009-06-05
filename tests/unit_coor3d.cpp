@@ -12,6 +12,16 @@ using namespace boost;
 		
 int main(int argc, char** argv) {
 
+	for(size_t i = 0; i < 100; ++i)
+	{
+		SphericalCoor3D o(1,1.0/100*(2.0*M_PI*i)+0.1*M_PI,0.3*M_PI);			
+//		cout << o.r << "\t" << o.phi << "\t" << o.theta << endl;
+		cout << CartesianCoor3D(o).y << endl;		
+	}
+
+	
+
+	return 0;
 
 	ofstream ofile3(argv[1]);
 
