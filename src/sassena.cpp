@@ -517,7 +517,7 @@ int main(int argc,char** argv) {
 							}
 							if (avmethod=="multipole") {
 //								if (resolution==-1.0) resolution=17.0;
-								cerr << "ERROR>> " << " Multipole averaging w/ interference: self not (yet) implemented."
+								cerr << "ERROR>> " << " Multipole averaging w/ interference: self not (yet) implemented." << endl;
 								throw;
 //					   			Analysis::scatter_sphere_multipole(sample,as,ti->q,resolution,scattering_amplitudes);			
 							}		
@@ -529,7 +529,7 @@ int main(int argc,char** argv) {
 							}
 							if (avmethod=="multipole") {
 //								if (resolution==-1.0) resolution=10.0;
-								cerr << "ERROR>> " << " Multipole averaging w/ interference: self not (yet) implemented."								
+								cerr << "ERROR>> " << " Multipole averaging w/ interference: self not (yet) implemented." << endl;							
 								throw;
 //					   			Analysis::scatter_cylinder_multipole(sample,as,ti->q,resolution,scattering_amplitudes);			
 							}
