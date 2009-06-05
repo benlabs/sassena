@@ -234,12 +234,13 @@ class XTCFrameset : public Frameset {
 		ar & boost::serialization::base_object<Frameset>(*this);
 		ar & filename;
 		ar & number_of_atoms;
+		ar & frame_byte_offsets;		
     }
 
 	std::string filename;
 	long number_of_atoms;
 	
-	std::vector<std::ios::pos_type> frame_byte_offsets;	
+	std::vector<std::ios::streamoff> frame_byte_offsets;	
 	
 	bool detect(const std::string filename);	
 public:
@@ -266,12 +267,13 @@ class TRRFrameset : public Frameset {
 		ar & boost::serialization::base_object<Frameset>(*this);
 		ar & filename;
 		ar & number_of_atoms;
+		ar & frame_byte_offsets;
     }
 
 	std::string filename;
 	long number_of_atoms;
 	
-	std::vector<std::ios::pos_type> frame_byte_offsets;		
+	std::vector<std::streamoff> frame_byte_offsets;		
 	
 	bool detect(const std::string filename);	
 public:
