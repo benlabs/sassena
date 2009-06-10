@@ -38,7 +38,6 @@ namespace Analysis {
 	// use atomselection as argument to allow for selection flexibility 
 	void set_scatteramp(Sample& sample,Atomselection as,CartesianCoor3D q,bool background);	
 
-
 	std::complex<double> scatter_none(Sample& sample,Atomselection as,CartesianCoor3D& q);		
 	void scatter_none(Sample& sample,Atomselection as,CartesianCoor3D& q,std::vector<std::complex<double> >& aqs);
 	
@@ -50,6 +49,7 @@ namespace Analysis {
 
 	void scatter_sphere_multipole    (Sample& sample,Atomselection as,CartesianCoor3D q,double resolution,std::vector<std::complex<double> >& scattering_amplitudes);
 	void scatter_cylinder_multipole  (Sample& sample,Atomselection as,CartesianCoor3D q,double resolution,std::vector<std::complex<double> >& scattering_amplitudes);
+	void scatter_cylinder_multipole_old  (Sample& sample,Atomselection as,CartesianCoor3D q,double resolution,std::vector<std::complex<double> >& scattering_amplitudes);	
 
 };
 

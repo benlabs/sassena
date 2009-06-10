@@ -142,6 +142,7 @@ CylinderCoor3D::CylinderCoor3D(CartesianCoor3D cc) {
 	z = cc.z;
 }
 
+
 //conversion constructor spherical -> cylinder
 CylinderCoor3D::CylinderCoor3D(SphericalCoor3D cc) {
 	//fixme: costly

@@ -172,6 +172,11 @@ void qvectors_unfold_sphere(std::string avvectors, CartesianCoor3D q, uint32_t q
 			num++;
 		}
 	}
+	else {
+		cerr << "ERROR>> " << "didn't recognize vectors-keyword: '" << avvectors << "' for qvector unfolding" << endl;
+		throw;
+	}
+
 
 
 	
@@ -184,17 +189,58 @@ void qvectors_unfold_cylinder(std::string avvectors, CartesianCoor3D q, uint32_t
 	const double M_2PI = 2*M_PI;
 	const double radincr = (M_2PI*resolution)/360;			
 	
-	CylinderCoor3D qs(q);
+	double ox = Settings::get("main")["scattering"]["average"]["axis"][0];
+	double oy = Settings::get("main")["scattering"]["average"]["axis"][1];
+	double oz = Settings::get("main")["scattering"]["average"]["axis"][2];		
 	
-	// we can't unfold a line:
-	if (qs.r==0.0) return;
+	CartesianCoor3D o(ox,oy,oz); 
+	// make sure o is normalized;
+	o = o / o.length();
 	
+	// get the part of the scattering vector perpenticular to the o- orientation
+	CartesianCoor3D qparallel = (o*q)*o; 
+	CartesianCoor3D qperpenticular = q - qparallel; 
+
 	// resolution is in degree, coordinates are in rad
 	
-	for (double phi=0;phi<M_2PI;phi+=radincr) {
-		// take length from scattering vector and angles from unisphere										
-		qvectors.push_back( CylinderCoor3D(qs.r,phi,qs.z) );	
+	double qperpenticular_l = qperpenticular.length();
+	double qparallel_l = qparallel.length();
+	
+	// we can't unfold a line:
+	if (qperpenticular_l==0.0)  { 
+		qvectors.push_back( qparallel );		
+		return;
 	}
+	else {
+		
+		// rotation about an arbitrary axis u
+		// R = P + (I-P)*cos(phi)+Q*sin(phi)
+		// w/ P= [[ ux*ux, ux*uy , ux*uz ], [ ux*uy, uy*uy, uy*uz], [ux*uz, uy*uz, uz*uz] ]
+		// w/ Q = [ [0, -uz, uy], [uz, 0, -ux], [-uy, ux, 0] ]
+		// Rx = ux*ux + (1-ux*ux)*cos(phi) , ux*uy* (1- cos(phi)) -uz*sin(phi), ux*uz - ux*uz*cos(phi) +uy*sin(phi)
+
+		// here: u = o
+		// q' = R * q
+		
+		if (avvectors=="rasterlinear") {
+			for (double phi=0;phi<M_2PI;phi+=radincr) {
+				CartesianCoor3D qv = q;
+				CartesianCoor3D qv2;	
+				qv2.x = (o.x*o.x+(1-o.x*o.x)*cos(phi))*qv.x      + (o.x*o.y*(1-cos(phi))-o.z*sin(phi))*qv.y + (o.x*o.z*(1-cos(phi))+o.y*sin(phi))*qv.z;
+				qv2.y = (o.x*o.y*(1-cos(phi))+o.z*sin(phi))*qv.x + (o.y*o.y+(1-o.y*o.y)*cos(phi))*qv.y      + (o.y*o.z*(1-cos(phi))-o.x*sin(phi))*qv.z;
+				qv2.z = (o.x*o.z*(1-cos(phi))-o.y*sin(phi))*qv.x + (o.y*o.z*(1-cos(phi))+o.x*sin(phi))*qv.y + (o.z*o.z+(1-o.z*o.z)*cos(phi))*qv.z;
+
+				// take length from scattering vector and angles from unisphere										
+				qvectors.push_back( qv2 );	
+			}	
+		}
+		else {
+			cerr << "ERROR>> " << "didn't recognize vectors-keyword: '" << avvectors << "' for qvector unfolding" << endl;
+			throw;
+		}
+
+	}
+
 }
 
 void set_scatteramp(Sample& sample,Atomselection as,CartesianCoor3D q,bool background) {
@@ -482,8 +528,22 @@ void scatter_cylinder_multipole(Sample& sample,Atomselection as,CartesianCoor3D 
 
 	Atoms& atoms = sample.atoms;
 	
-	CylinderCoor3D qs(q);
+	double ox = Settings::get("main")["scattering"]["average"]["axis"][0];
+	double oy = Settings::get("main")["scattering"]["average"]["axis"][1];
+	double oz = Settings::get("main")["scattering"]["average"]["axis"][2];		
+	
+	CartesianCoor3D o(ox,oy,oz);
+	o = o / o.length();
+	
+	// get the part of the scattering vector perpenticular to the o- orientation
+	CartesianCoor3D qparallel = (o*q)*o; 
+	CartesianCoor3D qperpenticular = q - qparallel; // define this as phi=0 
+	double qperpenticular_l = qperpenticular.length();
+	double qparallel_l = qparallel.length();
+	
+//	CylinderCoor3D qs(qptl,0.0,qprl);
 
+	// resolution is in degree, coordinates are in rad
 	const int lmax=resolution;
 	
 	vector<complex<double> > A,B,C,D;
@@ -493,26 +553,47 @@ void scatter_cylinder_multipole(Sample& sample,Atomselection as,CartesianCoor3D 
 	D.resize(lmax+1,complex<double>(0,0));
 
 	for (Atomselection::iterator asi=as.begin();asi!=as.end();asi++) {
-		CylinderCoor3D c = sample.frames.current().coord3D(*asi);
+		CartesianCoor3D ct = sample.frames.current().coord3D(*asi);
+		
+		CartesianCoor3D ctparallel = (o*ct)*o; 
+		CartesianCoor3D ctperpenticular = ct - ctparallel; // this contains psi-phi
+		double ctperpenticular_l = ctperpenticular.length();
+		double ctparallel_l = ctparallel.length();
+
+		double psiphi = 0;
+
+		// if either qper_l or ctper_l is zero , then the bessel_terms vanish and delta_phipsi is irrelevant
+		if ((qperpenticular_l!=0) && (ctperpenticular_l!=0)) {
+			psiphi = acos( (ctperpenticular * qperpenticular) / (ctperpenticular_l*qperpenticular_l));
+			CartesianCoor3D ctq = (ctperpenticular.cross_product(qperpenticular));
+			ctq = ctq / ctq.length();				
+			if ((ctq + o).length()>1.0) psiphi = 2*M_PI-psiphi; // if o || ctq -> 2; 0 otherwise			
+		}
 
 		double esf = atoms[*asi].scatteramp;
-		
-		complex<double> expi = exp(complex<double>(0,c.z*qs.z));
+
+		double parallel_sign = 1.0;
+		if ((ctparallel_l!=0) && (qparallel_l!=0)) {
+			parallel_sign = (ctparallel*qparallel) / (ctparallel_l*qparallel_l);			
+		}
+
+//		complex<double> expi = exp(complex<double>(0,c.z*qs.z));		
+		complex<double> expi = exp(complex<double>(0,parallel_sign*ctparallel_l*qparallel_l));
 
 //		A[0] += expi * (double)bessj(0,c.r*qs.r) *esf ;
-		A[0] += expi * (double)cyl_bessel_j(0,c.r*qs.r) *esf ;
+		A[0] += expi * (double)cyl_bessel_j(0,ctperpenticular_l*qperpenticular_l) *esf ;
 
 		for (int l=1;l<=lmax;l++) {
 //			complex<double> fac1 = 2.0*powf(-1.0,l)*bessj(2*l,c.r*qs.r);
 //			complex<double> fac2 = complex<double>(0,1.0)*double(2.0*powf(-1.0,l-1)*bessj(2*l-1,c.r*qs.r));
 
-			complex<double> fac1 = 2.0*powf(-1.0,l)*cyl_bessel_j(2*l,c.r*qs.r);
-			complex<double> fac2 = complex<double>(0,1.0)*double(2.0*powf(-1.0,l-1)*cyl_bessel_j(2*l-1,c.r*qs.r));
+			complex<double> fac1 = 2.0*powf(-1.0,l)*cyl_bessel_j(2*l,ctperpenticular_l*qperpenticular_l);
+			complex<double> fac2 = complex<double>(0,1.0)*double(2.0*powf(-1.0,l-1)*cyl_bessel_j(2*l-1,ctperpenticular_l*qperpenticular_l));
 
-			A[l] += fac1*expi*cos(2*l*c.phi) *esf;
-			B[l] += fac1*expi*sin(2*l*c.phi) *esf;
-			C[l] += fac2*expi*cos((2*l-1)*c.phi) *esf;
-			D[l] += fac2*expi*sin((2*l-1)*c.phi) *esf;
+			A[l] += fac1*expi*cos(2*l*psiphi) *esf;
+			B[l] += fac1*expi*sin(2*l*psiphi) *esf;
+			C[l] += fac2*expi*cos((2*l-1)*psiphi) *esf;
+			D[l] += fac2*expi*sin((2*l-1)*psiphi) *esf;
 		}
 	}
 
@@ -527,6 +608,7 @@ void scatter_cylinder_multipole(Sample& sample,Atomselection as,CartesianCoor3D 
 	}
 
 }
+
 
 complex<double> background(Sample& sample,int resolution, double hlayer, CartesianCoor3D q,map<string,vector<double> >& kappas) {
 	
