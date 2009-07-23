@@ -1,0 +1,72 @@
+/*
+ *  log.hpp
+ *
+ *  Created on: July 13, 2009
+ *  Authors:
+ *  Benjamin Lindner, ben@benlabs.net
+ *
+ *  Copyright 2008,2009 Benjamin Lindner
+ *
+ */
+
+#ifndef LOG_HPP_
+#define LOG_HPP_
+
+// common header
+#include "common.hpp"
+
+// standard header
+#include <iostream>
+#include <map>
+#include <string>
+
+// info, warn and err classes wrap the stdio capabilities. they are singleton
+class Info {
+private:
+	Info() {}
+	Info(const Info&) {}
+	Info& operator=(const Info&) {}
+	
+	static size_t counter;	
+public:
+
+	static Info* Inst() { static Info instance; counter++; return &instance; }
+
+	void write(std::string);
+	size_t calls() { return counter; }
+	~Info() {}
+};
+
+class Warn {
+private:
+	Warn() {}
+	Warn(const Warn&) {}
+	Warn& operator=(const Warn&) {}
+	
+	static size_t counter;
+public:
+
+	static Warn* Inst() { static Warn instance; counter++; return &instance; }
+
+	void write(std::string);
+	size_t calls() { return counter; }
+	~Warn() {}
+};
+
+class Err {
+private:
+	Err() {}
+	Err(const Err&) {}
+	Err& operator=(const Err&) {}
+		
+	static size_t counter;		
+public:
+
+	static Err* Inst() { static Err instance; counter++; return &instance; }
+
+	void write(std::string);
+	size_t calls() { return counter; }
+	~Err() {}	
+};
+
+#endif 
