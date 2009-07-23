@@ -35,6 +35,8 @@
 // other headers
 #include "analysis.hpp"
 #include "coor3d.hpp"
+#include "log.hpp"
+#include "parameters.hpp"
 #include "sample.hpp"
 #include "scatterdata.hpp"
 #include "settings.hpp"

@@ -27,6 +27,7 @@
 
 // other headers
 #include "atom.hpp"
+#include "atomselection.hpp"
 #include "frame.hpp"
 
 class Atom;
@@ -39,10 +40,12 @@ class Atoms : public std::vector<Atom> {
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
     {
 		ar & boost::serialization::base_object<std::vector<Atom> >(*this);
+		ar & selections;
     }
 	///////////////////
 public:	
-	enum ATOMSFORMAT { PDBFORMAT };
+	
+	std::map<std::string,Atomselection> selections;	
 
 	Atoms() {}
 	Atoms(std::string filename, std::string fileformat = "pdb");
@@ -56,11 +59,11 @@ public:
 
 	void add(std::string filename, std::string fileformat = "pdb");
 
-	~Atoms() {}
+	void add_selection(std::string name, std::string filename, std::string format,std::string select,double select_value);
+	void add_selection(std::string name,bool select);
 	
-private:
-	std::string guess_atomname(const std::string pdbatomname,std::string fileformat,std::map<std::string,std::string>& quicklookup);
-
+	void assert_selection(std::string groupname); // throws an exception when groupname isn't found.
+	~Atoms() {}
 };
 
 #endif

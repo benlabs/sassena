@@ -16,16 +16,36 @@
 // needed for xdrfile module
 #define C_PLUSPLUS
 #endif
+
 // standard header
-#include <map>
+#include <sstream>
 
 // special library headers
-#include <libconfig.h++>
 
 // other headers
 
+inline std::string to_s(double value) {
+	std::stringstream ss;
+	ss << value;
+	return ss.str();
+}
 
-// this is a declaration
-extern std::map<std::string,libconfig::Setting*> settings;
+inline std::string to_s(long value) {
+	std::stringstream ss;
+	ss << value;
+	return ss.str();	
+}
+
+inline std::string to_s(size_t value) {
+	std::stringstream ss;
+	ss << value;
+	return ss.str();	
+}
+inline std::string to_s(int value) {
+	std::stringstream ss;
+	ss << value;
+	return ss.str();	
+}
+
 
 #endif

@@ -22,7 +22,9 @@
 
 // other headers
 #include "atomselection.hpp"
+#include "parameters.hpp"
 #include "settings.hpp"
+
 
 using namespace std;
 
@@ -134,7 +136,7 @@ void Frames::load(size_t framenumber,Atoms& atoms,std::map<std::string,Atomselec
 		currentframe_i = framenumber;
 	}
 	else {
-		if (framecache.size()>framecache_max) {
+		if ((Params::Inst()->limits.framecache_max>=0) && framecache.size()>Params::Inst()->limits.framecache_max) {
 			framecache.clear();
 		}
 		// locate frameset 
@@ -169,7 +171,7 @@ void Frames::load(size_t framenumber,Atoms& atoms,Atomselection& atomselection) 
 		currentframe_i = framenumber;
 	}
 	else {
-		if (framecache.size()>framecache_max) {
+		if ((Params::Inst()->limits.framecache_max>=0) && framecache.size()>Params::Inst()->limits.framecache_max) {
 			framecache.clear();
 		}
 		// locate frameset 
@@ -229,7 +231,7 @@ void DCDFrameset::init(std::string fn,size_t fno) {
 	// where each line represents the path of a dcdfile.
 	// this concept can be nested...
 
-	ifstream dcdfile(Settings::get_filepath(fn).c_str());
+	ifstream dcdfile(fn.c_str());
 	DCDHeader dcdheader;
 	dcdfile.read((char*) &dcdheader,sizeof(dcdheader));
 	dcdfile.seekg(23*sizeof(int32_t),ios_base::beg);
@@ -291,7 +293,7 @@ void DCDFrameset::init(std::string fn,size_t fno) {
 }
 
 bool DCDFrameset::detect(const string filename) {
-	ifstream dcdfile(Settings::get_filepath(filename).c_str(),ios::binary);
+	ifstream dcdfile(filename.c_str(),ios::binary);
 	char fp1[4];fp1[0]=0x54;fp1[1]=0x00;fp1[2]=0x00;fp1[3]=0x00;
 	char fp2[4];fp2[0]=0x43;fp2[1]=0x4f;fp2[2]=0x52;fp2[3]=0x44;
 	char buf[92]; dcdfile.read(buf,92);
@@ -300,7 +302,7 @@ bool DCDFrameset::detect(const string filename) {
 
 void DCDFrameset::read_frame(size_t internalframenumber,Frame& cf) {
 
-	ifstream dcdfile(Settings::get_filepath(filename).c_str());
+	ifstream dcdfile(filename.c_str());
 	
 	double unit_cell_block[6];
 	
@@ -367,7 +369,7 @@ void PDBFrameset::init(std::string fn,size_t fno) {
 	
 	// locator specific information
 	
-	ifstream pdbfile(Settings::get_filepath(filename).c_str());
+	ifstream pdbfile(filename.c_str());
 
 	string line; 
 	bool lastentryisater = true;
@@ -387,7 +389,7 @@ void PDBFrameset::init(std::string fn,size_t fno) {
 }
 
 bool PDBFrameset::detect(const string filename) {
-	ifstream pdbfile(Settings::get_filepath(filename).c_str());
+	ifstream pdbfile(filename.c_str());
 	string line; 
 	bool atomentry=false;
 	while (getline(pdbfile,line)) {
@@ -401,7 +403,7 @@ bool PDBFrameset::detect(const string filename) {
 
 void PDBFrameset::read_frame(size_t internalframenumber,Frame& cf) {
 
-	ifstream pdbfile(Settings::get_filepath(filename).c_str());
+	ifstream pdbfile(filename.c_str());
 	
 	vector<CartesianCoor3D> uc(3); 
 	
@@ -483,7 +485,7 @@ void XTCFrameset::init(std::string fn,size_t fno) {
 	
 	// locator specific information
 		
-	string full_filename = Settings::get_filepath(filename);
+	string full_filename = filename;
 	char* full_filename_c = (char*) malloc(sizeof(char)*(full_filename.size()+1));
 	strcpy(full_filename_c,full_filename.c_str());
 //    XDRFILE* xdrfile =  xdrfile_open(fn.c_str(),'r');	
@@ -528,7 +530,7 @@ void XTCFrameset::init(std::string fn,size_t fno) {
 bool XTCFrameset::detect(const string filename) {
 
 	// try to open w/ xdr_open 
-	string full_filename = Settings::get_filepath(filename);
+	string full_filename = filename;
 	char* full_filename_c = (char*) malloc(sizeof(char)*(full_filename.size()+1));
 	strcpy(full_filename_c,full_filename.c_str());
 	//    XDRFILE* xdrfile =  xdrfile_open(fn.c_str(),'r');	
@@ -546,7 +548,7 @@ void XTCFrameset::read_frame(size_t internalframenumber,Frame& cf) {
 
 	// open xdr file
 
-	string full_filename = Settings::get_filepath(filename);
+	string full_filename = filename;
 	char* full_filename_c = (char*) malloc(sizeof(char)*(full_filename.size()+1));
 	strcpy(full_filename_c,full_filename.c_str());
 
@@ -607,7 +609,7 @@ void TRRFrameset::init(std::string fn,size_t fno) {
 	
 	// locator specific information
 		
-	string full_filename = Settings::get_filepath(filename);
+	string full_filename = filename;
 	char* full_filename_c = (char*) malloc(sizeof(char)*(full_filename.size()+1));
 	strcpy(full_filename_c,full_filename.c_str());
 //    XDRFILE* xdrfile =  xdrfile_open(fn.c_str(),'r');	
@@ -652,7 +654,7 @@ void TRRFrameset::init(std::string fn,size_t fno) {
 bool TRRFrameset::detect(const string filename) {
 
 	// try to open w/ xdr_open 
-	string full_filename = Settings::get_filepath(filename);
+	string full_filename = filename;
 	char* full_filename_c = (char*) malloc(sizeof(char)*(full_filename.size()+1));
 	strcpy(full_filename_c,full_filename.c_str());
 	//    XDRFILE* xdrfile =  xdrfile_open(fn.c_str(),'r');	
@@ -671,7 +673,7 @@ void TRRFrameset::read_frame(size_t internalframenumber,Frame& cf) {
 
 	// open xdr file
 
-	string full_filename = Settings::get_filepath(filename);
+	string full_filename = filename;
 	char* full_filename_c = (char*) malloc(sizeof(char)*(full_filename.size()+1));
 	strcpy(full_filename_c,full_filename.c_str());
 

@@ -7,6 +7,8 @@
 #include <iostream>
 #include <iomanip>
 #include <list>
+#include <sstream>
+#include <string>
 #include <vector>
 
 #include <coor3d.hpp>
@@ -65,10 +67,14 @@ int main(int argc,char** argv) {
 
 	clog << "INFO>> " << "Reading values from file " << argv[2] << endl;
 	string line;
-	while (true) {
+	while (getline(ifile,line)) {
+
+		if (line[0]=='#') continue;
+		
+		stringstream linestream; linestream << line;
 		keyval_t keyval;
         float qx,qy,qz,norm,fsquared,fsquared_dev;
-		ifile >> qx >> qy >> qz >> norm >> fsquared >> fsquared_dev;
+		linestream >> qx >> qy >> qz >> norm >> fsquared >> fsquared_dev;
 		if ( ifile.eof() ) break;			
 					
 		keyval.first = CartesianCoor3D(qx,qy,qz);

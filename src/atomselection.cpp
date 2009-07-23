@@ -25,6 +25,8 @@
 // other headers
 #include "atom.hpp"
 #include "atoms.hpp"
+#include "log.hpp"
+#include "parameters.hpp"
 #include "settings.hpp"
 
 using namespace std;
@@ -42,13 +44,17 @@ Atomselection::Atomselection(Atoms& atoms,bool select,std::string aname) {
 	name = aname;
 }
 
-
 Atomselection::Atomselection(Atoms& atoms,std::vector<size_t> indexes,std::string aname) {
 	booleanarray.resize(atoms.size(),false);					
 			
 	for(std::vector<size_t>::iterator ii=indexes.begin();ii!=indexes.end();ii++) {
+		if ((*ii<0) || (*ii>=booleanarray.size())) {
+			Err::Inst()->write(string("Index out of bound for Atomselection ")+aname);
+			Err::Inst()->write(string("Index was ")+to_s(*ii)+string(", size of atom table: ")+to_s(atoms.size()));			
+			throw;
+		}
 			push_back(*ii);		
-			booleanarray[*ii] = true;
+			booleanarray.at(*ii) = true;
 	}
 	name = aname;
 }
@@ -56,7 +62,7 @@ Atomselection::Atomselection(Atoms& atoms,std::vector<size_t> indexes,std::strin
 
 Atomselection::Atomselection(Atoms& atoms,std::string filename,std::string format,std::string select,double select_value,std::string aname) {
 	if (format=="pdb") {
-		ifstream pdbfile(Settings::get_filepath(filename).c_str());
+		ifstream pdbfile(filename.c_str());
 		int linecounter = 0;
 		if (select=="beta") {
 			string line; double beta;
@@ -88,7 +94,7 @@ Atomselection::Atomselection(Atoms& atoms,std::string filename,std::string forma
 
 Atomselection::Atomselection(Atoms& atoms,std::string filename,std::string format,std::string aname) {
 	if (format=="pdb") {
-		ifstream pdbfile(Settings::get_filepath(filename).c_str());
+		ifstream pdbfile(filename.c_str());
 		int linecounter = 0;
 		string line; 
 		while (getline(pdbfile,line)) {
@@ -107,6 +113,23 @@ Atomselection::Atomselection(Atoms& atoms,std::string filename,std::string forma
 	}
 	name = aname;
 }
+
+
+Atomselection& Atomselection::operator+=(const Atomselection& that) {
+	if (that.size()==0) return *this;
+	// append all elements from 2nd selection
+	insert(this->end(),that.begin(),that.end());
+	// enforce a sort...
+	sort(this->begin(),this->end());
+	// to allow removal of duplicates
+	erase(unique(this->begin(),this->end()),this->end());
+	// finally set missing boolean values
+	for(size_t i = 0; i < that.size(); ++i)
+	{
+		booleanarray[that[i]]=true;
+	}
+}
+
 
 void Atomselection::add(const Atom& atom) {
 	push_back(atom.index);

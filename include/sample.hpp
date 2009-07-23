@@ -37,7 +37,6 @@ class Sample {
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
     {
 		ar & atoms;
-		ar & atomselections;
 		ar & frames;
 		ar & background;
 		
@@ -47,7 +46,6 @@ class Sample {
 public:	
 
 	Atoms atoms;
-	std::map<std::string,Atomselection> atomselections;
 	Frames frames;
 	
 	// cache values:
@@ -59,14 +57,12 @@ public:
 	Sample(std::string filename) : atoms(filename)  { }
 	Sample(std::string filename,std::string fileformat) : atoms(filename,fileformat)  { }
 
-	void add_selection(std::string name, std::string filename, std::string format,std::string select,double select_value);
-	void add_selection(std::string name,bool select);
-	
 	// default routine for reading structure information from file.
 	void add_atoms(std::string filename,std::string fileformat) { return atoms.add(filename,fileformat); }
 	
 	void deuter(std::string group);
 	void deuter(std::string group,double coverage,int seed);
+	
 };
 
 #endif

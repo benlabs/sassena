@@ -78,7 +78,8 @@ template <class V> void Scatterdata<V>::write_plain(string fname,string format) 
 	
 	
 	if (format == "txt") {
-		ofile << "#" << "qx" << "\t" << "qy" << "\t" << "qz" << "\t" << "frame" << "\t" << "I_max_overall" << "\t" << "I_max_qvector" << "\t" << "I(frame)/I_max_overall/I_max_qvector" << endl;
+		// normalized value: I(frame)/I_max_overall/I_max_qvector
+		ofile << "#" << "qx" << "\t" << "qy" << "\t" << "qz" << "\t" << "frame" << "\t" << "I_max_overall" << "\t" << "I_max_qvector" << "\t" << "I(frame)" << endl;
 	}
 	else {
 		throw;
@@ -96,7 +97,7 @@ template <class V> void Scatterdata<V>::write_plain(string fname,string format) 
 			typename std::map<size_t,V>::iterator testiterator = si2;			
 			
 			if (format == "txt") {
-				ofile <<  qvector.x << "\t" <<  qvector.y << "\t" <<  qvector.z <<  "\t" << frame << "\t" << supermaxvalue << "\t" << maxvalues[qvector] << "\t"  << value/maxvalues[qvector]/supermaxvalue <<  endl;			
+				ofile <<  qvector.x << "\t" <<  qvector.y << "\t" <<  qvector.z <<  "\t" << frame << "\t" << supermaxvalue << "\t" << maxvalues[qvector] << "\t"  << value <<  endl;			
 				if ( testiterator++ == si->second.end()) { ofile << endl; } // if we hit the end of frames for current vector...
 			}
 		}
@@ -122,7 +123,8 @@ template <class V> void Scatterdata<V>::write_average(string fname,string format
 	}
 
 	if (format == "txt") {
-		ofile << "#" << "qx" << "\t" << "qy" << "\t" << "qz" << "\t" << "I_max" << "\t" << "I/I_max" << "\t" << "stddev(I)/I_max" << endl;
+		// normalized value: I(frame)/I_max_overall/I_max_qvector
+		ofile << "#" << "qx" << "\t" << "qy" << "\t" << "qz" << "\t" << "I_max" << "\t" << "I" << "\t" << "stddev(I)" << endl;
 	}
 	else {
 		throw;
@@ -135,7 +137,7 @@ template <class V> void Scatterdata<V>::write_average(string fname,string format
 		const pair<V,V>& value = si->second;
 		
 		if (format == "txt") {
-			ofile <<  qvector.x << "\t" <<  qvector.y << "\t" <<  qvector.z << "\t" << maxvalue <<  "\t" << value.first/maxvalue << "\t" << value.second/maxvalue <<  endl;			
+			ofile <<  qvector.x << "\t" <<  qvector.y << "\t" <<  qvector.z << "\t" << maxvalue <<  "\t" << value.first << "\t" << value.second <<  endl;			
 		}
 	}
 	

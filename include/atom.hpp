@@ -31,6 +31,7 @@ class Atom {
     friend class boost::serialization::access;	
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
     {
+		ar & ID;
 		ar & original_name;
 		ar & residue_name;
 		ar & chainid;
@@ -58,6 +59,7 @@ public:
 
 	Atom() : particle(false), solvent(false) {}
 
+	size_t ID;
 	// additional info needed for "rewriting":
 	std::string original_name;
 	std::string residue_name;

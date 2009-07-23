@@ -18,16 +18,15 @@
 #include <string>
 #include <vector>
 
-// special library headers
-#include <boost/regex.hpp>
-
 // other headers
 #include "atom.hpp"
+#include "atomselection.hpp"
 #include "coor3d.hpp"
+#include "log.hpp"
+#include "parameters.hpp"
 #include "settings.hpp"
 
 using namespace std;
-
 
 // for the pdb format (ATOM entry look below)
 Atoms::Atoms(string filename, string fileformat) {
@@ -37,8 +36,12 @@ Atoms::Atoms(string filename, string fileformat) {
 // for the pdb format (ATOM entry look below)
 void Atoms::add(string filename, string fileformat) {
 
-	ifstream input(Settings::get_filepath(filename).c_str());
-
+	ifstream input(filename.c_str());
+	if (input.fail()) {
+		Err::Inst()->write(string("Couldn't open structure file: ")+filename);
+		Err::Inst()->write("Typo in filename?");
+		throw;
+	}
 	int atom_index=this->size();
 
 	if (fileformat == "pdb") {
@@ -46,11 +49,11 @@ void Atoms::add(string filename, string fileformat) {
 		Atom temp_atom;
 		int line_counter=0; int atom_counter =0;
 		// lookup table for speedup:
-		map<string,string> quicklookup;
 		while (getline(input,line)) {
 			if (line.substr(0,6)=="ATOM  ") {
 				try {
-					temp_atom.name = guess_atomname(line.substr(12,4),fileformat,quicklookup);
+					temp_atom.name = Params::Inst()->database.names.pdb.get(line.substr(12,4));
+					temp_atom.ID = Params::Inst()->database.atomIDs.get(temp_atom.name); // get a unique ID for the name
 					temp_atom.original_name = line.substr(12,4);
 					temp_atom.residue_name = line.substr(17,4);
 					temp_atom.chainid = line.substr(21,1);
@@ -64,11 +67,15 @@ void Atoms::add(string filename, string fileformat) {
 					temp_atom.y = atof(line.substr(38,8).c_str());
 					temp_atom.z = atof(line.substr(46,8).c_str());
 					temp_atom.beta = atof(line.substr(60,65).c_str());
-					temp_atom.mass = Settings::get("atom_masses")[temp_atom.name];	
+					temp_atom.mass = Params::Inst()->database.masses.get(temp_atom.ID);	
 					// make sure kappa is initialized:
 					temp_atom.kappa = 1.0;	
-					temp_atom.volume = Settings::get_volume(temp_atom.name);
-				} catch (...) { cerr << "Error at reading pdb line:" << endl << line << endl; throw; }
+					temp_atom.volume = Params::Inst()->database.volumes.get(temp_atom.ID);
+				} catch (...) { 
+					Err::Inst()->write(string("Error at reading pdb line:"));
+					Err::Inst()->write(line);
+					throw; 
+				}
 				temp_atom.index = atom_index++; // assign and THEN increment...
 				push_back(temp_atom);
 				atom_counter++;
@@ -175,41 +182,6 @@ void Atoms::print_statistics() {
 	cout << "Solvent atoms: " << solvent<< endl;
 }
 
-
-/* private helper function: */
-string Atoms::guess_atomname(const string atomname,string fileformat,map<string,string>& quicklookup) {	
-	// if pdbatomname exactly matches an entry in quicklookup, take it
-	// otherwise do a regular expression analysis and add result to quicklookup
-	
-	libconfig::Setting& s = Settings::get("atom_names")[fileformat];
-	if (quicklookup.find(atomname)!=quicklookup.end()) {
-		return quicklookup[atomname];
-	}
-	else
-	{
-		int len = s.getLength();
-		int matches = 0;
-		string match = "<Unknown>";
-		for (int i=0;i<len;i++) {
-			boost::regex e(s[i]);
-			if (regex_match(atomname,e)) {
-				if (matches>0) {
-					cerr <<  "ERROR>> " <<"PDB atom name matches " << match << " and " << s[i].getName() << endl;
-					cerr <<  "ERROR>> " <<"expression to match: '" << atomname << "'" << endl;
-					throw;
-					} else { match = s[i].getName(); matches++; }
-			}
-		}
-		if (matches==0) {
-			cerr << "ERROR>> " << "PDB atom name not recognized: <" << atomname  << "> " << endl;
-			throw;
-		}
-		quicklookup[atomname]=match;
-
-		return match;
-	}
-}
-
 void Atoms::write(string filename,Frame& frame, string fileformat) {
 
 	ofstream ofile(filename.c_str());
@@ -253,6 +225,65 @@ void Atoms::write(string filename,Frame& frame, string fileformat) {
 		clog << "Lines written: " << line_counter << ", Atoms written: " << atom_counter << endl;
 	#endif
 	}	
+}
+
+
+void Atoms::add_selection(std::string name, std::string filename, std::string format,std::string select,double select_value) {
+	if (format=="ndx") {
+			ifstream ndxfile(filename.c_str());
+			int linecounter = 0;
+			string line; 
+			map<string,vector<size_t> > indexes;
+			int bracketcounter =0;
+			string name = "";
+			
+			while (getline(ndxfile,line)) {
+				size_t pos = line.find("[");
+				if ( pos !=string::npos )  {
+					size_t pos2 = line.find("]");
+					if (pos2==string::npos) {
+						cerr << "ERROR>> " << "ndx file is missing closing bracket" << endl;
+						throw;
+					}
+					stringstream cleannamestream(line.substr(pos+1,pos2-pos));
+					string cleanname; cleannamestream >> cleanname;
+					name = cleanname;
+				}
+				else if (name!="") {
+					stringstream thisline(line);
+					size_t index=0;
+					while (thisline>>index) {
+						indexes[name].push_back(index-1); // ndx files start with 1 as an index
+					}
+				}
+			}
+			for (map<string,vector<size_t> >::iterator ii=indexes.begin();ii!=indexes.end();ii++) {
+				selections[ii->first] = Atomselection(*this,ii->second,ii->first);									
+				clog << "INFO>> " << "Adding selection: " << ii->first << endl;
+			}
+	}
+	else if (format=="pdb") {
+		if (name=="") {
+			cerr << "ERROR>> " << "pdb selection entries must specify a name for the selection" << endl;
+			throw;
+		}
+		selections[name] = Atomselection(*this,filename,format,select,select_value,name);			
+		clog << "INFO>> " << "Adding selection: " << name << endl;	
+		
+	}
+
+}
+
+void Atoms::add_selection(std::string name,bool select) {
+	selections[name] = Atomselection(*this,select,name);	
+}
+
+
+void Atoms::assert_selection(std::string groupname) {
+	if (selections.find(groupname)==selections.end()) {
+		Err::Inst()->write(string("Assertion of selection: '")+groupname+string("' failed"));
+		throw;
+	}
 }
 
 // end of file

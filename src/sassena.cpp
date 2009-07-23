@@ -29,7 +29,6 @@
 #include <boost/archive/text_iarchive.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/mpi.hpp>
-#include <libconfig.h++>
 #include <boost/math/special_functions.hpp>
 #include <boost/serialization/complex.hpp>
 #include <boost/serialization/map.hpp>
@@ -38,6 +37,8 @@
 // other headers
 #include "analysis.hpp"
 #include "coor3d.hpp"
+#include "log.hpp"
+#include "parameters.hpp"
 #include "sample.hpp"
 #include "scatterdata.hpp"
 #include "settings.hpp"
@@ -129,6 +130,8 @@ int main(int argc,char** argv) {
 
 	Sample sample;
 
+	Params* params = Params::Inst();
+
 	Timer timer;
 	timer.start("total");
 	
@@ -139,19 +142,19 @@ int main(int argc,char** argv) {
 		//
 		//------------------------------------------//	
 	
-		clog << "INFO>> " << "This software is being developed by Benjamin Lindner and Franci Merzel.  " << endl;
-		clog << "INFO>> " << "For help, suggestions or correspondense use:                             " << endl;
-		clog << "INFO>> " << "ben@benlabs.net, Benjamin Lindner (Main Developer, Impl. & Maintenance)  " << endl;
-		clog << "INFO>> " << "franc@cmm.ki.si, Franci Merzel (Main Developer, Methodology )            " << endl;
-		clog << "INFO>> " << "For publications use the following references:                           " << endl;
-		clog << "INFO>> " << "........................................................................." << endl;
-		clog << "INFO>> " << "1. SASSIM: a method for calculating small-angle X-ray and                " << endl;
-		clog << "INFO>> " << "   neutron scattering and the associated molecular envelope from         " << endl;
-		clog << "INFO>> " << "   explicit-atom models of solvated proteins, F. Merzel and J. C. Smith, " << endl;
-		clog << "INFO>> " << "   Acta Cryst. (2002). D58, 242-249                                      " << endl;	
-		clog << "INFO>> " << "........................................................................." << endl;
-		clog << "INFO>> " << "SASSIM is a software for calculating scattering spectra from all-atomic.." << endl;
-		clog << "INFO>> " << "" << endl;
+		Info::Inst()->write("This software is being developed by Benjamin Lindner and Franci Merzel.  ");
+		Info::Inst()->write("For help, suggestions or correspondense use:                             ");
+		Info::Inst()->write("ben@benlabs.net, Benjamin Lindner (Main Developer, Impl. & Maintenance)  ");
+		Info::Inst()->write("franc@cmm.ki.si, Franci Merzel (Main Developer, Methodology )            ");
+		Info::Inst()->write("For publications use the following references:                           ");
+		Info::Inst()->write(".........................................................................");
+		Info::Inst()->write("1. SASSIM: a method for calculating small-angle X-ray and                ");
+		Info::Inst()->write("   neutron scattering and the associated molecular envelope from         ");
+		Info::Inst()->write("   explicit-atom models of solvated proteins, F. Merzel and J. C. Smith, ");
+		Info::Inst()->write("   Acta Cryst. (2002). D58, 242-249                                      ");
+		Info::Inst()->write(".........................................................................");
+		Info::Inst()->write("SASSIM is a software for calculating scattering spectra from all-atomic..");
+		Info::Inst()->write("");
 
 		//------------------------------------------//
 		//
@@ -166,81 +169,53 @@ int main(int argc,char** argv) {
 		//------------------------------------------//	
 	
 		timer.start("sample::setup");
-		
-		clog << "INFO>> " << "Reading configuration file " << argv[1] << endl;
-		// read in configuration file, delete command line arguments
-		if (!Settings::read(argc,argv)) { cerr << "Error reading the configuration" << endl; throw; }
 
-	   clog << "INFO>> " << "Reading structure from: " << (const char *) Settings::get("main")["sample"]["structure"]["file"] << endl;
+		params->init(string(argv[1]),"conf");
 
-	   // create the sample via structure file	
-		sample.add_atoms(Settings::get_filepath(Settings::get("main")["sample"]["structure"]["file"]), Settings::get("main")["sample"]["structure"]["format"]);
+	    // create the sample via structure file	
+		Info::Inst()->write(string("Reading structure information from file: ")+params->sample.structure.file);
+		sample.add_atoms(params->sample.structure.file,params->sample.structure.format);
+		Info::Inst()->write(string("Done. Atoms read: ")+to_s(sample.atoms.size()));
 
-	   // add selections / groups
-	   libconfig::Setting* sgroups = &Settings::get("main")["sample"]["groups"];
-	   for (int i=0;i<sgroups->getLength();i++) {
-
-//			string gn = (*sgroups)[i].getName(); // groupname
-			string gn = "";
-			if ((*sgroups)[i].exists("name")) gn = (char const*) (*sgroups)[i]["name"]; // groupname
-			string fn = (*sgroups)[i]["file"]; // filename
-			string ft = (*sgroups)[i]["type"]; // filetype
-			string sn = "";
-			if ((*sgroups)[i].exists("select")) sn =(char const*)  (*sgroups)[i]["select"]; // selection field name
-			double sv = 0.0;
-			if ((*sgroups)[i].exists("select_value")) sv = (*sgroups)[i]["select_value"]; // selection field value, positive match								
-			sample.add_selection(gn,fn,ft,sn,sv);		
+	   	// add selections / groups
+		for(map<string,SampleGroupParameters>::iterator sgpi = params->sample.groups.begin();sgpi!=params->sample.groups.end();sgpi++)
+		{
+			SampleGroupParameters& sp = sgpi->second;
+			Info::Inst()->write(string("Reading selection file: ")+sp.file);
+			sample.atoms.add_selection(sp.name,sp.file,sp.format,sp.select,sp.select_value);
 		}
-	
+
 		// add custom selections here ( if not already set! )
-		if (sample.atomselections.find("system")==sample.atomselections.end()) {
+		if (sample.atoms.selections.find("system")==sample.atoms.selections.end()) {
 			// this shortcut creates a full selection
-			sample.add_selection("system",true);		
+			sample.atoms.add_selection("system",true);		
 		}
 	
 		// apply deuteration
-		if (Settings::get("main")["sample"].exists("deuter")) {
-			if (Settings::get("main")["sample"]["deuter"].getType()==libconfig::Setting::TypeString) {
-				clog << "INFO>> " << "Deuteration of group " << (const char *) Settings::get("main")["sample"]["deuter"] << endl;		
-				sample.deuter(Settings::get("main")["sample"]["deuter"]);
-			}
-			else if (Settings::get("main")["sample"]["deuter"].getType()==libconfig::Setting::TypeList) {
-		    	for (int i=0;i<Settings::get("main")["sample"]["deuter"].getLength();i++) {
-					clog << "INFO>> " << "Deuteration of group " << (const char *) Settings::get("main")["sample"]["deuter"][i] << endl;		
-					sample.deuter(Settings::get("main")["sample"]["deuter"][i]);
-				}
-			}
+		for(size_t i = 0; i < params->sample.deuter.size(); ++i)
+		{
+			sample.deuter(params->sample.deuter[i]);
 		}
-		else {
-			clog << "INFO>> " << "No explicit deuteration" << endl;		
-		}
-	
+			
 		// read in frame information
-		for (int i=0;i<Settings::get("main")["sample"]["frames"].getLength();i++) {
-			clog << "INFO>> " << "Reading frames from: " << (const char *) Settings::get("main")["sample"]["frames"][i]["file"] << endl;
-	        size_t nof = sample.frames.add_frameset(Settings::get("main")["sample"]["frames"][i]["file"],Settings::get("main")["sample"]["frames"][i]["type"],sample.atoms);
-			clog << "INFO>> " << "Found " << nof << " frames" << endl;			
-	//		ifstream dcdfilelist(Settings::get_filepath(dcdfilename).c_str());
-	//		std::string line;
-	//
-	//		while (getline(dcdfilelist,line)) {
-	//			add_file(line,atoms,(recursion_trigger-1));
-	//		}
-	//		sample.add_frame(Settings::get("main")["sample"]["frames"][i]["file"],Settings::get("main")["sample"]["frames"][i]["type"]);
+		for(size_t i = 0; i < params->sample.frames.size(); ++i)
+		{
+			pair<string,string> fnt = params->sample.frames[i];
+			Info::Inst()->write(string("Reading frames from: ")+fnt.first);
+			size_t nof = sample.frames.add_frameset(fnt.first,fnt.second,sample.atoms);			
+			Info::Inst()->write(string("Found ")+to_s(nof)+string(" frames"));			
 		}
-		// final statement: total number of frames
-		clog << "INFO>> " << "Total number of frames found: " << sample.frames.size() << endl;			
-
+		Info::Inst()->write(string("Total number of frames found: ")+to_s(sample.frames.size()));
+		
 		// select wrapping behaviour
-		if (Settings::get("main")["sample"]["pbc"]["wrapping"]) {
-			sample.frames.wrapping = true;
-			string centergroup = (const char *) Settings::get("main")["sample"]["pbc"]["center"];
-			sample.frames.centergroup_selection = sample.atomselections[centergroup];
-			clog << "INFO>> " << "Turned wrapping ON with center group " << centergroup << endl;				
+		if (params->sample.pbc.wrapping) {
+			sample.frames.wrapping=true;
+			string centergroup = params->sample.pbc.center;
+			sample.atoms.assert_selection(centergroup);
+			sample.frames.centergroup_selection = sample.atoms.selections[centergroup];			
 		}
 		else {
-			sample.frames.wrapping = false;		
-			clog << "INFO>> " << "Turned wrapping OFF "  << endl;						
+			sample.frames.wrapping = false;
 		}
 
 		timer.stop("sample::setup");
@@ -253,11 +228,7 @@ int main(int argc,char** argv) {
 	
 		timer.start("sample::preparation");
 
-		string m = Settings::get("main")["scattering"]["background"]["method"];
-		bool rescale = Settings::get("main")["scattering"]["background"]["rescale"];
-		// rescale automatically triggers background analysis routine. Maybe independent in the future...
-		if (m=="auto" || ((m == "fixed") && rescale)) {
-			if (m=="fixed") clog << "INFO>> " << " rescale=true triggered analysis of the background scattering factor!" << endl;
+		if (params->scattering.background.method=="auto") {
 
 			// determine background scattering density from grid based analysis
 			// necessary:
@@ -265,24 +236,19 @@ int main(int argc,char** argv) {
 			// resolution = grid resolution
 			// hydration = hydration layer around each particle, 
 			//    ie. solvent molecules within this grid distance are not counted towards bulk
-			int r     = Settings::get("main")["scattering"]["background"]["resolution"]; // resolution of grid
-			double h  = Settings::get("main")["scattering"]["background"]["hydration"]; // hydration layer of each particle (not background)
+			int r     = params->scattering.background.resolution; // resolution of grid
+			double h  = params->scattering.background.hydration; // hydration layer of each particle (not background)
 		
-			clog << "INFO>> " << "Calculate background scattering length density" << endl;
-			clog << "INFO>> " << "using grid resolution " << r << " and hydration of " << h << endl;		
+			Info::Inst()->write("Calculate background scattering length density");
+			Info::Inst()->write(string("using grid resolution ")+to_s(r)+string(" and hydration of ")+to_s(h));
 			pair<double,double>	b0 = Analysis::background_avg(sample,r,h,CartesianCoor3D(0,0,0));
-			sample.background = b0.first;
-			clog << "INFO>> " << "Using average background scattering length: " << b0.first << " +- " << b0.second << endl;		
+			Info::Inst()->write(string("Average background scattering length: ")+to_s(b0.first)+string(" +- ")+to_s(b0.second));
+			params->scattering.background.value = b0.first;
+			
 		}
-		else if (m=="fixed") {
-			double f = Settings::get("main")["scattering"]["background"]["value"];
-			sample.background = f;
-			clog << "INFO>> " << "Setting background scattering length density to fixed value of " << f << endl;
-		}
-		else if (m=="none") {
-			// switch off background correction, i.e. assume system in vaccuum
-			sample.background = 0.0;
-		}
+		sample.background = params->scattering.background.value;
+		Info::Inst()->write(string("Set background scattering length density to value of ")+to_s(sample.background));
+		
 		
 		timer.stop("sample::preparation");
 		
@@ -298,11 +264,15 @@ int main(int argc,char** argv) {
 
 		sample.frames.clear_cache(); // reduce overhead
 
-		clog << "INFO>> " << "Exchanging sample information with compute nodes... " << endl;
+		Info::Inst()->write("Exchanging sample and params information with compute nodes... ");
 
 		world.barrier();
 
 		timer.start("sample::communication");
+
+		broadcast(world,*params,0);
+
+		world.barrier();
 
 		broadcast(world,sample,0);
 		
@@ -310,11 +280,10 @@ int main(int argc,char** argv) {
 		
 	}
 	else {
-
-		if (!Settings::read(argc,argv)) { 
-			cerr << "ERROR>> (" << rank << "/" << size << ")" << " Error reading the configuration" << endl;
-			return -1;
-		}
+		
+		world.barrier();
+	
+		world.recv(0,boost::mpi::any_tag, params);			
 
 		world.barrier();
 	
@@ -332,33 +301,22 @@ int main(int argc,char** argv) {
  	timeval start, end;	
 
 	// prepare an array for all qqqvectors here:
-	std::vector<CartesianCoor3D> qqqvectors;
+	std::vector<CartesianCoor3D>& qqqvectors = params->scattering.qqqvectors;
 	std::vector<int> frames;
 	
 	timer.start("task preparation");
-	
-	// fill qqqvectors
-	Settings::get_qqqvectors(qqqvectors);
-	
+
 	// fill frames
-	int framestride = 1;
-	if (Settings::get("main")["scattering"].exists("framestride")) {
-		framestride = Settings::get("main")["scattering"]["framestride"];
-	}
-	for(size_t i=0;i<sample.frames.size();i+= framestride) {
+	for(size_t i=0;i<sample.frames.size();i+= params->scattering.framestride) {
 		frames.push_back(i);
 	}	
+	Info::Inst()->write(string("Framestride used: ")+to_s(params->scattering.framestride));
+	Info::Inst()->write(string("Number of frames to be evaluated: ")+to_s(frames.size()));
 
 	int taskcounter = 0; int progress = 0;
 	
 	// generate Tasks
-	string mode;
-	if (Settings::get("main")["scattering"].exists("correlation")) {
-		mode = (const char * ) Settings::get("main")["scattering"]["correlation"]["type"];
-	}
-	else {
-		mode = "none";
-	}
+	string mode = params->scattering.correlation.type;
 
 	Tasks tasks(frames,qqqvectors,world.size(),mode);
 	if (rank==0) { 
@@ -373,10 +331,10 @@ int main(int argc,char** argv) {
 	boost::mpi::communicator local = world.split(my_tasks[0].color);
 	
 //	map<CartesianCoor3D<map<size_t,double> > keyvals;
-	string target = Settings::get("main")["scattering"]["target"];
+	string target = params->scattering.target;
 
 	if (rank==0) { 
-		clog << "INFO>> " << "Scattering target selection: " << target << endl;
+		Info::Inst()->write(string("Scattering target selection: ")+target);
 	}
 	
 	timer.stop("task preparation");
@@ -407,7 +365,7 @@ int main(int argc,char** argv) {
 			timer.start("scatter::scatteramp");
 
 			// set scattering amplitudes for current q vector
-			Analysis::set_scatteramp(sample,sample.atomselections[target],ti->q,true);
+			Analysis::set_scatteramp(sample,sample.atoms.selections[target],ti->q,true);
 
 			timer.stop("scatter::scatteramp");
 			
@@ -416,26 +374,23 @@ int main(int argc,char** argv) {
 			
 			timer.start("scatter::qvector-unfold");
 						
-			if (Settings::get("main")["scattering"].exists("average")) {
+			if (params->scattering.average.method=="none") {
+				qvectors.push_back(ti->q);
+			} 
+			else {
 			
-				libconfig::Setting& s = Settings::get("main")["scattering"]["average"];
-				double resolution = -1.0;
-				if (s.exists("resolution")) {
-					resolution = s["resolution"];
-				} 
-
-				string avtype = s["type"]; 
+				double resolution = params->scattering.average.resolution;
+				string avtype = params->scattering.average.type;
 			
 				uint32_t qseed = 1; // ti->qseed			
 				if (avtype=="none") {
 					qvectors.push_back(ti->q);
 				}
 				else if (avtype=="sphere") {
-					string avmethod = s["method"];
+					string avmethod = params->scattering.average.method;
 					if (avmethod=="bruteforce") {
-						if (resolution==-1.0) resolution=1.0;
-
-						string avvectors = s["vectors"];
+						
+						string avvectors = params->scattering.average.vectors;
 						Analysis::qvectors_unfold_sphere(avvectors,ti->q,qseed,resolution,qvectors);
 					}
 					if (avmethod=="multipole") {
@@ -444,10 +399,9 @@ int main(int argc,char** argv) {
 					}		
 				}
 				else if (avtype=="cylinder") {
-					string avmethod = s["method"];		
+					string avmethod = params->scattering.average.method;
 					if (avmethod=="bruteforce") {
-						if (resolution==-1.0) resolution=1.0;
-						string avvectors = s["vectors"];
+						string avvectors = params->scattering.average.vectors;
 						Analysis::qvectors_unfold_cylinder(avvectors,ti->q,qseed,resolution,qvectors);
 					}
 					if (avmethod=="multipole") {
@@ -455,14 +409,6 @@ int main(int argc,char** argv) {
 						// multipole expansion works on one qvector
 					}
 				}	
-				else {
-					cerr << "ERROR>> " << "unrecognized averaging type. Use 'none' if no averaging is to be done" << endl;
-					throw;
-				}
-			
-			}
-			else {
-				qvectors.push_back(ti->q);
 			}
 			
 			timer.stop("scatter::qvector-unfold");
@@ -480,27 +426,25 @@ int main(int argc,char** argv) {
 //				// first element: qvectors[qvector_blocking*qvector_block + i ]
 
 				vector<int> frames_i = ti->frames(rank);
-				std::string interference_type = Settings::get("main")["scattering"]["interference"]["type"];
-				if (interference_type == "self") {
+				if (params->scattering.interference.type == "self") {
 
 					map<int,vector<vector<complex<double> > > > scatbyframe; // frame -> qvectors/atoms/amplitude
 			
 					// iterate through all frames this node is supposed to do
 					for(size_t i = 0; i < frames_i.size(); ++i)
 					{
-						Atomselection& as = sample.atomselections[target];
+						Atomselection& as = sample.atoms.selections[target];
 						
 						timer.start("scatter::loadframe");
 						
-						sample.frames.load(frames_i[i],sample.atoms,sample.atomselections[target]);				
+						sample.frames.load(frames_i[i],sample.atoms,sample.atoms.selections[target]);				
 
 						timer.stop("scatter::loadframe");
 
 						// holds the scattering amplitudes for the current frame:
 						vector<vector<complex<double> > >& scattering_amplitudes = scatbyframe[frames_i[i]];
 
-						libconfig::Setting& s = Settings::get("main")["scattering"]["average"];
-						string avtype = s["type"]; 	
+						string avtype = params->scattering.average.type;
 
 						timer.start("scatter::compute");
 					
@@ -511,7 +455,7 @@ int main(int argc,char** argv) {
 							scattering_amplitudes.push_back(scat);
 						}
 						else if (avtype=="sphere") {
-							string avmethod = s["method"];
+							string avmethod = params->scattering.average.method;
 							if (avmethod=="bruteforce") {
 								Analysis::scatter_vectors(sample,as,qvectors,scattering_amplitudes);						
 							}
@@ -523,7 +467,7 @@ int main(int argc,char** argv) {
 							}		
 						}
 						else if (avtype=="cylinder") {
-							string avmethod = s["method"];		
+							string avmethod = params->scattering.average.method;	
 							if (avmethod=="bruteforce") {
 								Analysis::scatter_vectors(sample,as,qvectors,scattering_amplitudes);		
 							}
@@ -535,7 +479,7 @@ int main(int argc,char** argv) {
 							}
 						}	
 						else {
-							cerr << "ERROR>> " << "unrecognized averaging type. Use 'none' if no averaging is to be done" << endl;
+							Err::Inst()->write("unrecognized averaging type. Use 'none' if no averaging is to be done");
 							throw;
 						}	
 
@@ -649,7 +593,7 @@ int main(int argc,char** argv) {
 
 					
 				}
-				else if (interference_type == "all") {
+				else if (params->scattering.interference.type == "all") {
 
 					map<int,vector<complex<double> > > scatbyframe; // frame -> qvectors/amplitude
 			
@@ -658,45 +602,67 @@ int main(int argc,char** argv) {
 					{
 						timer.start("scatter::loadframe");
 											
-						sample.frames.load(frames_i[i],sample.atoms,sample.atomselections[target]);				
+						sample.frames.load(frames_i[i],sample.atoms,sample.atoms.selections[target]);				
 
 						timer.stop("scatter::loadframe");
 
-						Atomselection& as = sample.atomselections[target];
+//						// introducing the supergrid 3x3x3 elements
+//						map< pair<int,pair<int,int> > , complex<double> >  supergrid;
+//						int maxn =35;
+//						for (int kkk=0;kkk<maxn;kkk++) {
+//							for (int lll=0;lll<maxn;lll++) {
+//								for (int mmm=0;mmm<maxn;mmm++) {
+//									double e1 = kkk * ti->q * sample.frames.current().unitcell[0];
+//									double e2 = lll * ti->q * sample.frames.current().unitcell[1];
+//									double e3 = mmm * ti->q * sample.frames.current().unitcell[2];
+//									int maxi = ( (kkk>lll) ? kkk : lll  ) > mmm ? ( (kkk>lll) ? kkk : lll  ) : mmm;
+//									double damping_coeff = -5.0;
+//									double damping = exp(damping_coeff * maxi);
+//									supergrid[make_pair(kkk,make_pair(lll,mmm))]= exp(complex<double>(0.0,e1+e2+e3)) * damping;
+//									
+//								}
+//							}
+//						}
+						//
+
+						Atomselection& as = sample.atoms.selections[target];
 						// holds the scattering amplitudes for the current frame:
 						vector<complex<double> >& scattering_amplitudes = scatbyframe[frames_i[i]];
-						
-						libconfig::Setting& s = Settings::get("main")["scattering"]["average"];
-						double resolution = -1.0;
-						if (s.exists("resolution")) {
-							resolution = s["resolution"];
-						}						
-						string avtype = s["type"]; 	
-						
+								
+						string avtype = params->scattering.average.type;
+						double resolution = params->scattering.average.resolution;
 						timer.start("scatter::compute");
 												
 						if (avtype=="none") {
 							// qseed not used here
+///							cout << "INFO>> " << "Calculating scattering for: " << ti->q << endl;
+							
 							complex<double> scat = Analysis::scatter_none(sample,as,ti->q);
+							
+//							cout << "INFO>> " << "I=: " << scat << endl;
+//							complex<double> scatsuperposed(0.0,0.0);
+//							for (map< pair<int,pair<int,int> > , complex<double> >::iterator sgi = supergrid.begin(); sgi!=supergrid.end(); sgi++) {
+//								scatsuperposed += (scat*sgi->second);
+//							}
+														
 							scattering_amplitudes.push_back(scat);
+//							scattering_amplitudes.push_back(scatsuperposed);
 						}
 						else if (avtype=="sphere") {
-							string avmethod = s["method"];
+							string avmethod = params->scattering.average.method;
 							if (avmethod=="bruteforce") {
 								Analysis::scatter_vectors(sample,as,qvectors,scattering_amplitudes);						
 							}
 							if (avmethod=="multipole") {
-								if (resolution==-1.0) resolution=17.0;
 					   			Analysis::scatter_sphere_multipole(sample,as,ti->q,resolution,scattering_amplitudes);			
 							}		
 						}
 						else if (avtype=="cylinder") {
-							string avmethod = s["method"];		
+							string avmethod = params->scattering.average.method;
 							if (avmethod=="bruteforce") {
 								Analysis::scatter_vectors(sample,as,qvectors,scattering_amplitudes);		
 							}
 							if (avmethod=="multipole") {
-								if (resolution==-1.0) resolution=10.0;
 					   			Analysis::scatter_cylinder_multipole(sample,as,ti->q,resolution,scattering_amplitudes);			
 							}
 						}	
@@ -806,7 +772,7 @@ int main(int argc,char** argv) {
 						local.barrier();
 						
 					}
-					timer.stop("scatter::aggregrate");
+					timer.stop("scatter::aggregate");
 							
 				}
 			
@@ -868,58 +834,27 @@ int main(int argc,char** argv) {
 		string outformat;
 		bool outputerror=false;
 		try {
-		
-			if (Settings::get("main").exists("output")) {
-				string prefix;
-				if (Settings::get("main")["output"].exists("prefix")) {
-					prefix = (const char *) Settings::get("main")["output"]["prefix"];
+			for(size_t i = 0; i < params->output.files.size(); ++i)
+			{
+				string otype   = params->output.files[i].type;
+				string oformat = params->output.files[i].format;
+				string ofn = params->output.files[i].filename;					
+            
+				Info::Inst()->write(string("Writing results to ")+ofn+string(" via method ")+otype+string(" in format: ")+oformat);
+				
+				if (otype=="plain") {
+					scat.write_plain(ofn,oformat);
 				}
-				else {
-					prefix = "scattering-data-";
+				if (otype=="average") {
+					scat.write_average(ofn,oformat);
 				}
-		
-				libconfig::Setting* setting = &Settings::get("main")["output"];
-				for (int i=0;i<setting->getLength();i++) {
-					if ((*setting)[i].getType()!=libconfig::Setting::TypeGroup) continue;
-					string settings_name = (*setting)[i].getName();
-
-					if ((*setting)[i].exists("type")) {
-						if ((*setting)[i].exists("format")) {
-							outformat = (char const *) (*setting)[i]["format"];
-						}
-						else {
-							outformat = "txt";
-						}
-						stringstream ffname; ffname << prefix << settings_name << "." << outformat;
-						string typestring = (char const *) (*setting)[i]["type"];
-						clog << "INFO>> " << "Writing results to " << ffname.str() << " via method " << typestring << " in format: " << outformat << endl;
-
-						if (typestring == "plain") {
-							scat.write_plain(ffname.str(),outformat);
-						}
-						if (typestring == "average") {
-							scat.write_average(ffname.str(),outformat);
-						}
-					}
-					else {
-						outputerror = true;
-						continue;
-					}
-				}		
-		
-			}
-			else {
-				outputerror = true;
-			}
-		
-			if (outputerror) {
-				clog << "INFO>> " << "Trajectory format not understood. Dumping to standard log." << endl;
-				scat.dump(clog.rdbuf());			
+				
 			}
 		}
 		catch (...) {
 			cerr << "ERROR>> " << "An Error occured during output. Dumping any results to stdlog" << endl;
 			scat.dump(clog.rdbuf());
+			clog.flush();
 		}
 	
 

@@ -44,10 +44,4 @@ public:
 	static void   get_qqqvectors(std::vector<CartesianCoor3D>& qqqvectors);
 };
 
-// this is the stem for wrapping the settings
-class RuntimeSettings {
-	
-};
-
-
 #endif

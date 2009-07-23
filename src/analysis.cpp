@@ -37,7 +37,9 @@
 #include "atomselection.hpp"
 #include "coor3d.hpp"
 #include "geometry.hpp"
+#include "log.hpp"
 #include "grid.hpp"
+#include "parameters.hpp"
 #include "sample.hpp"
 #include "settings.hpp"
 
@@ -189,11 +191,7 @@ void qvectors_unfold_cylinder(std::string avvectors, CartesianCoor3D q, uint32_t
 	const double M_2PI = 2*M_PI;
 	const double radincr = (M_2PI*resolution)/360;			
 	
-	double ox = Settings::get("main")["scattering"]["average"]["axis"][0];
-	double oy = Settings::get("main")["scattering"]["average"]["axis"][1];
-	double oz = Settings::get("main")["scattering"]["average"]["axis"][2];		
-	
-	CartesianCoor3D o(ox,oy,oz); 
+	CartesianCoor3D o = Params::Inst()->scattering.average.axis;
 	// make sure o is normalized;
 	o = o / o.length();
 	
@@ -245,57 +243,20 @@ void qvectors_unfold_cylinder(std::string avvectors, CartesianCoor3D q, uint32_t
 
 void set_scatteramp(Sample& sample,Atomselection as,CartesianCoor3D q,bool background) {
 	
+	Params* params = Params::Inst();
+		
 	Atoms& atoms = sample.atoms;
 	double ql = q.length();
-	map<string,double> sfquicklookup;
-	map<pair<string,double>,double> esfquicklookup;
-
-	string probetype =  (const char *) Settings::get("main")["scattering"]["probe"]["type"];
-	string m = "constant";
-	if (Settings::get("main")["scattering"]["probe"].exists("method")) {
-		m = (const char *) Settings::get("main")["scattering"]["probe"]["method"];		
-	}
-				
+	map<pair<size_t,double>,double> esfquicklookup;
+		
 	for (Atomselection::iterator asi=as.begin();asi!=as.end();asi++) {
 		
 		double sf=0;
-		if (sfquicklookup.find(atoms[*asi].name)!=sfquicklookup.end()) {
-			sf = sfquicklookup[atoms[*asi].name];	
-		}
-		else {
-			if (m == "slater")
-			{
-				cerr<< "ERROR>> " << "slater xray not supported yet" << endl;
-				throw;
-			}
-			else if (m == "table")
-			{
-				libconfig::Setting& coeff = Settings::get("scattering_factors")[probetype]["table"][atoms[*asi].name];
-				double a1=coeff["a1"]; double b1=coeff["b1"];
-				double a2=coeff["a2"]; double b2=coeff["b2"];
-				double a3=coeff["a3"]; double b3=coeff["b3"];				
-				double a4=coeff["a4"]; double b4=coeff["b4"];
-				double c =coeff["c"];
-				double arg2 = ql*ql;				
-				sf = ( a1*exp(-b1*arg2)+a2*exp(-b2*arg2)+a3*exp(-b3*arg2)+a4*exp(-b4*arg2)+c ) ;
-			}
-			else {
-				// ok , try to do a constant lookup by default
-				try {
-					sf = Settings::get("scattering_factors")[probetype][m][atoms[*asi].name];
-				}
-				catch(...) {
-					cerr << "ERROR>> " << " scattering factor for atom '" << atoms[*asi].name << "' not found" << endl;
-					throw;
-				}
-			}
+		sf = params->database.sfactors.get(atoms[*asi].ID,ql);
 
-			sfquicklookup[atoms[*asi].name]= sf;
-		}			
-		
 		// calculate effective scattering length:
 		if (background) {
-			pair<string,double> key=make_pair(atoms[*asi].name,atoms[*asi].kappa);
+			pair<size_t,double> key=make_pair(atoms[*asi].ID,atoms[*asi].kappa);
 			if (esfquicklookup.find(key)!=esfquicklookup.end()) {
 				atoms[*asi].scatteramp = esfquicklookup[key];
 			}
@@ -314,15 +275,93 @@ void set_scatteramp(Sample& sample,Atomselection as,CartesianCoor3D q,bool backg
 	}
 }
 
+//void set_scatteramp_old(Sample& sample,Atomselection as,CartesianCoor3D q,bool background) {
+//	
+//	Params* params = Params::Inst();
+//		
+//	Atoms& atoms = sample.atoms;
+//	double ql = q.length();
+//	map<string,double> sfquicklookup;
+//	map<pair<string,double>,double> esfquicklookup;
+//
+//	string probetype =  params->scattering.probe.type;
+//				
+//	for (Atomselection::iterator asi=as.begin();asi!=as.end();asi++) {
+//		
+//		double sf=0;
+//		if (sfquicklookup.find(atoms[*asi].name)!=sfquicklookup.end()) {
+//			sf = sfquicklookup[atoms[*asi].name];	
+//		}
+//		else {
+//			if (params->scattering.probe.method == "slater")
+//			{
+//				cerr<< "ERROR>> " << "slater xray not supported yet" << endl;
+//				throw;
+//			}
+//			else if (params->scattering.probe.method == "table")
+//			{
+//				libconfig::Setting& coeff = Settings::get("scattering_factors")[probetype]["table"][atoms[*asi].name];
+//				double a1=coeff["a1"]; double b1=coeff["b1"];
+//				double a2=coeff["a2"]; double b2=coeff["b2"];
+//				double a3=coeff["a3"]; double b3=coeff["b3"];				
+//				double a4=coeff["a4"]; double b4=coeff["b4"];
+//				double c =coeff["c"];
+//				double arg2 = ql*ql;				
+//				sf = ( a1*exp(-b1*arg2)+a2*exp(-b2*arg2)+a3*exp(-b3*arg2)+a4*exp(-b4*arg2)+c ) ;
+//			}
+//			else {
+//				// ok , try to do a constant lookup by default
+//				try {
+//					sf = Settings::get("scattering_factors")[probetype][m][atoms[*asi].name];
+//				}
+//				catch(...) {
+//					cerr << "ERROR>> " << " scattering factor for atom '" << atoms[*asi].name << "' not found" << endl;
+//					throw;
+//				}
+//			}
+//
+//			sfquicklookup[atoms[*asi].name]= sf;
+//		}			
+//		
+//		// calculate effective scattering length:
+//		if (background) {
+//			pair<string,double> key=make_pair(atoms[*asi].name,atoms[*asi].kappa);
+//			if (esfquicklookup.find(key)!=esfquicklookup.end()) {
+//				atoms[*asi].scatteramp = esfquicklookup[key];
+//			}
+//			else {
+//				double ev = atoms[*asi].volume;
+//				double k  = atoms[*asi].kappa;
+//				
+//				double esf = sf - sample.background*k*ev*exp(-1.0*powf(k*ev,2.0/3.0)*powf(ql,2)/(4*M_PI));
+//				atoms[*asi].scatteramp =  esf;
+//				esfquicklookup[key]=esf;				
+//			}
+//		}
+//		else {
+//			atoms[*asi].scatteramp = sf;
+//		}
+//	}
+//}
+
 
 void scatter_none(Sample& sample,Atomselection as,CartesianCoor3D& q,std::vector<std::complex<double> >& aqs) {
 	
 	CoordinateSet& cs = sample.frames.current().coordinate_sets[as.name];
+	
+//	stringstream fn; fn << "scatteramps-" << q.x << ".txt";
+//	ofstream oscatteramp(fn.str().c_str());
+
+//	stringstream fn2; fn2 << "coords-" << q.x << ".txt";
+//	ofstream ocoords(fn2.str().c_str());
+	
 
 	for (size_t i=0;i<cs.x.size();i++) {
 		double s = sample.atoms[cs.indexes[i]].scatteramp;
-
+//		oscatteramp << s << endl;
+		
 		CartesianCoor3D c(cs.x[i],cs.y[i],cs.z[i]);
+//		ocoords << cs.x[i] << "\t" << cs.y[i] << "\t"<<cs.z[i] << endl;
 		aqs.push_back( exp(-1.0*complex<double>(0,c*q)) * s );
 	}
 }
@@ -341,7 +380,6 @@ complex<double> scatter_none(Sample& sample,Atomselection as,CartesianCoor3D& q)
 	else {
 		for (size_t i=0;i<cs.x.size();i++) {
 			double s = sample.atoms[cs.indexes[i]].scatteramp;
-
 			CartesianCoor3D c(cs.x[i],cs.y[i],cs.z[i]);
 			A += exp(-1.0*complex<double>(0,c*q)) * s;		
 		}
@@ -528,11 +566,7 @@ void scatter_cylinder_multipole(Sample& sample,Atomselection as,CartesianCoor3D 
 
 	Atoms& atoms = sample.atoms;
 	
-	double ox = Settings::get("main")["scattering"]["average"]["axis"][0];
-	double oy = Settings::get("main")["scattering"]["average"]["axis"][1];
-	double oz = Settings::get("main")["scattering"]["average"]["axis"][2];		
-	
-	CartesianCoor3D o(ox,oy,oz);
+	CartesianCoor3D o = Params::Inst()->scattering.average.axis;
 	o = o / o.length();
 	
 	// get the part of the scattering vector perpenticular to the o- orientation
@@ -610,17 +644,10 @@ void scatter_cylinder_multipole(Sample& sample,Atomselection as,CartesianCoor3D 
 }
 
 
-complex<double> background(Sample& sample,int resolution, double hlayer, CartesianCoor3D q,map<string,vector<double> >& kappas) {
+complex<double> background(Sample& sample,Atomselection& as_system, Atomselection& as_solvent, Atomselection& as_particle, int resolution, double hlayer, CartesianCoor3D q,vector<double>& kappas_s,vector<double>& kappas_p) {
 	
 	vector<CartesianCoor3D> uc = sample.frames.current().unitcell;
 	CartesianCoor3D origin = sample.frames.current().origin;
-	
-	string gi = Settings::get("main")["scattering"]["background"]["include"]; // name of background group
-	string ge = Settings::get("main")["scattering"]["background"]["exclude"]; // name of particle group
-		
-	Atomselection as_system   = sample.atomselections["system"];
-	Atomselection as_particle = sample.atomselections[ge];
-	Atomselection as_solvent  = sample.atomselections[gi];
 	
 	vector<int> v; // an empty vector to initialize vGrid3D
 	vGrid3D grid(resolution,uc,origin,v);
@@ -762,33 +789,33 @@ complex<double> background(Sample& sample,int resolution, double hlayer, Cartesi
 	double kappa_p = particle_volume / sum_particle;
 //	double kappa_p = particle_volume / sum_particle;	
 
-///	cout << resolution << "\t" << hlayer << "\t" << dens/num_solcells << endl;
-	
-//	cout << "number of solvent cells: " << num_solcells << endl;
-//	cout << "n_shell_solvent: " << n_shell_solvent << endl;
-//	cout << "numsolatoms: " << numsolatoms << endl;	
-//	cout << "solventvolume: " << solventvolume << endl;
+//  cout << resolution << "\t" << hlayer << "\t" << dens/num_solcells << endl;
+//  
+//  cout << "number of solvent cells: " << num_solcells << endl;
+//  cout << "n_shell_solvent: " << n_shell_solvent << endl;
+//  cout << "numsolatoms: " << numsolatoms << endl;	
+//  cout << "solventvolume: " << solventvolume << endl;
 //	cout << "cell volume: " << xd*yd*zd << endl;
-//	if (numsolatoms!=0)	cout << "solvent particles per cell: " << numsolatoms/num_solcells << endl;	
-//	cout << "average density of bulk water (mol./L): " << 1e27*n_shell_solvent/solventvolume / 6.0221415e23 /3  << endl;
-
-//	cout << "totalvolume=" << xd*yd*zd*resolution*resolution*resolution << endl;
-//	cout << "solventvolume=" << solventvolume << endl;
-//	cout << "hparticlevolume=" << hparticlevolume << endl;
+//  if (numsolatoms!=0)	cout << "solvent particles per cell: " << numsolatoms/num_solcells << endl;	
+//  cout << "average density of bulk water (mol./L): " << 1e27*n_shell_solvent/solventvolume / 6.0221415e23 /3  << endl;
 //
-//	cout << "sum_shell_solvent=" << sum_shell_solvent << endl;
-//	cout << "sum_particle=" << sum_particle << endl;
-//	cout << "particle_volume=" << particle_volume << endl;
+//  cout << "totalvolume=" << totalvolume << endl;
+//  cout << "solventvolume=" << solventvolume << endl;
+//  cout << "hparticlevolume=" << hparticlevolume << endl;
 //
-//	cout << "sum_inner_solvent=" << sum_inner_solvent << endl;
-//	cout << "kappa_s=" << kappa_s << endl;
-//	cout << "kappa_p=" << kappa_p << endl;	
+//  cout << "sum_shell_solvent=" << sum_shell_solvent << endl;
+//  cout << "sum_particle=" << sum_particle << endl;
+//  cout << "particle_volume=" << particle_volume << endl;
+//
+//  cout << "sum_inner_solvent=" << sum_inner_solvent << endl;
+//  cout << "kappa_s=" << kappa_s << endl;
+//  cout << "kappa_p=" << kappa_p << endl;	
 //	cout << resolution << "\t" << hlayer << "\t" << kappa_s <<  "\t" << kappa_p << endl;
 
 	// currently we have only a 2 phase system (allowed)
 	// return kappa values via argument
-	kappas[gi].push_back(kappa_s);
-	kappas[ge].push_back(kappa_p);
+	kappas_s.push_back(kappa_s);
+	kappas_p.push_back(kappa_p);
 	
 //   if (Settings::get("main")["scattering"]["background"].exists("volume")) {
 //   	// store kappa values for atoms:
@@ -811,12 +838,44 @@ pair<double,double> background_avg(Sample& sample,int resolution,double hydratio
 	accumulator_set<double,features<tag::mean,tag::variance> > acc_RE;
 	accumulator_set<double,features<tag::mean,tag::variance> > acc_IM;
 
-	map<string,vector<double> > kappas;
+	vector<double> kappas_s;
+	vector<double> kappas_p;
 		
-	int framestride = 1;
-	if (Settings::get("main")["scattering"]["background"].exists("framestride")) {
-		framestride = Settings::get("main")["scattering"]["background"]["framestride"];
+	
+	vector<string>& gi = Params::Inst()->scattering.background.include; // background groups
+	vector<string>& ge = Params::Inst()->scattering.background.exclude; // particle groups
+
+	clog << "INFO>> " << "Solvent defined by: ";
+		for(size_t i = 0; i < gi.size(); ++i)
+		{
+			clog << " " << gi[i];
+		}	
+	 clog << endl;
+
+	clog << "INFO>> " << "Solute defined by: ";
+		for(size_t i = 0; i < ge.size(); ++i)
+		{
+			clog << " " << ge[i];
+		}	
+	 clog << endl;
+		
+		
+	Atomselection as_particle(sample.atoms,false);
+	for(size_t i = 0; i < ge.size(); ++i)
+	{
+		sample.atoms.assert_selection(ge[i]);
+		as_particle += sample.atoms.selections[ge[i]];
 	}
+	Atomselection as_solvent(sample.atoms,false);
+	for(size_t i = 0; i < gi.size(); ++i)
+	{
+		sample.atoms.assert_selection(gi[i]);
+		as_solvent += sample.atoms.selections[gi[i]];
+	}
+	sample.atoms.assert_selection("system");
+	Atomselection as_system(sample.atoms,true);
+		
+	int framestride = Params::Inst()->scattering.background.framestride;
 	
 	int totalframes = (sample.frames.size()/framestride) + 1;
 	if ((sample.frames.size() % framestride) ==0) totalframes--;
@@ -831,24 +890,35 @@ pair<double,double> background_avg(Sample& sample,int resolution,double hydratio
 			clog << percent << " ";
 		}
 				
-		sample.frames.load(i,sample.atoms,sample.atomselections);
-   	 	complex<double> b0v = Analysis::background(sample,resolution,hydration,q,kappas);
+		sample.frames.load(i,sample.atoms,sample.atoms.selections);
+   	 	complex<double> b0v = Analysis::background(sample,as_system,as_solvent,as_particle,resolution,hydration,q,kappas_s,kappas_p);
 		acc_RE(b0v.real()); acc_IM(b0v.imag());
 	}
 	clog << "100" << endl;
 
 	// write kappa values into the atom entries...
 	// create temp. acc
-	for (map<string,vector<double> >::iterator kmi=kappas.begin();kmi!=kappas.end();kmi++) {
-		accumulator_set<double,features<tag::mean,tag::variance> > k;
-		for (vector<double>::iterator ki=kmi->second.begin();ki!=kmi->second.end();ki++) {
-			k(*ki);
-		}
-		double m = mean(k); double sv = sqrt(variance(k));
-		clog << "INFO>> " << "atomic volume scaling factor for group " << kmi->first << ": " << m << " +- " << sv << endl;
-		for (Atomselection::iterator asi=sample.atomselections[kmi->first].begin();asi!=sample.atomselections[kmi->first].end();asi++) {
-			sample.atoms[*asi].kappa = m;
-		}
+	// first kappa will contain solvent group, others particles.
+	accumulator_set<double,features<tag::mean,tag::variance> > ks;
+	for (vector<double>::iterator ki=kappas_s.begin();ki!=kappas_s.end();ki++) {
+		ks(*ki);
+	}
+	accumulator_set<double,features<tag::mean,tag::variance> > kp;
+	for (vector<double>::iterator ki=kappas_p.begin();ki!=kappas_p.end();ki++) {
+		kp(*ki);
+	}
+	
+	double m; double sv;
+	m = mean(ks); sv = sqrt(variance(ks));
+	clog << "INFO>> " << "atomic volume scaling factor for solvent groups: " << m << " +- " << sv << endl;
+	for (Atomselection::iterator asi=as_solvent.begin();asi!=as_solvent.end();asi++) {
+		sample.atoms[*asi].kappa = m;
+	}
+
+	m = mean(kp); sv = sqrt(variance(kp));
+	clog << "INFO>> " << "atomic volume scaling factor for solute groups: " << m << " +- " << sv << endl;
+	for (Atomselection::iterator asi=as_particle.begin();asi!=as_particle.end();asi++) {
+		sample.atoms[*asi].kappa = m;
 	}
 
 	return pair<double,double>(mean(acc_RE),sqrt(variance(acc_RE)));

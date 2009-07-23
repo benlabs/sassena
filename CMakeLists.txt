@@ -73,7 +73,7 @@ SET(LIB_DEPENDENCIES ${LIB_DEPENDENCIES} xdrfile-static)
 
 MESSAGE(STATUS "sassena_lib_depend= " ${LIB_DEPENDENCIES})
 
-ADD_EXECUTABLE(sassena src/sassena.cpp src/sample.cpp src/frame.cpp src/frames.cpp src/atom.cpp src/atoms.cpp src/atomselection.cpp src/analysis.cpp src/coor3d.cpp src/grid.cpp src/settings.cpp src/scatterdata.cpp src/tasks.cpp src/timer.cpp )
+ADD_EXECUTABLE(sassena src/sassena.cpp src/parameters.cpp src/log.cpp src/sample.cpp src/frame.cpp src/frames.cpp src/atom.cpp src/atoms.cpp src/atomselection.cpp src/analysis.cpp src/coor3d.cpp src/grid.cpp src/settings.cpp src/scatterdata.cpp src/tasks.cpp src/timer.cpp )
 
 TARGET_LINK_LIBRARIES (sassena ${LIB_DEPENDENCIES})
 
@@ -120,7 +120,7 @@ TARGET_LINK_LIBRARIES (unit_ranklogic ${LIB_DEPENDENCIES})
 INSTALL(TARGETS unit_ranklogic RUNTIME DESTINATION bin/units)
 
 
-ADD_EXECUTABLE(unit_sasstest tests/unit_sasstest.cpp src/sample.cpp src/frame.cpp src/frames.cpp src/atom.cpp src/atoms.cpp src/atomselection.cpp src/coor3d.cpp src/settings.cpp src/tasks.cpp)
+ADD_EXECUTABLE(unit_sasstest tests/unit_sasstest.cpp src/sample.cpp src/parameters.cpp src/log.cpp src/frame.cpp src/frames.cpp src/atom.cpp src/atoms.cpp src/atomselection.cpp src/coor3d.cpp src/settings.cpp src/tasks.cpp)
 TARGET_LINK_LIBRARIES (unit_sasstest ${LIB_DEPENDENCIES})
 INSTALL(TARGETS unit_sasstest RUNTIME DESTINATION bin/units)
 

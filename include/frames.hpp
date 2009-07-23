@@ -49,7 +49,6 @@ class Frames {
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
     {
 		ar & framecache;
-		ar & framecache_max;
 		ar & currentframe_i;
 		ar & number_of_frames;
 		ar & wrapping;
@@ -68,7 +67,6 @@ class Frames {
 	
 	std::map<size_t,Frame> framecache;
 
-	size_t framecache_max;
 	size_t currentframe_i;
 
 	size_t number_of_frames;
@@ -85,7 +83,7 @@ public:
 	bool wrapping;
 	Atomselection centergroup_selection;
 
-	Frames() : framecache_max(2), currentframe_i(-1), number_of_frames(0) {}
+	Frames() : currentframe_i(-1), number_of_frames(0) {}
 	~Frames();
 	
 	size_t size();

@@ -50,12 +50,12 @@ public:
 	Atomselection(Atoms& atoms,bool select = false,std::string name="");
 	Atomselection(Atoms& atoms,std::vector<size_t> indexes,std::string name="");
 
+	Atomselection& operator+=(const Atomselection& );
 	// empty atomselection is actually invalid!
 	Atomselection() {}
 	
 	void add(const Atom& atom);
 	void remove(const Atom& atom);
-	
 };
 
 #endif
