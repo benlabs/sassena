@@ -315,8 +315,10 @@ int main(int argc,char** argv) {
 	for(size_t i=0;i<sample.frames.size();i+= params->scattering.framestride) {
 		frames.push_back(i);
 	}	
-	Info::Inst()->write(string("Framestride used: ")+to_s(params->scattering.framestride));
-	Info::Inst()->write(string("Number of frames to be evaluated: ")+to_s(frames.size()));
+	if (rank==0) {
+		Info::Inst()->write(string("Framestride used: ")+to_s(params->scattering.framestride));
+		Info::Inst()->write(string("Number of frames to be evaluated: ")+to_s(frames.size()));		
+	}
 
 	int taskcounter = 0; int progress = 0;
 	
@@ -734,6 +736,8 @@ int main(int argc,char** argv) {
 
 							map<int,complex<double> > my_AAconj;
 
+							timer.start("scatter::agg::corr::comp");
+
 							for(vector<int>::iterator ssi=stepsizes.begin();ssi!=stepsizes.end();ssi++) {
 								complex<double> AAconj_sum=0;
 								int AAconj_count=0;					
@@ -745,6 +749,8 @@ int main(int argc,char** argv) {
 								}
 								my_AAconj[*ssi] = AAconj_sum / double(AAconj_count);
 							}
+
+							timer.stop("scatter::agg::corr::comp");
 
 							vector<map<int,complex<double> > > all_AAconj;
 							boost::mpi::gather(local,my_AAconj,all_AAconj,0);
