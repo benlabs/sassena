@@ -130,8 +130,14 @@ int main(int argc,char** argv) {
 
 	Sample sample;
 
+	// make sure any singleton class exists:
+	Info::Inst();
+	Err::Inst();
+	Warn::Inst();
+	Params::Inst();
+	
 	Params* params = Params::Inst();
-
+	
 	Timer timer;
 	timer.start("total");
 	
@@ -283,13 +289,12 @@ int main(int argc,char** argv) {
 		
 		world.barrier();
 	
-		world.recv(0,boost::mpi::any_tag, params);			
+		world.recv(0,boost::mpi::any_tag, *params);			
 
 		world.barrier();
 	
 		world.recv(0,boost::mpi::any_tag, sample);	
 	}
-	
 
 	//------------------------------------------//
 	//

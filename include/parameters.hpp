@@ -487,6 +487,7 @@ private:
 		ar & names;
 		ar & masses;
 		ar & volumes;
+		ar & sfactors;
 		ar & atomIDs;
     }
 	/////////////////// 
@@ -537,11 +538,11 @@ private:
 		ar & limits;
     }
 	/////////////////// 
-	
+public:
 	Params() {}
 	Params(const Params&);
 	Params& operator=(const Params&);
-	
+private:
 	std::vector<std::string> configuration;
 	
 	std::string config_rootpath;
@@ -552,6 +553,7 @@ private:
 
 	std::string guessformat(std::string filename);
 	bool check();
+	
 public: 
 	// interface for parameters
 	SampleParameters sample;
@@ -566,6 +568,5 @@ public:
 	void init(std::string filename, std::string format="");
 	~Params() {}; // it is said some compilers have problems w/ private destructors.
 };
-
 
 #endif 

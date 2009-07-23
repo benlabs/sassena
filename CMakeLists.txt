@@ -119,6 +119,10 @@ ADD_EXECUTABLE(unit_ranklogic tests/unit_ranklogic.cpp src/tasks.cpp src/coor3d.
 TARGET_LINK_LIBRARIES (unit_ranklogic ${LIB_DEPENDENCIES})
 INSTALL(TARGETS unit_ranklogic RUNTIME DESTINATION bin/units)
 
+ADD_EXECUTABLE(unit_serializestatic tests/unit_serializestatic.cpp )
+TARGET_LINK_LIBRARIES (unit_serializestatic ${LIB_DEPENDENCIES})
+INSTALL(TARGETS unit_serializestatic RUNTIME DESTINATION bin/units)
+
 
 ADD_EXECUTABLE(unit_sasstest tests/unit_sasstest.cpp src/sample.cpp src/parameters.cpp src/log.cpp src/frame.cpp src/frames.cpp src/atom.cpp src/atoms.cpp src/atomselection.cpp src/coor3d.cpp src/settings.cpp src/tasks.cpp)
 TARGET_LINK_LIBRARIES (unit_sasstest ${LIB_DEPENDENCIES})
