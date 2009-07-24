@@ -137,6 +137,7 @@ int main(int argc,char** argv) {
 	Params::Inst();
 	
 	Params* params = Params::Inst();
+	Database* database = Database::Inst();
 	
 	Timer timer;
 	timer.start("total");
@@ -177,6 +178,8 @@ int main(int argc,char** argv) {
 		timer.start("sample::setup");
 
 		params->init(string(argv[1]),"conf");
+		
+		database->init(string(argv[2]),"conf");
 
 	    // create the sample via structure file	
 		Info::Inst()->write(string("Reading structure information from file: ")+params->sample.structure.file);
@@ -270,13 +273,17 @@ int main(int argc,char** argv) {
 
 		sample.frames.clear_cache(); // reduce overhead
 
-		Info::Inst()->write("Exchanging sample and params information with compute nodes... ");
+		Info::Inst()->write("Exchanging sample, database & params information with compute nodes... ");
 
 		world.barrier();
 
 		timer.start("sample::communication");
 
 		broadcast(world,*params,0);
+
+		world.barrier();
+
+		broadcast(world,*database,0);
 
 		world.barrier();
 
@@ -290,6 +297,10 @@ int main(int argc,char** argv) {
 		world.barrier();
 	
 		world.recv(0,boost::mpi::any_tag, *params);			
+
+		world.barrier();
+	
+		world.recv(0,boost::mpi::any_tag, *database);			
 
 		world.barrier();
 	
@@ -706,8 +717,12 @@ int main(int argc,char** argv) {
 							if (aqscount==0) aqscount = sbfi->second.size(); else if (aqscount!=sbfi->second.size()) throw;
 						}
 
+						//
+						int aqsblock = 500;
+						for(size_t Ti = 0; Ti < aqscount; Ti+=aqsblock)
+						{
 
-						for(size_t asqi = 0; asqi < aqscount; ++asqi)
+						for(size_t asqi = Ti; asqi < ( (aqscount<(Ti+aqsblock-1)) ? aqscount : (Ti+aqsblock-1) ) ; ++asqi)
 						{
 							// communicate current aqs
 							vector<pair<int,complex<double> > > aqs_by_frame;				
@@ -778,7 +793,7 @@ int main(int argc,char** argv) {
 							timer.stop("scatter::agg::correlate");							
 
 						}
-
+						}
 						// wait for all nodes to finish, before communicating
 						local.barrier();
 						

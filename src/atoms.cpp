@@ -28,11 +28,24 @@
 
 using namespace std;
 
+
+
 // for the pdb format (ATOM entry look below)
 Atoms::Atoms(string filename, string fileformat) {
 	add(filename,fileformat);
 }
 
+void Atoms::add(string label) {
+	Atom temp_atom;
+	temp_atom.name = label;
+	temp_atom.ID = Database::Inst()->atomIDs.get(temp_atom.name); // get a unique ID for the name
+	temp_atom.mass = Database::Inst()->masses.get(temp_atom.ID);	
+	// make sure kappa is initialized:
+	temp_atom.kappa = 1.0;	
+	temp_atom.volume = Database::Inst()->volumes.get(temp_atom.ID);
+	push_back(temp_atom);
+}
+ 
 // for the pdb format (ATOM entry look below)
 void Atoms::add(string filename, string fileformat) {
 
@@ -52,8 +65,8 @@ void Atoms::add(string filename, string fileformat) {
 		while (getline(input,line)) {
 			if (line.substr(0,6)=="ATOM  ") {
 				try {
-					temp_atom.name = Params::Inst()->database.names.pdb.get(line.substr(12,4));
-					temp_atom.ID = Params::Inst()->database.atomIDs.get(temp_atom.name); // get a unique ID for the name
+					temp_atom.name = Database::Inst()->names.pdb.get(line.substr(12,4));
+					temp_atom.ID = Database::Inst()->atomIDs.get(temp_atom.name); // get a unique ID for the name
 					temp_atom.original_name = line.substr(12,4);
 					temp_atom.residue_name = line.substr(17,4);
 					temp_atom.chainid = line.substr(21,1);
@@ -67,10 +80,10 @@ void Atoms::add(string filename, string fileformat) {
 					temp_atom.y = atof(line.substr(38,8).c_str());
 					temp_atom.z = atof(line.substr(46,8).c_str());
 					temp_atom.beta = atof(line.substr(60,65).c_str());
-					temp_atom.mass = Params::Inst()->database.masses.get(temp_atom.ID);	
+					temp_atom.mass = Database::Inst()->masses.get(temp_atom.ID);	
 					// make sure kappa is initialized:
 					temp_atom.kappa = 1.0;	
-					temp_atom.volume = Params::Inst()->database.volumes.get(temp_atom.ID);
+					temp_atom.volume = Database::Inst()->volumes.get(temp_atom.ID);
 				} catch (...) { 
 					Err::Inst()->write(string("Error at reading pdb line:"));
 					Err::Inst()->write(line);

@@ -58,7 +58,8 @@ public:
 	void print_statistics();
 
 	void add(std::string filename, std::string fileformat = "pdb");
-
+	void add(std::string label);
+	
 	void add_selection(std::string name, std::string filename, std::string format,std::string select,double select_value);
 	void add_selection(std::string name,bool select);
 	

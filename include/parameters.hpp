@@ -320,6 +320,74 @@ public:
 	std::vector<OutputFileParameters> files;
 };
 
+class LimitsParameters {
+private:
+	/////////////////// MPI related
+	// make this class serializable to 
+	// allow sample to be transmitted via MPI
+    friend class boost::serialization::access;	
+	template<class Archive> void serialize(Archive & ar, const unsigned int version)
+    {
+		ar & framecache_max;
+		
+    }
+	/////////////////// 
+
+public:
+	size_t framecache_max;
+};
+
+// implement Parameters as a singleton class, this makes it globally available
+// it requires the call of the init() function, which also implements all checks
+class Params  {
+private:
+	/////////////////// MPI related
+	// make this class serializable to 
+	// allow sample to be transmitted via MPI
+    friend class boost::serialization::access;	
+	template<class Archive> void serialize(Archive & ar, const unsigned int version)
+    {
+		ar & carboncopy;
+		ar & config_rootpath;
+		ar & sample;
+		ar & scattering;
+		ar & output;
+		ar & limits;
+    }
+	/////////////////// 
+
+	Params() {}
+	Params(const Params&);
+	Params& operator=(const Params&);
+
+	std::vector<std::string> carboncopy;
+	
+	std::string config_rootpath;
+	
+	std::string get_filepath(std::string filename);	
+	
+	void read_conf(std::string filename);
+
+	std::string guessformat(std::string filename);
+	bool check();
+	
+public: 
+	// interface for parameters
+	SampleParameters sample;
+	ScatteringParameters scattering;
+	OutputParameters output;
+	LimitsParameters limits;
+	
+	// interface for initiatilzation and interfacing
+	static Params* Inst() { static Params instance; return &instance;}
+	
+	void init(std::string filename, std::string format="");
+	~Params() {}; // it is said some compilers have problems w/ private destructors.
+	
+	void write(std::string filename, std::string format="");	
+};
+
+
 class DatabaseVolumesParameters {
 private:
 	/////////////////// MPI related
@@ -476,7 +544,7 @@ public:
 	DatabaseNamesPDBParameters pdb;
 };
 
-class DatabaseParameters {
+class Database {
 private:
 	/////////////////// MPI related
 	// make this class serializable to 
@@ -484,6 +552,7 @@ private:
     friend class boost::serialization::access;	
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
     {
+		ar & carboncopy;
 		ar & names;
 		ar & masses;
 		ar & volumes;
@@ -491,6 +560,16 @@ private:
 		ar & atomIDs;
     }
 	/////////////////// 
+	Database() {}
+	Database(const Database&);
+	Database& operator=(const Database&);
+
+	std::vector<std::string> carboncopy;
+
+	void read_conf(std::string filename);
+
+	std::string guessformat(std::string filename);
+	bool check();
 
 public:
 	DatabaseNamesParameters names;
@@ -498,75 +577,15 @@ public:
 	DatabaseVolumesParameters volumes;	
 	DatabaseSFactorsParameters sfactors;	
 	DatabaseAtomIDsParameters atomIDs;	
-	
-};
 
-class LimitsParameters {
-private:
-	/////////////////// MPI related
-	// make this class serializable to 
-	// allow sample to be transmitted via MPI
-    friend class boost::serialization::access;	
-	template<class Archive> void serialize(Archive & ar, const unsigned int version)
-    {
-		ar & framecache_max;
-		
-    }
-	/////////////////// 
-
-public:
-	size_t framecache_max;
-};
-
-
-// implement Parameters as a singleton class, this makes it globally available
-// it requires the call of the init() function, which also implements all checks
-class Params  {
-private:
-	/////////////////// MPI related
-	// make this class serializable to 
-	// allow sample to be transmitted via MPI
-    friend class boost::serialization::access;	
-	template<class Archive> void serialize(Archive & ar, const unsigned int version)
-    {
-		ar & configuration;
-		ar & config_rootpath;
-		ar & sample;
-		ar & scattering;
-		ar & output;
-		ar & database;
-		ar & limits;
-    }
-	/////////////////// 
-public:
-	Params() {}
-	Params(const Params&);
-	Params& operator=(const Params&);
-private:
-	std::vector<std::string> configuration;
-	
-	std::string config_rootpath;
-	
-	std::string get_filepath(std::string filename);	
-	
-	void read_conf(std::string filename);
-
-	std::string guessformat(std::string filename);
-	bool check();
-	
-public: 
-	// interface for parameters
-	SampleParameters sample;
-	ScatteringParameters scattering;
-	OutputParameters output;
-	DatabaseParameters database;
-	LimitsParameters limits;
+	void init(std::string filename, std::string format="");
 	
 	// interface for initiatilzation and interfacing
-	static Params* Inst() { static Params instance; return &instance;}
+	static Database* Inst() { static Database instance; return &instance;}
 	
-	void init(std::string filename, std::string format="");
-	~Params() {}; // it is said some compilers have problems w/ private destructors.
+	~Database() {}; // it is said some compilers have problems w/ private destructors.
+	
+	void write(std::string filename, std::string format="");
 };
 
 #endif 

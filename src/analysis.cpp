@@ -243,8 +243,6 @@ void qvectors_unfold_cylinder(std::string avvectors, CartesianCoor3D q, uint32_t
 
 void set_scatteramp(Sample& sample,Atomselection as,CartesianCoor3D q,bool background) {
 	
-	Params* params = Params::Inst();
-		
 	Atoms& atoms = sample.atoms;
 	double ql = q.length();
 	map<pair<size_t,double>,double> esfquicklookup;
@@ -252,7 +250,7 @@ void set_scatteramp(Sample& sample,Atomselection as,CartesianCoor3D q,bool backg
 	for (Atomselection::iterator asi=as.begin();asi!=as.end();asi++) {
 		
 		double sf=0;
-		sf = params->database.sfactors.get(atoms[*asi].ID,ql);
+		sf = Database::Inst()->sfactors.get(atoms[*asi].ID,ql);
 
 		// calculate effective scattering length:
 		if (background) {
