@@ -41,8 +41,9 @@ class Timer {
 	std::map<std::string,bool> states;
 	
 	double t_diff(timeval start, timeval end);
-public:
 	
+
+public:			
 	std::vector<std::string> keys();
 	
 	void start(std::string tk);

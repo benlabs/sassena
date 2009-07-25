@@ -5,7 +5,7 @@ using namespace std;
 
 void Info::write(std::string word) {
 	
-	clog << "INFO>> ";
+	clog << prefix;
 	clog << word;
 	clog << endl;
 	clog.flush();
@@ -13,7 +13,7 @@ void Info::write(std::string word) {
 
 void Warn::write(std::string word) {
 	
-	clog << "WARNING>> ";
+	clog << prefix;
 	clog << word;
 	clog << endl;
 	clog.flush();
@@ -21,7 +21,7 @@ void Warn::write(std::string word) {
 
 void Err::write(std::string word) {
 	
-	cerr << "ERROR>> ";
+	cerr << prefix;
 	cerr << word;
 	cerr << endl;
 	cerr.flush();

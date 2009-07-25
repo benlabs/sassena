@@ -28,9 +28,13 @@ private:
 	Info& operator=(const Info&) {}
 	
 	static size_t counter;	
+	
+	std::string prefix;
 public:
 
 	static Info* Inst() { static Info instance; counter++; return &instance; }
+
+	void set_prefix(std::string p) { prefix = p;}
 
 	void write(std::string);
 	size_t calls() { return counter; }
@@ -44,9 +48,13 @@ private:
 	Warn& operator=(const Warn&) {}
 	
 	static size_t counter;
+	std::string prefix;
+
 public:
 
 	static Warn* Inst() { static Warn instance; counter++; return &instance; }
+
+	void set_prefix(std::string p) { prefix = p;}
 
 	void write(std::string);
 	size_t calls() { return counter; }
@@ -60,9 +68,13 @@ private:
 	Err& operator=(const Err&) {}
 		
 	static size_t counter;		
+
+	std::string prefix;
 public:
 
 	static Err* Inst() { static Err instance; counter++; return &instance; }
+
+	void set_prefix(std::string p) { prefix = p;}
 
 	void write(std::string);
 	size_t calls() { return counter; }

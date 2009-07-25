@@ -508,6 +508,15 @@ void Params::read_conf(std::string filename) {
 		if (rootsetting["limits"].exists("framecache_max")) limits.framecache_max = getlong(rootsetting["limits"]["framecache_max"]);
 	}
 
+	// END OF limits section //
+	// START OF debug section //
+	
+	debug.timer = false;
+
+	if (rootsetting.exists("debug")) {
+		if (rootsetting["debug"].exists("timer")) debug.timer = getbool(rootsetting["debug"]["timer"]);
+	}
+
 	delete pconf;
 };
 

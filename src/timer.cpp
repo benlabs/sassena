@@ -2,6 +2,9 @@
 
 #include <deque>
 
+#include "log.hpp"
+#include "parameters.hpp"
+
 using namespace std;
 
 double Timer::t_diff(timeval start, timeval end) {
@@ -18,6 +21,8 @@ void Timer::start(std::string tk)  {
 	timeval t;
 	gettimeofday(&t, 0);
 	starttimes[tk] = t;
+	
+	if (Params::Inst()->debug.timer) Info::Inst()->write(string("Starting timer for <")+tk+string(">"));
 }
 
 void Timer::stop(std::string tk)   { 
@@ -32,6 +37,7 @@ void Timer::stop(std::string tk)   {
 		cerr << "ERROR>> " << " Timer not started, but stopped: " << tk << endl;
 		throw;
 	}
+	if (Params::Inst()->debug.timer) Info::Inst()->write(string("Stopping timer for <")+tk+string(">"));
 }
 
 vector<string> Timer::keys() {

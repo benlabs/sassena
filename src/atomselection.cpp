@@ -142,4 +142,33 @@ void Atomselection::remove(const Atom& atom) {
 	booleanarray[atom.index]=false;
 }
 
+std::vector<Atomselection> Atomselection::slice(size_t number) {
+	std::vector<Atomselection> result;
+	
+	if (number<=0) throw;
+	size_t max_atoms_per_slice = this->size()/number;
+	
+	for(size_t i = 0; i < this->size(); i+=max_atoms_per_slice)
+	{
+		result.push_back(subset(i,max_atoms_per_slice));
+	}
+	return result;
+}
+
+Atomselection Atomselection::subset(size_t offset,size_t maxcount) {
+	Atomselection result;
+
+	result.booleanarray.resize(this->booleanarray.size(),false); // conserve the original mapping
+	
+	for(size_t i = offset; i < (offset+maxcount); ++i)
+	{
+		if ((i>=this->size())) break;
+		
+		result.push_back(this->at(i));
+		result.booleanarray[this->at(i)]=true;
+	}
+	
+	return result;
+}
+
 // end of file

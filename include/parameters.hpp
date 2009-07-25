@@ -337,6 +337,27 @@ public:
 	size_t framecache_max;
 };
 
+
+class DebugParameters {
+private:
+	/////////////////// MPI related
+	// make this class serializable to 
+	// allow sample to be transmitted via MPI
+    friend class boost::serialization::access;	
+	template<class Archive> void serialize(Archive & ar, const unsigned int version)
+    {
+		ar & timer;
+		
+    }
+	/////////////////// 
+
+public:
+	bool timer;
+};
+
+
+
+
 // implement Parameters as a singleton class, this makes it globally available
 // it requires the call of the init() function, which also implements all checks
 class Params  {
@@ -377,6 +398,7 @@ public:
 	ScatteringParameters scattering;
 	OutputParameters output;
 	LimitsParameters limits;
+	DebugParameters debug;
 	
 	// interface for initiatilzation and interfacing
 	static Params* Inst() { static Params instance; return &instance;}

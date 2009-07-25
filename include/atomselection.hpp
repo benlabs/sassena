@@ -56,6 +56,9 @@ public:
 	
 	void add(const Atom& atom);
 	void remove(const Atom& atom);
+	
+	std::vector<Atomselection> slice(size_t number);
+	Atomselection subset(size_t offset,size_t maxcount);
 };
 
 #endif
