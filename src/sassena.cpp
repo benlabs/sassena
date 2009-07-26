@@ -392,8 +392,6 @@ int main(int argc,char** argv) {
 //		Info::Inst()->write(string("(")+to_s(i->first.first.x)+string(",")+to_s(i->first.first.y)+string(",")+to_s(i->first.first.z)+string("),")+to_s(i->first.second)+string(":")+to_s(i->second)) ;
 //	}
 
-	
-	
 	for (Tasks::iterator ti=my_tasks.begin();ti!=my_tasks.end();ti++) {
 
 			// progress indicator
@@ -575,36 +573,91 @@ int main(int argc,char** argv) {
 							for(map<int,vector<vector<complex<double> > > >::iterator sbfi=scatbyframe.begin();sbfi!=scatbyframe.end();sbfi++) {
 								if (aqscount==0) aqscount = sbfi->second.size(); else if (aqscount!=sbfi->second.size()) throw;
 							}
+							
+							// we need to have a constant "block" size for our data
+							// since each node can have a different number of frames, we need to fill in the gaps
+							
+							size_t max_frames = ti->frames_max();
+							vector<double> my_aqs; 
+							size_t my_aqs_max_size = max_frames*target_selection.size()*2;// 2 for storing a complex
+							my_aqs.resize(my_aqs_max_size); 
+							vector<double> all_aqs; all_aqs.resize(local.size()*max_frames*target_selection.size()*2); // 
 	
 							for(size_t asqi = 0; asqi < aqscount; ++asqi) // do 1 unfolded q vector at a time
 							{
 							// communicate vector of current aqs
 	
+//								// sbfi->first = frame; sbfi->second = qvector/atoms/scattering-amplitudes
+//								vector<pair<int,vector<complex<double> > > > aq_vectors_by_frame;				
+//								for(map<int,vector<vector<complex<double> > > >::iterator sbfi=scatbyframe.begin();sbfi!=scatbyframe.end();sbfi++)
+//								{
+//									aq_vectors_by_frame.push_back(make_pair(sbfi->first,sbfi->second[asqi]));
+//								}
+//								
+//								
+//								vector<vector<pair<int,vector<complex<double> > > > > vector_out;
+//	//							vector_in.resize(local.size(),aq_vectors_by_frame);
+//	
+//								timer.start("scatter::agg::correlate");
+//	
+//								timer.start("scatter::agg::corr::gather");
+//								boost::mpi::all_gather(local,aq_vectors_by_frame,vector_out);
+//								timer.stop("scatter::agg::corr::gather");
+//								
+//															
+//								// decompose vector_out into new table: frame <-> Aqs, use frame number as implicit position
+//								vector<vector<complex<double> > > aq_vectors; aq_vectors.resize(frames.size());
+//								for(size_t i = 0; i < vector_out.size(); ++i)
+//								{
+//									for(size_t j = 0; j < vector_out[i].size(); ++j)
+//									{
+//										aq_vectors[vector_out[i][j].first]=vector_out[i][j].second;
+//									}
+//								}								
+// THIS IS OPTIMIZED, MPI WORKS BEST W/ FUNDAMENTAL TYPES
+// we need: 
+// number of atoms = target_selection.size() = number of AQS
+// list of frames IDs : rank = frame ids the rftable can be used for this. It contains information about: rank <-> frame
+//
 								// sbfi->first = frame; sbfi->second = qvector/atoms/scattering-amplitudes
-								vector<pair<int,vector<complex<double> > > > aq_vectors_by_frame;				
-								for(map<int,vector<vector<complex<double> > > >::iterator sbfi=scatbyframe.begin();sbfi!=scatbyframe.end();sbfi++)
-								{
-									aq_vectors_by_frame.push_back(make_pair(sbfi->first,sbfi->second[asqi]));
-								}
 								
-								vector<vector<pair<int,vector<complex<double> > > > > vector_out;
-	//							vector_in.resize(local.size(),aq_vectors_by_frame);
-	
+								// this will reproduce the order of ti->frames(rank)
+								for(int fn = 0; fn < frames_i.size(); ++fn)
+								{
+									vector<vector<complex<double> > >& scattering_amplitudes = scatbyframe[frames_i[fn]];
+									vector<complex<double> >& aqs = scattering_amplitudes[asqi];
+									for(size_t i = 0; i < aqs.size(); ++i)
+									{
+										my_aqs[ (fn*aqs.size()*2) + 2*i] = aqs[i].real();
+										my_aqs[ (fn*aqs.size()*2) + 2*i + 1] = aqs[i].imag();
+										
+									}
+								}
 								timer.start("scatter::agg::correlate");
-	
-								boost::mpi::all_gather(local,aq_vectors_by_frame,vector_out);
-	
-								timer.start("scatter::agg::corr::comp");
+								
+								timer.start("scatter::agg::corr::gather");
+								boost::mpi::all_gather(local,&my_aqs[0], my_aqs_max_size ,&all_aqs[0]);
+								timer.stop("scatter::agg::corr::gather");
 	
 								// decompose vector_out into new table: frame <-> Aqs, use frame number as implicit position
 								vector<vector<complex<double> > > aq_vectors; aq_vectors.resize(frames.size());
-								for(size_t i = 0; i < vector_out.size(); ++i)
+								
+								for(size_t li = 0; li < local.size(); ++li)
 								{
-									for(size_t j = 0; j < vector_out[i].size(); ++j)
+									vector<int> fi = ti->frames(li);
+									for(size_t j = 0; j < fi.size(); ++j)
 									{
-										aq_vectors[vector_out[i][j].first]=vector_out[i][j].second;
+										for(size_t i = 0; i < target_selection.size(); ++i)
+										{
+											size_t pos = (li*my_aqs_max_size) + (j*target_selection.size()*2) + 2*i;
+											aq_vectors[fi[j]].push_back( complex<double>(all_aqs[pos],all_aqs[pos+1]) );
+								
+										}
+										
 									}
-								}
+								}	
+	
+								timer.start("scatter::agg::corr::comp");
 	
 								// now determine which correlation 'step' WE need to do:
 								vector<int> stepsizes = get_step_assignments(local.rank(),local.size(),frames.size()/2); // frames.size()/2 is the length of the correlation we are interested in...
@@ -631,9 +684,9 @@ int main(int argc,char** argv) {
 									q_Task_results[make_pair(ti->q,*ssi)] += AAconj_sum.real() / double(AAconj_count) / double(aqscount);
 								}
 								
-								timer.start("scatter::agg::corr::comp");
+								timer.stop("scatter::agg::corr::comp");
 								
-								timer.start("scatter::agg::correlate");
+								timer.stop("scatter::agg::correlate");
 								
 								
 							} // this iterates the unfolded q vectors

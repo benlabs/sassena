@@ -32,6 +32,22 @@ std::vector<int> Task::frames(int rank) {
 	return result;
 }
 
+size_t Task::frames_max() {
+
+	map<int,size_t> count;
+	for(size_t i = 0; i < rftable.size(); ++i)
+	{
+		count[rftable[i].first]+=1;
+	}
+	size_t max=0;
+	for(map<int,size_t>::iterator ci = count.begin(); ci!=count.end(); ++ci)
+	{
+		if (max<ci->second) max=ci->second;
+	}
+	return max;
+}
+
+
 Tasks::Tasks(std::vector<int>& frames,std::vector<CartesianCoor3D>& qqq,size_t nn,std::string mode) {
 
 	if (mode=="time") {

@@ -47,6 +47,7 @@ public:
 	
 	int timeunits();
 	std::vector<int> frames(int rank); // return frames for the given rank
+	size_t frames_max();
 };
 
 class Tasks : public std::vector<Task> {

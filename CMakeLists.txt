@@ -123,6 +123,10 @@ ADD_EXECUTABLE(unit_serializestatic tests/unit_serializestatic.cpp )
 TARGET_LINK_LIBRARIES (unit_serializestatic ${LIB_DEPENDENCIES})
 INSTALL(TARGETS unit_serializestatic RUNTIME DESTINATION bin/units)
 
+ADD_EXECUTABLE(unit_mpicollectives tests/unit_mpicollectives.cpp src/timer.cpp src/log.cpp)
+TARGET_LINK_LIBRARIES (unit_mpicollectives ${LIB_DEPENDENCIES})
+INSTALL(TARGETS unit_mpicollectives RUNTIME DESTINATION bin/units)
+
 
 ADD_EXECUTABLE(unit_sasstest tests/unit_sasstest.cpp src/sample.cpp src/parameters.cpp src/log.cpp src/frame.cpp src/frames.cpp src/atom.cpp src/atoms.cpp src/atomselection.cpp src/coor3d.cpp src/settings.cpp src/tasks.cpp)
 TARGET_LINK_LIBRARIES (unit_sasstest ${LIB_DEPENDENCIES})
