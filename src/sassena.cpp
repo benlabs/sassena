@@ -807,6 +807,16 @@ int main(int argc,char** argv) {
 							if (aqscount==0) aqscount = sbfi->second.size(); else if (aqscount!=sbfi->second.size()) throw;
 						}
 
+						// we need to have a constant "block" size for our data
+						// since each node can have a different number of frames, we need to fill in the gaps
+						
+						size_t max_frames = ti->frames_max();
+						vector<double> my_aqs; 
+						size_t my_aqs_max_size = max_frames*2;// 2 for storing a complex
+						my_aqs.resize(my_aqs_max_size); 
+						vector<double> all_aqs; all_aqs.resize(local.size()*max_frames*2); // 
+
+
 						//
 						int aqsblock = 500;
 						for(size_t Ti = 0; Ti < aqscount; Ti+=aqsblock)
@@ -815,24 +825,50 @@ int main(int argc,char** argv) {
 						for(size_t asqi = Ti; asqi < ( (aqscount<(Ti+aqsblock-1)) ? aqscount : (Ti+aqsblock-1) ) ; ++asqi)
 						{
 							// communicate current aqs
-							vector<pair<int,complex<double> > > aqs_by_frame;				
-							for(map<int,vector<complex<double> > >::iterator sbfi=scatbyframe.begin();sbfi!=scatbyframe.end();sbfi++)
+//							vector<pair<int,complex<double> > > aqs_by_frame;				
+//							for(map<int,vector<complex<double> > >::iterator sbfi=scatbyframe.begin();sbfi!=scatbyframe.end();sbfi++)
+//							{
+//								aqs_by_frame.push_back(make_pair(sbfi->first,sbfi->second[asqi]));
+//							}
+//							vector<vector<pair<int,complex<double> > > > vector_out;
+////							vector_in.resize(local.size(),aqs_by_frame);
+//
+//							timer.start("scatter::agg::correlate");
+//
+//							boost::mpi::all_gather(local,aqs_by_frame,vector_out);
+//
+//							// decompose vector_out into new table: frame <-> Aqs, use frame number as implicit position
+//							vector<complex<double> > aqs; aqs.resize(frames.size());
+//							for(size_t i = 0; i < vector_out.size(); ++i) {
+//								for(size_t j = 0; j < vector_out[i].size(); ++j)
+//								{
+//									aqs[vector_out[i][j].first]=vector_out[i][j].second;
+//								}
+//							}
+//
+
+							for(int fn = 0; fn < frames_i.size(); ++fn)
 							{
-								aqs_by_frame.push_back(make_pair(sbfi->first,sbfi->second[asqi]));
+								vector<complex<double> >& aqs = scatbyframe[frames_i[fn]];
+								my_aqs[ (fn*2) ] = aqs[asqi].real();
+								my_aqs[ (fn*2) + 1] = aqs[asqi].imag();
 							}
-							vector<vector<pair<int,complex<double> > > > vector_out;
-//							vector_in.resize(local.size(),aqs_by_frame);
-
 							timer.start("scatter::agg::correlate");
-
-							boost::mpi::all_gather(local,aqs_by_frame,vector_out);
+							
+							timer.start("scatter::agg::corr::gather");
+							boost::mpi::all_gather(local,&my_aqs[0], my_aqs_max_size ,&all_aqs[0]);
+							timer.stop("scatter::agg::corr::gather");
 
 							// decompose vector_out into new table: frame <-> Aqs, use frame number as implicit position
-							vector<complex<double> > aqs; aqs.resize(frames.size());
-							for(size_t i = 0; i < vector_out.size(); ++i) {
-								for(size_t j = 0; j < vector_out[i].size(); ++j)
+							vector<complex<double> > aq_vectors; aq_vectors.resize(frames.size());
+							
+							for(size_t li = 0; li < local.size(); ++li)
+							{
+								vector<int> fi = ti->frames(li);
+								for(size_t j = 0; j < fi.size(); ++j)
 								{
-									aqs[vector_out[i][j].first]=vector_out[i][j].second;
+										size_t pos = (li*my_aqs_max_size) + (j*2);
+										aq_vectors[fi[j]] = complex<double>(all_aqs[pos],all_aqs[pos+1]);
 								}
 							}
 
@@ -840,7 +876,7 @@ int main(int argc,char** argv) {
 							vector<int> stepsizes = get_step_assignments(local.rank(),local.size(),frames.size()/2); // frames.size()/2 is the length of the correlation we are interested in...
 
 							map<int,complex<double> > my_AAconj;
-
+							
 							timer.start("scatter::agg::corr::comp");
 
 							for(vector<int>::iterator ssi=stepsizes.begin();ssi!=stepsizes.end();ssi++) {
@@ -848,7 +884,7 @@ int main(int argc,char** argv) {
 								int AAconj_count=0;					
 								size_t current_frame=0;
 								while( (current_frame+(*ssi))<frames.size()) {
-									AAconj_sum += aqs[current_frame]*conj(aqs[current_frame+(*ssi)]); // do we have to take the "REAL" part only?
+									AAconj_sum += aq_vectors[current_frame]*conj(aq_vectors[current_frame+(*ssi)]); // do we have to take the "REAL" part only?
 									AAconj_count++;
 									current_frame++;
 								}
