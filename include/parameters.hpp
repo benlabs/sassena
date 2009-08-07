@@ -92,7 +92,7 @@ public:
 	}
 };
 
-class SampleFramesParameters : public std::vector<std::pair<std::string,std::string> > {
+class SampleFramesetParameters {
 private:
 	/////////////////// MPI related
 	// make this class serializable to 
@@ -100,7 +100,34 @@ private:
     friend class boost::serialization::access;	
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
     {
-		ar & boost::serialization::base_object<std::vector<std::pair<std::string,std::string> > >(*this);
+		ar & first;
+		ar & last;
+		ar & last_set;
+		ar & stride;
+		ar & filename;
+		ar & type;
+    }
+	/////////////////// 
+
+public:	
+	size_t first;
+	size_t last;
+	bool last_set;
+	size_t stride;
+	std::string filename;
+	std::string type;
+};
+
+
+class SampleFramesParameters : public std::vector<SampleFramesetParameters > {
+private:
+	/////////////////// MPI related
+	// make this class serializable to 
+	// allow sample to be transmitted via MPI
+    friend class boost::serialization::access;	
+	template<class Archive> void serialize(Archive & ar, const unsigned int version)
+    {
+		ar & boost::serialization::base_object<std::vector<SampleFramesetParameters> >(*this);
     }
 	/////////////////// 
 
@@ -329,14 +356,34 @@ private:
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
     {
 		ar & framecache_max;
+		ar & static_load_imbalance_max;
 		
     }
 	/////////////////// 
 
 public:
 	size_t framecache_max;
+	double static_load_imbalance_max;
 };
 
+
+
+class RuntimeParameters {
+private:
+	/////////////////// MPI related
+	// make this class serializable to 
+	// allow sample to be transmitted via MPI
+    friend class boost::serialization::access;	
+	template<class Archive> void serialize(Archive & ar, const unsigned int version)
+    {
+		ar & config_rootpath;
+		
+    }
+	/////////////////// 
+
+public:
+	std::string config_rootpath;
+};
 
 class DebugParameters {
 private:
@@ -394,6 +441,7 @@ private:
 	
 public: 
 	// interface for parameters
+	RuntimeParameters runtime;
 	SampleParameters sample;
 	ScatteringParameters scattering;
 	OutputParameters output;

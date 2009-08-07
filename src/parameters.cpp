@@ -227,11 +227,23 @@ void Params::read_conf(std::string filename) {
 	
 	
 	// read in frame information
+	size_t def_first=0;	size_t def_last=0;	bool def_last_set=false; size_t def_stride = 1;
+	if (rootsetting["sample"]["frames"].exists("first"))   def_first  = getlong(rootsetting["sample"]["frames"]["first"]);
+	if (rootsetting["sample"]["frames"].exists("last"))  { def_last   = getlong(rootsetting["sample"]["frames"]["last"]); def_last_set = true; }
+	if (rootsetting["sample"]["frames"].exists("stride"))  def_stride = getlong(rootsetting["sample"]["frames"]["stride"]);
+	
 	for (int i=0;i<rootsetting["sample"]["frames"].getLength();i++) {
-		string fn = get_filepath(getstring(rootsetting["sample"]["frames"][i]["file"]));
-		string ft = getstring(rootsetting["sample"]["frames"][i]["type"]);
-		sample.frames.push_back(make_pair(fn,ft));
-		Info::Inst()->write(string("Added frames from ")+fn+string(" using format: ")+ft);				
+		if (rootsetting["sample"]["frames"][i].getType()!=libconfig::Setting::TypeGroup) continue;
+		SampleFramesetParameters fset;
+		fset.first = def_first;	fset.last = def_last; fset.last_set = def_last_set; fset.stride = def_stride;
+		fset.filename = get_filepath(getstring(rootsetting["sample"]["frames"][i]["file"]));
+		fset.type = getstring(rootsetting["sample"]["frames"][i]["type"]);
+		if (rootsetting["sample"]["frames"][i].exists("first"))   fset.first  = getlong(rootsetting["sample"]["frames"][i]["first"]);
+		if (rootsetting["sample"]["frames"][i].exists("last"))  { fset.last   = getlong(rootsetting["sample"]["frames"][i]["last"]); fset.last_set = true; }
+		if (rootsetting["sample"]["frames"][i].exists("stride"))  fset.stride = getlong(rootsetting["sample"]["frames"][i]["stride"]);
+		
+		sample.frames.push_back(fset);
+		Info::Inst()->write(string("Added frames from ")+fset.filename+string(" using format: ")+fset.type);				
 	}
 	
 	// periodic boundary behavior and/or postprocessing
@@ -503,11 +515,12 @@ void Params::read_conf(std::string filename) {
 	// frame cache limit
 
 	limits.framecache_max = 2;
+	limits.static_load_imbalance_max = 0.05; // default is 5% loss due to bad partioning.
 
 	if (rootsetting.exists("limits")) {
 		if (rootsetting["limits"].exists("framecache_max")) limits.framecache_max = getlong(rootsetting["limits"]["framecache_max"]);
+		if (rootsetting["limits"].exists("static_load_imbalance_max")) limits.static_load_imbalance_max = getdouble(rootsetting["limits"]["static_load_imbalance_max"]);		
 	}
-
 	// END OF limits section //
 	// START OF debug section //
 	

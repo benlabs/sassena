@@ -89,7 +89,7 @@ public:
 	size_t size();
 
 	// push a frameset, frameset is specialized
-	size_t add_frameset(const std::string filename,const std::string filetype,Atoms& atoms);
+	size_t add_frameset(const std::string filename,const std::string filetype,size_t first, size_t last, bool last_set, size_t stride, Atoms& atoms);
 
 	// load a frame into the framecache, set as current
 	void load(size_t framenumber,Atoms& atoms,std::map<std::string,Atomselection>& atomselections);
@@ -114,12 +114,38 @@ class Frameset {
     {
 		ar & frame_number_offset;
 		ar & number_of_frames;
+		ar & filename;	
+		ar & number_of_atoms;
+		ar & first;
+		ar & last;
+		ar & last_set;
+		ar & stride;		
+		ar & frame_byte_offsets;
     }
+
 public:
 	virtual ~Frameset() {}
 	
 	size_t frame_number_offset;
 	size_t number_of_frames;
+	
+	std::string filename;
+	long number_of_atoms;
+	
+	size_t first;
+	size_t last;
+	bool last_set;
+	size_t stride;
+	
+	std::vector<std::ios::streamoff> frame_byte_offsets; // index implicit = internal frame number, offset = logical offset (can be byte offset , or line offset)
+	
+	// support performance boost for non-seekable files: caching of frame_offsets
+	size_t init_frame_byte_offsets(); // wrapper which is called by the init()
+	void read_frame_byte_offsets(std::string cache_filename); // read offsets from cache
+	void write_frame_byte_offsets(std::string cache_filename); // write offsets to cache
+	void trim_frame_byte_offsets(); // apply range modifier (first,last,stride)
+
+	virtual void scan_frame_byte_offsets() {}
 	
 	// derived classes have to support this!
 	virtual void read_frame(size_t internalframenumber,Frame& cf) {}
@@ -150,9 +176,7 @@ class DCDFrameset : public Frameset {
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
     {
 		ar & boost::serialization::base_object<Frameset>(*this);
-		ar & filename;
 		ar & init_byte_pos;
-		ar & number_of_atoms;
 		ar & flag_ext_block1;
 		ar & flag_ext_block2;
 		ar & block_size_byte;
@@ -163,7 +187,6 @@ class DCDFrameset : public Frameset {
 		ar & block2_byte_offset;
     }
 
-	std::string filename;	
 	// seek position where data starts within file
 	std::streamoff init_byte_pos;
 	
@@ -185,11 +208,13 @@ public:
 	void init(std::string filename,size_t framenumber_offset);
 
 	// this constructor should be called by default
-	DCDFrameset(std::string filename,size_t frame_number_offset) { init(filename,frame_number_offset); }
+	DCDFrameset(std::string filename,size_t f, size_t l, bool lset, size_t s, size_t frame_number_offset)  { first=f;last=l;last_set=lset;stride=s; init(filename,frame_number_offset); }
 	
 	// internalframenumber used for positioning file pointer, data loaded into Frame argument
 	void read_frame(size_t internalframenumber,Frame& cf);
 	
+	// fill frame_offsets. non-seekable files have to be scanned completely!
+	void scan_frame_byte_offsets();
 };
 
 
@@ -200,26 +225,27 @@ class PDBFrameset : public Frameset {
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
     {
 		ar & boost::serialization::base_object<Frameset>(*this);
-		ar & filename;
-		ar & number_of_atoms;
-    }
+		ar & default_uc;
+	}
 
-	std::string filename;
-	long number_of_atoms;
+	std::vector<CartesianCoor3D> default_uc; 
 	
 	bool detect(const std::string filename);	
 public:
+	
 	
 	// allow construction w/o reading file -> call init manually
 	PDBFrameset() {}
 	void init(std::string filename,size_t framenumber_offset);
 
 	// this constructor should be called by default
-	PDBFrameset(std::string filename,size_t frame_number_offset) { init(filename,frame_number_offset); }
+	PDBFrameset(std::string filename,size_t f, size_t l, bool lset, size_t s, size_t frame_number_offset) { first=f;last=l;last_set=lset;stride=s; init(filename,frame_number_offset); }
 	
 	// internalframenumber used for positioning file pointer, data loaded into Frame argument
 	void read_frame(size_t internalframenumber,Frame& cf);
-	
+
+	// fill frame_offsets. non-seekable files have to be scanned completely!
+	void scan_frame_byte_offsets();
 };
 
 
@@ -230,29 +256,23 @@ class XTCFrameset : public Frameset {
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
     {
 		ar & boost::serialization::base_object<Frameset>(*this);
-		ar & filename;
-		ar & number_of_atoms;
-		ar & frame_byte_offsets;		
-    }
-
-	std::string filename;
-	long number_of_atoms;
-	
-	std::vector<std::ios::streamoff> frame_byte_offsets;	
+	}
 	
 	bool detect(const std::string filename);	
 public:
 	
 	// allow construction w/o reading file -> call init manually
 	XTCFrameset() {}
-	void init(std::string filename,size_t framenumber_offset);
+	void init(std::string filename,size_t framenumber_offset);	
 
 	// this constructor should be called by default
-	XTCFrameset(std::string filename,size_t frame_number_offset) { init(filename,frame_number_offset); }
+	XTCFrameset(std::string filename,size_t f, size_t l, bool lset, size_t s, size_t frame_number_offset) { first=f;last=l;last_set=lset;stride=s; init(filename,frame_number_offset); }
 	
 	// internalframenumber used for positioning file pointer, data loaded into Frame argument
 	void read_frame(size_t internalframenumber,Frame& cf);
-	
+
+	// fill frame_offsets. non-seekable files have to be scanned completely!
+	void scan_frame_byte_offsets();
 };
 
 
@@ -263,16 +283,8 @@ class TRRFrameset : public Frameset {
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
     {
 		ar & boost::serialization::base_object<Frameset>(*this);
-		ar & filename;
-		ar & number_of_atoms;
-		ar & frame_byte_offsets;
     }
 
-	std::string filename;
-	long number_of_atoms;
-	
-	std::vector<std::streamoff> frame_byte_offsets;		
-	
 	bool detect(const std::string filename);	
 public:
 	
@@ -281,11 +293,13 @@ public:
 	void init(std::string filename,size_t framenumber_offset);
 
 	// this constructor should be called by default
-	TRRFrameset(std::string filename,size_t frame_number_offset) { init(filename,frame_number_offset); }
+	TRRFrameset(std::string filename,size_t f, size_t l, bool lset, size_t s, size_t frame_number_offset) { first=f;last=l;last_set=lset;stride=s; init(filename,frame_number_offset); }
 	
 	// internalframenumber used for positioning file pointer, data loaded into Frame argument
 	void read_frame(size_t internalframenumber,Frame& cf);
 	
+	// fill frame_offsets. non-seekable files have to be scanned completely!
+	void scan_frame_byte_offsets();
 };
 
 #endif

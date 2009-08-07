@@ -367,7 +367,7 @@ void scatter_none(Sample& sample,Atomselection as,CartesianCoor3D& q,std::vector
 complex<double> scatter_none(Sample& sample,Atomselection as,CartesianCoor3D& q) {
 	
 	CoordinateSet& cs = sample.frames.current().coordinate_sets[as.name];
-	
+
 	complex<double> A = complex<double>(0,0);
 	if (q.length()==0) {
 		for (Atomselection::iterator asi=as.begin();asi!=as.end();asi++) {
@@ -381,7 +381,6 @@ complex<double> scatter_none(Sample& sample,Atomselection as,CartesianCoor3D& q)
 			CartesianCoor3D c(cs.x[i],cs.y[i],cs.z[i]);
 			A += exp(-1.0*complex<double>(0,c*q)) * s;		
 		}
-		
 //	complex<double> A = complex<double>(0,0);		
 //		const int N = as.size();
 //		const int Nmod4 = N % 4;

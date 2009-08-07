@@ -66,10 +66,10 @@ int main (int argc, char **argv)
 	sample.add_atoms(Settings::get_filepath(Settings::get("main")["sample"]["structure"]["file"]), Settings::get("main")["sample"]["structure"]["format"]);
 	
 	// read frames
-	for (int i=0;i<Settings::get("main")["sample"]["frames"].getLength();i++) {
-		clog << "INFO>> " << "Reading frames from: " << (const char *) Settings::get("main")["sample"]["frames"][i]["file"] << endl;
-        sample.frames.add_frameset(Settings::get("main")["sample"]["frames"][i]["file"],Settings::get("main")["sample"]["frames"][i]["type"],sample.atoms);
-	}
+//	for (int i=0;i<Settings::get("main")["sample"]["frames"].getLength();i++) {
+//		clog << "INFO>> " << "Reading frames from: " << (const char *) Settings::get("main")["sample"]["frames"][i]["file"] << endl;
+ //       sample.frames.add_frameset(Settings::get("main")["sample"]["frames"][i]["file"],Settings::get("main")["sample"]["frames"][i]["type"],sample.atoms);
+//	}
 			
 	// estimate rank logic 
 	
