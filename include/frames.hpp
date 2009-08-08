@@ -87,7 +87,8 @@ public:
 	~Frames();
 	
 	size_t size();
-
+	size_t cache_size();
+	
 	// push a frameset, frameset is specialized
 	size_t add_frameset(const std::string filename,const std::string filetype,size_t first, size_t last, bool last_set, size_t stride, Atoms& atoms);
 
@@ -130,7 +131,7 @@ public:
 	size_t number_of_frames;
 	
 	std::string filename;
-	long number_of_atoms;
+	size_t number_of_atoms;
 	
 	size_t first;
 	size_t last;
@@ -190,7 +191,6 @@ class DCDFrameset : public Frameset {
 	// seek position where data starts within file
 	std::streamoff init_byte_pos;
 	
-	long number_of_atoms;
 	unsigned long flag_ext_block1;
 	unsigned long flag_ext_block2;
 	std::streamoff block_size_byte;

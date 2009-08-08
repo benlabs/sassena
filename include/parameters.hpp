@@ -377,7 +377,6 @@ private:
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
     {
 		ar & config_rootpath;
-		
     }
 	/////////////////// 
 

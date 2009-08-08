@@ -384,7 +384,9 @@ int main(int argc,char** argv) {
 		world.barrier();
 
 		broadcast(world,sample,0);
-		
+
+		world.barrier();
+	
 		timer.stop("sample::communication");
 		
 	}
@@ -401,6 +403,9 @@ int main(int argc,char** argv) {
 		world.barrier();
 	
 		world.recv(0,boost::mpi::any_tag, sample);	
+
+		world.barrier();
+		
 	}
 
 	//------------------------------------------//
@@ -445,10 +450,6 @@ int main(int argc,char** argv) {
 			maxload += 1;
 			double static_load_imbalance = 1.0 - double(minload)/double(maxload);
 			total_static_load_imbalance += static_load_imbalance;
-			if (rank==0) Warn::Inst()->write(string("Static load imbalance(frames): ")+ to_s(100*static_load_imbalance) + " %");
-		}
-		else {
-			if (rank==0) Info::Inst()->write(string("Perfect static load balance(frames)!"));
 		}
 		max_frames = maxload;
 
@@ -468,12 +469,7 @@ int main(int argc,char** argv) {
 		if (unused_nodes != 0) {
 			double static_load_imbalance = 1.0 - double(used_nodes)/double(nn);
 			total_static_load_imbalance += static_load_imbalance;
-			if (rank==0) 		Warn::Inst()->write(string("Static load imbalance(frames): ")+ to_s(100*static_load_imbalance) + " %");
-			if (rank==0) 		Warn::Inst()->write(string("Number of unused nodes(!): ")+ to_s(unused_nodes));			
 		}
-		else {
-			if (rank==0) 		Info::Inst()->write(string("Perfect static load balance(frames)!"));
-		}	
 			
 		// partition the nodes by number of available segments/colors
 		mycolor = (rank*colors)/used_nodes;					
@@ -492,18 +488,12 @@ int main(int argc,char** argv) {
 			size_t maxload = minload + 1;
 			double static_load_imbalance = 1.0 - double(minload)/double(maxload);
 			total_static_load_imbalance += static_load_imbalance;			
-			if (rank==0) 		Warn::Inst()->write(string("Static load imbalance(qvectors): ")+ to_s(100*static_load_imbalance) + " %");
-		}
-		else if ((nq==colors) || ((nq % colors)==0)) {
-			if (rank==0) 		Info::Inst()->write(string("Perfect static load balance(qvectors)!"));			
 		}
 		else if (nq<colors) {
 
 			if (unused_colors != 0) {
-			double static_load_imbalance = 1.0 - double(colors-unused_colors)/double(colors);
-			total_static_load_imbalance += static_load_imbalance;			
-			if (rank==0) 		Warn::Inst()->write(string("Static load imbalance(qvectors): ")+ to_s(100*static_load_imbalance) + " %");
-			if (rank==0) 		Warn::Inst()->write(string("Number of unused nodes(!): ")+ to_s(unused_colors*(colors/nn)));			
+				double static_load_imbalance = 1.0 - double(colors-unused_colors)/double(colors);
+				total_static_load_imbalance += static_load_imbalance;			
 			}
 		}
 		
@@ -516,7 +506,7 @@ int main(int argc,char** argv) {
 		}		
 	}
 	
-	if (rank==0) 		Warn::Inst()->write(string("Total static load imbalance: ")+ to_s(100*total_static_load_imbalance) + " %");	
+	if (rank==0) 		Warn::Inst()->write(string("Total static load imbalance: ")+ to_s(100*total_static_load_imbalance)+string(" %"));	
 	
 	if (total_static_load_imbalance > params->limits.static_load_imbalance_max) {
 		if (rank==0) {
@@ -901,16 +891,16 @@ int main(int argc,char** argv) {
 					
 				}
 				else if (params->scattering.interference.type == "all") {
-
+					
 					map<size_t,vector<complex<double> > > scatbyframe; // frame -> qvectors/amplitude
 			
 					// iterate through all frames this node is supposed to do
 					for(size_t i = 0; i < myframes.size(); ++i)
 					{
 						timer.start("scatter::loadframe");
-											
-						sample.frames.load(myframes[i],sample.atoms,sample.atoms.selections[target]);				
 
+						sample.frames.load(myframes[i],sample.atoms,sample.atoms.selections[target]);				
+						
 						timer.stop("scatter::loadframe");
 
 //						// introducing the supergrid 3x3x3 elements

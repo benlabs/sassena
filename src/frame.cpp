@@ -130,7 +130,7 @@ void Frame::wrap() {
 	CartesianCoor3D uc1n = uc[1]/uc1l;
 	CartesianCoor3D uc2n = uc[2]/uc2l;
 	
-	for (int32_t i=0;i<number_of_atoms;i++) {
+	for (size_t i=0;i<number_of_atoms;i++) {
 		CartesianCoor3D c = coord3D(i) - origin;
 
 	double cuc0n = (c*uc0n);

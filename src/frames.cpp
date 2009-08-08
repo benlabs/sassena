@@ -113,6 +113,10 @@ size_t Frames::size() {
 	return number_of_frames;
 }
 
+size_t Frames::cache_size() {
+	return framecache.size();
+}
+
 Frameset& Frames::find_frameset(size_t framenumber) {
 	test_framenumber(framenumber);
 	for (size_t i=0;i<framesets.size();i++) {
@@ -128,23 +132,24 @@ Frameset& Frames::find_frameset(size_t framenumber) {
 
 size_t Frames::scope_framenumber(size_t framenumber) {
 	Frameset& fs = find_frameset(framenumber);
-	return framenumber-fs.frame_number_offset;
+	return (framenumber - fs.frame_number_offset);
 }
 
 void Frames::load(size_t framenumber,Atoms& atoms,std::map<std::string,Atomselection>& atomselections) {
 	// get frameset
-	// call 
+	// call 	
 	if (framecache.find(framenumber)!=framecache.end()) {
 		currentframe_i = framenumber;
 	}
 	else {
-		if ((Params::Inst()->limits.framecache_max>=0) && framecache.size()>Params::Inst()->limits.framecache_max) {
+		if ((Params::Inst()->limits.framecache_max>0) && framecache.size()>Params::Inst()->limits.framecache_max) {
 			framecache.clear();
 		}
 		// locate frameset 
 		Frameset& fs = find_frameset(framenumber);
 		// prepare empty frame
 		Frame& cf = framecache[framenumber];
+		Info::Inst()->write(string("read_frame: ")+to_s(scope_framenumber(framenumber))); 						
 		
 		// fill frame w/ data
 		fs.read_frame(scope_framenumber(framenumber),cf);
@@ -173,7 +178,7 @@ void Frames::load(size_t framenumber,Atoms& atoms,Atomselection& atomselection) 
 		currentframe_i = framenumber;
 	}
 	else {
-		if ((Params::Inst()->limits.framecache_max>=0) && framecache.size()>Params::Inst()->limits.framecache_max) {
+		if ((Params::Inst()->limits.framecache_max>0) && framecache.size()>Params::Inst()->limits.framecache_max) {
 			framecache.clear();
 		}
 		// locate frameset 
@@ -314,7 +319,7 @@ void DCDFrameset::init(std::string fn,size_t fno) {
 	// determine byte positions, i.e. read first frame
 
 	number_of_frames = dcdheader.number_of_frames;
-	number_of_atoms = noa;
+	number_of_atoms = static_cast<size_t>(noa);
 	init_byte_pos = dcdfile.tellg();
 	flag_ext_block1 = dcdheader.flag_ext_block1;
 	flag_ext_block2 = dcdheader.flag_ext_block2;
@@ -406,22 +411,22 @@ void DCDFrameset::read_frame(size_t internalframenumber,Frame& cf) {
 	cf.number_of_atoms = number_of_atoms;
 
 	dcdfile.seekg(frame_byte_offsets[internalframenumber]+x_byte_offset,ios_base::beg);
-	for (int32_t i=0;i<number_of_atoms;i++) {
+	for (size_t i=0;i<number_of_atoms;i++) {
 		float temp; dcdfile.read((char*) &temp,sizeof(float)); cf.x.push_back(temp);
 	}
 	dcdfile.seekg(frame_byte_offsets[internalframenumber]+y_byte_offset,ios_base::beg);
-	for (int32_t i=0;i<number_of_atoms;i++) {
+	for (size_t i=0;i<number_of_atoms;i++) {
 		float temp; dcdfile.read((char*) &temp,sizeof(float)); cf.y.push_back(temp);
 	}
 	dcdfile.seekg(frame_byte_offsets[internalframenumber]+z_byte_offset,ios_base::beg);
-	for (int32_t i=0;i<number_of_atoms;i++) {
+	for (size_t i=0;i<number_of_atoms;i++) {
 		float temp; dcdfile.read((char*) &temp,sizeof(float)); cf.z.push_back(temp);
 	}
 
 	// This block has unknown feature
 	if (flag_ext_block2) {
 		dcdfile.seekg(frame_byte_offsets[internalframenumber]+block2_byte_offset,ios_base::beg);
-		for (int32_t i=0;i<number_of_atoms;i++) {
+		for (size_t i=0;i<number_of_atoms;i++) {
 			float temp; dcdfile.read((char*) &temp,sizeof(float));
 			// skip it
 			// cf.block2.push_back(temp);
