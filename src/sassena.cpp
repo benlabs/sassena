@@ -892,8 +892,8 @@ int main(int argc,char** argv) {
 				}
 				else if (params->scattering.interference.type == "all") {
 					
-					map<size_t,vector<complex<double> > > scatbyframe; // frame -> qvectors/amplitude
-			
+					vector< vector<complex<double> > > scatbyframe; // frame -> qvectors/amplitude
+					scatbyframe.resize(myframes.size());
 					// iterate through all frames this node is supposed to do
 					for(size_t i = 0; i < myframes.size(); ++i)
 					{
@@ -924,7 +924,7 @@ int main(int argc,char** argv) {
 
 						Atomselection& target_selection = sample.atoms.selections[target];
 						// holds the scattering amplitudes for the current frame:
-						vector<complex<double> >& scattering_amplitudes = scatbyframe[myframes[i]];
+						vector<complex<double> >& scattering_amplitudes = scatbyframe[i];
 								
 						string avtype = params->scattering.average.type;
 						double resolution = params->scattering.average.resolution;
@@ -980,28 +980,26 @@ int main(int argc,char** argv) {
 					if (mode=="none") {
 
 						// no correlation -> instanenous scattering intensity
-						for(map<size_t,vector<complex<double> > >::iterator sbfi=scatbyframe.begin();sbfi!=scatbyframe.end();sbfi++) {
+						for(size_t i = 0; i < scatbyframe.size(); ++i)
+						{
 							double scatsum=0;				
-							for(vector<complex<double> >::iterator si=sbfi->second.begin();si!=sbfi->second.end();si++) {
+							for(vector<complex<double> >::iterator si=scatbyframe[i].begin();si!=scatbyframe[i].end();si++) {
 								scatsum += abs(conj(*si)*(*si));
 							}
-							qF_Task_results[make_pair(*qqqi,sbfi->first)] = scatsum/(sbfi->second.size()); 
+							qF_Task_results[make_pair(*qqqi,myframes[i])] = scatsum/(scatbyframe[i].size()); 
 						}
 					}
 					else if (mode=="time") {
 
-						// check size of vector<scattering amplitudes>, this is the size of unfolded q vectors
-						size_t aqscount = 0;
-						for(map<size_t,vector<complex<double> > >::iterator sbfi=scatbyframe.begin();sbfi!=scatbyframe.end();sbfi++) {
-							if (aqscount==0) aqscount = sbfi->second.size(); else if (aqscount!=sbfi->second.size()) throw;
-						}
-
+						size_t aqscount = qvectors.size();
+						
 						// we need to have a constant "block" size for our data
 						// since each node can have a different number of frames, we need to fill in the gaps
 						vector<double> my_aqs; 
 						size_t my_aqs_max_size = max_frames*2;// 2 for storing a complex
 						my_aqs.resize(my_aqs_max_size); 
-						vector<double> all_aqs; all_aqs.resize(local.size()*max_frames*2); // 
+						vector<double> all_aqs; 
+						all_aqs.resize(local.size()*max_frames*2); // 
 
 
 						//
@@ -1036,7 +1034,7 @@ int main(int argc,char** argv) {
 
 							for(int fn = 0; fn < myframes.size(); ++fn)
 							{
-								vector<complex<double> >& aqs = scatbyframe[myframes[fn]];
+								vector<complex<double> >& aqs = scatbyframe[fn];
 								my_aqs[ (fn*2) ] = aqs[asqi].real();
 								my_aqs[ (fn*2) + 1] = aqs[asqi].imag();
 							}
@@ -1047,18 +1045,16 @@ int main(int argc,char** argv) {
 							timer.stop("scatter::agg::corr::gather");
 
 							// decompose vector_out into new table: frame <-> Aqs, use frame number as implicit position
-							vector<complex<double> > aq_vectors; aq_vectors.resize(sample.frames.size());
+							vector<complex<double> > aq_vectors; 
+							aq_vectors.resize(sample.frames.size());
 							
-							for(size_t li = 0; li < local.size(); ++li)
+							for(size_t fi = 0; fi < sample.frames.size(); ++fi)
 							{
-								vector<size_t> fi = frames_for_rank(li,nq,nf,nn);
-								for(size_t j = 0; j < fi.size(); ++j)
-								{
-										size_t pos = (li*my_aqs_max_size) + (j*2);
-										aq_vectors[fi[j]] = complex<double>(all_aqs[pos],all_aqs[pos+1]);
-								}
+								size_t rank_of_frame = (fi*local.size())/sample.frames.size();
+								size_t frame_offset = ( (fi*local.size()) % sample.frames.size() / local.size());
+								size_t pos = ( (rank_of_frame*my_aqs_max_size) + frame_offset*2 ); 
+								aq_vectors[fi]=complex<double>(all_aqs[pos],all_aqs[pos+1]);
 							}
-
 							// now determine which correlation 'step' WE need to do:
 							vector<size_t> stepsizes = get_step_assignments(local.rank(),local.size(),sample.frames.size()/2); // frames.size()/2 is the length of the correlation we are interested in...
 

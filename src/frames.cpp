@@ -149,7 +149,6 @@ void Frames::load(size_t framenumber,Atoms& atoms,std::map<std::string,Atomselec
 		Frameset& fs = find_frameset(framenumber);
 		// prepare empty frame
 		Frame& cf = framecache[framenumber];
-		Info::Inst()->write(string("read_frame: ")+to_s(scope_framenumber(framenumber))); 						
 		
 		// fill frame w/ data
 		fs.read_frame(scope_framenumber(framenumber),cf);
