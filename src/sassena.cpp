@@ -824,6 +824,12 @@ int main(int argc,char** argv) {
 								}
 								timer.start("scatter::agg::correlate");
 								
+								if (params->debug.barriers) {
+									timer.start("scatter::agg::corr::barrier");
+									local.barrier();
+									timer.stop("scatter::agg::corr::barrier");
+								}
+								
 								timer.start("scatter::agg::corr::gather");
 								boost::mpi::all_gather(local,&my_aqs[0], my_aqs_max_size ,&all_aqs[0]);
 								timer.stop("scatter::agg::corr::gather");
@@ -999,6 +1005,11 @@ int main(int argc,char** argv) {
 						size_t my_aqs_max_size = max_frames*2;// 2 for storing a complex
 						my_aqs.resize(my_aqs_max_size); 
 						vector<double> all_aqs; 
+						if ((local.size()*max_frames*2*sizeof(double)) > params->limits.buffers.allgather_max) {
+							Err::Inst()->write(string("Allgather Buffer Max to low (")+to_s(params->limits.buffers.allgather_max)+string(" bytes)"));
+							Err::Inst()->write(string("Need at least: ")+to_s(local.size()*max_frames*2)+string(" bytes"));							
+							throw;
+						}
 						all_aqs.resize(local.size()*max_frames*2); // 
 
 
@@ -1040,6 +1051,12 @@ int main(int argc,char** argv) {
 							}
 							timer.start("scatter::agg::correlate");
 							
+							if (params->debug.barriers) {
+								timer.start("scatter::agg::corr::barrier");
+								local.barrier();
+								timer.stop("scatter::agg::corr::barrier");
+							}
+							
 							timer.start("scatter::agg::corr::gather");
 							boost::mpi::all_gather(local,&my_aqs[0], my_aqs_max_size ,&all_aqs[0]);
 							timer.stop("scatter::agg::corr::gather");
@@ -1055,6 +1072,7 @@ int main(int argc,char** argv) {
 								size_t pos = ( (rank_of_frame*my_aqs_max_size) + frame_offset*2 ); 
 								aq_vectors[fi]=complex<double>(all_aqs[pos],all_aqs[pos+1]);
 							}
+							
 							// now determine which correlation 'step' WE need to do:
 							vector<size_t> stepsizes = get_step_assignments(local.rank(),local.size(),sample.frames.size()/2); // frames.size()/2 is the length of the correlation we are interested in...
 
@@ -1114,7 +1132,15 @@ int main(int argc,char** argv) {
 	// distinguish between different modes
 	if (mode=="none") {
 		vector<map<pair<CartesianCoor3D,size_t>, double > > all_qF_Task_results; // used if mode = "none"
+		if (params->debug.barriers) {
+			timer.start("results::agg::barrier");
+			local.barrier();
+			timer.stop("results::agg::barrier");
+		}
+		
+		timer.start("results::agg::gather");		
 		boost::mpi::gather(world,qF_Task_results,all_qF_Task_results,0);
+		timer.stop("results::agg::gather");
 		// re-sort everything
 		for(vector< map<pair<CartesianCoor3D,size_t>, double > >::iterator ar=all_qF_Task_results.begin();ar!=all_qF_Task_results.end();ar++) {
 			for(map<pair<CartesianCoor3D,size_t>,double>::iterator mi=ar->begin();mi!=ar->end();mi++) {
@@ -1125,7 +1151,15 @@ int main(int argc,char** argv) {
 	} 
 	else if (mode=="time") {
 		vector< map<pair<CartesianCoor3D,size_t>, double > > all_q_Task_results; // used if mode = "time"
+		if (params->debug.barriers) {
+			timer.start("results::agg::barrier");
+			local.barrier();
+			timer.stop("results::agg::barrier");
+		}		
+		
+		timer.start("results::agg::gather");
 		boost::mpi::gather(world,q_Task_results,all_q_Task_results,0);
+		timer.stop("results::agg::gather");
 		// re-sort everything
 		for(vector< map<pair<CartesianCoor3D,size_t>, double > >::iterator ar=all_q_Task_results.begin();ar!=all_q_Task_results.end();ar++) {
 			for(map<pair<CartesianCoor3D,size_t>,double>::iterator mi=ar->begin();mi!=ar->end();mi++) {

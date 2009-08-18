@@ -516,18 +516,26 @@ void Params::read_conf(std::string filename) {
 
 	limits.framecache_max = 2;
 	limits.static_load_imbalance_max = 0.05; // default is 5% loss due to bad partioning.
+	limits.buffers.allgather_max = 200*1000*1000; // don't use more than: 200 Megabyte for this buffer! calculated: nn*(nf/nn)*2 , e.g. 200*(1000010/200)*2 * 8 byte= 160 Mbyte
 
 	if (rootsetting.exists("limits")) {
 		if (rootsetting["limits"].exists("framecache_max")) limits.framecache_max = getlong(rootsetting["limits"]["framecache_max"]);
 		if (rootsetting["limits"].exists("static_load_imbalance_max")) limits.static_load_imbalance_max = getdouble(rootsetting["limits"]["static_load_imbalance_max"]);		
+		if (rootsetting.exists("buffers")) {
+			if (rootsetting["limits"].exists("framecache_max")) limits.framecache_max = getlong(rootsetting["limits"]["framecache_max"]);
+			if (rootsetting["limits"].exists("static_load_imbalance_max")) limits.static_load_imbalance_max = getdouble(rootsetting["limits"]["static_load_imbalance_max"]);		
+		}
+		
 	}
 	// END OF limits section //
 	// START OF debug section //
 	
-	debug.timer = false;
+	debug.timer = false; // this adds a log message when a timer is started/stopped
+	debug.barriers = false; // this de-/activates collective barriers before each collective operation, this way all nodes are synchronized before the communication takes place. This is an important step towards analysis of timing.
 
 	if (rootsetting.exists("debug")) {
 		if (rootsetting["debug"].exists("timer")) debug.timer = getbool(rootsetting["debug"]["timer"]);
+		if (rootsetting["debug"].exists("barriers")) debug.barriers = getbool(rootsetting["debug"]["barriers"]);		
 	}
 
 	delete pconf;

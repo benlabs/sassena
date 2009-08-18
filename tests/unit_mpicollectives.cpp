@@ -114,58 +114,25 @@ int main (int argc, char **argv)
 //		boost::mpi::all_gather(world,myvectors,allvectors);
 //		timer.stop("allgather 1k");
 //	}
-	
-	myvectors.resize(0);
-	if (rank==0) clog << "allgather DT 10M ..." << endl;
-	
-	double* parray = (double*) malloc(sizeof(double)*10*1000*1000);
-	for(size_t i = 0; i < 10*1000*1000; ++i)
-	{
-		parray[i]=rank;
-	}
-	double* pallarray = (double*) calloc(size*10*1000*1000,sizeof(double));
-
-
-	for(size_t i = 0; i < 10; ++i)
-	{
-		timer.start("allgather DT 10M");
-		boost::mpi::all_gather(world,parray,10*1000*1000,pallarray);
-		timer.stop("allgather DT 10M");
-	}
-	
-	for(size_t i = 0; i < size; ++i)
-	{
-		for(size_t j = 0; j < 10*1000*1000; ++j)
-		{
-			if (i!=pallarray[(i*10*1000*1000)+j]) {
-				cerr << "PAEEEE"<< endl;
-				throw;
-			}
-		}
-	}
-	
-	free(parray);
-	free(pallarray);
-
 
 	vector<double> vsarray;
-	vsarray.resize(10*1000*1000,rank);
+	vsarray.resize(1*1000*1000,rank); // 1 M Double = 8Megabyte
 	vector<double> vsallarray;
-	vsallarray.resize(size*10*1000*1000,0);
+	vsallarray.resize(size*1*1000*1000,0);
 
 	for(size_t i = 0; i < 10; ++i)
 	{
 		timer.start("allgather VsDT 10M");
-		boost::mpi::all_gather(world,&vsarray[0],10*1000*1000,&vsallarray[0]);
+		boost::mpi::all_gather(world,&vsarray[0],1*1000*1000,&vsallarray[0]);
 		timer.stop("allgather VsDT 10M");
 	}
 	
 	
 	for(size_t i = 0; i < size; ++i)
 	{
-		for(size_t j = 0; j < 10*1000*1000; ++j)
+		for(size_t j = 0; j < 1*1000*1000; ++j)
 		{
-			if (i!=vsallarray[(i*10*1000*1000)+j]) {
+			if (i!=vsallarray[(i*1*1000*1000)+j]) {
 				cerr << "SVAEEEE"<< endl;
 				throw;
 			}

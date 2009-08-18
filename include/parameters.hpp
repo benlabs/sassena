@@ -347,6 +347,22 @@ public:
 	std::vector<OutputFileParameters> files;
 };
 
+class LimitsBuffersParameters {
+private:
+	/////////////////// MPI related
+	// make this class serializable to 
+	// allow sample to be transmitted via MPI
+    friend class boost::serialization::access;	
+	template<class Archive> void serialize(Archive & ar, const unsigned int version)
+    {
+		ar & allgather_max;
+    }
+	/////////////////// 
+
+public:
+	size_t allgather_max;
+};
+
 class LimitsParameters {
 private:
 	/////////////////// MPI related
@@ -357,13 +373,14 @@ private:
     {
 		ar & framecache_max;
 		ar & static_load_imbalance_max;
-		
+		ar & buffers;
     }
 	/////////////////// 
 
 public:
 	size_t framecache_max;
 	double static_load_imbalance_max;
+	LimitsBuffersParameters buffers;
 };
 
 
@@ -393,12 +410,13 @@ private:
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
     {
 		ar & timer;
-		
+		ar & barriers;
     }
 	/////////////////// 
 
 public:
 	bool timer;
+	bool barriers;
 };
 
 
