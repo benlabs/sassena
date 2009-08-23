@@ -136,6 +136,18 @@ void Atoms::read_particle(ifstream& input, string fileformat) {
 	}
 }
 
+void Atoms::push_scatteramps(std::string name) {
+	// get selection
+	Atomselection& as = selections[name];
+	
+	if (scatteramps.find(name)!=scatteramps.end()) scatteramps.erase(name);
+	vector<double>& sa = scatteramps[name];
+	for(size_t i = 0; i < as.size(); ++i)
+	{
+		sa.push_back(this->at(as[i]).scatteramp);
+	}	
+}
+
 
 void Atoms::read_solvent(ifstream& input, string fileformat) {
 	

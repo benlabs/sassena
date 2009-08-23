@@ -411,12 +411,14 @@ private:
     {
 		ar & timer;
 		ar & barriers;
+		ar & scatter_from_frame;
     }
 	/////////////////// 
 
 public:
 	bool timer;
 	bool barriers;
+	bool scatter_from_frame;
 };
 
 

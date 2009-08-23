@@ -532,10 +532,12 @@ void Params::read_conf(std::string filename) {
 	
 	debug.timer = false; // this adds a log message when a timer is started/stopped
 	debug.barriers = false; // this de-/activates collective barriers before each collective operation, this way all nodes are synchronized before the communication takes place. This is an important step towards analysis of timing.
-
+	debug.scatter_from_frame = false;
+	
 	if (rootsetting.exists("debug")) {
 		if (rootsetting["debug"].exists("timer")) debug.timer = getbool(rootsetting["debug"]["timer"]);
 		if (rootsetting["debug"].exists("barriers")) debug.barriers = getbool(rootsetting["debug"]["barriers"]);		
+		if (rootsetting["debug"].exists("scatter_from_frame")) debug.scatter_from_frame = getbool(rootsetting["debug"]["scatter_from_frame"]);				
 	}
 
 	delete pconf;

@@ -42,7 +42,7 @@
 #include "parameters.hpp"
 #include "sample.hpp"
 #include "settings.hpp"
-
+#include "timer.hpp"
 
 using namespace std;
 using namespace boost::accumulators;
@@ -50,12 +50,113 @@ using namespace boost::math;
 
 namespace Analysis {
 
+double sine(double& x)
+{	
+    const double B = 4/M_PI;
+    const double C = -4/(M_PI*M_PI);
+
+    double y = B * x + C * x * abs(x);
+
+    //  const float Q = 0.775;
+    const double P = 0.225;
+
+    y = P * (y * abs(y) - y) + y;   // Q * y + P * y * abs(y)
+	return y;
+}
+
+double s3(double y) {
+	return 0.5*y*(3-y*y);
+}
+
+double s5(double y) {
+	double y2 = y*y;
+	return 0.5*y*(M_PI-y2*((2*M_PI-5)-y2*(M_PI-3)));
+}
+
+int32_t isin_S3(int32_t x)
+{
+    // S(x) = x * ( (3<<p) - (x*x>>r) ) >> s
+    // n : Q-pos for quarter circle             13
+    // A : Q-pos for output                     12
+    // p : Q-pos for parentheses intermediate   15
+    // r = 2n-p                                 11
+    // s = A-1-p-n                              17
+
+    static const int32_t qN = 13, qA= 12, qP= 15, qR= 2*qN-qP, qS= qN+qP+1-qA;
+
+    x= x<<(30-qN);          // shift to full s32 range (Q13->Q30)
+
+    if( (x^(x<<1)) < 0)     // test for quadrant 1 or 2
+        x= (1<<31) - x;
+
+    x= x>>(30-qN);
+
+    return x * ( (3<<qP) - (x*x>>qR) ) >> qS;
+}
+
+int32_t isin_S4(int32_t x)
+{
+    int c, x2, y;
+    static const int qN= 13, qA= 12, B=19900, C=3516;
+
+
+    c= x<<(30-qN);              // Semi-circle info into carry.
+    x -= 1<<qN;                 // sine -> cosine calc
+
+    x= x<<(31-qN);              // Mask with PI
+    x= x>>(31-qN);              // Note: SIGNED shift! (to qN)
+    x= x*x>>(2*qN-14);          // x=x^2 To Q14
+
+    y= B - (x*C>>14);           // B - x^2*C
+    y= (1<<qA)-(x*y>>16);       // A - x^2*(B-x^2*C)
+
+    return c>=0 ? y : -y;
+}
+	
+
+double mysin(double rad){
+	double sin;
+	double faktor=-1.0;
+//always wrap input angle to -PI..PI
+if (rad < 0) {
+	faktor = 1.0; // use point-symmetry of sinus
+	rad = -rad;
+}
+
+rad = rad - long(rad/(2*M_PI))*2*M_PI;
+rad = rad - M_PI;
+
+//compute sine
+if (rad < 0)
+{
+    sin = 1.27323954 * rad + .405284735 * rad * rad;
+
+    if (sin < 0)
+        sin = .225 * (sin *-sin - sin) + sin;
+    else
+        sin = .225 * (sin * sin - sin) + sin;
+}
+else
+{
+    sin = 1.27323954 * rad - 0.405284735 * rad * rad;
+
+    if (sin < 0)
+        sin = .225 * (sin *-sin - sin) + sin;
+    else
+        sin = .225 * (sin * sin - sin) + sin;
+}
+return faktor*sin;
+}
+
 void qvectors_unfold_sphere(std::string avvectors, CartesianCoor3D q, uint32_t qseed,double resolution, vector<CartesianCoor3D>& qvectors) {
 	
 	SphericalCoor3D qs(q);
 	
 	// we can't unfold a point:
-	if (qs.r==0.0) return;
+	if (qs.r==0.0) {
+		qvectors.push_back( q );
+		return;
+	} 
 	
 	const double M_2PI = 2*M_PI;	
 	const double radincr = resolution*(M_2PI)/360;		
@@ -273,76 +374,6 @@ void set_scatteramp(Sample& sample,Atomselection as,CartesianCoor3D q,bool backg
 	}
 }
 
-//void set_scatteramp_old(Sample& sample,Atomselection as,CartesianCoor3D q,bool background) {
-//	
-//	Params* params = Params::Inst();
-//		
-//	Atoms& atoms = sample.atoms;
-//	double ql = q.length();
-//	map<string,double> sfquicklookup;
-//	map<pair<string,double>,double> esfquicklookup;
-//
-//	string probetype =  params->scattering.probe.type;
-//				
-//	for (Atomselection::iterator asi=as.begin();asi!=as.end();asi++) {
-//		
-//		double sf=0;
-//		if (sfquicklookup.find(atoms[*asi].name)!=sfquicklookup.end()) {
-//			sf = sfquicklookup[atoms[*asi].name];	
-//		}
-//		else {
-//			if (params->scattering.probe.method == "slater")
-//			{
-//				cerr<< "ERROR>> " << "slater xray not supported yet" << endl;
-//				throw;
-//			}
-//			else if (params->scattering.probe.method == "table")
-//			{
-//				libconfig::Setting& coeff = Settings::get("scattering_factors")[probetype]["table"][atoms[*asi].name];
-//				double a1=coeff["a1"]; double b1=coeff["b1"];
-//				double a2=coeff["a2"]; double b2=coeff["b2"];
-//				double a3=coeff["a3"]; double b3=coeff["b3"];				
-//				double a4=coeff["a4"]; double b4=coeff["b4"];
-//				double c =coeff["c"];
-//				double arg2 = ql*ql;				
-//				sf = ( a1*exp(-b1*arg2)+a2*exp(-b2*arg2)+a3*exp(-b3*arg2)+a4*exp(-b4*arg2)+c ) ;
-//			}
-//			else {
-//				// ok , try to do a constant lookup by default
-//				try {
-//					sf = Settings::get("scattering_factors")[probetype][m][atoms[*asi].name];
-//				}
-//				catch(...) {
-//					cerr << "ERROR>> " << " scattering factor for atom '" << atoms[*asi].name << "' not found" << endl;
-//					throw;
-//				}
-//			}
-//
-//			sfquicklookup[atoms[*asi].name]= sf;
-//		}			
-//		
-//		// calculate effective scattering length:
-//		if (background) {
-//			pair<string,double> key=make_pair(atoms[*asi].name,atoms[*asi].kappa);
-//			if (esfquicklookup.find(key)!=esfquicklookup.end()) {
-//				atoms[*asi].scatteramp = esfquicklookup[key];
-//			}
-//			else {
-//				double ev = atoms[*asi].volume;
-//				double k  = atoms[*asi].kappa;
-//				
-//				double esf = sf - sample.background*k*ev*exp(-1.0*powf(k*ev,2.0/3.0)*powf(ql,2)/(4*M_PI));
-//				atoms[*asi].scatteramp =  esf;
-//				esfquicklookup[key]=esf;				
-//			}
-//		}
-//		else {
-//			atoms[*asi].scatteramp = sf;
-//		}
-//	}
-//}
-
-
 void scatter_none(Sample& sample,Atomselection as,CartesianCoor3D& q,std::vector<std::complex<double> >& aqs) {
 	
 	CoordinateSet& cs = sample.frames.current().coordinate_sets[as.name];
@@ -352,20 +383,21 @@ void scatter_none(Sample& sample,Atomselection as,CartesianCoor3D& q,std::vector
 
 //	stringstream fn2; fn2 << "coords-" << q.x << ".txt";
 //	ofstream ocoords(fn2.str().c_str());
+	aqs.resize(cs.x.size());
 	
-
 	for (size_t i=0;i<cs.x.size();i++) {
-		double s = sample.atoms[cs.indexes[i]].scatteramp;
-//		oscatteramp << s << endl;
-		
+	//		oscatteramp << s << endl;
+
 		CartesianCoor3D c(cs.x[i],cs.y[i],cs.z[i]);
-//		ocoords << cs.x[i] << "\t" << cs.y[i] << "\t"<<cs.z[i] << endl;
-		aqs.push_back( exp(-1.0*complex<double>(0,c*q)) * s );
-	}
+		double s = sample.atoms[cs.indexes[i]].scatteramp;
+
+	//		ocoords << cs.x[i] << "\t" << cs.y[i] << "\t"<<cs.z[i] << endl;
+		aqs[i] = exp(-1.0*complex<double>(0,c*q)) *s ;
+
+	}	
 }
 
 complex<double> scatter_none(Sample& sample,Atomselection as,CartesianCoor3D& q) {
-	
 	CoordinateSet& cs = sample.frames.current().coordinate_sets[as.name];
 
 	complex<double> A = complex<double>(0,0);
@@ -373,133 +405,210 @@ complex<double> scatter_none(Sample& sample,Atomselection as,CartesianCoor3D& q)
 		for (Atomselection::iterator asi=as.begin();asi!=as.end();asi++) {
 			A += sample.atoms[*asi].scatteramp;
 		}
+		return A;
 	}
 	
-	else {
-		for (size_t i=0;i<cs.x.size();i++) {
-			double s = sample.atoms[cs.indexes[i]].scatteramp;
-			CartesianCoor3D c(cs.x[i],cs.y[i],cs.z[i]);
-			A += exp(-1.0*complex<double>(0,c*q)) * s;		
-		}
-//	complex<double> A = complex<double>(0,0);		
-//		const int N = as.size();
-//		const int Nmod4 = N % 4;
-//		const int Ndiv4 = N / 4;
-//		
-//	
-//		for (int i=0;i<Ndiv4;i++) {
-//			CartesianCoor3D c1 = sample.frames.current().coord3D(as[4*i  ]);
-//			CartesianCoor3D c2 = sample.frames.current().coord3D(as[4*i+1]);
-//			CartesianCoor3D c3 = sample.frames.current().coord3D(as[4*i+2]);
-//			CartesianCoor3D c4 = sample.frames.current().coord3D(as[4*i+3]);
-//				
-//			A += exp(-1.0*complex<double>(0,c1*q)) * sample.atoms[as[4*i  ]].scatteramp;		
-//			A += exp(-1.0*complex<double>(0,c2*q)) * sample.atoms[as[4*i+1]].scatteramp;		
-//			A += exp(-1.0*complex<double>(0,c3*q)) * sample.atoms[as[4*i+2]].scatteramp;		
-//			A += exp(-1.0*complex<double>(0,c4*q)) * sample.atoms[as[4*i+3]].scatteramp;		
-//			
-//		}
-//		if (Nmod4==3) {
-//			CartesianCoor3D c1 = sample.frames.current().coord3D(as[N - 3]);
-//			CartesianCoor3D c2 = sample.frames.current().coord3D(as[N - 2]);
-//			CartesianCoor3D c3 = sample.frames.current().coord3D(as[N - 1]);
-//				
-//			A += exp(-1.0*complex<double>(0,c1*q)) * sample.atoms[as[N - 3]].scatteramp;		
-//			A += exp(-1.0*complex<double>(0,c2*q)) * sample.atoms[as[N - 2]].scatteramp;		
-//			A += exp(-1.0*complex<double>(0,c3*q)) * sample.atoms[as[N - 1]].scatteramp;		
-//		}
-//		else if (Nmod4==2) {
-//			CartesianCoor3D c1 = sample.frames.current().coord3D(as[N - 2]);
-//			CartesianCoor3D c2 = sample.frames.current().coord3D(as[N - 1]);
-//				
-//			A += exp(-1.0*complex<double>(0,c1*q)) * sample.atoms[as[N - 2]].scatteramp;		
-//			A += exp(-1.0*complex<double>(0,c2*q)) * sample.atoms[as[N - 1]].scatteramp;		
-//		}
-//		else if (Nmod4==1) {
-//			CartesianCoor3D c1 = sample.frames.current().coord3D(as[N - 1  ]);
-//				
-//			A += exp(-1.0*complex<double>(0,c1*q)) * sample.atoms[as[N - 1  ]].scatteramp;		
-//		}
-
-//	for (Atomselection::iterator asi=as.begin();asi!=as.end();asi++) {
+	// else
+	for (size_t i=0;i<cs.x.size();i++) {
+		double s = sample.atoms[cs.indexes[i]].scatteramp;
+		CartesianCoor3D c(cs.x[i],cs.y[i],cs.z[i]);
+		A += exp(-1.0*complex<double>(0,c*q)) * s;		
 	}
-	return A;
 
-//	double qx = q.x;
-//	double qy = q.y;
-//	double qz = q.z;
-//
-//complex<double> A = complex<double>(0,0);	
-//	vector<double> tmp;
-//	tmp.resize(as.size(),0);
-//
-//	for (int i=0;i<as.size();i++) {
-//		tmp[i] += sample.frames.current().x[as[i]] * qx;
-//	}	
-//	for (int i=0;i<as.size();i++) {
-//		tmp[i] += sample.frames.current().y[as[i]] * qy;
-//	}	
-//	for (int i=0;i<as.size();i++) {
-//		tmp[i] += sample.frames.current().z[as[i]] * qz;
-//	}	
-//
-//	for (int i=0;i<as.size();i++) {
-//		A += exp(-1.0*complex<double>(0,tmp[i])) * sample.atoms[as[i]].scatteramp;
-//	}	
-//	
-//	return A;	
-
-
-//	complex<double> A = complex<double>(0,0);
-//	boost::numeric::ublas::vector<double> qv(3); qv(0) = q.x; qv(1) = q.y; qv(2) = q.z;
-//	boost::numeric::ublas::vector<double> rvr(sample.frames.current().coord3Dmatrix.size1());
-//	boost::numeric::ublas::vector<double> rvi(sample.frames.current().coord3Dmatrix.size1());	
-//	rvr =  boost::numeric::ublas::prod(sample.frames.current().coord3Dmatrix,qv);
-//	rvi = rvr;
-//	
-//	const int Na = sample.frames.current().coord3Dmatrix.size1();
-//	
-//	for (int j=0;j<Na;j++) {
-//		rvr(j) = cos(rvr(j))*sample.atoms[as[j]].scatteramp;
-//		rvi(j) = -1.0*sin(rvi(j))*sample.atoms[as[j]].scatteramp;	
-//	}
-//	int rvn = rvr.size();
-//	double rvrs = 0;
-//	double rvis = 0;
-//	
-//	for (int i=0;i<rvn;i++) {
-//		rvrs += rvr(i);
-//	}
-//	for (int i=0;i<rvn;i++) {
-//		rvis += rvi(i);
-//	}
-//	
-//	return complex<double>(rvrs,rvis);
-	
-
-//	for (Atomselection::iterator asi=as.begin();asi!=as.end();asi++) {
-//		CartesianCoor3D c = sample.frames.current().coord3D(*asi); 
-//		A += exp(-1.0*complex<double>(0,c*q)) * sample.atoms[*asi].scatteramp;
-//	}
 	return A;
 		
-//	complex<double> A = complex<double>(0,0);
-//	for (Atomselection::iterator asi=as.begin();asi!=as.end();asi++) {
-//		CartesianCoor3D c = sample.frames.current().coord3D(*asi); 
-//		A += exp(-1.0*complex<double>(0,c*q)) * sample.atoms[*asi].scatteramp;
-//	}
-//	return A;
-
-//	double Aa = 0;		
-//	double Ab = 0;
-//	for (Atomselection::iterator asi=as.begin();asi!=as.end();asi++) {
-//		CartesianCoor3D c = sample.frames.current().coord3D(*asi);
-//		Aa += sample.atoms[*asi].scatteramp * cos(-1.0*(c*q));
-//		Ab += sample.atoms[*asi].scatteramp * sin(-1.0*(c*q));
-//	}	
-//	return complex<double>(Aa,Ab);
 }
 
+complex<double> scatter_none_unrolledI(size_t noa, CoordinateSet& cs,vector<double>& scatteramps,CartesianCoor3D& q) {
+	
+	double Ar = 0.0;
+	double Ai = 0.0;
+	double p,p1,p2,p3;	
+	double cp,cp1,cp2,cp3;		
+	double ap,ap1,ap2,ap3;	
+	double M_PI_half = M_PI/2;
+	double M_PI_3half = 3*M_PI/2;	
+	double M_PI_twice = 2*M_PI;
+	
+	size_t rnoa = noa;
+	size_t starti = 0;
+	
+	if (noa<4) {
+		for(size_t i = 0; i < noa; ++i)
+		{
+			p = cs.x[i]*q.x + cs.y[i]*q.y + cs.z[i]*q.z;			
+			Ai = Ai - sin(p)*scatteramps[i];  
+			Ar = Ar + cos(p)*scatteramps[i]; 
+		}
+		return complex<double>(Ar,Ai);
+	}
+	
+	while ( (rnoa % 4)!=0 ) {
+		p = cs.x[starti]*q.x + cs.y[starti]*q.y + cs.z[starti]*q.z;	
+		Ai = Ai - sin(p)*scatteramps[starti];  
+		Ar = Ar + cos(p)*scatteramps[starti];
+		rnoa--;
+		starti++;
+	}
+	
+	for (size_t i=starti;i<noa;i+=4) {
+		size_t i1 = i+1;
+		size_t i2 = i+2;
+		size_t i3 = i+3;
+		
+		p =  cs.x[i]*q.x + cs.y[i]*q.y + cs.z[i]*q.z;
+		p1 = cs.x[i1]*q.x + cs.y[i1]*q.y + cs.z[i1]*q.z;
+		p2 = cs.x[i2]*q.x + cs.y[i2]*q.y + cs.z[i2]*q.z;
+		p3 = cs.x[i3]*q.x + cs.y[i3]*q.y + cs.z[i3]*q.z;
+
+		double sign_sin = (p<0) ? -1.0 : 1.0;
+		double sign_sin1 = (p1<0) ? -1.0 : 1.0;
+		double sign_sin2 = (p2<0) ? -1.0 : 1.0;
+		double sign_sin3 = (p3<0) ? -1.0 : 1.0;
+
+		ap = abs(p);
+		ap1 = abs(p1);
+		ap2 = abs(p2);
+		ap3 = abs(p3);		
+
+		p = ap - long(ap/M_PI_twice)*M_PI_twice - M_PI;		// wrap p to -pi..pi
+		p1 = ap1 - long(ap1/M_PI_twice)*M_PI_twice - M_PI;		// wrap p to -pi..pi
+		p2 = ap2 - long(ap2/M_PI_twice)*M_PI_twice - M_PI;		// wrap p to -pi..pi
+		p3 = ap3 - long(ap3/M_PI_twice)*M_PI_twice - M_PI;		// wrap p to -pi..pi
+
+		cp = ( p<M_PI_half )  ? p + M_PI_half : p - M_PI_3half;
+		cp1 = ( p1<M_PI_half )  ? p1 + M_PI_half : p1 - M_PI_3half;
+		cp2 = ( p2<M_PI_half )  ? p2 + M_PI_half : p2 - M_PI_3half;
+		cp3 = ( p3<M_PI_half )  ? p3 + M_PI_half : p3 - M_PI_3half;
+
+		Ai = Ai + sign_sin*sine(p)*scatteramps[i];  // this is sine,  - * - = +
+		Ai = Ai + sign_sin1*sine(p1)*scatteramps[i1];  // this is sine,  - * - = +
+		Ai = Ai + sign_sin2*sine(p2)*scatteramps[i2];  // this is sine,  - * - = +
+		Ai = Ai + sign_sin3*sine(p3)*scatteramps[i3];  // this is sine,  - * - = +
+
+		Ar = Ar + sine(cp)*scatteramps[i]; // this is cosine
+		Ar = Ar + sine(cp1)*scatteramps[i1]; // this is cosine
+		Ar = Ar + sine(cp2)*scatteramps[i2]; // this is cosine
+		Ar = Ar + sine(cp3)*scatteramps[i3]; // this is cosine
+	
+	}
+
+	return complex<double>(Ar,Ai);
+}
+
+complex<double> scatter_none_unrolled4(size_t noa, CoordinateSet& cs,vector<double>& scatteramps,CartesianCoor3D& q) {
+	
+	double Ar = 0.0;
+	double Ai = 0.0;
+	double p,p1,p2,p3;	
+	double cp,cp1,cp2,cp3;		
+	double ap,ap1,ap2,ap3;	
+	double M_PI_half = M_PI/2;
+	double M_PI_3half = 3*M_PI/2;	
+	double M_PI_twice = 2*M_PI;
+	
+	size_t rnoa = noa;
+	size_t starti = 0;
+	
+	if (noa<4) {
+		for(size_t i = 0; i < noa; ++i)
+		{
+			p = cs.x[i]*q.x + cs.y[i]*q.y + cs.z[i]*q.z;			
+			Ai = Ai - sin(p)*scatteramps[i];  
+			Ar = Ar + cos(p)*scatteramps[i]; 
+		}
+		return complex<double>(Ar,Ai);
+	}
+	
+	while ( (rnoa % 4)!=0 ) {
+		p = cs.x[starti]*q.x + cs.y[starti]*q.y + cs.z[starti]*q.z;	
+		Ai = Ai - sin(p)*scatteramps[starti];  
+		Ar = Ar + cos(p)*scatteramps[starti];
+		rnoa--;
+		starti++;
+	}
+	
+	for (size_t i=starti;i<noa;i+=4) {
+		size_t i1 = i+1;
+		size_t i2 = i+2;
+		size_t i3 = i+3;
+		
+		p =  cs.x[i]*q.x + cs.y[i]*q.y + cs.z[i]*q.z;
+		double sign_sin = (p<0) ? -1.0 : 1.0;
+		ap = abs(p);
+		p = ap - long(ap/M_PI_twice)*M_PI_twice - M_PI;		// wrap p to -pi..pi
+		cp = ( p<M_PI_half )  ? p + M_PI_half : p - M_PI_3half;
+		Ai = Ai + sign_sin*sine(p)*scatteramps[i];  // this is sine,  - * - = +
+		Ar = Ar + sine(cp)*scatteramps[i]; // this is cosine
+
+
+		p1 = cs.x[i1]*q.x + cs.y[i1]*q.y + cs.z[i1]*q.z;
+		double sign_sin1 = (p1<0) ? -1.0 : 1.0;
+		ap1 = abs(p1);
+		p1 = ap1 - long(ap1/M_PI_twice)*M_PI_twice - M_PI;		// wrap p to -pi..pi
+		cp1 = ( p1<M_PI_half )  ? p1 + M_PI_half : p1 - M_PI_3half;
+		Ai = Ai + sign_sin1*sine(p1)*scatteramps[i1];  // this is sine,  - * - = +
+		Ar = Ar + sine(cp1)*scatteramps[i1]; // this is cosine
+
+		p2 = cs.x[i2]*q.x + cs.y[i2]*q.y + cs.z[i2]*q.z;
+		double sign_sin2 = (p2<0) ? -1.0 : 1.0;
+		ap2 = abs(p2);
+		p2 = ap2 - long(ap2/M_PI_twice)*M_PI_twice - M_PI;		// wrap p to -pi..pi
+		cp2 = ( p2<M_PI_half )  ? p2 + M_PI_half : p2 - M_PI_3half;
+		Ai = Ai + sign_sin2*sine(p2)*scatteramps[i2];  // this is sine,  - * - = +
+		Ar = Ar + sine(cp2)*scatteramps[i2]; // this is cosine
+
+		p3 = cs.x[i3]*q.x + cs.y[i3]*q.y + cs.z[i3]*q.z;
+		double sign_sin3 = (p3<0) ? -1.0 : 1.0;
+		ap3 = abs(p3);		
+		p3 = ap3 - long(ap3/M_PI_twice)*M_PI_twice - M_PI;		// wrap p to -pi..pi
+		cp3 = ( p3<M_PI_half )  ? p3 + M_PI_half : p3 - M_PI_3half;
+		Ai = Ai + sign_sin3*sine(p3)*scatteramps[i3];  // this is sine,  - * - = +
+		Ar = Ar + sine(cp3)*scatteramps[i3]; // this is cosine
+	
+	}
+
+	return complex<double>(Ar,Ai);
+}
+
+complex<double> scatter_none_unrolled(size_t noa, CoordinateSet& cs,vector<double>& scatteramps,CartesianCoor3D& q) {
+	
+	double Ar = 0.0;
+	double Ai = 0.0;
+	double p,p1,p2,p3;	
+	double cp,cp1,cp2,cp3;		
+	double ap,ap1,ap2,ap3;	
+	double M_PI_half = M_PI/2;
+	double M_PI_3half = 3*M_PI/2;	
+	double M_PI_twice = 2*M_PI;
+	
+	double csx = cs.x[0];
+	double csy = cs.y[0];
+	double csz = cs.z[0];
+	double sa = scatteramps[0];
+	
+	for (size_t i=0;i<noa;i++) {
+		p =  csx*q.x + csy*q.y + csz*q.z;
+		double sign_sin = (p<0) ? -1.0 : 1.0;
+		ap = abs(p);
+		p = ap - long(ap/M_PI_twice)*M_PI_twice - M_PI;		// wrap p to -pi..pi
+		cp = ( p<M_PI_half )  ? p + M_PI_half : p - M_PI_3half;
+		
+		//pre-fetch next data
+		csx = cs.x[i+1];
+		csy = cs.y[i+1];
+		csz = cs.z[i+1];	
+
+		Ai = Ai + sign_sin*sine(p)*sa;  // this is sine,  - * - = +
+		Ar = Ar + sine(cp)*sa; // this is cosine
+
+		//pre-fetch next data
+		sa = scatteramps[i+1];
+
+	}
+
+	return complex<double>(Ar,Ai);
+}
 
 void scatter_vectors (Sample& sample,Atomselection as,std::vector<CartesianCoor3D>& qvectors,std::vector<vector<std::complex<double> > >& scattering_amplitudes) {
 
@@ -513,11 +622,47 @@ void scatter_vectors (Sample& sample,Atomselection as,std::vector<CartesianCoor3
 
 void scatter_vectors (Sample& sample,Atomselection as,std::vector<CartesianCoor3D>& qvectors,std::vector<std::complex<double> >& scattering_amplitudes) {
 
-	for(size_t i = 0; i < qvectors.size(); ++i)
-	{
-		scattering_amplitudes.push_back( scatter_none(sample,as,qvectors[i]) );
+	if (Params::Inst()->debug.scatter_from_frame) {
+		CoordinateSet& cs = sample.frames.current().coordinate_sets[as.name];
+		vector<double>& scatteramps = sample.atoms.scatteramps[as.name];
+		for(size_t i = 0; i < qvectors.size(); ++i)
+		{
+			scattering_amplitudes.push_back( scatter_none_unrolled(cs.x.size(),cs,scatteramps,qvectors[i]) );
+		}
+		
 	}
+	else {
+		for(size_t i = 0; i < qvectors.size(); ++i)
+		{
+			scattering_amplitudes.push_back( scatter_none(sample,as,qvectors[i]) );
+		}	
+	}
+
 }
+
+void scatter_sphere_debye (Sample& sample,Atomselection as,CartesianCoor3D q,double resolution,std::vector<std::complex<double> >& scattering_amplitudes) {
+
+	CoordinateSet& cs = sample.frames.current().coordinate_sets[as.name];
+	double A=0.0;
+	double ql = q.length();
+	// else
+	for (size_t i=0;i<cs.x.size();i++) {
+		CartesianCoor3D ci(cs.x[i],cs.y[i],cs.z[i]);
+		double si = sample.atoms[cs.indexes[i]].scatteramp;
+
+		for (size_t j=0;j<cs.x.size();j++) {
+			double sj = sample.atoms[cs.indexes[j]].scatteramp;
+			CartesianCoor3D cj(cs.x[j],cs.y[j],cs.z[j]);	
+			double qr = ql * (cj-ci).length();
+			// we asume q is oriented in z direction
+			A += si*sj* sinc_pi(qr);
+		}
+	}
+	
+	scattering_amplitudes.push_back(complex<double>(sqrt(A),0));
+
+}
+
 
 void scatter_sphere_multipole (Sample& sample,Atomselection as,CartesianCoor3D q,double resolution,std::vector<std::complex<double> >& scattering_amplitudes) {
 

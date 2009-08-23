@@ -39,7 +39,6 @@ class Sample {
 		ar & atoms;
 		ar & frames;
 		ar & background;
-		
     }
 	/////////////////// 
 	
@@ -47,7 +46,7 @@ public:
 
 	Atoms atoms;
 	Frames frames;
-	
+		
 	// cache values:
 	// used for scattering
 	double background;

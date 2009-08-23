@@ -41,11 +41,13 @@ class Atoms : public std::vector<Atom> {
     {
 		ar & boost::serialization::base_object<std::vector<Atom> >(*this);
 		ar & selections;
+		ar & scatteramps;
     }
 	///////////////////
 public:	
 	
 	std::map<std::string,Atomselection> selections;	
+	std::map<std::string,std::vector<double> > scatteramps;	
 
 	Atoms() {}
 	Atoms(std::string filename, std::string fileformat = "pdb");
@@ -62,6 +64,8 @@ public:
 	
 	void add_selection(std::string name, std::string filename, std::string format,std::string select,double select_value);
 	void add_selection(std::string name,bool select);
+	
+	void push_scatteramps(std::string name);
 	
 	void assert_selection(std::string groupname); // throws an exception when groupname isn't found.
 	~Atoms() {}
