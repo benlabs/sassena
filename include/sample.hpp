@@ -25,6 +25,7 @@
 // other headers
 #include "atoms.hpp"
 #include "atomselection.hpp"
+#include "coordinate_set.hpp"
 #include "frame.hpp"
 #include "frames.hpp"
 
@@ -46,7 +47,7 @@ public:
 
 	Atoms atoms;
 	Frames frames;
-		
+
 	// cache values:
 	// used for scattering
 	double background;

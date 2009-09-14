@@ -40,24 +40,6 @@ class Atomselection;
 // 
 ////////////////////////////////////////////////////////////////////////////////
 
-// This class is used by Frame to store selection specific coordinate arrays
-class CoordinateSet {
-	friend class boost::serialization::access;	
-	template<class Archive> void serialize(Archive & ar, const unsigned int version)
-    {
-		ar & x;
-		ar & y;
-		ar & z;
-		ar & indexes;
-    }
-public:
-	std::vector<double> x; // x-coordinates
-	std::vector<double> y; // y-coordinates
-	std::vector<double> z; // z-coordinates
-	
-	std::vector<size_t> indexes; // the real indexes , for back translation
-};
-
 class Frame {
 	friend class boost::serialization::access;	
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
@@ -69,7 +51,6 @@ class Frame {
 		ar & y;
 		ar & z;
 		ar & unitcell;
-		ar & coordinate_sets;
     }
 	
 public:
@@ -94,9 +75,8 @@ public:
 	// center of mass, needs masses from atoms, atomselection allows to select subgroup
 	CartesianCoor3D cofm(Atoms& atoms, Atomselection& as);
 	
-	std::map<std::string,CoordinateSet> coordinate_sets;
 	void push_selections(std::vector<Atomselection>& as);
-	void push_selection(Atomselection& as);	
+	void push_selection(Atomselection& as,Atoms& atoms);	
 };
 
 #endif

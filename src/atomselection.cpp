@@ -25,9 +25,10 @@
 // other headers
 #include "atom.hpp"
 #include "atoms.hpp"
+#include "decompose.hpp"
 #include "log.hpp"
 #include "parameters.hpp"
-#include "settings.hpp"
+#include "database.hpp"
 
 using namespace std;
 
@@ -145,12 +146,13 @@ void Atomselection::remove(const Atom& atom) {
 std::vector<Atomselection> Atomselection::slice(size_t number) {
 	std::vector<Atomselection> result;
 	
-	if (number<=0) throw;
-	size_t max_atoms_per_slice = this->size()/number;
-	
-	for(size_t i = 0; i < this->size(); i+=max_atoms_per_slice)
+	EvenDecompose ed(this->size(),number);
+
+	size_t offset =0;
+	for(EvenDecompose::iterator edi = ed.begin(); edi != ed.end(); ++edi)
 	{
-		result.push_back(subset(i,max_atoms_per_slice));
+		result.push_back(subset(offset,*edi));
+		offset += *edi;
 	}
 	return result;
 }

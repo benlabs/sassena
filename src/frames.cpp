@@ -25,7 +25,7 @@
 #include "atomselection.hpp"
 #include "log.hpp"
 #include "parameters.hpp"
-#include "settings.hpp"
+#include "database.hpp"
 
 
 using namespace std;
@@ -135,50 +135,84 @@ size_t Frames::scope_framenumber(size_t framenumber) {
 	return (framenumber - fs.frame_number_offset);
 }
 
-void Frames::load(size_t framenumber,Atoms& atoms,std::map<std::string,Atomselection>& atomselections) {
-	// get frameset
-	// call 	
-	if (framecache.find(framenumber)!=framecache.end()) {
-		currentframe_i = framenumber;
-	}
-	else {
-		if ((Params::Inst()->limits.framecache_max>0) && framecache.size()>Params::Inst()->limits.framecache_max) {
-			framecache.clear();
-		}
-		// locate frameset 
-		Frameset& fs = find_frameset(framenumber);
-		// prepare empty frame
-		Frame& cf = framecache[framenumber];
-		
-		// fill frame w/ data
-		fs.read_frame(scope_framenumber(framenumber),cf);
+//void Frames::load(size_t framenumber,Atoms& atoms,std::map<std::string,Atomselection>& atomselections) {
+//	// get frameset
+//	// call 	
+//	if (framecache.find(framenumber)!=framecache.end()) {
+//		currentframe_i = framenumber;
+//	}
+//	else {
+//		if ((Params::Inst()->limits.framecache_max>0) && framecache.size()>Params::Inst()->limits.framecache_max) {
+//			framecache.clear();
+//		}
+//		// locate frameset 
+//		Frameset& fs = find_frameset(framenumber);
+//		// prepare empty frame
+//		Frame& cf = framecache[framenumber];
+//		
+//		// fill frame w/ data
+//		fs.read_frame(scope_framenumber(framenumber),cf);
+//
+//		// postprocessing frame data
+//		// do any wrapping "before" creating coordinate sets, otherwise the coordinates will run out of sync
+//		if (wrapping) {
+//			cf.origin = cf.cofm(atoms,centergroup_selection);
+//			cf.wrap(); 					
+//		}	
+//		
+//		// for each group in atomselections, block data for performance
+//		for (std::map<std::string,Atomselection>::iterator asi=atomselections.begin();asi!=atomselections.end();asi++) {
+//			cf.push_selection(asi->second,atoms);
+//		}
+//	}
+//	currentframe_i = framenumber;
+//	
+//}
+//
+//
+//void Frames::load(size_t framenumber,Atoms& atoms,Atomselection& atomselection) {
+//	// get frameset
+//	// call 
+//	if (framecache.find(framenumber)!=framecache.end()) {
+//		currentframe_i = framenumber;
+//	}
+//	else {
+//		if ((Params::Inst()->limits.framecache_max>0) && framecache.size()>Params::Inst()->limits.framecache_max) {
+//			framecache.clear();
+//		}
+//		// locate frameset 
+//		Frameset& fs = find_frameset(framenumber);
+//		// prepare empty frame
+//		Frame& cf = framecache[framenumber];
+//		
+//		// fill frame w/ data
+//		fs.read_frame(scope_framenumber(framenumber),cf);
+//
+//		// postprocessing frame data
+//		// do any wrapping "before" creating coordinate sets, otherwise the coordinates will run out of sync
+//		if (wrapping) {
+//			cf.origin = cf.cofm(atoms,centergroup_selection);
+//			cf.wrap(); 					
+//		}	
+//		
+//		// for each group in atomselections, block data for performance
+//		cf.push_selection(atomselection,atoms);
+//		
+//	}
+//	currentframe_i = framenumber;
+//	
+//}
 
-		// postprocessing frame data
-		// do any wrapping "before" creating coordinate sets, otherwise the coordinates will run out of sync
-		if (wrapping) {
-			cf.origin = cf.cofm(atoms,centergroup_selection);
-			cf.wrap(); 					
-		}	
-		
-		// for each group in atomselections, block data for performance
-		for (std::map<std::string,Atomselection>::iterator asi=atomselections.begin();asi!=atomselections.end();asi++) {
-			cf.push_selection(asi->second);
-		}
-	}
-	currentframe_i = framenumber;
-	
-}
 
-
-void Frames::load(size_t framenumber,Atoms& atoms,Atomselection& atomselection) {
+void Frames::load(size_t framenumber,Atoms& atoms) {
 	// get frameset
 	// call 
 	if (framecache.find(framenumber)!=framecache.end()) {
 		currentframe_i = framenumber;
 	}
 	else {
-		if ((Params::Inst()->limits.framecache_max>0) && framecache.size()>Params::Inst()->limits.framecache_max) {
-			framecache.clear();
+		if ((Params::Inst()->limits.framecache_max>0) && framecache.size()>=Params::Inst()->limits.framecache_max) {
+			clear_cache();
 		}
 		// locate frameset 
 		Frameset& fs = find_frameset(framenumber);
@@ -195,11 +229,8 @@ void Frames::load(size_t framenumber,Atoms& atoms,Atomselection& atomselection) 
 			cf.wrap(); 					
 		}	
 		
-		// for each group in atomselections, block data for performance
-		cf.push_selection(atomselection);
 	}
 	currentframe_i = framenumber;
-	
 }
 
 

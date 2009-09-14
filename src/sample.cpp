@@ -20,7 +20,6 @@
 
 // other headers
 #include "log.hpp"
-#include "settings.hpp"
 
 using namespace std;
 

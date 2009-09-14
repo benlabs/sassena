@@ -44,7 +44,12 @@ namespace Analysis {
 	std::complex<double> scatter_none2(Sample& sample,Atomselection as,CartesianCoor3D& q);		
 	std::complex<double> scatter_none_unrolled(Sample& sample,Atomselection as,CartesianCoor3D& q);		
 	
+	void scatter_particles(Sample& sample,CartesianCoor3D& q);	
+	void correlate_particles(Sample& sample);
+	void crosssum_particles(Sample& sample);
+	
 	void scatter_none(Sample& sample,Atomselection as,CartesianCoor3D& q,std::vector<std::complex<double> >& aqs);
+	void scatter_particles_tau(Sample& sample,CartesianCoor3D& q,std::vector<std::complex<double> >& aqs);
 
 	void qvectors_unfold_sphere                (std::string avvectors, CartesianCoor3D q, uint32_t qseed,double resolution, std::vector<CartesianCoor3D>& qvectors);
 	void qvectors_unfold_cylinder              (std::string avvectors, CartesianCoor3D q, uint32_t qseed,double resolution, std::vector<CartesianCoor3D>& qvectors);
@@ -56,6 +61,8 @@ namespace Analysis {
 	void scatter_sphere_debye    (Sample& sample,Atomselection as,CartesianCoor3D q,double resolution,std::vector<std::complex<double> >& scattering_amplitudes);
 	void scatter_cylinder_multipole  (Sample& sample,Atomselection as,CartesianCoor3D q,double resolution,std::vector<std::complex<double> >& scattering_amplitudes);
 	void scatter_cylinder_multipole_old  (Sample& sample,Atomselection as,CartesianCoor3D q,double resolution,std::vector<std::complex<double> >& scattering_amplitudes);	
+
+	double get_scatteramp(size_t atomID, double kappa, CartesianCoor3D q,bool background,double background_sl);
 
 };
 

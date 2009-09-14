@@ -65,7 +65,7 @@ public:
 	
 	// for use in maps only!
 	bool operator<(const CartesianCoor3D& that) const;
-	
+		
 	~CartesianCoor3D() {}
 };
 

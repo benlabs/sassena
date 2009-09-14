@@ -38,10 +38,10 @@
 #include "coor3d.hpp"
 #include "geometry.hpp"
 #include "log.hpp"
-#include "grid.hpp"
+#include "density_grid.hpp"
 #include "parameters.hpp"
+#include "database.hpp"
 #include "sample.hpp"
-#include "settings.hpp"
 #include "timer.hpp"
 
 using namespace std;
@@ -374,294 +374,205 @@ void set_scatteramp(Sample& sample,Atomselection as,CartesianCoor3D q,bool backg
 	}
 }
 
-void scatter_none(Sample& sample,Atomselection as,CartesianCoor3D& q,std::vector<std::complex<double> >& aqs) {
+
+double get_scatteramp(size_t atomID, double kappa, CartesianCoor3D q,bool background=false,double background_sl=0) {
 	
-	CoordinateSet& cs = sample.frames.current().coordinate_sets[as.name];
+	double ql = q.length();
+	double sf = Database::Inst()->sfactors.get(atomID,ql);
 	
-//	stringstream fn; fn << "scatteramps-" << q.x << ".txt";
-//	ofstream oscatteramp(fn.str().c_str());
-
-//	stringstream fn2; fn2 << "coords-" << q.x << ".txt";
-//	ofstream ocoords(fn2.str().c_str());
-	aqs.resize(cs.x.size());
-	
-	for (size_t i=0;i<cs.x.size();i++) {
-	//		oscatteramp << s << endl;
-
-		CartesianCoor3D c(cs.x[i],cs.y[i],cs.z[i]);
-		double s = sample.atoms[cs.indexes[i]].scatteramp;
-
-	//		ocoords << cs.x[i] << "\t" << cs.y[i] << "\t"<<cs.z[i] << endl;
-		aqs[i] = exp(-1.0*complex<double>(0,c*q)) *s ;
-
-	}	
+	// calculate effective scattering length:
+	if (background) {
+		double ev = Database::Inst()->volumes.get(atomID);
+		double k  = kappa;
+				
+		sf = sf - background_sl*k*ev*exp(-1.0*powf(k*ev,2.0/3.0)*powf(ql,2)/(4*M_PI));
+	}
+	return sf;
 }
 
+//void scatter_none(Sample& sample,Atomselection as,CartesianCoor3D& q,std::vector<std::complex<double> >& aqs) {
+//	
+//	CoordinateSet& cs = sample.frames.current().coordinate_sets[as.name];
+//	
+////	stringstream fn; fn << "scatteramps-" << q.x << ".txt";
+////	ofstream oscatteramp(fn.str().c_str());
+//
+////	stringstream fn2; fn2 << "coords-" << q.x << ".txt";
+////	ofstream ocoords(fn2.str().c_str());
+//	aqs.resize(cs.x.size());
+//
+//	for (size_t i=0;i<cs.x.size();i++) {
+//	//		oscatteramp << s << endl;
+//		CartesianCoor3D c(cs.x[i],cs.y[i],cs.z[i]);
+//		double s = sample.atoms[cs.indexes[i]].scatteramp;
+//	//		ocoords << cs.x[i] << "\t" << cs.y[i] << "\t"<<cs.z[i] << endl;
+//		aqs[i] = exp(-1.0*complex<double>(0,c*q)) *s ;
+//	}	
+//}
+
 complex<double> scatter_none(Sample& sample,Atomselection as,CartesianCoor3D& q) {
-	CoordinateSet& cs = sample.frames.current().coordinate_sets[as.name];
-
+//	CoordinateSet& cs = sample.frames.current().coordinate_sets[as.name];
+//
 	complex<double> A = complex<double>(0,0);
-	if (q.length()==0) {
-		for (Atomselection::iterator asi=as.begin();asi!=as.end();asi++) {
-			A += sample.atoms[*asi].scatteramp;
-		}
-		return A;
-	}
-	
-	// else
-	for (size_t i=0;i<cs.x.size();i++) {
-		double s = sample.atoms[cs.indexes[i]].scatteramp;
-		CartesianCoor3D c(cs.x[i],cs.y[i],cs.z[i]);
-		A += exp(-1.0*complex<double>(0,c*q)) * s;		
-	}
-
+//	if (q.length()==0) {
+//		for (Atomselection::iterator asi=as.begin();asi!=as.end();asi++) {
+//			A += sample.atoms[*asi].scatteramp;
+//		}
+//		return A;
+//	}
+//	
+//	// else
+//	for (size_t i=0;i<cs.x.size();i++) {
+//		double s = sample.atoms[cs.indexes[i]].scatteramp;
+//		CartesianCoor3D c(cs.x[i],cs.y[i],cs.z[i]);
+//		A += exp(-1.0*complex<double>(0,c*q)) * s;		
+//	}
+//
 	return A;
 		
 }
+//
+//complex<double> scatter_none_unrolled(size_t noa, CoordinateSet& cs,vector<double>& scatteramps,CartesianCoor3D& q) {
+//	
+//	double Ar = 0.0;
+//	double Ai = 0.0;
+//	double p,p1,p2,p3;	
+//	double cp,cp1,cp2,cp3;		
+//	double ap,ap1,ap2,ap3;	
+//	double M_PI_half = M_PI/2;
+//	double M_PI_3half = 3*M_PI/2;	
+//	double M_PI_twice = 2*M_PI;
+//	
+//	double csx = cs.x[0];
+//	double csy = cs.y[0];
+//	double csz = cs.z[0];
+//	double sa = scatteramps[0];
+//	
+//	for (size_t i=0;i<noa;i++) {
+//		p =  csx*q.x + csy*q.y + csz*q.z;
+//		double sign_sin = (p<0) ? -1.0 : 1.0;
+//		ap = abs(p);
+//		p = ap - long(ap/M_PI_twice)*M_PI_twice - M_PI;		// wrap p to -pi..pi
+//		cp = ( p<M_PI_half )  ? p + M_PI_half : p - M_PI_3half;
+//		
+//		//pre-fetch next data
+//		csx = cs.x[i+1];
+//		csy = cs.y[i+1];
+//		csz = cs.z[i+1];	
+//
+//		Ai = Ai + sign_sin*sine(p)*sa;  // this is sine,  - * - = +
+//		Ar = Ar + sine(cp)*sa; // this is cosine
+////		Ai = Ai + 0;
+////		Ai = Ai + sa;		
+//		//pre-fetch next data
+//		sa = scatteramps[i+1];
+//
+//	}
+//
+//	return complex<double>(Ar,Ai);
+//}
+//
+//
+//complex<double> scatter_none_unrolled_cs2(size_t noa, CoordinateSet& cs,CartesianCoor3D& q) {
+//	
+//	double Ar = 0.0;
+//	double Ai = 0.0;
+//	double p,p1,p2,p3;	
+//	double cp,cp1,cp2,cp3;		
+//	double ap,ap1,ap2,ap3;	
+//	double M_PI_half = M_PI/2;
+//	double M_PI_3half = 3*M_PI/2;	
+//	double M_PI_twice = 2*M_PI;
+//	
+//	double csx = cs.x[0];
+//	double csy = cs.y[0];
+//	double csz = cs.z[0];
+//	
+//	for (size_t i=0;i<noa;i++) {
+//		p =  csx*q.x + csy*q.y + csz*q.z;
+//		double sign_sin = (p<0) ? -1.0 : 1.0;
+//		ap = abs(p);
+//		p = ap - long(ap/M_PI_twice)*M_PI_twice - M_PI;		// wrap p to -pi..pi		
+//		cp = ( p<M_PI_half )  ? p + M_PI_half : p - M_PI_3half;
+//		
+//		//pre-fetch next data
+//		csx = cs.x[i+1];
+//		csy = cs.y[i+1];
+//		csz = cs.z[i+1];	
+//
+//		Ai = Ai + sign_sin*sine(p);  // this is sine,  - * - = +
+//		Ar = Ar + sine(cp); // this is cosine
+//
+//	}
+//
+//	return complex<double>(Ar,Ai);
+//}
 
-complex<double> scatter_none_unrolledI(size_t noa, CoordinateSet& cs,vector<double>& scatteramps,CartesianCoor3D& q) {
-	
-	double Ar = 0.0;
-	double Ai = 0.0;
-	double p,p1,p2,p3;	
-	double cp,cp1,cp2,cp3;		
-	double ap,ap1,ap2,ap3;	
-	double M_PI_half = M_PI/2;
-	double M_PI_3half = 3*M_PI/2;	
-	double M_PI_twice = 2*M_PI;
-	
-	size_t rnoa = noa;
-	size_t starti = 0;
-	
-	if (noa<4) {
-		for(size_t i = 0; i < noa; ++i)
-		{
-			p = cs.x[i]*q.x + cs.y[i]*q.y + cs.z[i]*q.z;			
-			Ai = Ai - sin(p)*scatteramps[i];  
-			Ar = Ar + cos(p)*scatteramps[i]; 
-		}
-		return complex<double>(Ar,Ai);
-	}
-	
-	while ( (rnoa % 4)!=0 ) {
-		p = cs.x[starti]*q.x + cs.y[starti]*q.y + cs.z[starti]*q.z;	
-		Ai = Ai - sin(p)*scatteramps[starti];  
-		Ar = Ar + cos(p)*scatteramps[starti];
-		rnoa--;
-		starti++;
-	}
-	
-	for (size_t i=starti;i<noa;i+=4) {
-		size_t i1 = i+1;
-		size_t i2 = i+2;
-		size_t i3 = i+3;
-		
-		p =  cs.x[i]*q.x + cs.y[i]*q.y + cs.z[i]*q.z;
-		p1 = cs.x[i1]*q.x + cs.y[i1]*q.y + cs.z[i1]*q.z;
-		p2 = cs.x[i2]*q.x + cs.y[i2]*q.y + cs.z[i2]*q.z;
-		p3 = cs.x[i3]*q.x + cs.y[i3]*q.y + cs.z[i3]*q.z;
+//void scatter_vectors (Sample& sample,Atomselection as,std::vector<CartesianCoor3D>& qvectors,std::vector<vector<std::complex<double> > >& scattering_amplitudes) {
+//
+//	scattering_amplitudes.resize(qvectors.size());
+//	for(size_t i = 0; i < qvectors.size(); ++i)
+//	{
+//		vector<complex<double> >& scat = scattering_amplitudes[i];
+//		scatter_none(sample,as,qvectors[i],scat);
+//	}
+//}
+//
+//void scatter_vectors (Sample& sample,Atomselection as,std::vector<CartesianCoor3D>& qvectors,std::vector<std::complex<double> >& scattering_amplitudes) {
+//
+//	if (Params::Inst()->debug.scatter_from_frame) {
+//	   CoordinateSet& cs = sample.frames.current().coordinate_sets[as.name];
+//	   vector<double>& scatteramps = sample.atoms.scatteramps[as.name];
+//	   for(size_t i = 0; i < qvectors.size(); ++i)
+//	   {
+//	   	scattering_amplitudes.push_back( scatter_none_unrolled(cs.x.size(),cs,scatteramps,qvectors[i]) );
+//	   }
+//	//	double background_sl = sample.background;
+//	//	map<pair<size_t,double>,CoordinateSet>& cs2 = sample.frames.current().coordinate_sets2[as.name];
+//	//	for(size_t i = 0; i < qvectors.size(); ++i)
+//	//	{
+//	//		complex<double> A(0,0);
+//	//		for(map< pair<size_t,double>,CoordinateSet>::iterator cs2i = cs2.begin(); cs2i != cs2.end(); ++cs2i)
+//	//		{	
+//	//			complex<double> apart = scatter_none_unrolled_cs2(cs2i->second.size(),cs2i->second,qvectors[i]);
+//	//			apart *= get_scatteramp(cs2i->second.atomID,cs2i->second.kappa,qvectors[i],true,background_sl);
+//	//			A+= apart;
+//	//		}
+//	//		scattering_amplitudes.push_back( A );
+//	//	}	
+//	}
+//	else {
+//		
+//	   for(size_t i = 0; i < qvectors.size(); ++i)
+//	   {
+//	   	scattering_amplitudes.push_back( scatter_none(sample,as,qvectors[i]) );
+//	   }	
+//	}
+//
+//}
 
-		double sign_sin = (p<0) ? -1.0 : 1.0;
-		double sign_sin1 = (p1<0) ? -1.0 : 1.0;
-		double sign_sin2 = (p2<0) ? -1.0 : 1.0;
-		double sign_sin3 = (p3<0) ? -1.0 : 1.0;
-
-		ap = abs(p);
-		ap1 = abs(p1);
-		ap2 = abs(p2);
-		ap3 = abs(p3);		
-
-		p = ap - long(ap/M_PI_twice)*M_PI_twice - M_PI;		// wrap p to -pi..pi
-		p1 = ap1 - long(ap1/M_PI_twice)*M_PI_twice - M_PI;		// wrap p to -pi..pi
-		p2 = ap2 - long(ap2/M_PI_twice)*M_PI_twice - M_PI;		// wrap p to -pi..pi
-		p3 = ap3 - long(ap3/M_PI_twice)*M_PI_twice - M_PI;		// wrap p to -pi..pi
-
-		cp = ( p<M_PI_half )  ? p + M_PI_half : p - M_PI_3half;
-		cp1 = ( p1<M_PI_half )  ? p1 + M_PI_half : p1 - M_PI_3half;
-		cp2 = ( p2<M_PI_half )  ? p2 + M_PI_half : p2 - M_PI_3half;
-		cp3 = ( p3<M_PI_half )  ? p3 + M_PI_half : p3 - M_PI_3half;
-
-		Ai = Ai + sign_sin*sine(p)*scatteramps[i];  // this is sine,  - * - = +
-		Ai = Ai + sign_sin1*sine(p1)*scatteramps[i1];  // this is sine,  - * - = +
-		Ai = Ai + sign_sin2*sine(p2)*scatteramps[i2];  // this is sine,  - * - = +
-		Ai = Ai + sign_sin3*sine(p3)*scatteramps[i3];  // this is sine,  - * - = +
-
-		Ar = Ar + sine(cp)*scatteramps[i]; // this is cosine
-		Ar = Ar + sine(cp1)*scatteramps[i1]; // this is cosine
-		Ar = Ar + sine(cp2)*scatteramps[i2]; // this is cosine
-		Ar = Ar + sine(cp3)*scatteramps[i3]; // this is cosine
-	
-	}
-
-	return complex<double>(Ar,Ai);
-}
-
-complex<double> scatter_none_unrolled4(size_t noa, CoordinateSet& cs,vector<double>& scatteramps,CartesianCoor3D& q) {
-	
-	double Ar = 0.0;
-	double Ai = 0.0;
-	double p,p1,p2,p3;	
-	double cp,cp1,cp2,cp3;		
-	double ap,ap1,ap2,ap3;	
-	double M_PI_half = M_PI/2;
-	double M_PI_3half = 3*M_PI/2;	
-	double M_PI_twice = 2*M_PI;
-	
-	size_t rnoa = noa;
-	size_t starti = 0;
-	
-	if (noa<4) {
-		for(size_t i = 0; i < noa; ++i)
-		{
-			p = cs.x[i]*q.x + cs.y[i]*q.y + cs.z[i]*q.z;			
-			Ai = Ai - sin(p)*scatteramps[i];  
-			Ar = Ar + cos(p)*scatteramps[i]; 
-		}
-		return complex<double>(Ar,Ai);
-	}
-	
-	while ( (rnoa % 4)!=0 ) {
-		p = cs.x[starti]*q.x + cs.y[starti]*q.y + cs.z[starti]*q.z;	
-		Ai = Ai - sin(p)*scatteramps[starti];  
-		Ar = Ar + cos(p)*scatteramps[starti];
-		rnoa--;
-		starti++;
-	}
-	
-	for (size_t i=starti;i<noa;i+=4) {
-		size_t i1 = i+1;
-		size_t i2 = i+2;
-		size_t i3 = i+3;
-		
-		p =  cs.x[i]*q.x + cs.y[i]*q.y + cs.z[i]*q.z;
-		double sign_sin = (p<0) ? -1.0 : 1.0;
-		ap = abs(p);
-		p = ap - long(ap/M_PI_twice)*M_PI_twice - M_PI;		// wrap p to -pi..pi
-		cp = ( p<M_PI_half )  ? p + M_PI_half : p - M_PI_3half;
-		Ai = Ai + sign_sin*sine(p)*scatteramps[i];  // this is sine,  - * - = +
-		Ar = Ar + sine(cp)*scatteramps[i]; // this is cosine
-
-
-		p1 = cs.x[i1]*q.x + cs.y[i1]*q.y + cs.z[i1]*q.z;
-		double sign_sin1 = (p1<0) ? -1.0 : 1.0;
-		ap1 = abs(p1);
-		p1 = ap1 - long(ap1/M_PI_twice)*M_PI_twice - M_PI;		// wrap p to -pi..pi
-		cp1 = ( p1<M_PI_half )  ? p1 + M_PI_half : p1 - M_PI_3half;
-		Ai = Ai + sign_sin1*sine(p1)*scatteramps[i1];  // this is sine,  - * - = +
-		Ar = Ar + sine(cp1)*scatteramps[i1]; // this is cosine
-
-		p2 = cs.x[i2]*q.x + cs.y[i2]*q.y + cs.z[i2]*q.z;
-		double sign_sin2 = (p2<0) ? -1.0 : 1.0;
-		ap2 = abs(p2);
-		p2 = ap2 - long(ap2/M_PI_twice)*M_PI_twice - M_PI;		// wrap p to -pi..pi
-		cp2 = ( p2<M_PI_half )  ? p2 + M_PI_half : p2 - M_PI_3half;
-		Ai = Ai + sign_sin2*sine(p2)*scatteramps[i2];  // this is sine,  - * - = +
-		Ar = Ar + sine(cp2)*scatteramps[i2]; // this is cosine
-
-		p3 = cs.x[i3]*q.x + cs.y[i3]*q.y + cs.z[i3]*q.z;
-		double sign_sin3 = (p3<0) ? -1.0 : 1.0;
-		ap3 = abs(p3);		
-		p3 = ap3 - long(ap3/M_PI_twice)*M_PI_twice - M_PI;		// wrap p to -pi..pi
-		cp3 = ( p3<M_PI_half )  ? p3 + M_PI_half : p3 - M_PI_3half;
-		Ai = Ai + sign_sin3*sine(p3)*scatteramps[i3];  // this is sine,  - * - = +
-		Ar = Ar + sine(cp3)*scatteramps[i3]; // this is cosine
-	
-	}
-
-	return complex<double>(Ar,Ai);
-}
-
-complex<double> scatter_none_unrolled(size_t noa, CoordinateSet& cs,vector<double>& scatteramps,CartesianCoor3D& q) {
-	
-	double Ar = 0.0;
-	double Ai = 0.0;
-	double p,p1,p2,p3;	
-	double cp,cp1,cp2,cp3;		
-	double ap,ap1,ap2,ap3;	
-	double M_PI_half = M_PI/2;
-	double M_PI_3half = 3*M_PI/2;	
-	double M_PI_twice = 2*M_PI;
-	
-	double csx = cs.x[0];
-	double csy = cs.y[0];
-	double csz = cs.z[0];
-	double sa = scatteramps[0];
-	
-	for (size_t i=0;i<noa;i++) {
-		p =  csx*q.x + csy*q.y + csz*q.z;
-		double sign_sin = (p<0) ? -1.0 : 1.0;
-		ap = abs(p);
-		p = ap - long(ap/M_PI_twice)*M_PI_twice - M_PI;		// wrap p to -pi..pi
-		cp = ( p<M_PI_half )  ? p + M_PI_half : p - M_PI_3half;
-		
-		//pre-fetch next data
-		csx = cs.x[i+1];
-		csy = cs.y[i+1];
-		csz = cs.z[i+1];	
-
-		Ai = Ai + sign_sin*sine(p)*sa;  // this is sine,  - * - = +
-		Ar = Ar + sine(cp)*sa; // this is cosine
-
-		//pre-fetch next data
-		sa = scatteramps[i+1];
-
-	}
-
-	return complex<double>(Ar,Ai);
-}
-
-void scatter_vectors (Sample& sample,Atomselection as,std::vector<CartesianCoor3D>& qvectors,std::vector<vector<std::complex<double> > >& scattering_amplitudes) {
-
-	scattering_amplitudes.resize(qvectors.size());
-	for(size_t i = 0; i < qvectors.size(); ++i)
-	{
-		vector<complex<double> >& scat = scattering_amplitudes[i];
-		scatter_none(sample,as,qvectors[i],scat);
-	}
-}
-
-void scatter_vectors (Sample& sample,Atomselection as,std::vector<CartesianCoor3D>& qvectors,std::vector<std::complex<double> >& scattering_amplitudes) {
-
-	if (Params::Inst()->debug.scatter_from_frame) {
-		CoordinateSet& cs = sample.frames.current().coordinate_sets[as.name];
-		vector<double>& scatteramps = sample.atoms.scatteramps[as.name];
-		for(size_t i = 0; i < qvectors.size(); ++i)
-		{
-			scattering_amplitudes.push_back( scatter_none_unrolled(cs.x.size(),cs,scatteramps,qvectors[i]) );
-		}
-		
-	}
-	else {
-		for(size_t i = 0; i < qvectors.size(); ++i)
-		{
-			scattering_amplitudes.push_back( scatter_none(sample,as,qvectors[i]) );
-		}	
-	}
-
-}
-
-void scatter_sphere_debye (Sample& sample,Atomselection as,CartesianCoor3D q,double resolution,std::vector<std::complex<double> >& scattering_amplitudes) {
-
-	CoordinateSet& cs = sample.frames.current().coordinate_sets[as.name];
-	double A=0.0;
-	double ql = q.length();
-	// else
-	for (size_t i=0;i<cs.x.size();i++) {
-		CartesianCoor3D ci(cs.x[i],cs.y[i],cs.z[i]);
-		double si = sample.atoms[cs.indexes[i]].scatteramp;
-
-		for (size_t j=0;j<cs.x.size();j++) {
-			double sj = sample.atoms[cs.indexes[j]].scatteramp;
-			CartesianCoor3D cj(cs.x[j],cs.y[j],cs.z[j]);	
-			double qr = ql * (cj-ci).length();
-			// we asume q is oriented in z direction
-			A += si*sj* sinc_pi(qr);
-		}
-	}
-	
-	scattering_amplitudes.push_back(complex<double>(sqrt(A),0));
-
-}
+//void scatter_sphere_debye (Sample& sample,Atomselection as,CartesianCoor3D q,double resolution,std::vector<std::complex<double> >& scattering_amplitudes) {
+//
+//	CoordinateSet& cs = sample.frames.current().coordinate_sets[as.name];
+//	double A=0.0;
+//	double ql = q.length();
+//	// else
+//	for (size_t i=0;i<cs.x.size();i++) {
+//		CartesianCoor3D ci(cs.x[i],cs.y[i],cs.z[i]);
+//		double si = sample.atoms[cs.indexes[i]].scatteramp;
+//
+//		for (size_t j=0;j<cs.x.size();j++) {
+//			double sj = sample.atoms[cs.indexes[j]].scatteramp;
+//			CartesianCoor3D cj(cs.x[j],cs.y[j],cs.z[j]);	
+//			double qr = ql * (cj-ci).length();
+//			// we asume q is oriented in z direction
+//			A += si*sj* sinc_pi(qr);
+//		}
+//	}
+//	
+//	scattering_amplitudes.push_back(complex<double>(sqrt(A),0));
+//
+//}
 
 
 void scatter_sphere_multipole (Sample& sample,Atomselection as,CartesianCoor3D q,double resolution,std::vector<std::complex<double> >& scattering_amplitudes) {
@@ -785,193 +696,240 @@ void scatter_cylinder_multipole(Sample& sample,Atomselection as,CartesianCoor3D 
 
 }
 
+void compute_phase_factors(Sample& sample) {
+	// first grid the coordinate system, then calculate the grid-volume for each phase
+	// then calculate the unified kappa
+	
+	
+	// for each phase calculate the summed volumes
+	vector<ScatteringBackgroundPhaseParameters>& phases = Params::Inst()->scattering.background.phases;
+	vector<double> total_volumes(phases.size());
+
+	vector<CoordinateSet> coordinate_sets;
+	// first prepare all coordinate set...
+	for(size_t i = 0; i < phases.size(); ++i)
+	{
+		coordinate_sets.push_back( CoordinateSet(sample.frames.current(),sample.atoms.selections[phases[i].selection]) );
+	}
+	
+	for(size_t i = 0; i < phases.size(); ++i)
+	{
+		Atomselection& phase_atoms = sample.atoms.selections[phases[i].selection];
+
+//		double factor = 1.0;
+//		if (phases[i].scaling=="manual") {
+//			factor = phases[i].factor;
+//		}
+		
+		double volume = 0.0;
+		for(size_t j = 0; j < phase_atoms.size(); ++j)
+		{
+			volume += sample.atoms[phase_atoms[j]].volume;
+		} 
+		total_volumes[i] = volume;	
+
+		DensityGrid densgrid(sample.frames.current().unitcell,0.1,sample.frames.current().origin,false);
+		densgrid.set(coordinate_sets[i]);
+		for(size_t j = 0; j < phases.size(); ++j)
+		{
+			if (i==j) continue;
+			densgrid.unset(coordinate_sets[j],phases[i].nullrange);
+		}			
+	}
+	
+
+	vector<double> grid_volumes(phases.size());
+	
+}
 
 complex<double> background(Sample& sample,Atomselection& as_system, Atomselection& as_solvent, Atomselection& as_particle, int resolution, double hlayer, CartesianCoor3D q,vector<double>& kappas_s,vector<double>& kappas_p) {
 	
-	vector<CartesianCoor3D> uc = sample.frames.current().unitcell;
-	CartesianCoor3D origin = sample.frames.current().origin;
-	
-	vector<int> v; // an empty vector to initialize vGrid3D
-	vGrid3D grid(resolution,uc,origin,v);
-	vGrid3D solgrid(resolution,uc,origin,v);	
-	vGrid3D partgrid(resolution,uc,origin,v);	
-	Grid3D<bool> solventgrid(resolution,uc,origin,false);	
-	Grid3D<bool> particlegrid(resolution,uc,origin,false);		
-	Grid3D<bool> systemgrid(resolution,uc,origin,false);
-
-	for(Atomselection::iterator asi=as_system.begin();asi!=as_system.end();asi++) {
-		CartesianCoor3D c = sample.frames.current().coord3D(*asi);
-		Gridkey3D gk = grid.get_cell(c);
-		grid[gk].push_back(*asi);
-	}	
-		
-	for(Atomselection::iterator asi=as_particle.begin();asi!=as_particle.end();asi++) {
-		CartesianCoor3D c = sample.frames.current().coord3D(*asi);
-		CartesianCoor3D hc(hlayer,hlayer,hlayer);
-		vector<Gridkey3D> gks =particlegrid.get_cells(c,hc);
-		
-		for (vector<Gridkey3D>::iterator gki=gks.begin();gki!=gks.end();gki++) {
-			particlegrid[*gki]=true;			
-		}
-	}	
-	for(Atomselection::iterator asi=as_solvent.begin();asi!=as_solvent.end();asi++) {
-		CartesianCoor3D c = sample.frames.current().coord3D(*asi);
-		Gridkey3D gk = grid.get_cell(c);
-		
-		solventgrid[gk]=true;
-	}
-	
-	// remove valid solvent grid cells...
-	for(Grid3D<bool>::iterator gi=particlegrid.begin();gi!=particlegrid.end();gi++) {
-		if (gi->second) {
-			solventgrid[Gridkey3D(gi->first.ix,gi->first.iy,gi->first.iz)]=false;
-		}
-	}	
-	// build an atomselection...
-	Atomselection as_solvent_trunc(sample.atoms,false);
-	int numsolatoms=0;
-	double solventvolume=0;
-	for(Grid3D<bool>::iterator gi=solventgrid.begin();gi!=solventgrid.end();gi++) {
-		if (gi->second) {
-			vector<int>& v = grid[Gridkey3D(gi->first.ix,gi->first.iy,gi->first.iz)];
-			for (vector<int>::iterator vi=v.begin();vi!=v.end();vi++) {
-				as_solvent_trunc.add(sample.atoms[*vi]);
-				numsolatoms++;
-			}
-			solventvolume+= solventgrid.element_volume();
-		}
-	}	
-	
-	// calculate scattering amplitude...
-	set_scatteramp(sample,as_solvent_trunc,q,false);		
-//	complex<double> Ac = scatter(*(as_solvent_trunc.sample),as_solvent_trunc,q);
-
-	complex<double> Ac = scatter_none(sample,as_solvent_trunc,q);	
-//	cout << "scatter numatoms=" << numsolatoms << " , " << as_solvent_trunc.size() << endl;
-//	cout << "scatter solvent_trunc=" << Ac << endl;
-	
-//	cout << "volume:" << totalvolume << endl;
-//	cout << "scatter/volume:" << Ac/totalvolume << endl;
-	
-		
-	// build a solvent exclusive grid..
-
-	for(Atomselection::iterator asi=as_solvent.begin();asi!=as_solvent.end();asi++) {
-		CartesianCoor3D c = sample.frames.current().coord3D(*asi);
-		Gridkey3D gk = solgrid.get_cell(c);
-		
-		solgrid[gk].push_back(*asi);
-	}
-	
-
-	// build a particle exclusive grid..
-	for(Atomselection::iterator asi=as_particle.begin();asi!=as_particle.end();asi++) {
-		CartesianCoor3D c = sample.frames.current().coord3D(*asi);
-		Gridkey3D gk = partgrid.get_cell(c);
-		
-		partgrid[gk].push_back(*asi);
-	}
-
-	//scan solventgrid(bool) and grid(atoms) for any outer solvent molecules...
-	double sum_shell_solvent=0;
-	int    n_shell_solvent=0;
-		int num_solcells=0;
-		
-		double dens = 0;
-		
-	for(Grid3D<bool>::iterator gi=solventgrid.begin();gi!=solventgrid.end();gi++) {
-		if (gi->second) {
-			num_solcells++;
-			vector<int>& v = solgrid[Gridkey3D(gi->first.ix,gi->first.iy,gi->first.iz)];
-			int ln =0;
-			for (vector<int>::iterator vi=v.begin();vi!=v.end();vi++) {
-				sum_shell_solvent+=sample.atoms[*vi].volume;
-				n_shell_solvent++;
-				ln++;
-			}
-			dens += 1e27*ln/(solventgrid.element_volume()) / 6.0221415e23 /3;
-		}
-	}	
-
-	// scan particlegrid(bool) and solgrid(atoms) for inner solvent molecules...
-	double hparticlevolume=0;
-	double sum_all_solvent=0;
-	double sum_inner_solvent=0;	
-	for(Grid3D<bool>::iterator gi=particlegrid.begin();gi!=particlegrid.end();gi++) {
-		vector<int>& v = solgrid[Gridkey3D(gi->first.ix,gi->first.iy,gi->first.iz)];		
-
-		if (gi->second) {
-			hparticlevolume+= solgrid.element_volume();
-			for (vector<int>::iterator vi=v.begin();vi!=v.end();vi++) {
-				sum_inner_solvent+=sample.atoms[*vi].volume;
-			}
-		}
-		for (vector<int>::iterator vi=v.begin();vi!=v.end();vi++) {
-			sum_all_solvent+=sample.atoms[*vi].volume;
-		}		
-	}	
-	
-	// scan particlegrid(bool) and partgrid(atoms) for particle molecules...
-	double sum_particle = 0;
-	for(Grid3D<bool>::iterator gi=particlegrid.begin();gi!=particlegrid.end();gi++) {
-		if (gi->second) {
-			vector<int>& v = partgrid[Gridkey3D(gi->first.ix,gi->first.iy,gi->first.iz)];
-			for (vector<int>::iterator vi=v.begin();vi!=v.end();vi++) {
-				sum_particle+=sample.atoms[*vi].volume;
-			}
-		}
-	}	
-	
-	
-	// kappa estimation:
-	double totalvolume = grid.total_volume();
-	double kappa_s = solventvolume/sum_shell_solvent;
-	double particle_volume = totalvolume - sum_all_solvent * kappa_s;
-//	double particle_volume = totalvolume - sum_shell_solvent * kappa_s;	
-	double kappa_p = particle_volume / sum_particle;
-//	double kappa_p = particle_volume / sum_particle;	
-
-//  cout << resolution << "\t" << hlayer << "\t" << dens/num_solcells << endl;
-//  
-//  cout << "number of solvent cells: " << num_solcells << endl;
-//  cout << "n_shell_solvent: " << n_shell_solvent << endl;
-//  cout << "numsolatoms: " << numsolatoms << endl;	
-//  cout << "solventvolume: " << solventvolume << endl;
-//	cout << "cell volume: " << xd*yd*zd << endl;
-//  if (numsolatoms!=0)	cout << "solvent particles per cell: " << numsolatoms/num_solcells << endl;	
-//  cout << "average density of bulk water (mol./L): " << 1e27*n_shell_solvent/solventvolume / 6.0221415e23 /3  << endl;
+//	vector<CartesianCoor3D> uc = sample.frames.current().unitcell;
+//	CartesianCoor3D origin = sample.frames.current().origin;
+//	
+//	vector<int> v; // an empty vector to initialize vGrid3D
+//	vGrid3D grid(resolution,uc,origin,v);
+//	vGrid3D solgrid(resolution,uc,origin,v);	
+//	vGrid3D partgrid(resolution,uc,origin,v);	
+//	Grid3D<bool> solventgrid(resolution,uc,origin,false);	
+//	Grid3D<bool> particlegrid(resolution,uc,origin,false);		
+//	Grid3D<bool> systemgrid(resolution,uc,origin,false);
 //
-//  cout << "totalvolume=" << totalvolume << endl;
-//  cout << "solventvolume=" << solventvolume << endl;
-//  cout << "hparticlevolume=" << hparticlevolume << endl;
+//	for(Atomselection::iterator asi=as_system.begin();asi!=as_system.end();asi++) {
+//		CartesianCoor3D c = sample.frames.current().coord3D(*asi);
+//		Gridkey3D gk = grid.get_cell(c);
+//		grid[gk].push_back(*asi);
+//	}	
+//		
+//	for(Atomselection::iterator asi=as_particle.begin();asi!=as_particle.end();asi++) {
+//		CartesianCoor3D c = sample.frames.current().coord3D(*asi);
+//		CartesianCoor3D hc(hlayer,hlayer,hlayer);
+//		vector<Gridkey3D> gks =particlegrid.get_cells(c,hc);
+//		
+//		for (vector<Gridkey3D>::iterator gki=gks.begin();gki!=gks.end();gki++) {
+//			particlegrid[*gki]=true;			
+//		}
+//	}	
+//	for(Atomselection::iterator asi=as_solvent.begin();asi!=as_solvent.end();asi++) {
+//		CartesianCoor3D c = sample.frames.current().coord3D(*asi);
+//		Gridkey3D gk = grid.get_cell(c);
+//		
+//		solventgrid[gk]=true;
+//	}
+//	
+//	// remove valid solvent grid cells...
+//	for(Grid3D<bool>::iterator gi=particlegrid.begin();gi!=particlegrid.end();gi++) {
+//		if (gi->second) {
+//			solventgrid[Gridkey3D(gi->first.ix,gi->first.iy,gi->first.iz)]=false;
+//		}
+//	}	
+//	
+//	// build an atomselection...
+//	Atomselection as_solvent_trunc(sample.atoms,false);
+//	int numsolatoms=0;
+//	double solventvolume=0;
+//	for(Grid3D<bool>::iterator gi=solventgrid.begin();gi!=solventgrid.end();gi++) {
+//		if (gi->second) {
+//			vector<int>& v = grid[Gridkey3D(gi->first.ix,gi->first.iy,gi->first.iz)];
+//			for (vector<int>::iterator vi=v.begin();vi!=v.end();vi++) {
+//				as_solvent_trunc.add(sample.atoms[*vi]);
+//				numsolatoms++;
+//			}
+//			solventvolume+= solventgrid.element_volume();
+//		}
+//	}	
+//	
+//	// calculate scattering amplitude...
+//	set_scatteramp(sample,as_solvent_trunc,q,false);		
+////	complex<double> Ac = scatter(*(as_solvent_trunc.sample),as_solvent_trunc,q);
 //
-//  cout << "sum_shell_solvent=" << sum_shell_solvent << endl;
-//  cout << "sum_particle=" << sum_particle << endl;
-//  cout << "particle_volume=" << particle_volume << endl;
+//	complex<double> Ac = scatter_none(sample,as_solvent_trunc,q);	
+////	cout << "scatter numatoms=" << numsolatoms << " , " << as_solvent_trunc.size() << endl;
+////	cout << "scatter solvent_trunc=" << Ac << endl;
+//	
+////	cout << "volume:" << totalvolume << endl;
+////	cout << "scatter/volume:" << Ac/totalvolume << endl;
+//	
+//		
+//	// build a solvent exclusive grid..
 //
-//  cout << "sum_inner_solvent=" << sum_inner_solvent << endl;
-//  cout << "kappa_s=" << kappa_s << endl;
-//  cout << "kappa_p=" << kappa_p << endl;	
-//	cout << resolution << "\t" << hlayer << "\t" << kappa_s <<  "\t" << kappa_p << endl;
-
-	// currently we have only a 2 phase system (allowed)
-	// return kappa values via argument
-	kappas_s.push_back(kappa_s);
-	kappas_p.push_back(kappa_p);
-	
-//   if (Settings::get("main")["scattering"]["background"].exists("volume")) {
-//   	// store kappa values for atoms:
-//   	for(Atomselection::iterator asi=as_solvent.begin();asi!=as_solvent.end();asi++) {
-//   //		(*asi)->kappa = kappa_s;
-//   		sample.atoms[*asi].kappa = 1.0;
-//   	}
-//   	for(Atomselection::iterator asi=as_particle.begin();asi!=as_particle.end();asi++) {
-//   //		(*asi)->kappa = kappa_p;
-//   		sample.atoms[*asi].kappa = 1.0;
-//   	}		
-//   }
-	
-	return Ac/solventvolume;
+//	for(Atomselection::iterator asi=as_solvent.begin();asi!=as_solvent.end();asi++) {
+//		CartesianCoor3D c = sample.frames.current().coord3D(*asi);
+//		Gridkey3D gk = solgrid.get_cell(c);
+//		
+//		solgrid[gk].push_back(*asi);
+//	}
+//	
+//
+//	// build a particle exclusive grid..
+//	for(Atomselection::iterator asi=as_particle.begin();asi!=as_particle.end();asi++) {
+//		CartesianCoor3D c = sample.frames.current().coord3D(*asi);
+//		Gridkey3D gk = partgrid.get_cell(c);
+//		
+//		partgrid[gk].push_back(*asi);
+//	}
+//
+//	//scan solventgrid(bool) and grid(atoms) for any outer solvent molecules...
+//	double sum_shell_solvent=0;
+//	int    n_shell_solvent=0;
+//		int num_solcells=0;
+//		
+//		double dens = 0;
+//		
+//	for(Grid3D<bool>::iterator gi=solventgrid.begin();gi!=solventgrid.end();gi++) {
+//		if (gi->second) {
+//			num_solcells++;
+//			vector<int>& v = solgrid[Gridkey3D(gi->first.ix,gi->first.iy,gi->first.iz)];
+//			int ln =0;
+//			for (vector<int>::iterator vi=v.begin();vi!=v.end();vi++) {
+//				sum_shell_solvent+=sample.atoms[*vi].volume;
+//				n_shell_solvent++;
+//				ln++;
+//			}
+//			dens += 1e27*ln/(solventgrid.element_volume()) / 6.0221415e23 /3;
+//		}
+//	}	
+//
+//	// scan particlegrid(bool) and solgrid(atoms) for inner solvent molecules...
+//	double hparticlevolume=0;
+//	double sum_all_solvent=0;
+//	double sum_inner_solvent=0;	
+//	for(Grid3D<bool>::iterator gi=particlegrid.begin();gi!=particlegrid.end();gi++) {
+//		vector<int>& v = solgrid[Gridkey3D(gi->first.ix,gi->first.iy,gi->first.iz)];		
+//
+//		if (gi->second) {
+//			hparticlevolume+= solgrid.element_volume();
+//			for (vector<int>::iterator vi=v.begin();vi!=v.end();vi++) {
+//				sum_inner_solvent+=sample.atoms[*vi].volume;
+//			}
+//		}
+//		for (vector<int>::iterator vi=v.begin();vi!=v.end();vi++) {
+//			sum_all_solvent+=sample.atoms[*vi].volume;
+//		}		
+//	}	
+//	
+//	// scan particlegrid(bool) and partgrid(atoms) for particle molecules...
+//	double sum_particle = 0;
+//	for(Grid3D<bool>::iterator gi=particlegrid.begin();gi!=particlegrid.end();gi++) {
+//		if (gi->second) {
+//			vector<int>& v = partgrid[Gridkey3D(gi->first.ix,gi->first.iy,gi->first.iz)];
+//			for (vector<int>::iterator vi=v.begin();vi!=v.end();vi++) {
+//				sum_particle+=sample.atoms[*vi].volume;
+//			}
+//		}
+//	}	
+//	
+//	
+//	// kappa estimation:
+//	double totalvolume = grid.total_volume();
+//	double kappa_s = solventvolume/sum_shell_solvent;
+//	double particle_volume = totalvolume - sum_all_solvent * kappa_s;
+////	double particle_volume = totalvolume - sum_shell_solvent * kappa_s;	
+//	double kappa_p = particle_volume / sum_particle;
+////	double kappa_p = particle_volume / sum_particle;	
+//
+////  cout << resolution << "\t" << hlayer << "\t" << dens/num_solcells << endl;
+////  
+////  cout << "number of solvent cells: " << num_solcells << endl;
+////  cout << "n_shell_solvent: " << n_shell_solvent << endl;
+////  cout << "numsolatoms: " << numsolatoms << endl;	
+////  cout << "solventvolume: " << solventvolume << endl;
+////	cout << "cell volume: " << xd*yd*zd << endl;
+////  if (numsolatoms!=0)	cout << "solvent particles per cell: " << numsolatoms/num_solcells << endl;	
+////  cout << "average density of bulk water (mol./L): " << 1e27*n_shell_solvent/solventvolume / 6.0221415e23 /3  << endl;
+////
+////  cout << "totalvolume=" << totalvolume << endl;
+////  cout << "solventvolume=" << solventvolume << endl;
+////  cout << "hparticlevolume=" << hparticlevolume << endl;
+////
+////  cout << "sum_shell_solvent=" << sum_shell_solvent << endl;
+////  cout << "sum_particle=" << sum_particle << endl;
+////  cout << "particle_volume=" << particle_volume << endl;
+////
+////  cout << "sum_inner_solvent=" << sum_inner_solvent << endl;
+////  cout << "kappa_s=" << kappa_s << endl;
+////  cout << "kappa_p=" << kappa_p << endl;	
+////	cout << resolution << "\t" << hlayer << "\t" << kappa_s <<  "\t" << kappa_p << endl;
+//
+//	// currently we have only a 2 phase system (allowed)
+//	// return kappa values via argument
+//	kappas_s.push_back(kappa_s);
+//	kappas_p.push_back(kappa_p);
+//	
+////   if (Settings::get("main")["scattering"]["background"].exists("volume")) {
+////   	// store kappa values for atoms:
+////   	for(Atomselection::iterator asi=as_solvent.begin();asi!=as_solvent.end();asi++) {
+////   //		(*asi)->kappa = kappa_s;
+////   		sample.atoms[*asi].kappa = 1.0;
+////   	}
+////   	for(Atomselection::iterator asi=as_particle.begin();asi!=as_particle.end();asi++) {
+////   //		(*asi)->kappa = kappa_p;
+////   		sample.atoms[*asi].kappa = 1.0;
+////   	}		
+////   }
+//	
+	return 0.0;
+//	return Ac/solventvolume;
 		
 }
 
@@ -984,84 +942,84 @@ pair<double,double> background_avg(Sample& sample,int resolution,double hydratio
 	vector<double> kappas_p;
 		
 	
-	vector<string>& gi = Params::Inst()->scattering.background.include; // background groups
-	vector<string>& ge = Params::Inst()->scattering.background.exclude; // particle groups
-
-	clog << "INFO>> " << "Solvent defined by: ";
-		for(size_t i = 0; i < gi.size(); ++i)
-		{
-			clog << " " << gi[i];
-		}	
-	 clog << endl;
-
-	clog << "INFO>> " << "Solute defined by: ";
-		for(size_t i = 0; i < ge.size(); ++i)
-		{
-			clog << " " << ge[i];
-		}	
-	 clog << endl;
-		
-		
-	Atomselection as_particle(sample.atoms,false);
-	for(size_t i = 0; i < ge.size(); ++i)
-	{
-		sample.atoms.assert_selection(ge[i]);
-		as_particle += sample.atoms.selections[ge[i]];
-	}
-	Atomselection as_solvent(sample.atoms,false);
-	for(size_t i = 0; i < gi.size(); ++i)
-	{
-		sample.atoms.assert_selection(gi[i]);
-		as_solvent += sample.atoms.selections[gi[i]];
-	}
-	sample.atoms.assert_selection("system");
-	Atomselection as_system(sample.atoms,true);
-		
-	int framestride = Params::Inst()->scattering.background.framestride;
-	
-	int totalframes = (sample.frames.size()/framestride) + 1;
-	if ((sample.frames.size() % framestride) ==0) totalframes--;
-	clog << "INFO>> " << "Average background density over " << totalframes << " frames" << endl;
-
-	clog << "INFO>> " << "Progress(%): ";
-	int progress=0;
-	for(size_t i=0;i<sample.frames.size();i+= framestride) {
-		int percent = (i*100/sample.frames.size());
-		if ( percent >= progress  ) {
-			progress = 10*(percent/10) + 10;
-			clog << percent << " ";
-		}
-				
-		sample.frames.load(i,sample.atoms,sample.atoms.selections);
-   	 	complex<double> b0v = Analysis::background(sample,as_system,as_solvent,as_particle,resolution,hydration,q,kappas_s,kappas_p);
-		acc_RE(b0v.real()); acc_IM(b0v.imag());
-	}
-	clog << "100" << endl;
-
-	// write kappa values into the atom entries...
-	// create temp. acc
-	// first kappa will contain solvent group, others particles.
-	accumulator_set<double,features<tag::mean,tag::variance> > ks;
-	for (vector<double>::iterator ki=kappas_s.begin();ki!=kappas_s.end();ki++) {
-		ks(*ki);
-	}
-	accumulator_set<double,features<tag::mean,tag::variance> > kp;
-	for (vector<double>::iterator ki=kappas_p.begin();ki!=kappas_p.end();ki++) {
-		kp(*ki);
-	}
-	
-	double m; double sv;
-	m = mean(ks); sv = sqrt(variance(ks));
-	clog << "INFO>> " << "atomic volume scaling factor for solvent groups: " << m << " +- " << sv << endl;
-	for (Atomselection::iterator asi=as_solvent.begin();asi!=as_solvent.end();asi++) {
-		sample.atoms[*asi].kappa = m;
-	}
-
-	m = mean(kp); sv = sqrt(variance(kp));
-	clog << "INFO>> " << "atomic volume scaling factor for solute groups: " << m << " +- " << sv << endl;
-	for (Atomselection::iterator asi=as_particle.begin();asi!=as_particle.end();asi++) {
-		sample.atoms[*asi].kappa = m;
-	}
+//	vector<string>& gi = Params::Inst()->scattering.background.include; // background groups
+//	vector<string>& ge = Params::Inst()->scattering.background.exclude; // particle groups
+////
+//	clog << "INFO>> " << "Solvent defined by: ";
+//		for(size_t i = 0; i < gi.size(); ++i)
+//		{
+//			clog << " " << gi[i];
+//		}	
+//	 clog << endl;
+//
+//	clog << "INFO>> " << "Solute defined by: ";
+//		for(size_t i = 0; i < ge.size(); ++i)
+//		{
+//			clog << " " << ge[i];
+//		}	
+//	 clog << endl;
+//		
+//		
+//	Atomselection as_particle(sample.atoms,false);
+//	for(size_t i = 0; i < ge.size(); ++i)
+//	{
+//		sample.atoms.assert_selection(ge[i]);
+//		as_particle += sample.atoms.selections[ge[i]];
+//	}
+//	Atomselection as_solvent(sample.atoms,false);
+//	for(size_t i = 0; i < gi.size(); ++i)
+//	{
+//		sample.atoms.assert_selection(gi[i]);
+//		as_solvent += sample.atoms.selections[gi[i]];
+//	}
+//	sample.atoms.assert_selection("system");
+//	Atomselection as_system(sample.atoms,true);
+//		
+//	int framestride = Params::Inst()->scattering.background.framestride;
+//	
+//	int totalframes = (sample.frames.size()/framestride) + 1;
+//	if ((sample.frames.size() % framestride) ==0) totalframes--;
+//	clog << "INFO>> " << "Average background density over " << totalframes << " frames" << endl;
+//
+//	clog << "INFO>> " << "Progress(%): ";
+//	int progress=0;
+//	for(size_t i=0;i<sample.frames.size();i+= framestride) {
+//		int percent = (i*100/sample.frames.size());
+//		if ( percent >= progress  ) {
+//			progress = 10*(percent/10) + 10;
+//			clog << percent << " ";
+//		}
+//				
+//		sample.frames.load(i,sample.atoms);
+//   	 	complex<double> b0v = Analysis::background(sample,as_system,as_solvent,as_particle,resolution,hydration,q,kappas_s,kappas_p);
+//		acc_RE(b0v.real()); acc_IM(b0v.imag());
+//	}
+//	clog << "100" << endl;
+//
+//	// write kappa values into the atom entries...
+//	// create temp. acc
+//	// first kappa will contain solvent group, others particles.
+//	accumulator_set<double,features<tag::mean,tag::variance> > ks;
+//	for (vector<double>::iterator ki=kappas_s.begin();ki!=kappas_s.end();ki++) {
+//		ks(*ki);
+//	}
+//	accumulator_set<double,features<tag::mean,tag::variance> > kp;
+//	for (vector<double>::iterator ki=kappas_p.begin();ki!=kappas_p.end();ki++) {
+//		kp(*ki);
+//	}
+//	
+//	double m; double sv;
+//	m = mean(ks); sv = sqrt(variance(ks));
+//	clog << "INFO>> " << "atomic volume scaling factor for solvent groups: " << m << " +- " << sv << endl;
+//	for (Atomselection::iterator asi=as_solvent.begin();asi!=as_solvent.end();asi++) {
+//		sample.atoms[*asi].kappa = m;
+//	}
+//
+//	m = mean(kp); sv = sqrt(variance(kp));
+//	clog << "INFO>> " << "atomic volume scaling factor for solute groups: " << m << " +- " << sv << endl;
+//	for (Atomselection::iterator asi=as_particle.begin();asi!=as_particle.end();asi++) {
+//		sample.atoms[*asi].kappa = m;
+//	}
 
 	return pair<double,double>(mean(acc_RE),sqrt(variance(acc_RE)));
 

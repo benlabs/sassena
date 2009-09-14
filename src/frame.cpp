@@ -30,67 +30,80 @@ void Frame::clear() {
 	unitcell.clear();
 }
 
-
-void Frame::push_selection(Atomselection& as) {
-	// create empty coordinate set
-	CoordinateSet& cs = coordinate_sets[as.name];
-
-	// try to take advantage of hardware pipelining, each array individually
-	for (size_t i=0;i<number_of_atoms;i++) {
-		if (as.booleanarray[i]) { cs.x.push_back(x[i]); }
-	}
-
-	for (size_t i=0;i<number_of_atoms;i++) {
-		if (as.booleanarray[i]) { cs.y.push_back(y[i]); }
-	}
-
-	for (size_t i=0;i<number_of_atoms;i++) {
-		if (as.booleanarray[i]) { cs.z.push_back(z[i]); }
-	}
-
-	for (size_t i=0;i<number_of_atoms;i++) {
-		if (as.booleanarray[i]) { cs.indexes.push_back(i); }
-	}
-	
-}
-
-void Frame::push_selections(std::vector<Atomselection>& ass) {
-
-	// temp asssociation table
-	std::vector<pair<CoordinateSet*,Atomselection*> > cooras;
-
-	for (std::vector<Atomselection>::iterator asi=ass.begin();asi!=ass.end();asi++) {
-		// create empty coordinate set
-		CoordinateSet* csp = &(coordinate_sets[asi->name]);
-		cooras.push_back(pair<CoordinateSet*,Atomselection*>(csp,&(*asi)));
-	}
-	
-	// try to take advantage of hardware pipelining, each array individually
-	for (size_t i=0;i<number_of_atoms;i++) {
-		for (std::vector<pair<CoordinateSet*,Atomselection*> >::iterator csi=cooras.begin();csi!=cooras.end();csi++) {
-			if (csi->second->booleanarray[i]) csi->first->x.push_back(x[i]);
-		}
-	}
-
-	for (size_t i=0;i<number_of_atoms;i++) {
-		for (std::vector<pair<CoordinateSet*,Atomselection*> >::iterator csi=cooras.begin();csi!=cooras.end();csi++) {
-			if (csi->second->booleanarray[i]) csi->first->y.push_back(y[i]);
-		}
-	}
-
-	for (size_t i=0;i<number_of_atoms;i++) {
-		for (std::vector<pair<CoordinateSet*,Atomselection*> >::iterator csi=cooras.begin();csi!=cooras.end();csi++) {
-			if (csi->second->booleanarray[i]) csi->first->z.push_back(z[i]);
-		}
-	}
-
-	for (size_t i=0;i<number_of_atoms;i++) {
-		for (std::vector<pair<CoordinateSet*,Atomselection*> >::iterator csi=cooras.begin();csi!=cooras.end();csi++) {
-			if (csi->second->booleanarray[i]) csi->first->indexes.push_back(i);
-		}
-	}
-	
-}
+//void Frame::push_selection(Atomselection& as,Atoms& atoms) {
+//	// create empty coordinate set
+//	CoordinateSet& cs = coordinate_sets[as.name];
+//	std::map< std::pair<size_t,double> ,CoordinateSet>& cs2 = coordinate_sets2[as.name];
+//	
+//	// try to take advantage of hardware pipelining, each array individually
+//	CoordinateSet* pcsal;
+//	for (size_t i=0;i<number_of_atoms;i++) {
+//		if (!(as.booleanarray[i])) continue;
+//		
+//		cs.x.push_back(x[i]); 
+//		cs.y.push_back(y[i]); 
+//		cs.z.push_back(z[i]); 
+//		cs.indexes.push_back(i); 
+//
+//		size_t aID = atoms[i].ID;
+//		 
+//
+//		if (cs2.find(make_pair(aID,atoms[i].kappa))==cs2.end()) {
+//			pcsal = &cs2[make_pair(aID,atoms[i].kappa)];
+//			pcsal->volume = atoms[i].volume;
+//			pcsal->kappa = atoms[i].kappa;
+//			pcsal->atomID = atoms[i].ID;
+//		}
+//		else {
+//			pcsal = &cs2[make_pair(aID,atoms[i].kappa)];
+//		}
+//
+//		pcsal->x.push_back(x[i]); 
+//		pcsal->y.push_back(y[i]); 
+//		pcsal->z.push_back(z[i]); 
+//		pcsal->indexes.push_back(i); 
+//		
+//	}
+//	
+//}
+//
+//void Frame::push_selections(std::vector<Atomselection>& ass) {
+//
+//	// temp asssociation table
+//	std::vector<pair<CoordinateSet*,Atomselection*> > cooras;
+//
+//	for (std::vector<Atomselection>::iterator asi=ass.begin();asi!=ass.end();asi++) {
+//		// create empty coordinate set
+//		CoordinateSet* csp = &(coordinate_sets[asi->name]);
+//		cooras.push_back(pair<CoordinateSet*,Atomselection*>(csp,&(*asi)));
+//	}
+//	
+//	// try to take advantage of hardware pipelining, each array individually
+//	for (size_t i=0;i<number_of_atoms;i++) {
+//		for (std::vector<pair<CoordinateSet*,Atomselection*> >::iterator csi=cooras.begin();csi!=cooras.end();csi++) {
+//			if (csi->second->booleanarray[i]) csi->first->x.push_back(x[i]);
+//		}
+//	}
+//
+//	for (size_t i=0;i<number_of_atoms;i++) {
+//		for (std::vector<pair<CoordinateSet*,Atomselection*> >::iterator csi=cooras.begin();csi!=cooras.end();csi++) {
+//			if (csi->second->booleanarray[i]) csi->first->y.push_back(y[i]);
+//		}
+//	}
+//
+//	for (size_t i=0;i<number_of_atoms;i++) {
+//		for (std::vector<pair<CoordinateSet*,Atomselection*> >::iterator csi=cooras.begin();csi!=cooras.end();csi++) {
+//			if (csi->second->booleanarray[i]) csi->first->z.push_back(z[i]);
+//		}
+//	}
+//
+//	for (size_t i=0;i<number_of_atoms;i++) {
+//		for (std::vector<pair<CoordinateSet*,Atomselection*> >::iterator csi=cooras.begin();csi!=cooras.end();csi++) {
+//			if (csi->second->booleanarray[i]) csi->first->indexes.push_back(i);
+//		}
+//	}
+//	
+//}
 
 CartesianCoor3D Frame::coord3D(size_t i) { 
 	return CartesianCoor3D(x[i],y[i],z[i]);	

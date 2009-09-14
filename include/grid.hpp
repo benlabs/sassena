@@ -28,7 +28,6 @@
 // other headers
 #include "coor3d.hpp"
 
-
 class Gridkey3D {
 public:
 	int ix,iy,iz;
@@ -39,20 +38,22 @@ public:
 };
 
 template<class V> class Grid3D : public std::map< Gridkey3D, V > {
-	int res;
-	double xd,yd,zd;
+protected:
 	std::vector<CartesianCoor3D> box;
 	CartesianCoor3D origin;
 	
+	void slice_box(double spacing);
+	
 public:
-	Grid3D(int r,std::vector<CartesianCoor3D>& uc,CartesianCoor3D o, V v);
-	Grid3D(int r,std::vector<CartesianCoor3D>& uc,CartesianCoor3D o);
+		size_t a_cells,b_cells,c_cells;
+	Grid3D(std::vector<CartesianCoor3D>& uc,double spacing, CartesianCoor3D o, V v);
+//	Grid3D(std::vector<CartesianCoor3D>& uc,double spacing, CartesianCoor3D o);
 	
-	int resolution();
+//	int resolution();
 	double total_volume() { return (box[0].cross_product(box[1]))*box[2]; }
-	double element_volume() { return total_volume()/powf(resolution(),3); }
+	double element_volume() { return total_volume()/(a_cells*b_cells*c_cells); }
 	
-	Gridkey3D get_cell(CartesianCoor3D c);	
+	Gridkey3D get_cell(CartesianCoor3D c);
 	std::vector<Gridkey3D> get_cells(CartesianCoor3D c,CartesianCoor3D sc);		
 	//specialization:
 	//std::ostream& operator<<(std::ostream& os);

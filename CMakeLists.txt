@@ -40,10 +40,11 @@ SET(WALLFLAGS ${WALLFLAGS} "-ftree-vectorize  ")
 ##SET(WALLFLAGS ${WALLFLAGS} -Wunused-variable                   ) 
 ##SET(WALLFLAGS ${WALLFLAGS} "-Wvolatile-register-var"              )
 
-#ADD_DEFINITIONS(${WALLFLAGS} -O3 -fPIC -DBOOST_UBLAS_NDEBUG -DNDEBUG  -funroll-loops #-ftree-vectorizer-verbose=3 -pg)
-ADD_DEFINITIONS( -O3 -fPIC -DBOOST_UBLAS_NDEBUG -DNDEBUG  -funroll-loops -ftree-vectorizer-verbose=3 -pg)
+#ADD_DEFINITIONS( -O3 -fPIC -DBOOST_UBLAS_NDEBUG -DNDEBUG  -funroll-loops -ftree-vectorizer-verbose=3 -pg )
+#ADD_DEFINITIONS( -O3 -fPIC )
+ADD_DEFINITIONS( -fPIC )
+#SET(CMAKE_EXE_LINKER_FLAGS -pg -lc_p)
 
-SET(CMAKE_EXE_LINKER_FLAGS -pg -lc_p)
 
 
 # the elegant way to set up boost
@@ -62,9 +63,12 @@ FIND_PACKAGE(Config REQUIRED)
 INCLUDE_DIRECTORIES(${Sassena_SOURCE_DIR}/include)
 INCLUDE_DIRECTORIES(${CONFIG_INCLUDE_DIR})
 
+# libxml support
+FIND_PACKAGE(LibXml2 REQUIRED)
+INCLUDE_DIRECTORIES(${LIBXML2_INCLUDE_DIR})
 
 # set the global link dependencies and include dirs
-SET(LIB_DEPENDENCIES ${CONFIG_LIBRARIES} ${Boost_LIBRARIES} ) 
+SET(LIB_DEPENDENCIES ${CONFIG_LIBRARIES} ${Boost_LIBRARIES} ${LIBXML2_LIBRARIES} ) 
 INCLUDE_DIRECTORIES( ${Sassena_SOURCE_DIR}/include/xdrfile)
 
 
@@ -74,7 +78,34 @@ SET(LIB_DEPENDENCIES ${LIB_DEPENDENCIES} xdrfile-static)
 
 MESSAGE(STATUS "sassena_lib_depend= " ${LIB_DEPENDENCIES})
 
-ADD_EXECUTABLE(sassena src/sassena.cpp src/parameters.cpp src/log.cpp src/sample.cpp src/frame.cpp src/frames.cpp src/atom.cpp src/atoms.cpp src/atomselection.cpp src/analysis.cpp src/coor3d.cpp src/grid.cpp src/settings.cpp src/scatterdata.cpp src/tasks.cpp src/timer.cpp )
+ADD_EXECUTABLE(sassena 
+	src/analysis.cpp
+	src/atom.cpp 
+	src/atoms.cpp 
+	src/atomselection.cpp 
+	src/coor3d.cpp 
+	src/coordinate_set.cpp
+	src/coordinate_sets.cpp	
+	src/database.cpp
+	src/decompose.cpp
+	src/decomposition_plan.cpp
+	src/density_grid.cpp
+	src/frame.cpp 
+	src/frames.cpp 
+	src/grid.cpp  
+	src/log.cpp	 
+	src/parameters.cpp 	
+	src/performance_analyzer.cpp
+	src/progress_reporter.cpp
+	src/sample.cpp 
+	src/sassena.cpp  
+	src/scatter_devices.cpp 
+	src/scatter_factors.cpp
+	src/scatter_spectrum.cpp 
+	src/scatter_spectrum_writer.cpp 
+	src/timer.cpp 
+	src/xml_interface.cpp
+	)
 
 TARGET_LINK_LIBRARIES (sassena ${LIB_DEPENDENCIES})
 
@@ -92,45 +123,47 @@ INCLUDE(CPack)
 
 ENABLE_TESTING()
 # unit tests:
-ADD_EXECUTABLE(unit_coor3d tests/unit_coor3d.cpp src/coor3d.cpp)
-TARGET_LINK_LIBRARIES (unit_coor3d ${LIB_DEPENDENCIES})
-INSTALL(TARGETS unit_coor3d RUNTIME DESTINATION bin/units)
-
-ADD_EXECUTABLE(unit_boostmpi tests/unit_boostmpi.cpp)
-TARGET_LINK_LIBRARIES (unit_boostmpi ${LIB_DEPENDENCIES})
-INSTALL(TARGETS unit_boostmpi RUNTIME DESTINATION bin/units)
-
-ADD_EXECUTABLE(unit_exp tests/unit_exp.cpp src/coor3d.cpp)
-TARGET_LINK_LIBRARIES (unit_exp ${LIB_DEPENDENCIES})
-INSTALL(TARGETS unit_exp RUNTIME DESTINATION bin/units)
-
-ADD_EXECUTABLE(unit_libconfig tests/unit_libconfig.cpp)
-TARGET_LINK_LIBRARIES (unit_libconfig ${LIB_DEPENDENCIES})
-INSTALL(TARGETS unit_libconfig RUNTIME DESTINATION bin/units)
-
-ADD_EXECUTABLE(unit_triangulation tests/unit_triangulation.cpp src/coor3d.cpp)
-TARGET_LINK_LIBRARIES (unit_triangulation ${LIB_DEPENDENCIES})
-INSTALL(TARGETS unit_triangulation RUNTIME DESTINATION bin/units)
-
-ADD_EXECUTABLE(unit_randomnumbers tests/unit_randomnumbers.cpp src/coor3d.cpp)
-TARGET_LINK_LIBRARIES (unit_randomnumbers ${LIB_DEPENDENCIES})
-INSTALL(TARGETS unit_randomnumbers RUNTIME DESTINATION bin/units)
-
-ADD_EXECUTABLE(unit_ranklogic tests/unit_ranklogic.cpp src/tasks.cpp src/coor3d.cpp)
-TARGET_LINK_LIBRARIES (unit_ranklogic ${LIB_DEPENDENCIES})
-INSTALL(TARGETS unit_ranklogic RUNTIME DESTINATION bin/units)
-
-ADD_EXECUTABLE(unit_serializestatic tests/unit_serializestatic.cpp )
-TARGET_LINK_LIBRARIES (unit_serializestatic ${LIB_DEPENDENCIES})
-INSTALL(TARGETS unit_serializestatic RUNTIME DESTINATION bin/units)
-
-ADD_EXECUTABLE(unit_mpicollectives tests/unit_mpicollectives.cpp src/timer.cpp src/log.cpp)
-TARGET_LINK_LIBRARIES (unit_mpicollectives ${LIB_DEPENDENCIES})
-INSTALL(TARGETS unit_mpicollectives RUNTIME DESTINATION bin/units)
-
-ADD_EXECUTABLE(unit_sasstest tests/unit_sasstest.cpp src/sample.cpp src/parameters.cpp src/log.cpp src/frame.cpp src/frames.cpp src/atom.cpp src/atoms.cpp src/atomselection.cpp src/coor3d.cpp src/settings.cpp src/tasks.cpp)
-TARGET_LINK_LIBRARIES (unit_sasstest ${LIB_DEPENDENCIES})
-INSTALL(TARGETS unit_sasstest RUNTIME DESTINATION bin/units)
+#ADD_EXECUTABLE(unit_coor3d tests/unit_coor3d.cpp src/coor3d.cpp)
+#TARGET_LINK_LIBRARIES (unit_coor3d ${LIB_DEPENDENCIES})
+#INSTALL(TARGETS unit_coor3d RUNTIME DESTINATION bin/units)
+#
+#ADD_EXECUTABLE(unit_boostmpi tests/unit_boostmpi.cpp)
+#TARGET_LINK_LIBRARIES (unit_boostmpi ${LIB_DEPENDENCIES})
+#INSTALL(TARGETS unit_boostmpi RUNTIME DESTINATION bin/units)
+#
+#ADD_EXECUTABLE(unit_exp tests/unit_exp.cpp src/coor3d.cpp)
+#TARGET_LINK_LIBRARIES (unit_exp ${LIB_DEPENDENCIES})
+#INSTALL(TARGETS unit_exp RUNTIME DESTINATION bin/units)
+#
+#ADD_EXECUTABLE(unit_libconfig tests/unit_libconfig.cpp)
+#TARGET_LINK_LIBRARIES (unit_libconfig ${LIB_DEPENDENCIES})
+#INSTALL(TARGETS unit_libconfig RUNTIME DESTINATION bin/units)
+#
+#ADD_EXECUTABLE(unit_triangulation tests/unit_triangulation.cpp src/coor3d.cpp)
+#TARGET_LINK_LIBRARIES (unit_triangulation ${LIB_DEPENDENCIES})
+#INSTALL(TARGETS unit_triangulation RUNTIME DESTINATION bin/units)
+#
+#ADD_EXECUTABLE(unit_randomnumbers tests/unit_randomnumbers.cpp src/coor3d.cpp)
+#TARGET_LINK_LIBRARIES (unit_randomnumbers ${LIB_DEPENDENCIES})
+#INSTALL(TARGETS unit_randomnumbers RUNTIME DESTINATION bin/units)
+#
+#ADD_EXECUTABLE(unit_ranklogic tests/unit_ranklogic.cpp src/tasks.cpp src/coor3d.cpp)
+#TARGET_LINK_LIBRARIES (unit_ranklogic ${LIB_DEPENDENCIES})
+#INSTALL(TARGETS unit_ranklogic RUNTIME DESTINATION bin/units)
+#
+#ADD_EXECUTABLE(unit_serializestatic tests/unit_serializestatic.cpp )
+#TARGET_LINK_LIBRARIES (unit_serializestatic ${LIB_DEPENDENCIES})
+#INSTALL(TARGETS unit_serializestatic RUNTIME DESTINATION bin/units)
+#
+#ADD_EXECUTABLE(unit_mpicollectives tests/unit_mpicollectives.cpp src/timer.cpp src/log.cpp)
+#TARGET_LINK_LIBRARIES (unit_mpicollectives ${LIB_DEPENDENCIES})
+#INSTALL(TARGETS unit_mpicollectives RUNTIME DESTINATION bin/units)
+#
+#ADD_EXECUTABLE(unit_sasstest 
+#	tests/unit_sasstest.cpp 
+#	src/sample.cpp src/parameters.cpp src/log.cpp src/frame.cpp src/frames.cpp src/atom.cpp src/atoms.cpp src/atomselection.cpp src/coor3d.cpp src/settings.cpp src/tasks.cpp src/decompose.cpp src/scatterdevices.cpp src/coordinateset.cpp src/scatterspectrum.cpp src/analysis.cpp src/grid.cpp)
+#TARGET_LINK_LIBRARIES (unit_sasstest ${LIB_DEPENDENCIES})
+#INSTALL(TARGETS unit_sasstest RUNTIME DESTINATION bin/units)
 
 
 # additional tools:

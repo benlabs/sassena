@@ -24,7 +24,7 @@
 #include "coor3d.hpp"
 #include "log.hpp"
 #include "parameters.hpp"
-#include "settings.hpp"
+#include "database.hpp"
 
 using namespace std;
 

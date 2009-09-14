@@ -1,5 +1,5 @@
 /*
- *  scatterdata.hpp
+ *  parameters.hpp
  *reg
  *  Created on: June 25, 2009
  *  Authors:
@@ -127,7 +127,7 @@ private:
     friend class boost::serialization::access;	
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
     {
-		ar & boost::serialization::base_object<std::vector<SampleFramesetParameters> >(*this);
+		ar & boost::serialization::base_object<std::vector<SampleFramesetParameters>, SampleFramesParameters>(*this);
     }
 	/////////////////// 
 
@@ -176,6 +176,33 @@ public:
 	std::vector<std::string> deuter;
 };
 
+class ScatteringBackgroundPhaseParameters {
+private:
+	/////////////////// MPI related
+	// make this class serializable to 
+	// allow sample to be transmitted via MPI
+    friend class boost::serialization::access;	
+	template<class Archive> void serialize(Archive & ar, const unsigned int version)
+    {
+		ar & selection;
+		ar & scaling;
+		ar & factor;	
+		ar & nullrange;	
+    }
+	/////////////////// 
+
+public:	
+	ScatteringBackgroundPhaseParameters()  {
+		scaling = "auto";
+		factor = 1.0;
+	}
+
+	std::string selection;
+	double factor;
+	std::string scaling;
+	double nullrange;
+};
+
 class ScatteringBackgroundParameters {
 private:
 	/////////////////// MPI related
@@ -184,30 +211,29 @@ private:
     friend class boost::serialization::access;	
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
     {
-		ar & method;
-		ar & atom_sizes;
-		ar & rescale;
-		ar & include;
-		ar & exclude;
-		ar & value;
-		ar & resolution;
-		ar & hydration;
-		ar & framestride;
+		ar & type;
+		ar & factor;
+		ar & phases;
+		ar & gridspacing;
+		ar & stride;
     }
 	/////////////////// 
 
 public:	
-	std::string method;
-	std::string atom_sizes;
-	bool rescale;
-	std::vector<std::string> include;
-	std::vector<std::string> exclude;
+	ScatteringBackgroundParameters() {
+		stride = 1;
+		gridspacing = 3;
+		factor = 0.0;
+		type = "manual";
+	}
+
+	std::string type;
+	double factor;
+
+	std::vector<ScatteringBackgroundPhaseParameters> phases;
 	
-	double value;
-	
-	size_t resolution;
-	double hydration;
-	size_t framestride;
+	double gridspacing;
+	size_t stride;
 };
 
 class ScatteringAverageParameters {
@@ -228,6 +254,15 @@ private:
 	/////////////////// 
 
 public:	
+	ScatteringAverageParameters() {
+		type = "none";
+		method = "bruteforce";
+		vectors = "mcboostunisphere";
+		resolution = 1000;
+		origin = "";
+		axis = CartesianCoor3D(1,0,0);
+	}
+	
 	std::string type;
 	std::string method;
 	std::string vectors;
@@ -247,11 +282,17 @@ private:
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
     {
 		ar & type;
+		ar & method;
     }
 	/////////////////// 
 
 public:	
+	ScatteringCorrelationParameters() {
+		type = "none";
+		method = "direct";
+	}
 	std::string type;
+	std::string method;	
 };
 
 class ScatteringInterferenceParameters {
@@ -267,9 +308,56 @@ private:
 	/////////////////// 
 
 public:	
+	ScatteringInterferenceParameters() {
+		type = "all";
+	}
 	std::string type;
 };
 
+class ScatteringVectorsScanParameters {
+private:
+	/////////////////// MPI related
+	// make this class serializable to 
+	// allow sample to be transmitted via MPI
+    friend class boost::serialization::access;	
+	template<class Archive> void serialize(Archive & ar, const unsigned int version)
+    {
+		ar & from;
+		ar & to;
+		ar & points;
+		ar & exponent;
+		ar & basevector;	
+    }
+	/////////////////// 
+
+public:	
+	ScatteringVectorsScanParameters() : points(100), exponent(1.0), basevector(CartesianCoor3D(1,0,0)) {}
+	
+	double from;
+	double to;
+	size_t points;
+	double exponent;
+	CartesianCoor3D basevector;
+};
+
+class ScatteringVectorsParameters : public std::vector<CartesianCoor3D> {
+private:
+	/////////////////// MPI related
+	// make this class serializable to 
+	// allow sample to be transmitted via MPI
+    friend class boost::serialization::access;	
+	template<class Archive> void serialize(Archive & ar, const unsigned int version)
+    {
+		ar & boost::serialization::base_object<std::vector<CartesianCoor3D> >(*this);
+		ar & scans;
+    }
+	/////////////////// 
+
+public:
+	std::vector<ScatteringVectorsScanParameters> scans;
+	
+	void create_from_scans();
+};
 
 class ScatteringParameters {
 private:
@@ -283,22 +371,21 @@ private:
 		ar & interference;
 		ar & correlation;
 		ar & target;
-		ar & qqqvectors;
-		ar & framestride;
+		ar & qvectors;
 		ar & average;
 		ar & background;
     }
 	/////////////////// 
 
 public:
+	
 	ScatteringInterferenceParameters interference;
 	ScatteringCorrelationParameters correlation;
 	std::string target;
 
 	std::string probe;
 	
-	std::vector<CartesianCoor3D> qqqvectors;
-	size_t framestride;
+	ScatteringVectorsParameters qvectors;
 	
 	ScatteringAverageParameters average;
 	ScatteringBackgroundParameters background;	
@@ -312,21 +399,19 @@ private:
     friend class boost::serialization::access;	
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
     {
-		ar & type;
+		ar & method;
 		ar & format;
 		ar & filename;
+		ar & name;
     }
 	/////////////////// 
 
 public:
-	std::string type;
+	
+	std::string name;
+	std::string method;
 	std::string format;
 	std::string filename;
-	
-	OutputFileParameters() {}	
-	OutputFileParameters(const std::string& v1,const std::string& v2,const std::string& v3) {
-		type = v1; format = v2; filename = v3;
-	}
 };
 
 class OutputParameters {
@@ -343,6 +428,10 @@ private:
 	/////////////////// 
 
 public:
+	OutputParameters() {
+		prefix = "scattering-data-";
+	}
+	
 	std::string prefix;
 	std::vector<OutputFileParameters> files;
 };
@@ -372,6 +461,7 @@ private:
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
     {
 		ar & framecache_max;
+		ar & coordinatesets_cache_max;		
 		ar & static_load_imbalance_max;
 		ar & buffers;
     }
@@ -379,6 +469,7 @@ private:
 
 public:
 	size_t framecache_max;
+	size_t coordinatesets_cache_max;
 	double static_load_imbalance_max;
 	LimitsBuffersParameters buffers;
 };
@@ -437,9 +528,11 @@ private:
 		ar & carboncopy;
 		ar & config_rootpath;
 		ar & sample;
+		ar & runtime;
 		ar & scattering;
 		ar & output;
 		ar & limits;
+		ar & debug;
     }
 	/////////////////// 
 
@@ -454,6 +547,7 @@ private:
 	std::string get_filepath(std::string filename);	
 	
 	void read_conf(std::string filename);
+	void read_xml(std::string filename);
 
 	std::string guessformat(std::string filename);
 	bool check();
@@ -470,211 +564,12 @@ public:
 	// interface for initiatilzation and interfacing
 	static Params* Inst() { static Params instance; return &instance;}
 	
-	void init(std::string filename, std::string format="");
+	void init(std::string filename);
 	~Params() {}; // it is said some compilers have problems w/ private destructors.
 	
 	void write(std::string filename, std::string format="");	
 };
 
-
-class DatabaseVolumesParameters {
-private:
-	/////////////////// MPI related
-	// make this class serializable to 
-	// allow sample to be transmitted via MPI
-    friend class boost::serialization::access;	
-	template<class Archive> void serialize(Archive & ar, const unsigned int version)
-    {
-		ar & m_functiontypes;
-		ar & m_constants;
-		ar & m_quicklookup;
-		ar & quicklookup_counter;
-    }
-	/////////////////// 
-
-	std::map<size_t,size_t> m_functiontypes;
-	std::map<size_t,std::vector<double> > m_constants;
-	std::map<size_t,double> m_quicklookup; // use a quicklookup table for 
-	size_t quicklookup_counter;
-
-	void add_quicklookup(size_t ID, double value); 
-	void clear_quicklookup();
-
-public:	
-	DatabaseVolumesParameters() : quicklookup_counter(0) {}
-	
-//	void reg(std::string label, std::vector<double> constants,size_t function_type);
-//	double get(std::string label);
-	void reg(size_t ID, std::vector<double> constants,size_t function_type);
-	double get(size_t ID);
-	
-};
-
-class DatabaseSFactorsParameters {
-private:
-	/////////////////// MPI related
-	// make this class serializable to 
-	// allow sample to be transmitted via MPI
-    friend class boost::serialization::access;	
-	template<class Archive> void serialize(Archive & ar, const unsigned int version)
-    {
-		ar & m_functiontypes;
-		ar & m_constants;
-		ar & m_quicklookup;
-		ar & quicklookup_counter;
-    }
-	/////////////////// 
-	std::map<size_t, size_t>               m_functiontypes;
-	std::map<size_t, std::vector<double> > m_constants;
-	
-	std::map<double, std::map<size_t, double> > m_quicklookup;
-	size_t quicklookup_counter;
-	
-	void add_quicklookup(size_t ID, double q, double value); 
-	void clear_quicklookup();	
-public:	
-	DatabaseSFactorsParameters() : quicklookup_counter(0) {}
-	
-//	void reg(std::string label, std::vector<double> constants,size_t function_type);
-//	double get(std::string label,double q);
-	void reg(size_t ID, std::vector<double> constants,size_t function_type);
-	double get(size_t ID,double q);
-	
-};
-
-class DatabaseMassesParameters {
-private:
-	/////////////////// MPI related
-	// make this class serializable to 
-	// allow sample to be transmitted via MPI
-    friend class boost::serialization::access;	
-	template<class Archive> void serialize(Archive & ar, const unsigned int version)
-    {
-		ar & m_masses;
-    }
-	/////////////////// 
-
-	std::map<size_t, double> m_masses;
-public:	
-	void reg(size_t ID, double); 	
-	double get(size_t ID);		
-};
-
-
-class DatabaseAtomIDsParameters {
-private:
-	/////////////////// MPI related
-	// make this class serializable to 
-	// allow sample to be transmitted via MPI
-    friend class boost::serialization::access;	
-	template<class Archive> void serialize(Archive & ar, const unsigned int version)
-    {
-		ar & m_IDs;
-		ar & m_rIDs;		
-		ar & nextID;
-    }
-	/////////////////// 
-
-	std::map<std::string,size_t> m_IDs;
-	std::map<size_t,std::string> m_rIDs;
-	
-	size_t nextID;
-public:		
-	DatabaseAtomIDsParameters() : nextID(0) {}
-	
-	void reg(std::string label); 
-	size_t get(std::string label); 	
-	std::string rget(size_t ID); 
-	
-};
-
-class DatabaseNamesPDBParameters {
-private:
-	/////////////////// MPI related
-	// make this class serializable to 
-	// allow sample to be transmitted via MPI
-    friend class boost::serialization::access;	
-	template<class Archive> void serialize(Archive & ar, const unsigned int version)
-    {
-		ar & m_label2regexp;
-		ar & m_quicklookup;
-		ar & quicklookup_counter;
-    }
-	/////////////////// 
-
-	std::map<std::string,std::string> m_label2regexp;
-	std::map<std::string,std::string> m_quicklookup; // use a quicklookup table for 
-	
-	size_t quicklookup_counter;
-	
-	void add_quicklookup(std::string testlabel, std::string label); 
-	void clear_quicklookup();	
-public:				
-	DatabaseNamesPDBParameters() : quicklookup_counter(0) {}
-	
-	void reg(std::string label, std::string regexp); // register a regexp for a label
-	std::string get(std::string testlabel); // resolve a testlabel and give label back
-	
-};
-
-class DatabaseNamesParameters {
-private:
-	/////////////////// MPI related
-	// make this class serializable to 
-	// allow sample to be transmitted via MPI
-    friend class boost::serialization::access;	
-	template<class Archive> void serialize(Archive & ar, const unsigned int version)
-    {
-		ar & pdb;
-    }
-	/////////////////// 
-
-public:
-	DatabaseNamesPDBParameters pdb;
-};
-
-class Database {
-private:
-	/////////////////// MPI related
-	// make this class serializable to 
-	// allow sample to be transmitted via MPI
-    friend class boost::serialization::access;	
-	template<class Archive> void serialize(Archive & ar, const unsigned int version)
-    {
-		ar & carboncopy;
-		ar & names;
-		ar & masses;
-		ar & volumes;
-		ar & sfactors;
-		ar & atomIDs;
-    }
-	/////////////////// 
-	Database() {}
-	Database(const Database&);
-	Database& operator=(const Database&);
-
-	std::vector<std::string> carboncopy;
-
-	void read_conf(std::string filename);
-
-	std::string guessformat(std::string filename);
-	bool check();
-
-public:
-	DatabaseNamesParameters names;
-	DatabaseMassesParameters masses;
-	DatabaseVolumesParameters volumes;	
-	DatabaseSFactorsParameters sfactors;	
-	DatabaseAtomIDsParameters atomIDs;	
-
-	void init(std::string filename, std::string format="");
-	
-	// interface for initiatilzation and interfacing
-	static Database* Inst() { static Database instance; return &instance;}
-	
-	~Database() {}; // it is said some compilers have problems w/ private destructors.
-	
-	void write(std::string filename, std::string format="");
-};
-
 #endif 
+
+// end of file

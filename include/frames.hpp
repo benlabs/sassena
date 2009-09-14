@@ -93,8 +93,9 @@ public:
 	size_t add_frameset(const std::string filename,const std::string filetype,size_t first, size_t last, bool last_set, size_t stride, Atoms& atoms);
 
 	// load a frame into the framecache, set as current
-	void load(size_t framenumber,Atoms& atoms,std::map<std::string,Atomselection>& atomselections);
-	void load(size_t framenumber,Atoms& atoms,Atomselection& atomselection);
+//	void load(size_t framenumber,Atoms& atoms,std::map<std::string,Atomselection>& atomselections);
+//	void load(size_t framenumber,Atoms& atoms,Atomselection& atomselection);
+	void load(size_t framenumber,Atoms& atoms);
 	
 	// retrieve the current frame
 	Frame& current();
