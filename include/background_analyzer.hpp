@@ -41,6 +41,11 @@
 
 class BackgroundAnalyzer {
 	
+public:
+	
+	void execute();
+	
+	vector<double> get_kappas(); // return scaling factors for atomic volumes
 };
 
 #endif 

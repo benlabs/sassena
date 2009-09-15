@@ -105,6 +105,7 @@ ADD_EXECUTABLE(sassena
 	src/scatter_spectrum_writer.cpp 
 	src/timer.cpp 
 	src/xml_interface.cpp
+	src/vector_unfold.cpp
 	)
 
 TARGET_LINK_LIBRARIES (sassena ${LIB_DEPENDENCIES})

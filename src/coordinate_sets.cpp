@@ -49,6 +49,16 @@ CoordinateSet& CoordinateSets::load(size_t framenumber) {
 		p_sample->frames.load(framenumber,p_sample->atoms);
 		pcset = new CoordinateSet(p_sample->frames.current(),*p_selection);
 		setcache[framenumber] = pcset;
+		
+		if (Params::Inst()->sample.motions.size()>0) {
+			for(size_t i = 0; i < Params::Inst()->sample.motions.size(); ++i)
+			{
+				SampleMotionParameters& motion = Params::Inst()->sample.motions[i];
+				if (motion.type=="linear") {
+					pcset->translate(motion.displace*motion.direction);
+				}
+			}
+		}
 	}
 	else {
 		pcset = setcache[framenumber];

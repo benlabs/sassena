@@ -43,4 +43,15 @@ CoordinateSet::CoordinateSet(Frame& frame,Atomselection& selection) {
 	}
 }
 
+void CoordinateSet::translate(CartesianCoor3D trans) {
+
+	for(size_t i = 0; i < m_size; ++i)
+	{
+		x[i] += trans.x;
+		y[i] += trans.y;
+		z[i] += trans.z;	
+	}	
+	
+}
+
 // end of file

@@ -152,6 +152,26 @@ public:
 	std::string center;
 };
 
+class SampleMotionParameters {
+private:
+	/////////////////// MPI related
+	// make this class serializable to 
+	// allow sample to be transmitted via MPI
+    friend class boost::serialization::access;	
+	template<class Archive> void serialize(Archive & ar, const unsigned int version)
+    {
+		ar & type;
+		ar & displace;
+		ar & direction;
+    }
+	/////////////////// 
+
+public:	
+	std::string type;
+	double displace;
+	CartesianCoor3D direction;
+};
+
 class SampleParameters {
 private:
 	/////////////////// MPI related
@@ -165,6 +185,7 @@ private:
 		ar & frames;
 		ar & pbc;
 		ar & deuter;
+		ar & motions;
     }
 	/////////////////// 
 
@@ -173,6 +194,7 @@ public:
 	std::map<std::string,SampleGroupParameters> groups;
 	SampleFramesParameters frames;
 	SamplePBCParameters pbc;
+	std::vector<SampleMotionParameters> motions;
 	std::vector<std::string> deuter;
 };
 

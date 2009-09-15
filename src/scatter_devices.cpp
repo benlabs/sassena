@@ -30,6 +30,7 @@
 #include "sample.hpp"
 #include "smath.hpp"
 #include "particle_trajectory.hpp"
+#include "vector_unfold.hpp"
 
 
 using namespace std;
@@ -77,7 +78,7 @@ SelfScatterDevice::SelfScatterDevice(boost::mpi::communicator& thisworld, Sample
 	size_t minatoms = na/nn;	
 	size_t leftoveratoms = na % nn;	
 
-	CoordinateSet* p_cs =NULL;
+//	CoordinateSet* p_cs =NULL;
 
 	size_t* p_indexes; size_t* p_myindexes;
 	// construct particle_trajectories first
@@ -294,41 +295,42 @@ void SelfScatterDevice::crosssum_particles() {
 
 void SelfScatterDevice::execute(CartesianCoor3D& q) {
 	
-	// generate q-vector list for orientational averaging
-	vector<CartesianCoor3D> qvectors;
-
-	qvectors.push_back(q);
-
-	string avm = Params::Inst()->scattering.average.method;
-				
-	if (avm!="none") {
-		double resolution = Params::Inst()->scattering.average.resolution;
-		string avtype = Params::Inst()->scattering.average.type;
-	
-		uint32_t qseed = 1; // ti->qseed			
-		if (avtype=="sphere") {
-			string avmethod = Params::Inst()->scattering.average.method;
-			if (avmethod=="bruteforce") {
-				string avvectors = Params::Inst()->scattering.average.vectors;
-				Analysis::qvectors_unfold_sphere(avvectors,q,qseed,resolution,qvectors);
-			}
-			if (avmethod=="multipole") {
-				// don't unfold. 
-				// multipole expansion works on one qvector
-			}		
-		}
-		else if (avtype=="cylinder") {
-			string avmethod = Params::Inst()->scattering.average.method;
-			if (avmethod=="bruteforce") {
-				string avvectors = Params::Inst()->scattering.average.vectors;
-				Analysis::qvectors_unfold_cylinder(avvectors,q,qseed,resolution,qvectors);
-			}
-			if (avmethod=="multipole") {
-				// don't unfold. 
-				// multipole expansion works on one qvector
-			}
-		}	
-	}
+   string avm = Params::Inst()->scattering.average.method;
+   
+   VectorUnfold* p_vectorunfold = NULL;			
+   if (avm=="bruteforce") {
+   	string avv = Params::Inst()->scattering.average.vectors;
+   	string avt = Params::Inst()->scattering.average.type;
+   
+   	if (avt=="sphere") {
+   		SphereVectorUnfold* p_vu = new SphereVectorUnfold(q);
+   		p_vu->set_resolution(Params::Inst()->scattering.average.resolution);
+   		p_vu->set_vectors(Params::Inst()->scattering.average.vectors);
+   		p_vu->set_seed(0);
+   		p_vectorunfold = p_vu; 
+   	}
+   	if (avt=="cylinder") {
+   		CylinderVectorUnfold* p_vu = new CylinderVectorUnfold(q);
+   		p_vu->set_resolution(Params::Inst()->scattering.average.resolution);
+   		p_vu->set_vectors(Params::Inst()->scattering.average.vectors);
+   		p_vu->set_axis(Params::Inst()->scattering.average.axis);
+   		p_vu->set_seed(0);			
+   		p_vectorunfold = p_vu; 
+   	}		 
+   	else if (avt=="file") {
+   		p_vectorunfold = new FileVectorUnfold(q);
+   	}
+   }
+   else if (avm=="multipole") {
+   	p_vectorunfold = new NoVectorUnfold(q);
+   }
+   else { // default: no unfold
+   	p_vectorunfold = new NoVectorUnfold(q);
+   }
+   
+   p_vectorunfold->execute();
+   
+   vector<CartesianCoor3D>& qvectors = p_vectorunfold->qvectors();
 	
 	
 	/// k, qvectors are prepared:
@@ -685,44 +687,44 @@ void AllScatterDevice::superpose_spectrum(vector<complex<double> >& spectrum, ve
 }
 
 void AllScatterDevice::execute(CartesianCoor3D& q) {
-	
-	// generate q-vector list for orientational averaging
-	vector<CartesianCoor3D> qvectors;
-
-	qvectors.push_back(q);
-		
+			
 	string avm = Params::Inst()->scattering.average.method;
 				
-	if (avm!="none") {
-		double resolution = Params::Inst()->scattering.average.resolution;
-		string avtype = Params::Inst()->scattering.average.type;
-	
-		uint32_t qseed = 1; // ti->qseed			
-		if (avtype=="sphere") {
-			string avmethod = Params::Inst()->scattering.average.method;
-			if (avmethod=="bruteforce") {
-				string avvectors = Params::Inst()->scattering.average.vectors;
-				Analysis::qvectors_unfold_sphere(avvectors,q,qseed,resolution,qvectors);
-			}
-			if (avmethod=="multipole") {
-				// don't unfold. 
-				// multipole expansion works on one qvector
-			}		
+	VectorUnfold* p_vectorunfold = NULL;			
+	if (avm=="bruteforce") {
+		string avv = Params::Inst()->scattering.average.vectors;
+		string avt = Params::Inst()->scattering.average.type;
+
+		if (avt=="sphere") {
+			SphereVectorUnfold* p_vu = new SphereVectorUnfold(q);
+			p_vu->set_resolution(Params::Inst()->scattering.average.resolution);
+			p_vu->set_vectors(Params::Inst()->scattering.average.vectors);
+			p_vu->set_seed(0);
+			p_vectorunfold = p_vu; 
 		}
-		else if (avtype=="cylinder") {
-			string avmethod = Params::Inst()->scattering.average.method;
-			if (avmethod=="bruteforce") {
-				string avvectors = Params::Inst()->scattering.average.vectors;
-				Analysis::qvectors_unfold_cylinder(avvectors,q,qseed,resolution,qvectors);
-			}
-			if (avmethod=="multipole") {
-				// don't unfold. 
-				// multipole expansion works on one qvector
-			}
-		}	
+		if (avt=="cylinder") {
+			CylinderVectorUnfold* p_vu = new CylinderVectorUnfold(q);
+			p_vu->set_resolution(Params::Inst()->scattering.average.resolution);
+			p_vu->set_vectors(Params::Inst()->scattering.average.vectors);
+			p_vu->set_axis(Params::Inst()->scattering.average.axis);
+			p_vu->set_seed(0);			
+			p_vectorunfold = p_vu; 
+		}		 
+		else if (avt=="file") {
+			p_vectorunfold = new FileVectorUnfold(q);
+		}
+	}
+	else if (avm=="multipole") {
+		p_vectorunfold = new NoVectorUnfold(q);
+	}
+	else { // default: no unfold
+		p_vectorunfold = new NoVectorUnfold(q);
 	}
 	
-	
+	p_vectorunfold->execute();
+
+	vector<CartesianCoor3D>& qvectors = p_vectorunfold->qvectors();
+
 	/// k, qvectors are prepared:
 	vector<complex<double> > spectrum; spectrum.resize(p_sample->frames.size());
 
@@ -754,6 +756,8 @@ void AllScatterDevice::execute(CartesianCoor3D& q) {
 	}
 	
 	m_spectrum = spectrum;
+	
+	delete p_vectorunfold;
 }
 
 vector<complex<double> >& AllScatterDevice::get_spectrum() {

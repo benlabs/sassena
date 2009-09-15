@@ -616,6 +616,27 @@ void Params::read_xml(std::string filename) {
 		Info::Inst()->write(string("Options: first=")+to_s(fset.first)+string(", last=")+to_s(fset.last)+string(", lastset=")+to_s(fset.last_set)+string(", stride=")+to_s(fset.stride));		
 	}
 		
+	if (xmli.exists("//sample/motions")) {
+	
+		vector<XMLElement> motions = xmli.get("//sample/motions/motion");
+		for(size_t i = 0; i < motions.size(); ++i)
+		{
+			xmli.set_current(motions[i]);
+			SampleMotionParameters motion;	
+			motion.type = "linear";	motion.displace = 0.0; motion.direction=CartesianCoor3D(1,0,0);
+			if (xmli.exists("./type"))   motion.type  = xmli.get_value<string>("./type");
+			if (xmli.exists("./displace"))  motion.displace   = xmli.get_value<double>("./last");
+			if (xmli.exists("./direction")) {
+				motion.direction.x   = xmli.get_value<double>("./direction/x");
+				motion.direction.y   = xmli.get_value<double>("./direction/y");
+				motion.direction.z   = xmli.get_value<double>("./direction/z");				
+			} 
+
+			sample.motions.push_back(motion);
+			Info::Inst()->write(string("Adding additional motion to sample: type=")+motion.type+string(", displacement=")+to_s(motion.displace));
+		}
+	}	
+		
 	// periodic boundary behavior and/or postprocessing
 	sample.pbc.wrapping = false;	
 	sample.pbc.center = "";

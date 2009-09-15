@@ -51,7 +51,8 @@ public:
 	std::vector<double> z; // z-coordinates
 		
 	size_t size() { return m_size; }
-	
+
+	void translate(CartesianCoor3D trans);
 };
 
 #endif
