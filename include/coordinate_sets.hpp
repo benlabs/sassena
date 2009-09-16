@@ -58,5 +58,33 @@ public:
 	Atomselection& get_selection();
 };
 
+class CoordinateSetsM {
+
+	std::map<size_t,CoordinateSetM*> setcache;
+
+	Sample* p_sample;
+	Atomselection* p_selection;
+	
+	size_t currentframe_i;
+
+	Atomselection* p_origin_selection;
+
+public:
+	CoordinateSetsM();
+	~CoordinateSetsM() ;
+
+	CoordinateSetM& current();
+	CoordinateSetM& load(size_t frame);	
+	void clear_cache();
+	
+	// use these to initialize the coordinate set:
+	void set_selection(Atomselection& selection);
+	void set_sample(Sample& sample);
+	void set_origin(Atomselection& origin);
+	
+	Atomselection& get_selection();
+};
+
+
 #endif
 // end of file

@@ -120,4 +120,3 @@ template<class convT> convT XMLInterface::get_value(const char* xpathexp) {
 #endif
 
 // end of file
-

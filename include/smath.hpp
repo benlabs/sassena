@@ -1,3 +1,26 @@
+/*
+ *  smath.hpp
+ *
+ *  Created on: May 26, 2008
+ *  Authors:
+ *  Benjamin Lindner, ben@benlabs.net
+ *
+ *  Copyright 2008,2009 Benjamin Lindner
+ *
+ */
+
+#ifndef SMATH_HPP_
+#define SMATH_HPP_
+
+// common header
+#include "common.hpp"
+
+// standard header
+
+// special library headers
+
+// other headers
+
 inline double sine(double& x)
 {	
     const double B = 4/M_PI;
@@ -11,3 +34,7 @@ inline double sine(double& x)
     y = P * (y * abs(y) - y) + y;   // Q * y + P * y * abs(y)
 	return y;
 }
+
+#endif
+
+// end of file

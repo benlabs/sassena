@@ -29,6 +29,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 // 
 ////////////////////////////////////////////////////////////////////////////////
+class CoordinateSetM;
 
 // This class is used by Frame to store selection specific coordinate arrays
 class CoordinateSet {
@@ -55,6 +56,33 @@ public:
 	void translate(CartesianCoor3D trans);
 };
 
+class CoordinateSetM {
+	friend class boost::serialization::access;	
+	template<class Archive> void serialize(Archive & ar, const unsigned int version)
+    {
+		ar & r;
+		ar & phi;
+		ar & theta;
+		ar & m_size;
+		
+		ar & m_origin;
+    }
+
+	size_t m_size;
+
+	CartesianCoor3D m_origin;
+public:
+	
+	CoordinateSetM(Frame& frame,Atomselection& selection,CartesianCoor3D origin); 
+	CoordinateSetM(CoordinateSet* p_cs,CartesianCoor3D origin); 
+	
+	std::vector<double> r; // x-coordinates
+	std::vector<double> phi; // y-coordinates
+	std::vector<double> theta; // z-coordinates
+		
+	size_t size() { return m_size; }
+
+};
 #endif
 
 // end of file

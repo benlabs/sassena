@@ -97,4 +97,6 @@ public:
 	double count(std::string tk);		
 };
 
-#endif TIMER_HPP_
+#endif 
+
+// end of file

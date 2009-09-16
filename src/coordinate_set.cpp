@@ -54,4 +54,43 @@ void CoordinateSet::translate(CartesianCoor3D trans) {
 	
 }
 
+CoordinateSetM::CoordinateSetM(Frame& frame,Atomselection& selection,CartesianCoor3D origin) {
+
+	m_size = selection.size();
+	m_origin = origin;
+	
+	r.resize(m_size);
+	phi.resize(m_size);
+	theta.resize(m_size);
+
+	for(size_t i = 0; i < m_size; ++i)
+	{
+		size_t thisindex = selection[i] ;
+		CartesianCoor3D c(frame.x[thisindex],frame.y[thisindex],frame.z[thisindex]);
+		SphericalCoor3D s(c-origin);
+		r[i]=s.r;
+		phi[i]=s.phi;
+		theta[i]=s.theta;
+	}
+}
+
+CoordinateSetM::CoordinateSetM(CoordinateSet* p_cs,CartesianCoor3D origin) {
+
+	m_size = p_cs->size();
+	m_origin = origin;
+	
+	r.resize(m_size);
+	phi.resize(m_size);
+	theta.resize(m_size);
+
+	for(size_t i = 0; i < m_size; ++i)
+	{
+		CartesianCoor3D c(p_cs->x[i],p_cs->y[i],p_cs->z[i]);
+		SphericalCoor3D s(c-origin);
+		r[i]=s.r;
+		phi[i]=s.phi;
+		theta[i]=s.theta;
+	}
+}
+
 // end of file

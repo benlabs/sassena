@@ -34,7 +34,7 @@
 
 using namespace std;
 
-AllScatterDevice::AllScatterDevice(boost::mpi::communicator& thisworld, Sample& sample) {
+AllMScatterDevice::AllMScatterDevice(boost::mpi::communicator& thisworld, Sample& sample) {
 
 	p_thisworldcomm = &thisworld;
 	p_sample = &sample; // keep a reference to the sample
@@ -65,8 +65,12 @@ AllScatterDevice::AllScatterDevice(boost::mpi::communicator& thisworld, Sample& 
 	}
 	a.resize(myframes.size(),1); // n x 1 = frames x 1
 	
+	
+	
 	coordinate_sets.set_sample(sample);
 	coordinate_sets.set_selection(sample.atoms.selections[target]);
+	sample.atoms.assert_selection(Params::Inst()->scattering.average.origin)
+	coordinate_sets.set_origin(sample.atoms.selections[Params::Inst()->scattering.average.origin]);
 	
 	scatterfactors.set_sample(sample);
 	scatterfactors.set_selection(sample.atoms.selections[target]);
@@ -75,11 +79,11 @@ AllScatterDevice::AllScatterDevice(boost::mpi::communicator& thisworld, Sample& 
 }
 
 // acts like scatter_frame, but does the summation in place
-void AllScatterDevice::scatter_frame_norm1(size_t iframe, CartesianCoor3D& q) {
+void AllMScatterDevice::scatter_frame_norm1(size_t iframe, CartesianCoor3D& q) {
 
 	size_t noa = coordinate_sets.get_selection().size();
 	
-	CoordinateSet& cs = coordinate_sets.load(iframe);
+	CoordinateSetM& cs = coordinate_sets.load(iframe);
 	vector<double>& sfs = scatterfactors.get_all();
 
 	//	for(size_t j = 0; j < a.size2(); ++j)
@@ -124,7 +128,7 @@ void AllScatterDevice::scatter_frame_norm1(size_t iframe, CartesianCoor3D& q) {
 		a(iframe,0)=complex<double>(Ar,Ai); // sum at this location
 }
 
-void AllScatterDevice::scatter_frames_norm1(CartesianCoor3D& q) {
+void AllMScatterDevice::scatter_frames_norm1(CartesianCoor3D& q) {
 	
 	for(size_t i = 0; i < myframes.size(); ++i)
 	{
@@ -132,7 +136,7 @@ void AllScatterDevice::scatter_frames_norm1(CartesianCoor3D& q) {
 	}
 }
 
-vector<complex<double> > AllScatterDevice::correlate_frames() {
+vector<complex<double> > AllMScatterDevice::correlate_frames() {
 	// each nodes has computed their assigned frames
 	// the total scattering amplitudes reside in a(x,0)
 
@@ -195,7 +199,7 @@ vector<complex<double> > AllScatterDevice::correlate_frames() {
 	return aout;
 }
 
-vector<complex<double> > AllScatterDevice::conjmultiply_frames() {
+vector<complex<double> > AllMScatterDevice::conjmultiply_frames() {
 	// each node has computed their assigned frames
 	// the total scattering amplitudes reside in a(x,0)
 
@@ -248,47 +252,18 @@ vector<complex<double> > AllScatterDevice::conjmultiply_frames() {
 	}
 }
 
-void AllScatterDevice::superpose_spectrum(vector<complex<double> >& spectrum, vector<complex<double> >& fullspectrum) {
+void AllMScatterDevice::superpose_spectrum(vector<complex<double> >& spectrum, vector<complex<double> >& fullspectrum) {
 	for(size_t j = 0; j < spectrum.size(); ++j)
 	{
 		fullspectrum[j] += spectrum[j];
 	}
 }
 
-void AllScatterDevice::execute(CartesianCoor3D& q) {
+void AllMScatterDevice::execute(CartesianCoor3D& q) {
 			
 	string avm = Params::Inst()->scattering.average.method;
 				
-	VectorUnfold* p_vectorunfold = NULL;			
-	if (avm=="bruteforce") {
-		string avv = Params::Inst()->scattering.average.vectors;
-		string avt = Params::Inst()->scattering.average.type;
-
-		if (avt=="sphere") {
-			SphereVectorUnfold* p_vu = new SphereVectorUnfold(q);
-			p_vu->set_resolution(Params::Inst()->scattering.average.resolution);
-			p_vu->set_vectors(Params::Inst()->scattering.average.vectors);
-			p_vu->set_seed(0);
-			p_vectorunfold = p_vu; 
-		}
-		if (avt=="cylinder") {
-			CylinderVectorUnfold* p_vu = new CylinderVectorUnfold(q);
-			p_vu->set_resolution(Params::Inst()->scattering.average.resolution);
-			p_vu->set_vectors(Params::Inst()->scattering.average.vectors);
-			p_vu->set_axis(Params::Inst()->scattering.average.axis);
-			p_vu->set_seed(0);			
-			p_vectorunfold = p_vu; 
-		}		 
-		else if (avt=="file") {
-			p_vectorunfold = new FileVectorUnfold(q);
-		}
-	}
-	else if (avm=="multipole") {
-		p_vectorunfold = new NoVectorUnfold(q);
-	}
-	else { // default: no unfold
-		p_vectorunfold = new NoVectorUnfold(q);
-	}
+	p_vectorunfold = new NoVectorUnfold(q);
 	
 	p_vectorunfold->execute();
 
@@ -327,6 +302,6 @@ void AllScatterDevice::execute(CartesianCoor3D& q) {
 	delete p_vectorunfold;
 }
 
-vector<complex<double> >& AllScatterDevice::get_spectrum() {
+vector<complex<double> >& AllMScatterDevice::get_spectrum() {
 	return m_spectrum;
 }
