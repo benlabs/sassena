@@ -72,7 +72,7 @@ void SphereVectorUnfold::set_resolution(size_t resolution) {
 	m_resolution = resolution;
 }
 
-void SphereVectorUnfold::set_seed(long seed) {
+void SphereVectorUnfold::set_seed(uint32_t seed) {
 	m_seed = seed;
 }
 
@@ -230,7 +230,7 @@ void CylinderVectorUnfold::set_axis(CartesianCoor3D axis) {
 	m_axis = axis;
 }
 
-void CylinderVectorUnfold::set_seed(long seed) {
+void CylinderVectorUnfold::set_seed(uint32_t seed) {
 	m_seed = seed;
 }
 

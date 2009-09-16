@@ -623,9 +623,13 @@ void Params::read_xml(std::string filename) {
 		{
 			xmli.set_current(motions[i]);
 			SampleMotionParameters motion;	
-			motion.type = "linear";	motion.displace = 0.0; motion.direction=CartesianCoor3D(1,0,0);
+			motion.type = "linear";	
+			motion.displace = 0.0; 
+			motion.direction=CartesianCoor3D(1,0,0);
+			motion.frequency=2*M_PI/1000.0; // corresponds to one full cycle per 1000 frames, used for linear oscillation and rotation
 			if (xmli.exists("./type"))   motion.type  = xmli.get_value<string>("./type");
-			if (xmli.exists("./displace"))  motion.displace   = xmli.get_value<double>("./last");
+			if (xmli.exists("./displace"))  motion.displace   = xmli.get_value<double>("./displace");
+			if (xmli.exists("./frequency"))  motion.frequency   = xmli.get_value<double>("./frequency");			
 			if (xmli.exists("./direction")) {
 				motion.direction.x   = xmli.get_value<double>("./direction/x");
 				motion.direction.y   = xmli.get_value<double>("./direction/y");

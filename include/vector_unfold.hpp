@@ -45,7 +45,7 @@ public:
 };
 
 class SphereVectorUnfold : public VectorUnfold {
-	long m_seed;
+	uint32_t m_seed;
 	size_t m_resolution;
 	std::string m_vectors;
 public:
@@ -55,13 +55,13 @@ public:
 	std::vector<CartesianCoor3D>& qvectors();	
 	
 	void set_resolution(size_t resolution);
-	void set_seed(long seed);
+	void set_seed(uint32_t seed);
 	void set_vectors(std::string vectors);
 };
 
 class CylinderVectorUnfold : public VectorUnfold {
 	CartesianCoor3D m_axis;
-	long m_seed;
+	uint32_t m_seed;
 	size_t m_resolution;
 	std::string m_vectors;
 public:
@@ -71,7 +71,7 @@ public:
 	std::vector<CartesianCoor3D>& qvectors();
 	
 	void set_resolution(size_t resolution);
-	void set_seed(long seed);
+	void set_seed(uint32_t seed);
 	void set_vectors(std::string vectors);
 	void set_axis(CartesianCoor3D axis);
 };

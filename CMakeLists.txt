@@ -99,7 +99,8 @@ ADD_EXECUTABLE(sassena
 	src/progress_reporter.cpp
 	src/sample.cpp 
 	src/sassena.cpp  
-	src/scatter_devices.cpp 
+	src/scatter_devices/all_vectors.cpp 
+	src/scatter_devices/self_vectors.cpp 
 	src/scatter_factors.cpp
 	src/scatter_spectrum.cpp 
 	src/scatter_spectrum_writer.cpp 

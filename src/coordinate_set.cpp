@@ -29,7 +29,7 @@ using namespace std;
 
 CoordinateSet::CoordinateSet(Frame& frame,Atomselection& selection) {
 
-	size_t m_size = selection.size();
+	m_size = selection.size();
 	x.resize(m_size);
 	y.resize(m_size);
 	z.resize(m_size);

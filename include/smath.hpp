@@ -1,4 +1,4 @@
-double inline sine(double& x)
+inline double sine(double& x)
 {	
     const double B = 4/M_PI;
     const double C = -4/(M_PI*M_PI);

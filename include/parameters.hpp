@@ -169,6 +169,7 @@ private:
 public:	
 	std::string type;
 	double displace;
+	double frequency;
 	CartesianCoor3D direction;
 };
 

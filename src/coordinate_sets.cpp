@@ -55,8 +55,15 @@ CoordinateSet& CoordinateSets::load(size_t framenumber) {
 			{
 				SampleMotionParameters& motion = Params::Inst()->sample.motions[i];
 				if (motion.type=="linear") {
+					pcset->translate(framenumber*motion.displace*motion.direction);
+				}
+				else if (motion.type=="fixed") {
 					pcset->translate(motion.displace*motion.direction);
 				}
+				else if (motion.type=="oscillation") {
+					pcset->translate(motion.displace*motion.direction*sin(framenumber*motion.frequency));
+				}
+				
 			}
 		}
 	}
