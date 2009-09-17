@@ -25,7 +25,6 @@ ProgressReporter::ProgressReporter(size_t maximum, size_t minimum) {
 	
 	m_timerlabel = "progress";
 	m_timer.start(m_timerlabel);
-	
 }
 
 void ProgressReporter::set(size_t c) {

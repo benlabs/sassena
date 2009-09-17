@@ -44,34 +44,43 @@ DecompositionPlan::DecompositionPlan(boost::mpi::communicator thisworld,vector<C
 	size_t bestcolwidth = nn;
 	size_t penalty = compute_penalty(nq,nf,nn,bestworldsplit);
 
-	for(size_t worldsplit = 2; worldsplit <= ((nn<nq) ? nn : nq ); ++worldsplit)
-	{
-		size_t newpenalty = compute_penalty(nq,nf,nn,worldsplit);
-		size_t colwidth = nn / worldsplit;
-		size_t colheight = nf / colwidth + ( (nf % colwidth)==0 ? 0 : 1 );
-		
-		// hard limit: frames per node
-		if (colheight>1000) break;
-		
-		// if equal, prefer higher split
-		if (newpenalty<=penalty) {
-			penalty = newpenalty;
-			bestworldsplit = worldsplit;
-			bestcolwidth = colwidth;
-		}	
+	if (Params::Inst()->debug.decomposition_split==0) {
+		for(size_t worldsplit = 2; worldsplit <= ((nn<nq) ? nn : nq ); ++worldsplit)
+		{
+			size_t newpenalty = compute_penalty(nq,nf,nn,worldsplit);
+			size_t colwidth = nn / worldsplit;
+			size_t colheight = nf / colwidth + ( (nf % colwidth)==0 ? 0 : 1 );
+
+			// hard limit: frames per node
+			if (colheight>1000) break;
+
+			// if equal, prefer higher split
+			if (newpenalty<=penalty) {
+				penalty = newpenalty;
+				bestworldsplit = worldsplit;
+				bestcolwidth = colwidth;
+			}	
+		}		
+	} else {
+		// calculate some partioning schemes, init penalty w/ qsplit==1
+		bestworldsplit = Params::Inst()->debug.decomposition_split;
+		bestcolwidth = nn / bestworldsplit;
+		penalty = compute_penalty(nq,nf,nn,bestworldsplit);
 	}
+
 		
 	if (nf<nn) bestcolwidth = nf;	
 	
 	
 	// only allow successful construction if load imbalance is sufficiently small
 
-	if (penalty > Params::Inst()->limits.static_load_imbalance_max) {
+	double fpenalty = penalty * 1.0/ (nf*nq);
+	if (fpenalty > Params::Inst()->limits.static_load_imbalance_max) {
 		if (thisworld.rank()==0) {
 			Err::Inst()->write(string("Total static load balance too high. Try a different number of nodes."));
 
-			Info::Inst()->write(string("Static imbalance limit:")+to_s(Params::Inst()->limits.static_load_imbalance_max));
-			Info::Inst()->write(string("Computed imbalance:")+to_s(penalty));
+			Info::Inst()->write(string("Static imbalance limit: ")+to_s(Params::Inst()->limits.static_load_imbalance_max));
+			Info::Inst()->write(string("Computed imbalance: ")+to_s(fpenalty));
 			Info::Inst()->write(string("Decomposition Plan: split=")+to_s(bestworldsplit));
 			
 			Info::Inst()->write("For your layout, the following number of nodes have best partitioning:");

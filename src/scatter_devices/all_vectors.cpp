@@ -71,7 +71,6 @@ AllScatterDevice::AllScatterDevice(boost::mpi::communicator& thisworld, Sample& 
 	scatterfactors.set_sample(sample);
 	scatterfactors.set_selection(sample.atoms.selections[target]);
 	scatterfactors.set_background(true);
-	
 }
 
 // acts like scatter_frame, but does the summation in place
@@ -132,7 +131,7 @@ void AllScatterDevice::scatter_frames_norm1(CartesianCoor3D& q) {
 	}
 }
 
-vector<complex<double> > AllScatterDevice::correlate_frames() {
+std::vector<std::complex<double> > AllScatterDevice::correlate_frames() {
 	// each nodes has computed their assigned frames
 	// the total scattering amplitudes reside in a(x,0)
 
@@ -191,8 +190,7 @@ vector<complex<double> > AllScatterDevice::correlate_frames() {
 	vector<double> aout_r; aout_r.resize(ain_r.size());
 	boost::mpi::reduce(*p_thisworldcomm,&ain_r[0],ain_r.size(),&aout_r[0],std::plus<double>(),0);
 
-	vector<complex<double> > aout = compress(aout_r);
-	return aout;
+	return compress(aout_r);
 }
 
 vector<complex<double> > AllScatterDevice::conjmultiply_frames() {
@@ -245,7 +243,10 @@ vector<complex<double> > AllScatterDevice::conjmultiply_frames() {
 		return A;
 	} else {
 		// return is empty
+		vector<complex<double> > A;
+		return A;
 	}
+	
 }
 
 void AllScatterDevice::superpose_spectrum(vector<complex<double> >& spectrum, vector<complex<double> >& fullspectrum) {
@@ -289,7 +290,7 @@ void AllScatterDevice::execute(CartesianCoor3D& q) {
 	else { // default: no unfold
 		p_vectorunfold = new NoVectorUnfold(q);
 	}
-	
+
 	p_vectorunfold->execute();
 
 	vector<CartesianCoor3D>& qvectors = p_vectorunfold->qvectors();
@@ -300,8 +301,7 @@ void AllScatterDevice::execute(CartesianCoor3D& q) {
 	scatterfactors.update(q); // scatter factors only dependent on length of q, hence we can do it once before the loop
 	for(size_t qi = 0; qi < qvectors.size(); ++qi)
 	{		
-		scatter_frames_norm1(qvectors[qi]); // put summed scattering amplitudes into first atom entry
-	
+		scatter_frames_norm1(qvectors[qi]); // put summed scattering amplitudes into first atom entry		
 		vector<complex<double> > thisspectrum;
 		if (Params::Inst()->scattering.correlation.type=="time") {
 			if (Params::Inst()->scattering.correlation.method=="direct") {

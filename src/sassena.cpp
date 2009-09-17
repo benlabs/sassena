@@ -282,6 +282,7 @@ int main(int argc,char** argv) {
 	}
 	
 	boost::mpi::communicator local = dplan.split();
+	
 	vector<CartesianCoor3D> myqvectors = dplan.qvectors();
 	if (world.rank()==0) {
 		Info::Inst()->write(string("Scattering target selection: ")+params->scattering.target);
@@ -344,7 +345,7 @@ int main(int argc,char** argv) {
 	size_t headindicator = 0;
 	if (local.rank()==0) headindicator = 1;
 	// do another split, based on the headindicator
-	boost::mpi::communicator headcomm = world.split(world, headindicator);
+	boost::mpi::communicator headcomm = world.split(headindicator);
 	ScatterSpectrum final_scatter_spectrum;
 	if (headindicator==1) {
 		// gather results on head of heads

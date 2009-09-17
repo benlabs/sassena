@@ -498,7 +498,7 @@ public:
 };
 
 
-
+// this section is dedicated to parameters which are computed on the fly!
 class RuntimeParameters {
 private:
 	/////////////////// MPI related
@@ -526,6 +526,7 @@ private:
 		ar & timer;
 		ar & barriers;
 		ar & scatter_from_frame;
+		ar & decomposition_split;
     }
 	/////////////////// 
 
@@ -533,6 +534,7 @@ public:
 	bool timer;
 	bool barriers;
 	bool scatter_from_frame;
+	size_t decomposition_split;
 };
 
 

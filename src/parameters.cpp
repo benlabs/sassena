@@ -843,7 +843,7 @@ void Params::read_xml(std::string filename) {
 	debug.timer = false; // this adds a log message when a timer is started/stopped
 	debug.barriers = false; // this de-/activates collective barriers before each collective operation, this way all nodes are synchronized before the communication takes place. This is an important step towards analysis of timing.
 	debug.scatter_from_frame = false;
-	
+	debug.decomposition_split=0; // 0 stands for automatic
 	if (xmli.exists("//debug")) {
 		if (xmli.exists("//debug/timer")) {
 			debug.timer = xmli.get_value<bool>("//debug/timer");
@@ -854,6 +854,9 @@ void Params::read_xml(std::string filename) {
 		if (xmli.exists("//debug/scatter_from_frame")) {
 			debug.scatter_from_frame = xmli.get_value<bool>("//debug/scatter_from_frame");
 		}	
+		if (xmli.exists("//debug/decomposition_split")) {
+			debug.decomposition_split = xmli.get_value<size_t>("//debug/decomposition_split");
+		}		
 	}
 	
 };
@@ -873,6 +876,7 @@ string Params::guessformat(string filename) {
 }
 
 bool Params::check() {
+	return true;
 	// implement a sanity check for the parameters
 }
 

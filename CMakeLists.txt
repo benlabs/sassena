@@ -83,6 +83,7 @@ ADD_EXECUTABLE(sassena
 	src/atom.cpp 
 	src/atoms.cpp 
 	src/atomselection.cpp 
+	src/common.cpp
 	src/coor3d.cpp 
 	src/coordinate_set.cpp
 	src/coordinate_sets.cpp	
