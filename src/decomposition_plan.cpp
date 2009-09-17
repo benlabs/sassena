@@ -74,13 +74,12 @@ DecompositionPlan::DecompositionPlan(boost::mpi::communicator thisworld,vector<C
 	
 	// only allow successful construction if load imbalance is sufficiently small
 
-	double fpenalty = penalty * 1.0/ (nf*nq);
-	if (fpenalty > Params::Inst()->limits.static_load_imbalance_max) {
+	if (static_imbalance() > Params::Inst()->limits.static_load_imbalance_max) {
 		if (thisworld.rank()==0) {
 			Err::Inst()->write(string("Total static load balance too high. Try a different number of nodes."));
 
 			Info::Inst()->write(string("Static imbalance limit: ")+to_s(Params::Inst()->limits.static_load_imbalance_max));
-			Info::Inst()->write(string("Computed imbalance: ")+to_s(fpenalty));
+			Info::Inst()->write(string("Computed imbalance: ")+to_s(static_imbalance()));
 			Info::Inst()->write(string("Decomposition Plan: split=")+to_s(bestworldsplit));
 			
 			Info::Inst()->write("For your layout, the following number of nodes have best partitioning:");
@@ -125,7 +124,7 @@ boost::mpi::communicator DecompositionPlan::split() {
 vector<CartesianCoor3D> DecompositionPlan::qvectors() {
 
 	vector<CartesianCoor3D> result;
-	
+
 	EvenDecompose e(m_qvectors.size(),m_bestworldsplit);
 	size_t mycolor = m_thisworldcomm.rank() / m_bestcolwidth;
 	
@@ -145,7 +144,7 @@ vector<size_t> DecompositionPlan::frames() {
 }
 
 double DecompositionPlan::static_imbalance() {
-	return ( 1.0 - m_penalty/(1.0*m_frames.size()*m_qvectors.size()) ); 
+	return ( m_penalty/(1.0*m_frames.size()*m_qvectors.size()) ); 
 }
 
 size_t DecompositionPlan::penalty() {
@@ -169,23 +168,29 @@ vector<pair<double,size_t> > DecompositionPlan::scan_imbalance_spectrum(size_t n
 
 size_t DecompositionPlan::compute_penalty(size_t nq, size_t nf, size_t nn,size_t worldsplit) {
 
-	if (worldsplit>nn) {
-		Err::Inst()->write("worldsplit > nn. That doesn't make sense. This seems to be a coding problem...");
-		throw;
-	}
+		size_t leftoverworlds = 0;
+		if (worldsplit>nn)  {
+			leftoverworlds = worldsplit-nn;
+			worldsplit = nn;
+		}
 
-	size_t colcount = worldsplit;
-	size_t colwidth = nn / worldsplit;
-	size_t colheight = nf / colwidth + ( (nf % colwidth)==0 ? 0 : 1 );
-	size_t colpenalty = (colheight*colwidth)-nf;
+		size_t colcount = worldsplit;
+		size_t colwidth = nn / worldsplit;
+		size_t colheight = nf / colwidth + ( (nf % colwidth)==0 ? 0 : 1 );
+		size_t colpenalty = (colheight*colwidth)-nf;
 		
-	size_t worldpenalty = nn - colwidth * worldsplit;
+		size_t worldpenalty = nn - colwidth * worldsplit;
 	
-	size_t rowcount = nq / worldsplit + ( (nq % worldsplit)==0 ? 0 : 1 );
-	size_t rowpenalty = (nq % colcount) * (colwidth*colheight); // penalty due to insufficient usage of parallel worlds
+		size_t rowcount = nq / worldsplit + ( (nq % worldsplit)==0 ? 0 : 1 );
+		size_t rowpenalty = 0;
+		if ((nq%colcount)!=0) {
+			rowpenalty = (colcount - (nq % colcount) ) * (colwidth*colheight);
+		} 
 		
-	size_t penalty = nq * colpenalty  + rowcount * worldpenalty + rowpenalty;
-	return penalty;
+		// penalty due to insufficient usage of parallel worlds
+		
+		size_t penalty = nq * colpenalty  + rowcount * worldpenalty + rowpenalty + leftoverworlds * (colwidth*colheight) * rowcount;
+		return penalty;
 }
 
 size_t DecompositionPlan::worlds() { 

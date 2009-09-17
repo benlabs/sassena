@@ -50,6 +50,7 @@ AllScatterDevice::AllScatterDevice(boost::mpi::communicator& thisworld, Sample& 
 	EvenDecompose edecomp(nf,nn);
 	
 	myframes = edecomp.indexes_for(rank);
+
 	if (thisworld.rank()==0) {	
 		Info::Inst()->write(string("Memory Requirements per node: "));
 		Info::Inst()->write(string("Scattering Matrix: ")+to_s(2*8*myframes.size()*1)+string(" bytes"));
@@ -74,11 +75,11 @@ AllScatterDevice::AllScatterDevice(boost::mpi::communicator& thisworld, Sample& 
 }
 
 // acts like scatter_frame, but does the summation in place
-void AllScatterDevice::scatter_frame_norm1(size_t iframe, CartesianCoor3D& q) {
+void AllScatterDevice::scatter_frame_norm1(size_t localframe, CartesianCoor3D& q) {
 
 	size_t noa = coordinate_sets.get_selection().size();
 	
-	CoordinateSet& cs = coordinate_sets.load(iframe);
+	CoordinateSet& cs = coordinate_sets.load(myframes[localframe]);
 	vector<double>& sfs = scatterfactors.get_all();
 
 	//	for(size_t j = 0; j < a.size2(); ++j)
@@ -120,12 +121,11 @@ void AllScatterDevice::scatter_frame_norm1(size_t iframe, CartesianCoor3D& q) {
 			Ar += sfs[j]*sign_sin*sine(p);
 			Ai += sfs[j]*sine(cp);
 		}
-		a(iframe,0)=complex<double>(Ar,Ai); // sum at this location
+		a(localframe,0)=complex<double>(Ar,Ai); // sum at this location
 }
 
 void AllScatterDevice::scatter_frames_norm1(CartesianCoor3D& q) {
-	
-	for(size_t i = 0; i < myframes.size(); ++i)
+	for(size_t i = 0; i < a.size1(); ++i)
 	{
 		scatter_frame_norm1(i,q);
 	}
@@ -203,9 +203,7 @@ vector<complex<double> > AllScatterDevice::conjmultiply_frames() {
 	size_t maxCSsize;
 	boost::mpi::all_reduce(*p_thisworldcomm,CSsize,maxCSsize,boost::mpi::maximum<size_t>());
 
-
 	// in conjmultiply we just have to conj multiply each a(x,0)
-
 	complex<double> cA = 0; 
 	for(size_t ci = 0; ci < myframes.size(); ++ci)
 	{

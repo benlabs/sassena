@@ -45,7 +45,6 @@ CoordinateSet& CoordinateSets::load(size_t framenumber) {
 		if ((Params::Inst()->limits.coordinatesets_cache_max>0) && setcache.size()>=Params::Inst()->limits.coordinatesets_cache_max) {
 			clear_cache();
 		}
-		
 		p_sample->frames.load(framenumber,p_sample->atoms);
 		pcset = new CoordinateSet(p_sample->frames.current(),*p_selection);
 		setcache[framenumber] = pcset;

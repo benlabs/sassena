@@ -29,7 +29,13 @@ EvenDecompose::EvenDecompose(size_t total, size_t slices) {
 	if (slices<=0) throw;
 
 	size_t minperslice = total/slices;
-	size_t leftover = total % minperslice;
+	size_t leftover;
+	
+	if (minperslice!=0) {
+		leftover = total % minperslice;
+	} else {
+		leftover = 0;
+	}
 	
 	for(size_t i = 0; i < slices; ++i)
 	{
@@ -37,6 +43,7 @@ EvenDecompose::EvenDecompose(size_t total, size_t slices) {
 		if (leftover>i) thisslice +=1;
 		this->push_back(thisslice);
 	}
+	
 }
 
 vector<size_t> EvenDecompose::indexes_for(size_t pos) {

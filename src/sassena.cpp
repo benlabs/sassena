@@ -179,6 +179,8 @@ int main(int argc,char** argv) {
 		timer.start("sample::preparation");
 
 		if (params->scattering.background.type=="auto") {
+			Err::Inst()->write("Automatic background support disabled for now.");
+			throw;
 
 //			// determine background scattering density from grid based analysis
 //			// necessary:
@@ -278,7 +280,7 @@ int main(int argc,char** argv) {
 	DecompositionPlan dplan(world,qvectors,frames);
 	if (world.rank()==0) {	
 		Info::Inst()->write(string("Decomposition has ")+to_s(dplan.worlds())+string(" partitions"));
-		Info::Inst()->write(string("Node utilization, static load balance: ")+ to_s(dplan.static_imbalance()));
+		Info::Inst()->write(string("Static imbalance factor (0 is best): ")+ to_s(dplan.static_imbalance()));
 	}
 	
 	boost::mpi::communicator local = dplan.split();
@@ -341,7 +343,7 @@ int main(int argc,char** argv) {
 	
 	// now all local.rank()==0 have aggregated the spectra
 	// we have to aggregrate it on world scope as well
-	
+
 	size_t headindicator = 0;
 	if (local.rank()==0) headindicator = 1;
 	// do another split, based on the headindicator
@@ -373,13 +375,17 @@ int main(int argc,char** argv) {
 			timer.stop("result::output");
 
 		}
-
-
 	}
+
+	// wait before deleting anything...
+	world.barrier();
 	
+	
+	delete p_ScatterDevice;
+
 	// make nodes empty, computation finished
 	sample.frames.clear_cache();
-	
+
 	// wait for all nodes to finish their computations....
 	world.barrier();
 
@@ -392,10 +398,10 @@ int main(int argc,char** argv) {
 	
 	timer.stop("total");
 	
-	PerformanceAnalyzer perfanal(world,timer); // collect timing information from everybody.
+//	PerformanceAnalyzer perfanal(world,timer); // collect timing information from everybody.
 	
 	if (world.rank()==0) {
-		perfanal.report();
+//		perfanal.report();
 		Info::Inst()->write("Successfully finished... Have a nice day!");
 	}
 
