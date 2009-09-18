@@ -67,11 +67,17 @@ DecompositionPlan::DecompositionPlan(boost::mpi::communicator thisworld,vector<C
 		bestcolwidth = nn / bestworldsplit;
 		penalty = compute_penalty(nq,nf,nn,bestworldsplit);
 	}
-
 		
 	if (nf<nn) bestcolwidth = nf;	
 	
+	// store this variables:
+	m_bestcolwidth = bestcolwidth;
+	m_penalty = penalty;
+	m_bestworldsplit = bestworldsplit;
 	
+	
+	m_qvectors = qvectors;
+	m_frames = frames;
 	// only allow successful construction if load imbalance is sufficiently small
 
 	if (static_imbalance() > Params::Inst()->limits.static_load_imbalance_max) {
@@ -100,17 +106,7 @@ DecompositionPlan::DecompositionPlan(boost::mpi::communicator thisworld,vector<C
 		}
 
 		throw;
-	}	
-	
-	// store this variables:
-	m_bestcolwidth = bestcolwidth;
-	m_penalty = penalty;
-	m_bestworldsplit = bestworldsplit;
-	
-	m_qvectors = qvectors;
-	m_frames = frames;
-	
-	
+	}		
 }
 
 boost::mpi::communicator DecompositionPlan::split() {
