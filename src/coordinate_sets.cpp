@@ -60,7 +60,7 @@ CoordinateSet& CoordinateSets::load(size_t framenumber) {
 	if (p_current_cs!=NULL) delete p_current_cs;
 	
 	// make a copy and add motion
-	*p_current_cs = *pcset; 
+	p_current_cs->operator=(*pcset); 
 
 	if (Params::Inst()->sample.motions.size()>0) {
 		for(size_t i = 0; i < Params::Inst()->sample.motions.size(); ++i)
