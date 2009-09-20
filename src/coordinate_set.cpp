@@ -27,6 +27,10 @@
 
 using namespace std;
 
+CoordinateSet::CoordinateSet() {
+	m_size = 0;
+}
+
 CoordinateSet::CoordinateSet(Frame& frame,Atomselection& selection) {
 
 	m_size = selection.size();

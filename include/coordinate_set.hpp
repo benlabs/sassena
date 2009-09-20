@@ -44,7 +44,7 @@ class CoordinateSet {
 
 	size_t m_size;
 public:
-	
+	CoordinateSet();
 	CoordinateSet(Frame& frame,Atomselection& selection); 
 	
 	std::vector<double> x; // x-coordinates

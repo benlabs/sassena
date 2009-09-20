@@ -29,7 +29,7 @@ using namespace std;
 
 // has to be default constructible
 CoordinateSets::CoordinateSets() {
-	p_current_cs = NULL;
+
 }
 
 CoordinateSets::~CoordinateSets() {
@@ -38,7 +38,6 @@ CoordinateSets::~CoordinateSets() {
 	{
 		delete sci->second;
 	}
-	if (p_current_cs!=NULL) delete p_current_cs;
 }
 
 CoordinateSet& CoordinateSets::load(size_t framenumber) {
@@ -56,30 +55,27 @@ CoordinateSet& CoordinateSets::load(size_t framenumber) {
 		pcset = setcache[framenumber];
 	}
 	
-	// loose old copy of coordinate set
-	if (p_current_cs!=NULL) delete p_current_cs;
-	
 	// make a copy and add motion
-	p_current_cs->operator=(*pcset); 
+	m_current_cs = *pcset; 
 
 	if (Params::Inst()->sample.motions.size()>0) {
 		for(size_t i = 0; i < Params::Inst()->sample.motions.size(); ++i)
 		{
 			SampleMotionParameters& motion = Params::Inst()->sample.motions[i];
 			if (motion.type=="linear") {
-				p_current_cs->translate(framenumber*motion.displace*motion.direction);
+				m_current_cs.translate(framenumber*motion.displace*motion.direction);
 			}
 			else if (motion.type=="fixed") {
-				p_current_cs->translate(motion.displace*motion.direction);
+				m_current_cs.translate(motion.displace*motion.direction);
 			}
 			else if (motion.type=="oscillation") {
-				p_current_cs->translate(motion.displace*sin(2*M_PI*framenumber*motion.frequency)*motion.direction);
+				m_current_cs.translate(motion.displace*sin(2*M_PI*framenumber*motion.frequency)*motion.direction);
 			}
 		}
 	}
 	
 	currentframe_i = framenumber;
-	return *p_current_cs;
+	return m_current_cs;
 }
 
 void CoordinateSets::clear_cache() {
@@ -106,7 +102,7 @@ void CoordinateSets::set_sample(Sample& sample) {
 }
 
 CoordinateSet& CoordinateSets::current() {
-	return (*p_current_cs);
+	return m_current_cs;
 }
 
 
