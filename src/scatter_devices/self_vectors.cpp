@@ -276,25 +276,25 @@ void SelfScatterDevice::crosssum_particles() {
 
 void SelfScatterDevice::execute(CartesianCoor3D& q) {
 	
-   string avm = Params::Inst()->scattering.average.method;
+   string avm = Params::Inst()->scattering.average.orientation.method;
    
    VectorUnfold* p_vectorunfold = NULL;			
    if (avm=="bruteforce") {
-   	string avv = Params::Inst()->scattering.average.vectors;
-   	string avt = Params::Inst()->scattering.average.type;
+   	string avv = Params::Inst()->scattering.average.orientation.vectors;
+   	string avt = Params::Inst()->scattering.average.orientation.type;
    
    	if (avt=="sphere") {
    		SphereVectorUnfold* p_vu = new SphereVectorUnfold(q);
-   		p_vu->set_resolution(Params::Inst()->scattering.average.resolution);
-   		p_vu->set_vectors(Params::Inst()->scattering.average.vectors);
+   		p_vu->set_resolution(Params::Inst()->scattering.average.orientation.resolution);
+   		p_vu->set_vectors(Params::Inst()->scattering.average.orientation.vectors);
    		p_vu->set_seed(0);
    		p_vectorunfold = p_vu; 
    	}
    	if (avt=="cylinder") {
    		CylinderVectorUnfold* p_vu = new CylinderVectorUnfold(q);
-   		p_vu->set_resolution(Params::Inst()->scattering.average.resolution);
-   		p_vu->set_vectors(Params::Inst()->scattering.average.vectors);
-   		p_vu->set_axis(Params::Inst()->scattering.average.axis);
+   		p_vu->set_resolution(Params::Inst()->scattering.average.orientation.resolution);
+   		p_vu->set_vectors(Params::Inst()->scattering.average.orientation.vectors);
+   		p_vu->set_axis(Params::Inst()->scattering.average.orientation.axis);
    		p_vu->set_seed(0);			
    		p_vectorunfold = p_vu; 
    	}		 
@@ -311,7 +311,7 @@ void SelfScatterDevice::execute(CartesianCoor3D& q) {
    
    p_vectorunfold->execute();
    
-   vector<CartesianCoor3D>& qvectors = p_vectorunfold->qvectors();
+   vector<CartesianCoor3D>& qvectors = p_vectorunfold->vectors();
 	
 	
 	/// k, qvectors are prepared:

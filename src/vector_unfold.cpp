@@ -45,11 +45,11 @@ NoVectorUnfold::NoVectorUnfold(CartesianCoor3D q) {
 }
 
 void NoVectorUnfold::execute() {
-	m_qvectors.push_back(m_q);
+	m_unfolded_vectors.push_back(m_q);
 }
 
-vector<CartesianCoor3D>& NoVectorUnfold::qvectors() {
-	return m_qvectors;
+vector<CartesianCoor3D>& NoVectorUnfold::vectors() {
+	return m_unfolded_vectors;
 }
 
 FileVectorUnfold::FileVectorUnfold(CartesianCoor3D q) {
@@ -57,11 +57,11 @@ FileVectorUnfold::FileVectorUnfold(CartesianCoor3D q) {
 }
 
 void FileVectorUnfold::execute() {
-	m_qvectors.push_back(m_q);
+	m_unfolded_vectors.push_back(m_q);
 }
 
-vector<CartesianCoor3D>& FileVectorUnfold::qvectors() {
-	return m_qvectors;
+vector<CartesianCoor3D>& FileVectorUnfold::vectors() {
+	return m_unfolded_vectors;
 }
 
 SphereVectorUnfold::SphereVectorUnfold(CartesianCoor3D q) {
@@ -80,8 +80,8 @@ void SphereVectorUnfold::set_vectors(string vectors) {
 	m_vectors = vectors;
 }
 
-vector<CartesianCoor3D>& SphereVectorUnfold::qvectors() {
-	return m_qvectors;
+vector<CartesianCoor3D>& SphereVectorUnfold::vectors() {
+	return m_unfolded_vectors;
 }
 
 void SphereVectorUnfold::execute() {
@@ -89,7 +89,7 @@ void SphereVectorUnfold::execute() {
 	
 	// we can't unfold a point:
 	if (qs.r==0.0) {
-		m_qvectors.push_back( m_q );
+		m_unfolded_vectors.push_back( m_q );
 		return;
 	}
 	
@@ -106,7 +106,7 @@ void SphereVectorUnfold::execute() {
 		for (double t=0;t<M_PI;t+=radincr) {	
 			for (double p=0;p<M_2PI;p+=radincr) {
 				// take length from scattering vector and angles from unisphere												
-				m_qvectors.push_back( SphericalCoor3D(qs.r,p,t) );
+				m_unfolded_vectors.push_back( SphericalCoor3D(qs.r,p,t) );
 		    }
 		}		
 	}
@@ -119,11 +119,11 @@ void SphereVectorUnfold::execute() {
 				for (double p=0;p<phil;p+=arcincr) {
 					double dphi = (p/phil)*2*M_PI;
 					// take length from scattering vector and angles from unisphere								
-					m_qvectors.push_back( SphericalCoor3D(qs.r,dphi,dtheta) );
+					m_unfolded_vectors.push_back( SphericalCoor3D(qs.r,dphi,dtheta) );
 			    }
 			}
 			else {
-				m_qvectors.push_back( SphericalCoor3D(qs.r,qs.phi,qs.theta+dtheta) );
+				m_unfolded_vectors.push_back( SphericalCoor3D(qs.r,qs.phi,qs.theta+dtheta) );
 			}
 		}
 	}
@@ -134,7 +134,7 @@ void SphereVectorUnfold::execute() {
 
 		for(vector<CartesianCoor3D>::iterator vi=d.vectors.begin();vi!=d.vectors.end();vi++) {
 			// take length from scattering vector and angles from unisphere						
-			m_qvectors.push_back( SphericalCoor3D(qs.r,SphericalCoor3D(*vi).phi,SphericalCoor3D(*vi).theta) );
+			m_unfolded_vectors.push_back( SphericalCoor3D(qs.r,SphericalCoor3D(*vi).phi,SphericalCoor3D(*vi).theta) );
 		}
 	}	
 	else if (m_vectors=="mcphiacos") {
@@ -144,7 +144,7 @@ void SphereVectorUnfold::execute() {
 			double t = acos(2*(rand()*1.0/RAND_MAX)-1);		
 			
 			// take length from scattering vector and angles from unisphere			
-			m_qvectors.push_back( SphericalCoor3D(qs.r,p,t) );
+			m_unfolded_vectors.push_back( SphericalCoor3D(qs.r,p,t) );
 
 			num++;
 		}
@@ -163,7 +163,7 @@ void SphereVectorUnfold::execute() {
 
 			SphericalCoor3D s = CartesianCoor3D(x,y,z);
 			// take length from scattering vector and angles from unisphere			
-			m_qvectors.push_back( SphericalCoor3D(qs.r,s.phi,s.theta) );
+			m_unfolded_vectors.push_back( SphericalCoor3D(qs.r,s.phi,s.theta) );
 
 			num++;
 		}
@@ -185,7 +185,7 @@ void SphereVectorUnfold::execute() {
 
 			SphericalCoor3D s = CartesianCoor3D(x,y,z);
 			// take length from scattering vector and angles from unisphere			
-			m_qvectors.push_back( SphericalCoor3D(qs.r,s.phi,s.theta) );
+			m_unfolded_vectors.push_back( SphericalCoor3D(qs.r,s.phi,s.theta) );
 			num++;
 		}
 	}
@@ -206,7 +206,7 @@ void SphereVectorUnfold::execute() {
 			
 			SphericalCoor3D s = CartesianCoor3D(x,y,z);
 			// take length from scattering vector and angles from unisphere			
-			m_qvectors.push_back( SphericalCoor3D(qs.r,s.phi,s.theta) ); 
+			m_unfolded_vectors.push_back( SphericalCoor3D(qs.r,s.phi,s.theta) ); 
 			
 			num++;
 		}
@@ -238,8 +238,8 @@ void CylinderVectorUnfold::set_vectors(string vectors) {
 	m_vectors = vectors;
 }
 
-vector<CartesianCoor3D>& CylinderVectorUnfold::qvectors() {
-	return m_qvectors;
+vector<CartesianCoor3D>& CylinderVectorUnfold::vectors() {
+	return m_unfolded_vectors;
 }
 
 void CylinderVectorUnfold::execute() {
@@ -264,7 +264,7 @@ void CylinderVectorUnfold::execute() {
 	
 	// we can't unfold a line:
 	if (qperpenticular_l==0.0)  { 
-		m_qvectors.push_back( qparallel );		
+		m_unfolded_vectors.push_back( qparallel );		
 		return;
 	}
 	else {
@@ -287,7 +287,7 @@ void CylinderVectorUnfold::execute() {
 				qv2.z = (o.x*o.z*(1-cos(phi))-o.y*sin(phi))*qv.x + (o.y*o.z*(1-cos(phi))+o.x*sin(phi))*qv.y + (o.z*o.z+(1-o.z*o.z)*cos(phi))*qv.z;
 
 				// take length from scattering vector and angles from unisphere										
-				m_qvectors.push_back( qv2 );	
+				m_unfolded_vectors.push_back( qv2 );	
 			}	
 		}
 		else {

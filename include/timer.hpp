@@ -94,7 +94,13 @@ public:
 	double max(std::string tk);	
 	double mean(std::string tk);
 	double variance(std::string tk);	
-	double count(std::string tk);		
+	double count(std::string tk);
+	
+	void clear();
+	
+	Timer& operator+=( Timer& other);
+	Timer operator+( Timer& other);
+			
 };
 
 #endif 

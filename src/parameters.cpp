@@ -740,26 +740,51 @@ void Params::read_xml(std::string filename) {
 	}
 
 	if (xmli.exists("//scattering/average")) {
-		if (xmli.exists("//scattering/average/type")) { // sphere cylinder none
-			scattering.average.type = xmli.get_value<string>("//scattering/average/type");
+		if (xmli.exists("//scattering/average/orientation")) {
+			if (xmli.exists("//scattering/average/orientation/type")) { // sphere cylinder none
+				scattering.average.orientation.type = xmli.get_value<string>("//scattering/average/orientation/type");
+			}
+			if (xmli.exists("//scattering/average/orientation/method")) { // bruteforce multipole debye
+				scattering.average.orientation.method = xmli.get_value<string>("//scattering/average/orientation/method");
+			}
+			if (xmli.exists("//scattering/average/orientation/vectors")) { // mcboostuniform linearraster...
+				scattering.average.orientation.vectors = xmli.get_value<string>("//scattering/average/orientation/vectors");
+			}
+			if (xmli.exists("//scattering/average/orientation/resolution")) { // count vectors ... , or order for multipole...
+				scattering.average.orientation.resolution = xmli.get_value<double>("//scattering/average/orientation/resolution");
+			}
+			if (xmli.exists("//scattering/average/orientation/axis")) { // necessary for cylinder
+				scattering.average.orientation.axis.x = xmli.get_value<double>("//scattering/average/orientation/axis/x");
+				scattering.average.orientation.axis.y = xmli.get_value<double>("//scattering/average/orientation/axis/y");
+				scattering.average.orientation.axis.z = xmli.get_value<double>("//scattering/average/orientation/axis/z");
+			}
+			if (xmli.exists("//scattering/average/orientation/origin")) { // necessary for cylinder
+				scattering.average.orientation.origin = xmli.get_value<string>("//scattering/average/orientation/origin");
+			}
 		}
-		if (xmli.exists("//scattering/average/method")) { // bruteforce multipole debye
-			scattering.average.method = xmli.get_value<string>("//scattering/average/method");
+		if (xmli.exists("//scattering/average/motion")) {
+			if (xmli.exists("//scattering/average/motion/type")) { // sphere cylinder none
+				scattering.average.motion.type = xmli.get_value<string>("//scattering/average/motion/type");
+			}
+			if (xmli.exists("//scattering/average/motion/method")) { // bruteforce multipole debye
+				scattering.average.motion.method = xmli.get_value<string>("//scattering/average/motion/method");
+			}
+			if (xmli.exists("//scattering/average/motion/vectors")) { // mcboostuniform linearraster...
+				scattering.average.motion.vectors = xmli.get_value<string>("//scattering/average/motion/vectors");
+			}
+			if (xmli.exists("//scattering/average/motion/resolution")) { // count vectors ... , or order for multipole...
+				scattering.average.motion.resolution = xmli.get_value<double>("//scattering/average/motion/resolution");
+			}
+			if (xmli.exists("//scattering/average/motion/axis")) { // necessary for cylinder
+				scattering.average.motion.axis.x = xmli.get_value<double>("//scattering/average/motion/axis/x");
+				scattering.average.motion.axis.y = xmli.get_value<double>("//scattering/average/motion/axis/y");
+				scattering.average.motion.axis.z = xmli.get_value<double>("//scattering/average/motion/axis/z");
+			}
+			if (xmli.exists("//scattering/average/motion/origin")) { // necessary for cylinder
+				scattering.average.motion.origin = xmli.get_value<string>("//scattering/average/motion/origin");
+			}
 		}
-		if (xmli.exists("//scattering/average/vectors")) { // mcboostuniform linearraster...
-			scattering.average.vectors = xmli.get_value<string>("//scattering/average/vectors");
-		}
-		if (xmli.exists("//scattering/average/resolution")) { // count vectors ... , or order for multipole...
-			scattering.average.resolution = xmli.get_value<double>("//scattering/average/resolution");
-		}
-		if (xmli.exists("//scattering/average/axis")) { // necessary for cylinder
-			scattering.average.axis.x = xmli.get_value<double>("//scattering/average/axis/x");
-			scattering.average.axis.y = xmli.get_value<double>("//scattering/average/axis/y");
-			scattering.average.axis.z = xmli.get_value<double>("//scattering/average/axis/z");
-		}
-		if (xmli.exists("//scattering/average/origin")) { // necessary for cylinder
-			scattering.average.origin = xmli.get_value<string>("//scattering/average/origin");
-		}
+		
 	}
 	
 	if (xmli.exists("//scattering/interference")) {
@@ -775,10 +800,10 @@ void Params::read_xml(std::string filename) {
 		throw;
 	}
 
-	if (xmli.exists("//scattering/probe")) {
-		scattering.probe = xmli.get_value<string>("//scattering/probe");
+	if (xmli.exists("//scattering/scatterfactors")) {
+		scattering.scatterfactors = xmli.get_value<string>("//scattering/scatterfactors");
 	} else {
-		Err::Inst()->write("You have to specify a probe type (e.g. neutron-coherent)");
+		Err::Inst()->write("You have to specify a scatterfactor type (e.g. neutron-coherent)");
 		throw;
 	}
 	

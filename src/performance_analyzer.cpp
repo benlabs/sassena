@@ -25,8 +25,17 @@ using namespace std;
 
 PerformanceAnalyzer::PerformanceAnalyzer(boost::mpi::communicator thisworld, Timer timer) {
 	// aggregate all timer on head node
-	vector<Timer> alltimer;
-	boost::mpi::gather(thisworld,timer,alltimer,0);
+	boost::mpi::gather(thisworld,timer,m_alltimer,0);
+	
+	analyze();
+}
+
+void PerformanceAnalyzer::analyze() {
+	m_supertimer.clear();
+	for(size_t i = 0; i < m_alltimer.size(); ++i)
+	{
+		m_supertimer += m_alltimer[i];
+	}
 }
 
 void PerformanceAnalyzer::report() {

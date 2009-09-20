@@ -78,7 +78,7 @@ void Database::read_conf(std::string filename) {
 	// determine which probe-type to load: 
 	bool probe_found=false;
 	for (int i=0;i<rootsetting["sfactors"].getLength();i++) {	
-		if (static_cast<string>(rootsetting["sfactors"][i].getName())== Params::Inst()->scattering.probe) {
+		if (static_cast<string>(rootsetting["sfactors"][i].getName())== Params::Inst()->scattering.scatterfactors) {
 		
 			for (int j=0;j<rootsetting["sfactors"][i].getLength();j++) {	
 				

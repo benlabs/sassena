@@ -61,6 +61,31 @@ void Timer::stop(std::string tk)   {
 	if (Params::Inst()->debug.timer) Info::Inst()->write(string("Stopping timer for <")+tk+string(">"));
 }
 
+void Timer::clear() {
+	times.clear();
+	starttimes.clear();
+	states.clear();
+}
+
+Timer& Timer::operator+=(Timer& other) {
+	map<string,vector<double> >::iterator i = other.times.begin();
+	for(; i != other.times.end(); i++)
+	{
+		for(vector<double>::iterator j = i->second.begin(); j != i->second.end(); ++j)
+		{
+			this->times[i->first].push_back(*j);			
+		}
+	}
+	return *this;
+}
+
+Timer Timer::operator+( Timer& other) {
+	Timer result;
+	result = *this;
+	result += other;
+	return result;
+}
+
 vector<string> Timer::keys() {
 	vector<string> ret;
 //	for (map<string,times_type>::iterator ti=times.begin();ti!=times.end();ti++) {

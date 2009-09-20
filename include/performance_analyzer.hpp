@@ -38,6 +38,9 @@ using namespace boost::accumulators;
 class PerformanceAnalyzer {
 
 	Timer m_supertimer; // contains all timing information from all nodes
+	std::vector<Timer> m_alltimer;
+	
+	void analyze();
 	
 public:
 	PerformanceAnalyzer(boost::mpi::communicator thisworld, Timer timer);

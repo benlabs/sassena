@@ -30,10 +30,10 @@
 class VectorUnfold {
 protected:
 	CartesianCoor3D m_q;
-	std::vector<CartesianCoor3D> m_qvectors;	
+	std::vector<CartesianCoor3D> m_unfolded_vectors;	
 public:
 	virtual void execute() = 0;
-	virtual std::vector<CartesianCoor3D>& qvectors() = 0;	
+	virtual std::vector<CartesianCoor3D>& vectors() = 0;	
 };
 
 class NoVectorUnfold : public VectorUnfold {
@@ -41,7 +41,7 @@ public:
 	NoVectorUnfold(CartesianCoor3D q);
 	
 	void execute();
-	std::vector<CartesianCoor3D>& qvectors();	
+	std::vector<CartesianCoor3D>& vectors();	
 };
 
 class SphereVectorUnfold : public VectorUnfold {
@@ -52,7 +52,7 @@ public:
 	SphereVectorUnfold(CartesianCoor3D q);
 	
 	void execute();
-	std::vector<CartesianCoor3D>& qvectors();	
+	std::vector<CartesianCoor3D>& vectors();	
 	
 	void set_resolution(size_t resolution);
 	void set_seed(uint32_t seed);
@@ -68,7 +68,7 @@ public:
 	CylinderVectorUnfold(CartesianCoor3D q);
 	
 	void execute();
-	std::vector<CartesianCoor3D>& qvectors();
+	std::vector<CartesianCoor3D>& vectors();
 	
 	void set_resolution(size_t resolution);
 	void set_seed(uint32_t seed);
@@ -87,7 +87,7 @@ public:
 	FileVectorUnfold(CartesianCoor3D q);
 	
 	void execute();
-	std::vector<CartesianCoor3D>& qvectors();
+	std::vector<CartesianCoor3D>& vectors();
 	
 };
 

@@ -398,10 +398,10 @@ int main(int argc,char** argv) {
 	
 	timer.stop("total");
 	
-//	PerformanceAnalyzer perfanal(world,timer); // collect timing information from everybody.
+	PerformanceAnalyzer perfanal(world,timer); // collect timing information from everybody.
 	
 	if (world.rank()==0) {
-//		perfanal.report();
+		perfanal.report();
 		Info::Inst()->write("Successfully finished... Have a nice day!");
 	}
 

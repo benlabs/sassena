@@ -259,7 +259,8 @@ public:
 	size_t stride;
 };
 
-class ScatteringAverageParameters {
+
+class ScatteringAverageOrientationParameters {
 private:
 	/////////////////// MPI related
 	// make this class serializable to 
@@ -277,7 +278,7 @@ private:
 	/////////////////// 
 
 public:	
-	ScatteringAverageParameters() {
+	ScatteringAverageOrientationParameters() {
 		type = "none";
 		method = "bruteforce";
 		vectors = "mcboostunisphere";
@@ -294,6 +295,63 @@ public:
 	std::string origin;
 	CartesianCoor3D axis;
 	
+};
+
+
+
+class ScatteringAverageMotionParameters {
+private:
+	/////////////////// MPI related
+	// make this class serializable to 
+	// allow sample to be transmitted via MPI
+    friend class boost::serialization::access;	
+	template<class Archive> void serialize(Archive & ar, const unsigned int version)
+    {
+		ar & type;
+		ar & method;
+		ar & vectors;
+		ar & resolution;
+		ar & origin;
+		ar & axis;
+    }
+	/////////////////// 
+
+public:	
+	ScatteringAverageMotionParameters() {
+		type = "none";
+		method = "bruteforce";
+		vectors = "mcboostunisphere";
+		resolution = 10;
+		origin = "";
+		axis = CartesianCoor3D(1,0,0);
+	}
+	
+	std::string type;
+	std::string method;
+	std::string vectors;
+	double resolution;
+	
+	std::string origin;
+	CartesianCoor3D axis;
+	
+};
+
+class ScatteringAverageParameters {
+private:
+	/////////////////// MPI related
+	// make this class serializable to 
+	// allow sample to be transmitted via MPI
+    friend class boost::serialization::access;	
+	template<class Archive> void serialize(Archive & ar, const unsigned int version)
+    {
+		ar & orientation;
+		ar & motion;
+    }
+	/////////////////// 
+
+public:	
+	ScatteringAverageOrientationParameters orientation;
+	ScatteringAverageMotionParameters motion;
 };
 
 class ScatteringCorrelationParameters {
@@ -390,7 +448,7 @@ private:
     friend class boost::serialization::access;	
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
     {
-		ar & probe;
+		ar & scatterfactors;
 		ar & interference;
 		ar & correlation;
 		ar & target;
@@ -406,7 +464,7 @@ public:
 	ScatteringCorrelationParameters correlation;
 	std::string target;
 
-	std::string probe;
+	std::string scatterfactors;
 	
 	ScatteringVectorsParameters qvectors;
 	

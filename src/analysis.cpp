@@ -94,7 +94,7 @@ void scatter_cylinder_multipole(Sample& sample,Atomselection as,CartesianCoor3D 
 
 	Atoms& atoms = sample.atoms;
 	
-	CartesianCoor3D o = Params::Inst()->scattering.average.axis;
+	CartesianCoor3D o = Params::Inst()->scattering.average.orientation.axis;
 	o = o / o.length();
 	
 	// get the part of the scattering vector perpenticular to the o- orientation

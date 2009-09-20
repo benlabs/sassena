@@ -42,6 +42,7 @@ class CoordinateSets {
 	Atomselection* p_selection;
 	
 	size_t currentframe_i;
+	CoordinateSet* p_current_cs; // hold a local copy of the current coordinateset (required for motion averaging)
 
 public:
 	CoordinateSets();
