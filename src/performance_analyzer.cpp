@@ -17,6 +17,9 @@
 #include <iostream>
 #include <iomanip>
 
+#include <boost/algorithm/string.hpp>
+#include <boost/format.hpp>
+
 #include "log.hpp"
 #include "parameters.hpp"
 #include "timer.hpp"
@@ -41,45 +44,44 @@ void PerformanceAnalyzer::analyze() {
 void PerformanceAnalyzer::report() {
 
 	Timer& timer = m_supertimer;
-	stringstream ss;
-		vector<string> keys = timer.keys();
-				
-		ss << "INFO>> " << "                                                                         " << endl;
-		ss << "INFO>> " << "                    Performance Analysis                                 " << endl;
-		ss << "INFO>> " << "-------------------------------------------------------------------------" << endl;
-		ss << "INFO>> " << " mean and total runtimes:                                                " << endl;				
-		ss << "INFO>> " << "-------------------------------------------------------------------------" << endl;
-		ss << "INFO>> ";
-		ss << setw(31) << " measure |";
-		ss << setw(12) << " total |";
-		ss << setw(10) << " count |";
-		ss << setw(10) << " mean |";
-		ss << setw(10) << " stddev ";
-		ss << endl;
-		ss << "INFO>> " << "-------------------------------------------------------------------------" << endl;		
-		for (vector<string>::iterator ki=keys.begin();ki!=keys.end();ki++) {
-			ss << "INFO>> " << setw(29) << *ki << " |" << "\t" ;
-			ss << setiosflags(ios::fixed) << setprecision(3) << setw(8) << timer.sum(*ki)            << " |";	
-			ss << setiosflags(ios::fixed) << setprecision(0) << setw(8) << timer.count(*ki)          << " |";		
-			ss << setiosflags(ios::fixed) << setprecision(3) << setw(8) << timer.mean(*ki)           << " |";
-			ss << setiosflags(ios::fixed) << setprecision(3) << setw(8) << sqrt(timer.variance(*ki)) << endl;
-		}
-		ss << "INFO>> " << "-------------------------------------------------------------------------" << endl;		
 
-		ss << "INFO>> " << "-------------------------------------------------------------------------" << endl;
-		ss << "INFO>> " << " watermarks:                                                " << endl;				
-		ss << "INFO>> " << "-------------------------------------------------------------------------" << endl;
-		ss << "INFO>> ";
-		ss << setw(31) << " measure |";
-		ss << setw(12) << " min |";
-		ss << setw(10) << " max ";
-		ss << endl;
-		ss << "INFO>> " << "-------------------------------------------------------------------------" << endl;		
+		vector<string> keys = timer.keys();
+		string mthead = (boost::format("%|30t|%s|%|12t|%s|%|9t|%s|%|9t|%s|%|9t|%s") % "measure" % "total" % "count" % "mean" % "stddev").str();
+		string mmhead = (boost::format("%|30t|%s|%|12t|%s|%|9t|%s|%|20t|%s") % "measure" % "min" % "max" % "").str();
+
+
+		Info::Inst()->write("                                                                         ");
+		Info::Inst()->write("                    Performance Analysis                                 ");
+		Info::Inst()->write("-------------------------------------------------------------------------");
+		Info::Inst()->write(" mean and total runtimes:                                                ");				
+		Info::Inst()->write("-------------------------------------------------------------------------");
+		Info::Inst()->write(mthead);
+		Info::Inst()->write("-------------------------------------------------------------------------");
+		
 		for (vector<string>::iterator ki=keys.begin();ki!=keys.end();ki++) {
-			ss << "INFO>> " << setw(29) << *ki << " |" << "\t" ;
-			ss << setiosflags(ios::fixed) << setprecision(3) << setw(8) << timer.min(*ki)            << " |";	
-			ss << setiosflags(ios::fixed) << setprecision(3) << setw(8) << timer.max(*ki)            << endl;
+			boost::format form("%|30t|%s|%|12t|%s|%|9t|%s|%|9t|%s|%|9t|%s");
+			form % *ki;
+			form % timer.sum(*ki);
+			form % timer.count(*ki);
+			form % timer.mean(*ki);
+			form % sqrt(timer.variance(*ki));
+			Info::Inst()->write(form.str());
 		}
-		ss << "INFO>> " << "-------------------------------------------------------------------------" << endl;		
-	
+		Info::Inst()->write("-------------------------------------------------------------------------");
+
+		Info::Inst()->write("-------------------------------------------------------------------------");
+		Info::Inst()->write(" watermarks:                                                             ");				
+		Info::Inst()->write("-------------------------------------------------------------------------");
+		Info::Inst()->write(mmhead);
+		Info::Inst()->write("-------------------------------------------------------------------------");
+
+		for (vector<string>::iterator ki=keys.begin();ki!=keys.end();ki++) {
+			boost::format form("%|30t|%s|%|12t|%s|%|9t|%s");
+			form % *ki;
+			form % timer.min(*ki);
+			form % timer.max(*ki);
+			Info::Inst()->write(form.str());
+		}
+		Info::Inst()->write("-------------------------------------------------------------------------");
+
 }

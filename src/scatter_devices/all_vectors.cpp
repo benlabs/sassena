@@ -300,20 +300,24 @@ void AllScatterDevice::execute(CartesianCoor3D& q) {
 	
 	// take the direction of the first motion as the base motion:
 	string avmom = Params::Inst()->scattering.average.motion.method;
+	CartesianCoor3D motion_direction;
+	if (Params::Inst()->sample.motions.size()>0) {
+		motion_direction = Params::Inst()->sample.motions[0].direction;		
+	}
 	VectorUnfold* p_motion_vectorunfold = NULL;			
 	if (avmom=="bruteforce") {
 		string avv = Params::Inst()->scattering.average.motion.vectors;
 		string avt = Params::Inst()->scattering.average.motion.type;
 
 		if (avt=="sphere") {
-			SphereVectorUnfold* p_vu = new SphereVectorUnfold(q);
+			SphereVectorUnfold* p_vu = new SphereVectorUnfold(motion_direction );
 			p_vu->set_resolution(Params::Inst()->scattering.average.motion.resolution);
 			p_vu->set_vectors(Params::Inst()->scattering.average.motion.vectors);
 			p_vu->set_seed(0);
 			p_motion_vectorunfold = p_vu; 
 		}
 		if (avt=="cylinder") {
-			CylinderVectorUnfold* p_vu = new CylinderVectorUnfold(q);
+			CylinderVectorUnfold* p_vu = new CylinderVectorUnfold(motion_direction );
 			p_vu->set_resolution(Params::Inst()->scattering.average.motion.resolution);
 			p_vu->set_vectors(Params::Inst()->scattering.average.motion.vectors);
 			p_vu->set_axis(Params::Inst()->scattering.average.motion.axis);
@@ -321,11 +325,11 @@ void AllScatterDevice::execute(CartesianCoor3D& q) {
 			p_motion_vectorunfold = p_vu; 
 		}		 
 		else if (avt=="file") {
-			p_motion_vectorunfold = new FileVectorUnfold(q);
+			p_motion_vectorunfold = new FileVectorUnfold(motion_direction);
 		}
 	}
 	else { // default: no unfold
-		p_motion_vectorunfold = new NoVectorUnfold(q);
+		p_motion_vectorunfold = new NoVectorUnfold(motion_direction);
 	}
 
 	p_motion_vectorunfold->execute();
@@ -337,6 +341,7 @@ void AllScatterDevice::execute(CartesianCoor3D& q) {
 	for(size_t i = 0; i < Params::Inst()->sample.motions.size(); ++i)
 	{
 		old_motion_directions.push_back(Params::Inst()->sample.motions[i].direction);
+		cout << "old: " << Params::Inst()->sample.motions[i].direction << endl;
 	}
 	
 	for(size_t mi = 0; mi < mvectors.size(); ++mi) {
@@ -345,6 +350,7 @@ void AllScatterDevice::execute(CartesianCoor3D& q) {
 		{
 			// this is faulty. the relative orientation of the motions should be conserved.
 			Params::Inst()->sample.motions[i].direction = mvectors[mi];
+			cout << mvectors[mi] << endl;
 		}
 		
 		for(size_t qi = 0; qi < qvectors.size(); ++qi)
