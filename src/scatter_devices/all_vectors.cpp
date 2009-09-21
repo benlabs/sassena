@@ -79,7 +79,10 @@ void AllScatterDevice::scatter_frame_norm1(size_t localframe, CartesianCoor3D& q
 
 	size_t noa = coordinate_sets.get_selection().size();
 	
+	timer.start("sd:fs:f:ld");												
 	CoordinateSet& cs = coordinate_sets.load(myframes[localframe]);
+	timer.stop("sd:fs:f:ld");												
+	
 	vector<double>& sfs = scatterfactors.get_all();
 
 	//	for(size_t j = 0; j < a.size2(); ++j)
@@ -127,7 +130,9 @@ void AllScatterDevice::scatter_frame_norm1(size_t localframe, CartesianCoor3D& q
 void AllScatterDevice::scatter_frames_norm1(CartesianCoor3D& q) {
 	for(size_t i = 0; i < a.size1(); ++i)
 	{
+		timer.start("sd:fs:f");												
 		scatter_frame_norm1(i,q);
+		timer.stop("sd:fs:f");														
 	}
 }
 
@@ -138,7 +143,10 @@ std::vector<std::complex<double> > AllScatterDevice::correlate_frames() {
 	//negotiate maximum size for coordinatesets
 	size_t CSsize = myframes.size();
 	size_t maxCSsize;
+	if (Params::Inst()->debug.barriers) p_thisworldcomm->barrier();
+	timer.start("sd:corr::areduce");										
 	boost::mpi::all_reduce(*p_thisworldcomm,CSsize,maxCSsize,boost::mpi::maximum<size_t>());
+	timer.stop("sd:corr::areduce");										
 
 	vector<complex<double> > local_A;
 	local_A.resize(maxCSsize,complex<double>(0,0));
@@ -152,7 +160,10 @@ std::vector<std::complex<double> > AllScatterDevice::correlate_frames() {
 	vector<double> local_Ar = flatten(local_A);
 	vector<double> all_Ar; all_Ar.resize(2*maxCSsize*p_thisworldcomm->size());	
 
+	if (Params::Inst()->debug.barriers) p_thisworldcomm->barrier();
+	timer.start("sd:corr:agather");										
 	boost::mpi::all_gather(*p_thisworldcomm,&local_Ar[0], 2*maxCSsize ,&all_Ar[0]);
+	timer.stop("sd:corr:agather");										
 
 	EvenDecompose edecomp(p_sample->frames.size(),p_thisworldcomm->size());
 
@@ -172,6 +183,8 @@ std::vector<std::complex<double> > AllScatterDevice::correlate_frames() {
 	vector<size_t> mysteps = rmdecomp.indexes_for(p_thisworldcomm->rank());
 	
 	vector<complex<double> > correlated_a; correlated_a.resize(p_sample->frames.size(),complex<double>(0,0));
+
+	timer.start("sd:cor:correlate");											
 	for(size_t i = 0; i < mysteps.size(); ++i)
 	{
 		size_t tau = mysteps[i];
@@ -184,11 +197,16 @@ std::vector<std::complex<double> > AllScatterDevice::correlate_frames() {
 		}
 		correlated_a[tau] /= (last_starting_frame); // maybe a conj. multiply here		
 	}
+	timer.stop("sd:corr:correlate");											
 
 	vector<double> ain_r = flatten(correlated_a);
 	
 	vector<double> aout_r; aout_r.resize(ain_r.size());
+
+	if (Params::Inst()->debug.barriers) p_thisworldcomm->barrier();
+	timer.start("sd:corr:reduce");											
 	boost::mpi::reduce(*p_thisworldcomm,&ain_r[0],ain_r.size(),&aout_r[0],std::plus<double>(),0);
+	timer.stop("sd:corr:reduce");											
 
 	return compress(aout_r);
 }
@@ -201,7 +219,10 @@ vector<complex<double> > AllScatterDevice::conjmultiply_frames() {
 	//negotiate maximum size for coordinatesets
 	size_t CSsize = myframes.size();
 	size_t maxCSsize;
+	if (Params::Inst()->debug.barriers) p_thisworldcomm->barrier();
+	timer.start("sd:conmul:areduce");										
 	boost::mpi::all_reduce(*p_thisworldcomm,CSsize,maxCSsize,boost::mpi::maximum<size_t>());
+	timer.stop("sd:conmul:areduce");										
 
 	// in conjmultiply we just have to conj multiply each a(x,0)
 	complex<double> cA = 0; 
@@ -221,7 +242,10 @@ vector<complex<double> > AllScatterDevice::conjmultiply_frames() {
 	vector<double> local_Ar = flatten(local_A);
 	vector<double> all_Ar; all_Ar.resize(2*maxCSsize*p_thisworldcomm->size());	
 
+	if (Params::Inst()->debug.barriers) p_thisworldcomm->barrier();
+	timer.start("sd:conjmul:gather");										
 	boost::mpi::gather(*p_thisworldcomm,&local_Ar[0], 2*maxCSsize ,&all_Ar[0],0);
+	timer.stop("sd:conjmul:gather");										
 
 	if (p_thisworldcomm->rank()==0) {
 		EvenDecompose edecomp(p_sample->frames.size(),p_thisworldcomm->size());
@@ -258,6 +282,7 @@ void AllScatterDevice::execute(CartesianCoor3D& q) {
 			
 	string avm = Params::Inst()->scattering.average.orientation.method;
 				
+	timer.start("sd:vector:unfold");
 	VectorUnfold* p_vectorunfold = NULL;			
 	if (avm=="bruteforce") {
 		string avv = Params::Inst()->scattering.average.orientation.vectors;
@@ -290,13 +315,16 @@ void AllScatterDevice::execute(CartesianCoor3D& q) {
 	}
 
 	p_vectorunfold->execute();
+	timer.stop("sd:vector:unfold");
 
 	vector<CartesianCoor3D>& qvectors = p_vectorunfold->vectors();
 
 	/// k, qvectors are prepared:
 	vector<complex<double> > spectrum; spectrum.resize(p_sample->frames.size());
 
+	timer.start("sd:sf:update");
 	scatterfactors.update(q); // scatter factors only dependent on length of q, hence we can do it once before the loop
+	timer.stop("sd:sf:update");
 	
 	// take the direction of the first motion as the base motion:
 	string avmom = Params::Inst()->scattering.average.motion.method;
@@ -341,7 +369,6 @@ void AllScatterDevice::execute(CartesianCoor3D& q) {
 	for(size_t i = 0; i < Params::Inst()->sample.motions.size(); ++i)
 	{
 		old_motion_directions.push_back(Params::Inst()->sample.motions[i].direction);
-		cout << "old: " << Params::Inst()->sample.motions[i].direction << endl;
 	}
 	
 	for(size_t mi = 0; mi < mvectors.size(); ++mi) {
@@ -350,25 +377,35 @@ void AllScatterDevice::execute(CartesianCoor3D& q) {
 		{
 			// this is faulty. the relative orientation of the motions should be conserved.
 			Params::Inst()->sample.motions[i].direction = mvectors[mi];
-			cout << mvectors[mi] << endl;
 		}
 		
 		for(size_t qi = 0; qi < qvectors.size(); ++qi)
 		{		
+			timer.start("sd:fs");
 			scatter_frames_norm1(qvectors[qi]); // put summed scattering amplitudes into first atom entry		
+			timer.stop("sd:fs");
+			
 			vector<complex<double> > thisspectrum;
 			if (Params::Inst()->scattering.correlation.type=="time") {
 				if (Params::Inst()->scattering.correlation.method=="direct") {
+					timer.start("sd:correlate");					
 					thisspectrum = correlate_frames(); // if correlation, otherwise do a elementwise conj multiply here			
+					timer.stop("sd:correlate");					
 				} else {
 					Err::Inst()->write("Correlation method not understood. Supported methods: direct");
 					throw;
 				}
 			} else {
+				timer.start("sd:conjmul");				
 				thisspectrum = conjmultiply_frames();
+				timer.stop("sd:conjmul");									
 			}
-	
-			if (p_thisworldcomm->rank()==0) superpose_spectrum(thisspectrum,spectrum);
+			
+			if (p_thisworldcomm->rank()==0) {
+				timer.start("sd:superpose");										
+				superpose_spectrum(thisspectrum,spectrum);
+				timer.stop("sd:superpose");														
+			}											
 		}
 		
 	}

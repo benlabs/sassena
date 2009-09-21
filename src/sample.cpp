@@ -64,7 +64,7 @@ void Sample::deuter(std::string group,double coverage,int seed = -1) {
 		}
 	}
 	
-	clog << "INFO>> " << " Deuterated with random substitution, seed = " << seed << ", totalsize/targetsize/realsize=" << total_size << "/" << target_size << "/" << real_size << endl;
+	Info::Inst()->write(string(" Deuterated with random substitution, seed = ") +to_s(seed) +string(", totalsize/targetsize/realsize=") + to_s(total_size) +string("/") + to_s(target_size) + string("/") + to_s(real_size));
 	
 	for(size_t i = 0; i < total_size; ++i)
 	{

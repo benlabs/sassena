@@ -76,7 +76,7 @@ int main(int argc,char** argv) {
 	
 	Info::Inst()->set_prefix(to_s(world.rank())+string(".Info>>"));
 	Warn::Inst()->set_prefix(to_s(world.rank())+string(".Warn>>"));
-	Err::Inst()->set_prefix(to_s(world.rank())+string(".Err>>"));
+	 Err::Inst()->set_prefix(to_s(world.rank())+string(".Err>>"));
 	
 	Params* params = Params::Inst();
 	Database* database = Database::Inst();
@@ -361,7 +361,7 @@ int main(int argc,char** argv) {
 			std::string prefix = Params::Inst()->output.prefix;
 			for(std::vector<OutputFileParameters>::iterator ofi = Params::Inst()->output.files.begin(); ofi != Params::Inst()->output.files.end(); ++ofi)
 			{
-				cout << ofi->filename << endl;
+				Info::Inst()->write(string("Writing to: ") + ofi->filename);
 				if (ofi->method=="plain") {
 					fss.write_plain(ofi->filename,ofi->format);				
 				} else if (ofi->method=="average") {
@@ -379,7 +379,8 @@ int main(int argc,char** argv) {
 
 	// wait before deleting anything...
 	world.barrier();
-	
+
+	PerformanceAnalyzer perfanal(world,p_ScatterDevice->timer); // collect timing information from everybody.
 	
 	delete p_ScatterDevice;
 
@@ -397,11 +398,10 @@ int main(int argc,char** argv) {
 	//------------------------------------------//	
 	
 	timer.stop("total");
-	
-	PerformanceAnalyzer perfanal(world,timer); // collect timing information from everybody.
-	
+		
 	if (world.rank()==0) {
 		perfanal.report();
+		Info::Inst()->write(string("Total runtime (s): ")+to_s(timer.sum("total")));
 		Info::Inst()->write("Successfully finished... Have a nice day!");
 	}
 

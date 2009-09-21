@@ -267,7 +267,7 @@ void Atoms::add_selection(std::string name, std::string filename, std::string fo
 				if ( pos !=string::npos )  {
 					size_t pos2 = line.find("]");
 					if (pos2==string::npos) {
-						cerr << "ERROR>> " << "ndx file is missing closing bracket" << endl;
+						Err::Inst()->write("ndx file is missing closing bracket");					
 						throw;
 					}
 					stringstream cleannamestream(line.substr(pos+1,pos2-pos));
@@ -284,16 +284,16 @@ void Atoms::add_selection(std::string name, std::string filename, std::string fo
 			}
 			for (map<string,vector<size_t> >::iterator ii=indexes.begin();ii!=indexes.end();ii++) {
 				selections[ii->first] = Atomselection(*this,ii->second,ii->first);									
-				clog << "INFO>> " << "Adding selection: " << ii->first << endl;
+				Info::Inst()->write(string("Adding selection: ") + ii->first);
 			}
 	}
 	else if (format=="pdb") {
 		if (name=="") {
-			cerr << "ERROR>> " << "pdb selection entries must specify a name for the selection" << endl;
+			Err::Inst()->write("pdb selection entries must specify a name for the selection");
 			throw;
 		}
 		selections[name] = Atomselection(*this,filename,format,select,select_value,name);			
-		clog << "INFO>> " << "Adding selection: " << name << endl;	
+		Info::Inst()->write(string("Adding selection: ") + name);
 		
 	}
 
