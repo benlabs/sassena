@@ -95,11 +95,14 @@ ADD_EXECUTABLE(sassena
 	src/frames.cpp 
 	src/grid.cpp  
 	src/log.cpp	 
+	src/measures/center_of_mass.cpp
+	src/motion_walker.cpp
 	src/parameters.cpp 	
 	src/performance_analyzer.cpp
 	src/progress_reporter.cpp
 	src/sample.cpp 
 	src/sassena.cpp  
+	src/scatter_devices/all_multipole.cpp 	
 	src/scatter_devices/all_vectors.cpp 
 	src/scatter_devices/self_vectors.cpp 
 	src/scatter_factors.cpp

@@ -59,6 +59,9 @@ public:
 	
 	std::vector<Atomselection> slice(size_t number);
 	Atomselection subset(size_t offset,size_t maxcount);
+	
+	// test whether this selection is a subset of an-other selection 
+	bool is_subset_of(Atomselection& other);
 };
 
 #endif

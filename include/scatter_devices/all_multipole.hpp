@@ -50,7 +50,7 @@ class AllMScatterDevice : public ScatterDevice {
 
 	boost::numeric::ublas::matrix<std::complex<double> > a; // rows = time coordinate, columns = particles
 
-	CoordinateSetsM coordinate_sets;
+	CoordinateSetsM coordinate_sets; // a modified version of coordinate_sets which keeps r,phi and rho at  x,y,z
 
 	ScatterFactors scatterfactors;
 
@@ -65,9 +65,7 @@ class AllMScatterDevice : public ScatterDevice {
 	void scatter_frame_norm1(size_t iframe,CartesianCoor3D& q); // a(x,0) contains the total scattering amplitude
 	void scatter_frames_norm1(CartesianCoor3D& q); // a(x,0) contains the total scattering amplitude
 
-	std::vector<std::complex<double> > correlate_frames();
-	std::vector<std::complex<double> > conjmultiply_frames();
-
+	std::vector<std::complex<double> > gather_frames();
 
 	void superpose_spectrum(std::vector<std::complex<double> >& spectrum, std::vector<std::complex<double> >& fullspectrum);	
 

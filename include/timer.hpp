@@ -73,9 +73,9 @@ class Timer {
 	    }
 		/////////////////// 
 	
-//	typedef boost::accumulators::accumulator_set<double,features<tag::min,tag::max,tag::mean,tag::variance,tag::sum,tag::count> > times_type;
-//	std::map<std::string,times_type > times;
-	std::map<std::string,std::vector<double> > times;
+	typedef boost::accumulators::accumulator_set<double,features<tag::min,tag::max,tag::mean,tag::variance,tag::sum,tag::count> > times_type;
+	std::map<std::string,times_type > times;
+//	std::map<std::string,std::vector<double> > times;
 	
 	std::map<std::string,Timer_timeval> starttimes;
 	std::map<std::string,bool> states;
@@ -98,8 +98,9 @@ public:
 	
 	void clear();
 	
-	Timer& operator+=( Timer& other);
-	Timer operator+( Timer& other);
+	bool has_key(std::string tk);
+//	Timer& operator+=( Timer& other);
+//	Timer operator+( Timer& other);
 			
 };
 

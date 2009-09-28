@@ -226,6 +226,7 @@ private:
 	std::vector<std::string> carboncopy;
 
 	void read_conf(std::string filename);
+	void read_xml(std::string filename);
 
 	std::string guessformat(std::string filename);
 	bool check();

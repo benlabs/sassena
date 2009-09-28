@@ -173,4 +173,16 @@ Atomselection Atomselection::subset(size_t offset,size_t maxcount) {
 	return result;
 }
 
+bool Atomselection::is_subset_of(Atomselection& other) {
+	// use the boolean-array to test:
+	// if this->booleanarray has a 1 where other doesn't , then return false
+	std::vector<bool>& otherbool = other.booleanarray;
+	for(size_t i = 0; i < booleanarray.size(); ++i)
+	{
+		if ( (booleanarray[i]==true) && (otherbool[i]==false) ) return false;
+	}
+	
+	return true;
+};
+
 // end of file

@@ -120,7 +120,7 @@ int main(int argc,char** argv) {
 		params->init(string(argv[1]));
 		
 		Info::Inst()->write("reading database");
-		database->init(string(argv[2]),"conf");
+		database->init(string(argv[2]));
 
 	    // create the sample via structure file	
 		Info::Inst()->write(string("Reading structure information from file: ")+params->sample.structure.file);
@@ -296,7 +296,13 @@ int main(int argc,char** argv) {
 		p_ScatterDevice = new SelfScatterDevice(local,sample);
 	}
 	else if (params->scattering.interference.type == "all"){
-		p_ScatterDevice = new AllScatterDevice(local,sample);
+		if (params->scattering.average.orientation.method == "bruteforce") {
+			p_ScatterDevice = new AllScatterDevice(local,sample);			
+		} else if (params->scattering.average.orientation.method == "multipole") {
+			//Err::Inst()->write("Multipole method currently not supported");
+			//throw;
+			p_ScatterDevice = new AllMScatterDevice(local,sample);			
+		}
 	}
 	
 	if (p_ScatterDevice==NULL) {
@@ -369,7 +375,6 @@ int main(int argc,char** argv) {
 				} else {
 					Warn::Inst()->write(string("Output method not understood: ")+ofi->method);
 				}
-
 			}
 
 			timer.stop("result::output");
@@ -380,15 +385,16 @@ int main(int argc,char** argv) {
 	// wait before deleting anything...
 	world.barrier();
 
+	if (world.rank()==0) {
+		Info::Inst()->write(string("Aggregating timing information for performance analysis..."));		
+	}
+
 	PerformanceAnalyzer perfanal(world,p_ScatterDevice->timer); // collect timing information from everybody.
 	
 	delete p_ScatterDevice;
 
 	// make nodes empty, computation finished
 	sample.frames.clear_cache();
-
-	// wait for all nodes to finish their computations....
-	world.barrier();
 
 
 	//------------------------------------------//

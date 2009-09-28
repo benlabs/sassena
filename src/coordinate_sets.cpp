@@ -22,6 +22,7 @@
 #include "frame.hpp"
 #include "coor3d.hpp"
 #include "log.hpp"
+#include "measures/center_of_mass.hpp"
 #include "parameters.hpp"
 #include "database.hpp"
 
@@ -29,7 +30,33 @@ using namespace std;
 
 // has to be default constructible
 CoordinateSets::CoordinateSets() {
-
+	
+	// construct a helper for the motions:
+	if (Params::Inst()->sample.motions.size()>0) {
+		for(size_t i = 0; i < Params::Inst()->sample.motions.size(); ++i)
+		{
+			SampleMotionParameters& motion = Params::Inst()->sample.motions[i];
+			
+			MotionWalker* p_mw = NULL;
+			
+			if (motion.type=="linear") {
+				p_mw = new LinearMotionWalker(motion.displace,motion.direction);
+			}
+			else if (motion.type=="fixed") {
+				p_mw = new FixedMotionWalker(motion.displace,motion.direction);
+			}
+			else if (motion.type=="oscillation") {
+				p_mw = new OscillationMotionWalker(motion.displace,motion.frequency, motion.direction);
+			}
+			else if (motion.type=="randomwalk") {
+				p_mw = new RandomMotionWalker(motion.displace,motion.seed, motion.direction);				
+			}
+			
+			if (p_mw!=NULL) {
+				m_motion_walkers.push_back(make_pair<string,MotionWalker*>(motion.selection,p_mw));				
+			}
+		}
+	}
 }
 
 CoordinateSets::~CoordinateSets() {
@@ -38,44 +65,48 @@ CoordinateSets::~CoordinateSets() {
 	{
 		delete sci->second;
 	}
+	
+	for(size_t i = 0; i < m_motion_walkers.size(); ++i)
+	{
+		delete m_motion_walkers[i].second;
+	}
+}
+
+void CoordinateSets::load_into_cache(size_t framenumber) {
+	CoordinateSet* pcset = NULL;
+	if ((Params::Inst()->limits.coordinatesets_cache_max>0) && setcache.size()>=Params::Inst()->limits.coordinatesets_cache_max) {
+		clear_cache();
+	}
+	p_sample->frames.load(framenumber,p_sample->atoms);
+	pcset = new CoordinateSet(p_sample->frames.current(),*p_selection); 
+	
+	for(size_t i = 0; i < m_motion_walkers.size(); ++i)
+	{
+		string sel = m_motion_walkers[i].first;
+		MotionWalker* p_mw = m_motion_walkers[i].second;
+
+		if (sel == "") {
+			pcset->translate(p_mw->translation(framenumber),*p_selection, p_sample->atoms.selections[sel]);		
+		} else {
+			p_sample->atoms.assert_selection(sel);
+			pcset->translate(p_mw->translation(framenumber),*p_selection, p_sample->atoms.selections[sel]);						
+		}	
+	}		
+	
+	setcache[framenumber] = pcset;
 }
 
 CoordinateSet& CoordinateSets::load(size_t framenumber) {
 	CoordinateSet* pcset = NULL;
 	// this is the cache:
-	if (setcache.find(framenumber)==setcache.end()) {
-		if ((Params::Inst()->limits.coordinatesets_cache_max>0) && setcache.size()>=Params::Inst()->limits.coordinatesets_cache_max) {
-			clear_cache();
-		}
-		p_sample->frames.load(framenumber,p_sample->atoms);
-		pcset = new CoordinateSet(p_sample->frames.current(),*p_selection);
-		setcache[framenumber] = pcset;
+	if (setcache.find(framenumber)==setcache.end()) {	
+		load_into_cache(framenumber);
 	}
-	else {
-		pcset = setcache[framenumber];
-	}
-	
-	// make a copy and add motion
-	m_current_cs = *pcset; 
 
-	if (Params::Inst()->sample.motions.size()>0) {
-		for(size_t i = 0; i < Params::Inst()->sample.motions.size(); ++i)
-		{
-			SampleMotionParameters& motion = Params::Inst()->sample.motions[i];
-			if (motion.type=="linear") {
-				m_current_cs.translate(framenumber*motion.displace*motion.direction);
-			}
-			else if (motion.type=="fixed") {
-				m_current_cs.translate(motion.displace*motion.direction);
-			}
-			else if (motion.type=="oscillation") {
-				m_current_cs.translate(motion.displace*sin(2*M_PI*framenumber*motion.frequency)*motion.direction);
-			}
-		}
-	}
+	pcset = setcache[framenumber];
 	
 	currentframe_i = framenumber;
-	return m_current_cs;
+	return *pcset;
 }
 
 void CoordinateSets::clear_cache() {
@@ -102,104 +133,47 @@ void CoordinateSets::set_sample(Sample& sample) {
 }
 
 CoordinateSet& CoordinateSets::current() {
-	return m_current_cs;
+	return *(setcache[currentframe_i]);
 }
 
 
 //// M:
 
-
-
-
-// has to be default constructible
-CoordinateSetsM::CoordinateSetsM() {
-	p_origin_selection = NULL;		
-}
-
-CoordinateSetsM::~CoordinateSetsM() {
-	typedef std::map<size_t,CoordinateSetM*>::iterator sci_iterator;
-	for(sci_iterator sci = setcache.begin(); sci != setcache.end(); ++sci)
-	{
-		delete sci->second;
-	}
-}
-
-CoordinateSetM& CoordinateSetsM::load(size_t framenumber) {
+CoordinateSet& CoordinateSetsM::load(size_t framenumber) {
 	CoordinateSet* pcset = NULL;
-	CoordinateSetM* pcsetm = NULL;
+	// this is the cache:
+	if (setcache.find(framenumber)==setcache.end()) {	
+		CoordinateSets::load_into_cache(framenumber); // call parent function to handle class behaviour
+		pcset = setcache[framenumber];
+
+		CartesianCoor3D origin; origin = CenterOfMass(p_sample->atoms,*p_origin_selection,*p_selection,*pcset);
+		// now do the transformation:
+		for(size_t i = 0; i < pcset->size(); ++i)
+		{
+			double x = pcset->x[i] - origin.x;
+			double y = pcset->y[i] - origin.y;
+			double z = pcset->z[i] - origin.z;
+			
+			SphericalCoor3D sc(CartesianCoor3D(x,y,z));
+			// dirty hack: make x, y, z = r , phi , rho
+			pcset->x[i] = sc.r;
+			pcset->y[i] = sc.phi;
+			pcset->z[i] = sc.theta;
+		}
+	}
+
+	pcset = setcache[framenumber];
 	
-	if (setcache.find(framenumber)==setcache.end()) {
-		if ((Params::Inst()->limits.coordinatesets_cache_max>0) && setcache.size()>=Params::Inst()->limits.coordinatesets_cache_max) {
-			clear_cache();
-		}
-		
-		p_sample->frames.load(framenumber,p_sample->atoms);
-		pcset = new CoordinateSet(p_sample->frames.current(),*p_selection);
-		
-		if (Params::Inst()->sample.motions.size()>0) {
-			for(size_t i = 0; i < Params::Inst()->sample.motions.size(); ++i)
-			{
-				SampleMotionParameters& motion = Params::Inst()->sample.motions[i];
-				if (motion.type=="linear") {
-					pcset->translate(framenumber*motion.displace*motion.direction);
-				}
-				else if (motion.type=="fixed") {
-					pcset->translate(motion.displace*motion.direction);
-				}
-				else if (motion.type=="oscillation") {
-					pcset->translate(motion.displace*motion.direction*sin(framenumber*motion.frequency));
-				}
-				
-			}
-		}
-
-		CartesianCoor3D origin(0,0,0);
-		if (p_origin_selection!=NULL) {
-			origin = p_sample->frames.current().cofm(p_sample->atoms,*p_origin_selection);
-		}
-		
-		pcsetm = new CoordinateSetM(pcset,origin);
-		delete pcset;
-
-		setcache[framenumber] = pcsetm;
-	}
-	else {
-		pcsetm = setcache[framenumber];
-	}
 	currentframe_i = framenumber;
-	return *pcsetm;
-}
-
-void CoordinateSetsM::clear_cache() {
-	typedef std::map<size_t,CoordinateSetM*>::iterator sci_iterator;
-	for(sci_iterator sci = setcache.begin(); sci != setcache.end(); ++sci)
-	{
-		delete sci->second;
-	}
-	setcache.clear();
-}
-
-void CoordinateSetsM::set_selection(Atomselection& selection) {
-	clear_cache();
-	p_selection = &selection;
-}
-
-Atomselection& CoordinateSetsM::get_selection() {
-	return *p_selection;
-}
-
-void CoordinateSetsM::set_sample(Sample& sample) {
-	clear_cache();
-	p_sample = &sample;
+	return *pcset;
 }
 
 void CoordinateSetsM::set_origin(Atomselection& origin) {
-	p_origin_selection = &origin;
+	if (! origin.is_subset_of(*p_selection)) {
+		Err::Inst()->write("Origin selection must be a subset of CoordinateSet selection");
+		throw;
+	}
+    p_origin_selection = &origin;
 }
-
-CoordinateSetM& CoordinateSetsM::current() {
-	return *(setcache[currentframe_i]);
-}
-
 
 // end of file

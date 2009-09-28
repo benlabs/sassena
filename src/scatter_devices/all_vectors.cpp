@@ -111,18 +111,20 @@ void AllScatterDevice::scatter_frame_norm1(size_t localframe, CartesianCoor3D& q
 
 		for(size_t j = 0; j < noa; ++j) {
 			p =  csx*q.x + csy*q.y + csz*q.z;
-			double sign_sin = (p<0) ? -1.0 : 1.0;
-			ap = abs(p);
-			p = ap - long(ap/M_PI_twice)*M_PI_twice - M_PI;		// wrap p to -pi..pi		
-			cp = ( p<M_PI_half )  ? p + M_PI_half : p - M_PI_3half;
+//			double sign_sin = (p<0) ? -1.0 : 1.0;
+//			ap = abs(p);
+//			p = ap - long(ap/M_PI_twice)*M_PI_twice - M_PI;		// wrap p to -pi..pi		
+//			cp = ( p<M_PI_half )  ? p + M_PI_half : p - M_PI_3half;
 
 			//pre-fetch next data
 			csx = cs.x[j+1];
 			csy = cs.y[j+1];
 			csz = cs.z[j+1];	
 
-			Ar += sfs[j]*sign_sin*sine(p);
-			Ai += sfs[j]*sine(cp);
+//			Ar += sfs[j]*sign_sin*sine(p);
+//			Ai += sfs[j]*sine(cp);
+			Ar += sfs[j]*sin(p);
+			Ai += sfs[j]*cos(p);			
 		}
 		a(localframe,0)=complex<double>(Ar,Ai); // sum at this location
 }
@@ -326,101 +328,39 @@ void AllScatterDevice::execute(CartesianCoor3D& q) {
 	scatterfactors.update(q); // scatter factors only dependent on length of q, hence we can do it once before the loop
 	timer.stop("sd:sf:update");
 	
-	// take the direction of the first motion as the base motion:
-	string avmom = Params::Inst()->scattering.average.motion.method;
-	CartesianCoor3D motion_direction;
-	if (Params::Inst()->sample.motions.size()>0) {
-		motion_direction = Params::Inst()->sample.motions[0].direction;		
-	}
-	VectorUnfold* p_motion_vectorunfold = NULL;			
-	if (avmom=="bruteforce") {
-		string avv = Params::Inst()->scattering.average.motion.vectors;
-		string avt = Params::Inst()->scattering.average.motion.type;
-
-		if (avt=="sphere") {
-			SphereVectorUnfold* p_vu = new SphereVectorUnfold(motion_direction );
-			p_vu->set_resolution(Params::Inst()->scattering.average.motion.resolution);
-			p_vu->set_vectors(Params::Inst()->scattering.average.motion.vectors);
-			p_vu->set_seed(0);
-			p_motion_vectorunfold = p_vu; 
-		}
-		if (avt=="cylinder") {
-			CylinderVectorUnfold* p_vu = new CylinderVectorUnfold(motion_direction );
-			p_vu->set_resolution(Params::Inst()->scattering.average.motion.resolution);
-			p_vu->set_vectors(Params::Inst()->scattering.average.motion.vectors);
-			p_vu->set_axis(Params::Inst()->scattering.average.motion.axis);
-			p_vu->set_seed(0);			
-			p_motion_vectorunfold = p_vu; 
-		}		 
-		else if (avt=="file") {
-			p_motion_vectorunfold = new FileVectorUnfold(motion_direction);
-		}
-	}
-	else { // default: no unfold
-		p_motion_vectorunfold = new NoVectorUnfold(motion_direction);
-	}
-
-	p_motion_vectorunfold->execute();
-
-	vector<CartesianCoor3D>& mvectors = p_motion_vectorunfold->vectors();
-	
-	// save old directions
-	vector<CartesianCoor3D> old_motion_directions;
-	for(size_t i = 0; i < Params::Inst()->sample.motions.size(); ++i)
+	for(size_t qi = 0; qi < qvectors.size(); ++qi)
 	{
-		old_motion_directions.push_back(Params::Inst()->sample.motions[i].direction);
-	}
-	
-	for(size_t mi = 0; mi < mvectors.size(); ++mi) {
-		// overwrite parameters with new directions..
-		for(size_t i = 0; i < Params::Inst()->sample.motions.size(); ++i)
-		{
-			// this is faulty. the relative orientation of the motions should be conserved.
-			Params::Inst()->sample.motions[i].direction = mvectors[mi];
-		}
+		timer.start("sd:fs");
+		scatter_frames_norm1(qvectors[qi]); // put summed scattering amplitudes into first atom entry		
+		timer.stop("sd:fs");
 		
-		for(size_t qi = 0; qi < qvectors.size(); ++qi)
-		{		
-			timer.start("sd:fs");
-			scatter_frames_norm1(qvectors[qi]); // put summed scattering amplitudes into first atom entry		
-			timer.stop("sd:fs");
-			
-			vector<complex<double> > thisspectrum;
-			if (Params::Inst()->scattering.correlation.type=="time") {
-				if (Params::Inst()->scattering.correlation.method=="direct") {
-					timer.start("sd:correlate");					
-					thisspectrum = correlate_frames(); // if correlation, otherwise do a elementwise conj multiply here			
-					timer.stop("sd:correlate");					
-				} else {
-					Err::Inst()->write("Correlation method not understood. Supported methods: direct");
-					throw;
-				}
+		vector<complex<double> > thisspectrum;
+		if (Params::Inst()->scattering.correlation.type=="time") {
+			if (Params::Inst()->scattering.correlation.method=="direct") {
+				timer.start("sd:correlate");					
+				thisspectrum = correlate_frames(); // if correlation, otherwise do a elementwise conj multiply here			
+				timer.stop("sd:correlate");					
 			} else {
-				timer.start("sd:conjmul");				
-				thisspectrum = conjmultiply_frames();
-				timer.stop("sd:conjmul");									
+				Err::Inst()->write("Correlation method not understood. Supported methods: direct");
+				throw;
 			}
-			
-			if (p_thisworldcomm->rank()==0) {
-				timer.start("sd:superpose");										
-				superpose_spectrum(thisspectrum,spectrum);
-				timer.stop("sd:superpose");														
-			}											
+		} else {
+			timer.start("sd:conjmul");				
+			thisspectrum = conjmultiply_frames();
+			timer.stop("sd:conjmul");									
 		}
 		
+		if (p_thisworldcomm->rank()==0) {
+			timer.start("sd:superpose");										
+			superpose_spectrum(thisspectrum,spectrum);
+			timer.stop("sd:superpose");														
+		}											
 	}
-	
-	// restore old directions
-	for(size_t i = 0; i < Params::Inst()->sample.motions.size(); ++i)
-	{
-		Params::Inst()->sample.motions[i].direction = old_motion_directions[i];
-	}	
-	
 	
 	
 	for(size_t si = 0; si < spectrum.size(); ++si)
 	{
-		spectrum[si] /= ( qvectors.size() * mvectors.size() );
+		spectrum[si] /= qvectors.size() ;
 	}
 	
 	m_spectrum = spectrum;

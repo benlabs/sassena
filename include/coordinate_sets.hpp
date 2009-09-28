@@ -26,6 +26,7 @@
 #include "sample.hpp"
 #include "frames.hpp"
 #include "coordinate_set.hpp"
+#include "motion_walker.hpp"
 
 //forward declaration...
 
@@ -35,15 +36,18 @@
 
 // This class is used by Scatterdevices to manage coordinate sets
 class CoordinateSets {
-
+protected:
 	std::map<size_t,CoordinateSet*> setcache;
 
 	Sample* p_sample;
 	Atomselection* p_selection;
 	
 	size_t currentframe_i;
-	CoordinateSet m_current_cs; // hold a local copy of the current coordinateset (required for motion averaging)
-
+	
+	std::vector< std::pair<std::string,MotionWalker*> > m_motion_walkers;
+	
+	void load_into_cache(size_t framenumber);
+	
 public:
 	CoordinateSets();
 	~CoordinateSets() ;
@@ -59,31 +63,14 @@ public:
 	Atomselection& get_selection();
 };
 
-class CoordinateSetsM {
-
-	std::map<size_t,CoordinateSetM*> setcache;
-
-	Sample* p_sample;
-	Atomselection* p_selection;
-	
-	size_t currentframe_i;
-
+class CoordinateSetsM : public CoordinateSets {
 	Atomselection* p_origin_selection;
-
 public:
-	CoordinateSetsM();
-	~CoordinateSetsM() ;
-
-	CoordinateSetM& current();
-	CoordinateSetM& load(size_t frame);	
-	void clear_cache();
 	
-	// use these to initialize the coordinate set:
-	void set_selection(Atomselection& selection);
-	void set_sample(Sample& sample);
 	void set_origin(Atomselection& origin);
 	
-	Atomselection& get_selection();
+	CoordinateSet& load(size_t frame);	// this will be overloaded, we need to cache coordinate transformation at this stage
+		
 };
 
 

@@ -55,7 +55,7 @@ void ScatterSpectrum::write_plain(string fname,string format) {
 	
 	if (format == "txt") {
 		// normalized value: I(frame)/I_max_overall/I_max_qvector
-		ofile << "#" << "qx" << "\t" << "qy" << "\t" << "qz" << "\t" << "frame" << "\t" << "I_max_overall" << "\t" << "I_max_qvector" << "\t" << "I(frame)" << endl;
+		ofile << "#" << "qx" << "\t" << "qy" << "\t" << "qz" << "\t" << "frame" << "\t" << "I_max_overall" << "\t" << "I_max_qvector" <<  "\t" << "I_0_qvector" << "\t" << "I(frame)" << endl;
 	}
 	else {
 		throw;
@@ -68,13 +68,15 @@ void ScatterSpectrum::write_plain(string fname,string format) {
 		const CartesianCoor3D& qvector = si->first;
 
 		size_t framenumber = 0;
+		complex<double> Iq0;
+		if (si->second.size()>0) Iq0 = si->second.begin()->real();
 		for (std::vector<std::complex<double> >::iterator si2=si->second.begin();si2!=si->second.end();si2++) {
 			const double& value = si2->real();
 
 			std::vector<std::complex<double> >::iterator testiterator = si2;			
 			
 			if (format == "txt") {
-				ofile <<  qvector.x << "\t" <<  qvector.y << "\t" <<  qvector.z <<  "\t" << framenumber << "\t" << supermaxvalue << "\t" << maxvalues[qvector] << "\t"  << value <<  endl;			
+				ofile <<  qvector.x << "\t" <<  qvector.y << "\t" <<  qvector.z <<  "\t" << framenumber << "\t" << supermaxvalue << "\t" << maxvalues[qvector] << "\t" << Iq0.real() << "\t"  << value <<  endl;			
 				if ( testiterator++ == si->second.end()) { ofile << endl; } // if we hit the end of frames for current vector...
 			}
 			

@@ -29,7 +29,6 @@
 
 // other headers
 #include "coor3d.hpp"
-#include <libconfig.h++>
 
 // This is a wrapper class to interface the settings implementation. The rational is to 
 // move all possible configuration errors towards the initialization of the software
@@ -163,6 +162,9 @@ private:
 		ar & type;
 		ar & displace;
 		ar & direction;
+		ar & frequency;
+		ar & selection;
+		ar & seed;
     }
 	/////////////////// 
 
@@ -170,6 +172,8 @@ public:
 	std::string type;
 	double displace;
 	double frequency;
+	std::string selection;
+	long seed;
 	CartesianCoor3D direction;
 };
 
@@ -297,45 +301,6 @@ public:
 	
 };
 
-
-
-class ScatteringAverageMotionParameters {
-private:
-	/////////////////// MPI related
-	// make this class serializable to 
-	// allow sample to be transmitted via MPI
-    friend class boost::serialization::access;	
-	template<class Archive> void serialize(Archive & ar, const unsigned int version)
-    {
-		ar & type;
-		ar & method;
-		ar & vectors;
-		ar & resolution;
-		ar & origin;
-		ar & axis;
-    }
-	/////////////////// 
-
-public:	
-	ScatteringAverageMotionParameters() {
-		type = "none";
-		method = "bruteforce";
-		vectors = "mcboostunisphere";
-		resolution = 10;
-		origin = "";
-		axis = CartesianCoor3D(1,0,0);
-	}
-	
-	std::string type;
-	std::string method;
-	std::string vectors;
-	double resolution;
-	
-	std::string origin;
-	CartesianCoor3D axis;
-	
-};
-
 class ScatteringAverageParameters {
 private:
 	/////////////////// MPI related
@@ -345,13 +310,11 @@ private:
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
     {
 		ar & orientation;
-		ar & motion;
     }
 	/////////////////// 
 
 public:	
 	ScatteringAverageOrientationParameters orientation;
-	ScatteringAverageMotionParameters motion;
 };
 
 class ScatteringCorrelationParameters {

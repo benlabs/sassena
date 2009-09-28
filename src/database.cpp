@@ -16,8 +16,99 @@
 // other headers
 #include "log.hpp"
 #include "parameters.hpp"
+#include "xml_interface.hpp"
 
 using namespace std;
+
+void Database::read_xml(std::string filename) {
+		
+	
+	// store the database line by line into an internal buffer, 
+	// this is for keeping history
+	ifstream dbfile(filename.c_str());
+	string line;
+	while (getline(dbfile,line)) {
+		carboncopy.push_back(line);
+	}
+	dbfile.close();
+	
+	XMLInterface xmli(filename);
+
+	// now read the database
+	
+	// START OF database section //
+	if (xmli.exists("//names/pdb")) {
+		vector<XMLElement> elements = xmli.get("//names/pdb/element");
+		for(size_t i = 0; i < elements.size(); ++i)
+		{
+			xmli.set_current(elements[i]);
+			string label = xmli.get_value<string>("./name");
+			string regexp = xmli.get_value<string>("./param");
+			names.pdb.reg(label,regexp);
+		}
+	}
+
+	if (xmli.exists("//masses")) {
+		vector<XMLElement> elements = xmli.get("//masses/element");
+		for(size_t i = 0; i < elements.size(); ++i)
+		{
+			xmli.set_current(elements[i]);
+			string label = xmli.get_value<string>("./name");
+			double mass = xmli.get_value<double>("./param");
+			size_t ID = atomIDs.get(label);
+			masses.reg(ID,mass);
+		}
+	}
+
+
+	if (xmli.exists("//sizes")) {
+		vector<XMLElement> elements = xmli.get("//sizes/element");
+		for(size_t i = 0; i < elements.size(); ++i)
+		{
+			xmli.set_current(elements[i]);
+			string label = xmli.get_value<string>("./name");
+			size_t sizes_function_type = xmli.get_value<size_t>("./type");
+			
+			vector<double> values;
+			vector<XMLElement> params = xmli.get("./param");
+			for(size_t i = 0; i < params.size(); ++i)
+			{
+				xmli.set_current(params[i]);
+				values.push_back(xmli.get_value<double>("."));
+			}
+			
+			size_t ID = atomIDs.get(label);
+			volumes.reg(ID,values,sizes_function_type);
+		}
+	}
+
+	string scatter_factors_name = string("//scatterfactors/")+Params::Inst()->scattering.scatterfactors;
+	if (xmli.exists(scatter_factors_name.c_str())) {
+		vector<XMLElement> elements = xmli.get(scatter_factors_name+"/element");
+		for(size_t i = 0; i < elements.size(); ++i)
+		{
+			xmli.set_current(elements[i]);
+			string label = xmli.get_value<string>("./name");
+			size_t factors_function_type = xmli.get_value<size_t>("./type");
+			
+			vector<double> values;
+			vector<XMLElement> params = xmli.get("./param");
+			for(size_t i = 0; i < params.size(); ++i)
+			{
+				xmli.set_current(params[i]);
+				values.push_back(xmli.get_value<double>("."));
+			}
+			
+			size_t ID = atomIDs.get(label);
+			sfactors.reg(ID,values,factors_function_type);
+		}
+	} else {
+		Err::Inst()->write("Can't find corresponding scattering factors");
+		throw;
+	}
+	
+	// END OF database section //
+};
 
 void Database::read_conf(std::string filename) {
 		
@@ -109,7 +200,15 @@ void Database::read_conf(std::string filename) {
 
 string Database::guessformat(string filename) {
 	// do the best you can to guess the format
-	return "conf";
+	boost::regex e_xml(".*\\.xml$");
+	boost::regex e_conf(".*\\.conf$");
+	
+	if (boost::regex_match(filename,e_xml)) return "xml";
+	if (boost::regex_match(filename,e_conf)) return "conf";
+	
+	// else: problem
+	Err::Inst()->write("Database file format could not be detected (ending with: conf, xml ?)");
+	throw;
 }
 
 bool Database::check() {
@@ -127,8 +226,7 @@ void Database::init(std::string filename,std::string format) {
 		read_conf(filename);
 	}
 	if (format=="xml") {
-		Err::Inst()->write("XML Database not yet implemented");
-		throw;
+		read_xml(filename);
 	}
 
 	Info::Inst()->write("Checking parameters...");	

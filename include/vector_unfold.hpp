@@ -33,7 +33,9 @@ protected:
 	std::vector<CartesianCoor3D> m_unfolded_vectors;	
 public:
 	virtual void execute() = 0;
-	virtual std::vector<CartesianCoor3D>& vectors() = 0;	
+	virtual std::vector<CartesianCoor3D>& vectors() = 0;
+	
+	void clear() { m_unfolded_vectors.clear(); }	
 };
 
 class NoVectorUnfold : public VectorUnfold {

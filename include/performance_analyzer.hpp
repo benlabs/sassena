@@ -35,10 +35,20 @@
 
 using namespace boost::accumulators;
 
+struct PerformanceMeasure {
+	double sum;
+	double count;
+	double mean;
+	double variance;
+	double min;
+	double max;
+};
+
 class PerformanceAnalyzer {
 
-	Timer m_supertimer; // contains all timing information from all nodes
-	std::vector<Timer> m_alltimer;
+//	Timer m_supertimer; // contains all timing information from all nodes
+//	std::vector<Timer> m_alltimer;
+	std::map<std::string, PerformanceMeasure > m_measures;
 	
 	void analyze();
 	
