@@ -270,6 +270,8 @@ void Params::read_xml(std::string filename) {
 		}
 	}
 
+	scattering.average.orientation.type = "none";
+		
 	if (xmli.exists("//scattering/average")) {
 		if (xmli.exists("//scattering/average/orientation")) {
 			if (xmli.exists("//scattering/average/orientation/type")) { // sphere cylinder none
