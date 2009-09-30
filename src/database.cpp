@@ -213,6 +213,7 @@ string Database::guessformat(string filename) {
 
 bool Database::check() {
 	// implement a sanity check for the database
+	return true;
 }
 
 void Database::init(std::string filename,std::string format) {
