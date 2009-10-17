@@ -301,6 +301,7 @@ std::vector<std::complex<double> > AllScatterDevice::correlate_frames() {
 	    {
             mean += A[i];
 	    }
+        mean = mean * (1.0/p_sample->frames.size());
 	}
 												
 	for(size_t i = 0; i < mysteps.size(); ++i)
