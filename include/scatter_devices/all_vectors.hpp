@@ -65,6 +65,8 @@ class AllScatterDevice : public ScatterDevice {
 	void scatter_frames_norm1(CartesianCoor3D& q); // a(x,0) contains the total scattering amplitude
 
 	std::vector<std::complex<double> > correlate_frames();
+	std::vector<std::complex<double> > correlate_frames_fftw();
+
 	std::vector<std::complex<double> > conjmultiply_frames();
 
 	

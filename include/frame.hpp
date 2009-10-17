@@ -68,12 +68,9 @@ public:
 	std::vector<CartesianCoor3D> unitcell;
 	
 	void clear(); // make frame 'empty'
-	void wrap(); // wrap coordinates back to origin cell
+	void wrap(CartesianCoor3D origin); // wrap coordinates back to origin cell around the defined origin
 	
 	CartesianCoor3D coord3D(size_t i); // get coordinates for i'th atom
-	
-	// center of mass, needs masses from atoms, atomselection allows to select subgroup
-	CartesianCoor3D cofm(Atoms& atoms, Atomselection& as);
 	
 	void push_selections(std::vector<Atomselection>& as);
 	void push_selection(Atomselection& as,Atoms& atoms);	

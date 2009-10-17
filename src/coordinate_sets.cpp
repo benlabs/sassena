@@ -51,6 +51,17 @@ CoordinateSets::CoordinateSets() {
 			else if (motion.type=="randomwalk") {
 				p_mw = new RandomMotionWalker(motion.displace,motion.seed, motion.direction);				
 			}
+			else if (motion.type=="brownian") {
+				p_mw = new BrownianMotionWalker(motion.displace,motion.seed, motion.direction);				
+			}
+			else if (motion.type=="none") {
+                p_mw = NULL;
+			}
+			else {
+                Err::Inst()->write("Motion type not understood");
+                throw;
+			}
+			
 			
 			if (p_mw!=NULL) {
 				m_motion_walkers.push_back(make_pair<string,MotionWalker*>(motion.selection,p_mw));				
@@ -80,6 +91,30 @@ void CoordinateSets::load_into_cache(size_t framenumber) {
 	p_sample->frames.load(framenumber,p_sample->atoms);
 	pcset = new CoordinateSet(p_sample->frames.current(),*p_selection); 
 	
+	// apply alignment
+	if (Params::Inst()->sample.alignment.origin.type=="manual") {
+        pcset->translate(-1.0*Params::Inst()->sample.alignment.origin.basevector);
+	} else if (Params::Inst()->sample.alignment.origin.type=="auto") {
+        p_sample->atoms.assert_selection(Params::Inst()->sample.alignment.origin.selection);
+        Atomselection& thissel = p_sample->atoms.selections[Params::Inst()->sample.alignment.origin.selection];
+        CartesianCoor3D com = CenterOfMass(p_sample->atoms,p_sample->frames.current(),thissel);
+		pcset->translate(-1.0*com);
+	} else {
+        Err::Inst()->write("sample.alignment.origin.type not understood");
+        throw;
+	}
+	
+	if (Params::Inst()->sample.alignment.axis.type=="manual") {
+        pcset->rotate(Params::Inst()->sample.alignment.axis.basevector,CartesianCoor3D(0,1,0));
+	} else if (Params::Inst()->sample.alignment.axis.type=="auto") {
+        Err::Inst()->write("sample.alignment.axis.type==auto not implemented yet");
+        throw;
+	} else {
+        Err::Inst()->write("sample.alignment.axis.type not understood");
+        throw;
+	}
+	
+	// apply motions
 	for(size_t i = 0; i < m_motion_walkers.size(); ++i)
 	{
 		string sel = m_motion_walkers[i].first;
@@ -107,6 +142,20 @@ CoordinateSet& CoordinateSets::load(size_t framenumber) {
 	
 	currentframe_i = framenumber;
 	return *pcset;
+}
+
+void CoordinateSets::write_xyz(std::string filename) {
+    ofstream ofile(filename.c_str());
+	for(size_t i = 0; i < setcache.size(); ++i) {
+        CoordinateSet* pcset = setcache[i];
+        ofile << pcset->size() << endl;
+        ofile << "generate by s_coordump" << endl;
+        for(size_t j = 0; j < pcset->size(); ++j)
+        {
+            ofile << j << " " << pcset->x[j] << " " << pcset->y[j] << " " << pcset->z[j] << endl;
+        }
+	}
+    ofile.close();
 }
 
 void CoordinateSets::clear_cache() {
@@ -139,7 +188,7 @@ CoordinateSet& CoordinateSets::current() {
 
 //// M:
 
-CoordinateSet& CoordinateSetsM::load(size_t framenumber) {
+CoordinateSet& CoordinateSetsMS::load(size_t framenumber) {
 	CoordinateSet* pcset = NULL;
 	// this is the cache:
 	if (setcache.find(framenumber)==setcache.end()) {	
@@ -168,12 +217,78 @@ CoordinateSet& CoordinateSetsM::load(size_t framenumber) {
 	return *pcset;
 }
 
-void CoordinateSetsM::set_origin(Atomselection& origin) {
+void CoordinateSetsMS::set_origin(Atomselection& origin) {
 	if (! origin.is_subset_of(*p_selection)) {
 		Err::Inst()->write("Origin selection must be a subset of CoordinateSet selection");
 		throw;
 	}
     p_origin_selection = &origin;
 }
+
+
+//// C:
+
+CoordinateSet& CoordinateSetsMC::load(size_t framenumber) {
+	CoordinateSet* pcset = NULL;
+	// this is the cache:
+	if (setcache.find(framenumber)==setcache.end()) {	
+		CoordinateSets::load_into_cache(framenumber); // call parent function to handle class behaviour
+		pcset = setcache[framenumber];
+
+		CartesianCoor3D origin; origin = CenterOfMass(p_sample->atoms,*p_origin_selection,*p_selection,*pcset);
+		// now do the transformation:
+		CartesianCoor3D axis = Params::Inst()->scattering.average.orientation.axis;
+		axis = axis / axis.length();
+		
+		// fix this:
+        CartesianCoor3D qperpenticular;
+        CartesianCoor3D o;
+        double qperpenticular_l = 0;
+		
+		
+		for(size_t i = 0; i < pcset->size(); ++i)
+		{
+			double x = pcset->x[i] - origin.x;
+			double y = pcset->y[i] - origin.y;
+			double z = pcset->z[i] - origin.z;
+            CartesianCoor3D ct(x,y,z);
+			
+			CartesianCoor3D ctparallel = (axis*ct)*axis; 
+			CartesianCoor3D ctperpenticular = ct - ctparallel; // this contains psi-phi
+			double ctperpenticular_l = ctperpenticular.length(); // this is r
+			double ctparallel_l = ctparallel.length(); // this is z
+			
+			double psiphi = 0;
+
+			// if either qper_l or ctper_l is zero , then the bessel_terms vanish and delta_phipsi is irrelevant
+			if ((qperpenticular_l!=0) && (ctperpenticular_l!=0)) {
+				psiphi = acos( (ctperpenticular * qperpenticular) / (ctperpenticular_l*qperpenticular_l));
+				CartesianCoor3D ctq = (ctperpenticular.cross_product(qperpenticular));
+				ctq = ctq / ctq.length();				
+				if ((ctq + o).length()>1.0) psiphi = 2*M_PI-psiphi; // if o || ctq -> 2; 0 otherwise			
+			}
+			
+			CylinderCoor3D sc(CartesianCoor3D(x,y,z));
+			// dirty hack: make x, y, z = r , phi , rho
+			pcset->x[i] = sc.r;
+			pcset->y[i] = sc.phi;
+			pcset->z[i] = sc.z;
+		}
+	}
+
+	pcset = setcache[framenumber];
+	
+	currentframe_i = framenumber;
+	return *pcset;
+}
+
+void CoordinateSetsMC::set_origin(Atomselection& origin) {
+	if (! origin.is_subset_of(*p_selection)) {
+		Err::Inst()->write("Origin selection must be a subset of CoordinateSet selection");
+		throw;
+	}
+    p_origin_selection = &origin;
+}
+
 
 // end of file

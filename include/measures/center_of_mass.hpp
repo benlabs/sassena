@@ -20,13 +20,14 @@
 #include "atomselection.hpp"
 #include "coor3d.hpp"
 #include "coordinate_set.hpp"
-
+#include "frame.hpp"
 
 // this helper class takes Atoms and a Coordinateset and returns a cartesian coordinate
 class CenterOfMass {
 	CartesianCoor3D m_center;
 public:
 	CenterOfMass(Atoms& atoms,Atomselection& cofm_selection,Atomselection& cs_selection, CoordinateSet& atoms);
+	CenterOfMass(Atoms& atoms,Frame& frame,Atomselection& selection);
 	
 	operator CartesianCoor3D (); //conversion operator
 };

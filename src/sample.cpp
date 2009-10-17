@@ -20,8 +20,50 @@
 
 // other headers
 #include "log.hpp"
+#include "parameters.hpp"
 
 using namespace std;
+
+void Sample::init() {
+    	
+    Params* params = Params::Inst();
+    // create the sample via structure file	
+    Info::Inst()->write(string("Reading structure information from file: ")+params->sample.structure.file);
+    add_atoms(params->sample.structure.file,params->sample.structure.format);
+    Info::Inst()->write(string("Done. Atoms read: ")+to_s(atoms.size()));
+    
+    // add selections / groups
+    for(map<string,SampleGroupParameters>::iterator sgpi = params->sample.groups.begin();sgpi!=params->sample.groups.end();sgpi++)
+    {
+    	SampleGroupParameters& sp = sgpi->second;
+    	Info::Inst()->write(string("Reading selection file: ")+sp.file);
+    	atoms.add_selection(sp.name,sp.file,sp.format,sp.select,sp.select_value);
+    }
+    
+    // add custom selections here ( if not already set! )
+    if (atoms.selections.find("system")==atoms.selections.end()) {
+    	// this shortcut creates a full selection
+    	atoms.add_selection("system",true);		
+    }
+    
+    // apply deuteration
+    for(size_t i = 0; i < params->sample.deuter.size(); ++i)
+    {
+    	deuter(params->sample.deuter[i]);
+    }
+    	
+    // read in frame information
+    for(size_t i = 0; i < params->sample.frames.size(); ++i)
+    {
+    	SampleFramesetParameters& f = params->sample.frames[i];
+    	Info::Inst()->write(string("Reading frames from: ")+f.filename);
+    	size_t nof = frames.add_frameset(f.filename,f.type,f.first,f.last,f.last_set,f.stride,atoms);			
+    	Info::Inst()->write(string("Found ")+to_s(nof)+string(" frames"));			
+    }
+    Info::Inst()->write(string("Total number of frames found: ")+to_s(frames.size()));
+		
+    
+}
 
 void Sample::deuter(std::string group) {
 	atoms.assert_selection(group);

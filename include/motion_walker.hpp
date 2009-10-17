@@ -31,6 +31,10 @@
 #include <boost/accumulators/accumulators.hpp>
 #include <boost/accumulators/statistics.hpp>
 
+#include <boost/random/mersenne_twister.hpp>	
+#include <boost/random/normal_distribution.hpp>	
+#include <boost/random/variate_generator.hpp>
+
 // other headers
 #include "coor3d.hpp"
 #include "vector_unfold.hpp"
@@ -89,6 +93,28 @@ class RandomMotionWalker : public MotionWalker {
 public:
 	RandomMotionWalker(double displace,long seed, CartesianCoor3D direction);
 	~RandomMotionWalker();
+	
+	
+	CartesianCoor3D translation(size_t timepos);
+};
+
+
+class BrownianMotionWalker : public MotionWalker {
+
+	std::map<size_t,CartesianCoor3D> translations;
+	
+	SphereVectorUnfold* p_svu;
+	
+	double m_displace;
+	long m_seed;
+	
+	CartesianCoor3D m_direction;
+    boost::variate_generator<boost::mt19937, boost::normal_distribution<double> >* p_mynormaldistribution;
+	
+	void generate(size_t timepos);
+public:
+	BrownianMotionWalker(double displace,long seed, CartesianCoor3D direction);
+	~BrownianMotionWalker();
 	
 	
 	CartesianCoor3D translation(size_t timepos);

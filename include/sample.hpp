@@ -39,7 +39,6 @@ class Sample {
     {
 		ar & atoms;
 		ar & frames;
-		ar & background;
     }
 	/////////////////// 
 	
@@ -48,14 +47,12 @@ public:
 	Atoms atoms;
 	Frames frames;
 
-	// cache values:
-	// used for scattering
-	double background;
-
 	Sample() { }
 	// the sample can be initialized with a system information file: e.g. a pdb
 	Sample(std::string filename) : atoms(filename)  { }
 	Sample(std::string filename,std::string fileformat) : atoms(filename,fileformat)  { }
+
+    void init();
 
 	// default routine for reading structure information from file.
 	void add_atoms(std::string filename,std::string fileformat) { return atoms.add(filename,fileformat); }

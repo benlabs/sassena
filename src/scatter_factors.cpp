@@ -34,7 +34,7 @@ ScatterFactors::ScatterFactors() {
 
 void ScatterFactors::update(CartesianCoor3D q) {
 	
-	double background_sl = p_sample->background;
+	double background_sl = Params::Inst()->scattering.background.factor;
 
 	for(size_t i = 0; i < p_selection->size(); ++i)
 	{

@@ -169,13 +169,13 @@ void Params::read_xml(std::string filename) {
 		
 	// periodic boundary behavior and/or postprocessing
 	sample.pbc.wrapping = false;	
-	sample.pbc.center = "";
+	sample.pbc.selection = "system";
 	if (xmli.exists("//sample/pbc")) {
 		if (xmli.exists("//sample/pbc/wrapping")) sample.pbc.wrapping = xmli.get_value<bool>("//sample/pbc/wrapping");
-		if (xmli.exists("//sample/pbc/center"))   sample.pbc.center   = xmli.get_value<string>("//sample/pbc/center");
+		if (xmli.exists("//sample/pbc/selection"))   sample.pbc.selection   = xmli.get_value<string>("//sample/pbc/selection");
 		
 		if (sample.pbc.wrapping) {
-			Info::Inst()->write(string("Turned wrapping ON with center group ")+sample.pbc.center);
+			Info::Inst()->write(string("Turned wrapping ON with center group ")+sample.pbc.selection);
 		} else {
 			Info::Inst()->write("Turned wrapping OFF");
 		}
@@ -184,6 +184,34 @@ void Params::read_xml(std::string filename) {
 		Info::Inst()->write("No periodic boundary treatment");
 	}
 	
+	// additional alignment of the sample
+	sample.alignment.origin.type = "manual";	
+	sample.alignment.origin.basevector = CartesianCoor3D(0,0,0);
+	sample.alignment.axis.type = "manual";	
+	sample.alignment.axis.basevector = CartesianCoor3D(1,0,0);
+	if (xmli.exists("//sample/alignment")) {
+    	if (xmli.exists("//sample/alignment/origin")) {
+        	if (xmli.exists("//sample/alignment/origin/type")) sample.alignment.origin.type = xmli.get_value<string>("//sample/alignment/origin/type");
+        	if (xmli.exists("//sample/alignment/origin/selection")) sample.alignment.origin.selection = xmli.get_value<string>("//sample/alignment/origin/selection");
+        	if (xmli.exists("//sample/alignment/origin/basevector")) {
+        	    sample.alignment.origin.basevector.x = xmli.get_value<double>("//sample/alignment/origin/basevector/x");
+        	    sample.alignment.origin.basevector.y = xmli.get_value<double>("//sample/alignment/origin/basevector/y");
+        	    sample.alignment.origin.basevector.z = xmli.get_value<double>("//sample/alignment/origin/basevector/z");    
+        	}
+	    }
+    	if (xmli.exists("//sample/alignment/axis")) {
+        	if (xmli.exists("//sample/alignment/axis/type")) sample.alignment.axis.type = xmli.get_value<string>("//sample/alignment/axis/type");
+        	if (xmli.exists("//sample/alignment/axis/selection")) sample.alignment.axis.selection = xmli.get_value<string>("//sample/alignment/axis/selection");
+        	if (xmli.exists("//sample/alignment/axis/basevector")) {
+        	    sample.alignment.axis.basevector.x = xmli.get_value<double>("//sample/alignment/axis/basevector/x");
+        	    sample.alignment.axis.basevector.y = xmli.get_value<double>("//sample/alignment/axis/basevector/y");
+        	    sample.alignment.axis.basevector.z = xmli.get_value<double>("//sample/alignment/axis/basevector/z");    
+        	}
+	    }
+	} else {
+		Info::Inst()->write("No additional alignment");
+	}
+
 	// END OF sample section //
 	// START OF scattering section //
 
@@ -191,12 +219,8 @@ void Params::read_xml(std::string filename) {
 	scattering.background.factor = 0.0;
 	
 	if (xmli.exists("//scattering/background")) {
-		if (xmli.exists("//scattering/background/type")) {
-			scattering.background.type = xmli.get_value<string>("//scattering/background/type");
-		} 
-		if (xmli.exists("//scattering/background/factor")) {
-			scattering.background.factor = xmli.get_value<double>("//scattering/background/factor");			
-		}
+        if (xmli.exists("//scattering/background/type")) scattering.background.type = xmli.get_value<string>("//scattering/background/type");
+		if (xmli.exists("//scattering/background/factor")) scattering.background.factor = xmli.get_value<double>("//scattering/background/factor");
 
 		if (xmli.exists("//scattering/background/phases")) {
 			vector<XMLElement> phases = xmli.get("//scattering/background/phases");
@@ -261,12 +285,19 @@ void Params::read_xml(std::string filename) {
 		}
 	}
 	
+    scattering.correlation.type="none";
+    scattering.correlation.method="direct";
+    scattering.correlation.zeromean=true;
+    
 	if (xmli.exists("//scattering/correlation")) {
 		if (xmli.exists("//scattering/correlation/type")) {
 			scattering.correlation.type = xmli.get_value<string>("//scattering/correlation/type");
 		}
 		if (xmli.exists("//scattering/correlation/method")) {
 			scattering.correlation.method = xmli.get_value<string>("//scattering/correlation/method");
+		}
+		if (xmli.exists("//scattering/correlation/zeromean")) {
+			scattering.correlation.zeromean = xmli.get_value<bool>("//scattering/correlation/zeromean");
 		}
 	}
 

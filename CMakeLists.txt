@@ -54,6 +54,10 @@ SET(Boost_ADDITIONAL_VERSIONS "1.37")
 FIND_PACKAGE(Boost 1.36 REQUIRED COMPONENTS regex mpi serialization system filesystem)
 INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS}/geometry)
 
+
+FIND_PACKAGE(FFTW3 REQUIRED)
+INCLUDE_DIRECTORIES(${FFTW3_INCLUDE_DIR})
+
 FIND_PACKAGE(MPI REQUIRED)
 SET(CMAKE_CXX_COMPILER ${MPI_COMPILER})
 
@@ -68,7 +72,7 @@ FIND_PACKAGE(LibXml2 REQUIRED)
 INCLUDE_DIRECTORIES(${LIBXML2_INCLUDE_DIR})
 
 # set the global link dependencies and include dirs
-SET(LIB_DEPENDENCIES ${CONFIG_LIBRARIES} ${Boost_LIBRARIES} ${LIBXML2_LIBRARIES} ) 
+SET(LIB_DEPENDENCIES ${CONFIG_LIBRARIES} ${Boost_LIBRARIES} ${LIBXML2_LIBRARIES} ${FFTW3_LIBRARIES} ) 
 INCLUDE_DIRECTORIES( ${Sassena_SOURCE_DIR}/include/xdrfile)
 
 
@@ -79,6 +83,8 @@ SET(LIB_DEPENDENCIES ${LIB_DEPENDENCIES} xdrfile-static)
 MESSAGE(STATUS "sassena_lib_depend= " ${LIB_DEPENDENCIES})
 
 ADD_EXECUTABLE(sassena 
+    src/main/sassena.cpp
+
 	src/analysis.cpp
 	src/atom.cpp 
 	src/atoms.cpp 
@@ -91,6 +97,7 @@ ADD_EXECUTABLE(sassena
 	src/decompose.cpp
 	src/decomposition_plan.cpp
 	src/density_grid.cpp
+	src/fftw/fftw++.cc
 	src/frame.cpp 
 	src/frames.cpp 
 	src/grid.cpp  
@@ -100,8 +107,7 @@ ADD_EXECUTABLE(sassena
 	src/parameters.cpp 	
 	src/performance_analyzer.cpp
 	src/progress_reporter.cpp
-	src/sample.cpp 
-	src/sassena.cpp  
+	src/sample.cpp  
 	src/scatter_devices/all_multipole.cpp 	
 	src/scatter_devices/all_vectors.cpp 
 	src/scatter_devices/self_vectors.cpp 
@@ -112,10 +118,36 @@ ADD_EXECUTABLE(sassena
 	src/xml_interface.cpp
 	src/vector_unfold.cpp
 	)
+	
+	
+ADD_EXECUTABLE(s_coordump 
+    src/main/s_coordump.cpp
+
+	src/atom.cpp 
+	src/atoms.cpp 
+	src/atomselection.cpp 
+	src/common.cpp
+	src/coor3d.cpp 
+	src/coordinate_set.cpp
+	src/coordinate_sets.cpp	
+	src/database.cpp
+	src/decompose.cpp
+	src/frame.cpp 
+	src/frames.cpp 
+	src/log.cpp	 
+	src/measures/center_of_mass.cpp
+	src/motion_walker.cpp
+	src/parameters.cpp 	
+	src/sample.cpp  
+	src/xml_interface.cpp
+	src/vector_unfold.cpp
+	)
 
 TARGET_LINK_LIBRARIES (sassena ${LIB_DEPENDENCIES})
+TARGET_LINK_LIBRARIES (s_coordump ${LIB_DEPENDENCIES})
 
 INSTALL(TARGETS sassena RUNTIME DESTINATION bin)
+INSTALL(TARGETS s_coordump RUNTIME DESTINATION bin)
 
 SET(CPACK_PACKAGE_NAME "Sassena")
 SET(CPACK_PACKAGE_VENDOR "Benjamin Lindner (ben@benlabs.net), Franci Merzel (franci.merzel@ki.si)")

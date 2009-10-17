@@ -60,15 +60,29 @@ public:
 	void set_selection(Atomselection& selection);
 	void set_sample(Sample& sample);
 	
+    void write_xyz(std::string filename); // dumps xyz coordinates to file
+	
 	Atomselection& get_selection();
 };
 
-class CoordinateSetsM : public CoordinateSets {
+// for multipole spherical:
+class CoordinateSetsMS : public CoordinateSets {
 	Atomselection* p_origin_selection;
 public:
 	
 	void set_origin(Atomselection& origin);
+		
+	CoordinateSet& load(size_t frame);	// this will be overloaded, we need to cache coordinate transformation at this stage
+		
+};
+
+// for multipole cylindrical:
+class CoordinateSetsMC : public CoordinateSets {
+	Atomselection* p_origin_selection;
+public:
 	
+	void set_origin(Atomselection& origin);
+		
 	CoordinateSet& load(size_t frame);	// this will be overloaded, we need to cache coordinate transformation at this stage
 		
 };

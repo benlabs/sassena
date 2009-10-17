@@ -24,6 +24,7 @@
 // other headers
 #include "atomselection.hpp"
 #include "log.hpp"
+#include "measures/center_of_mass.hpp"
 #include "parameters.hpp"
 #include "database.hpp"
 
@@ -203,7 +204,6 @@ size_t Frames::scope_framenumber(size_t framenumber) {
 //	
 //}
 
-
 void Frames::load(size_t framenumber,Atoms& atoms) {
 	// get frameset
 	// call 
@@ -224,11 +224,12 @@ void Frames::load(size_t framenumber,Atoms& atoms) {
 
 		// postprocessing frame data
 		// do any wrapping "before" creating coordinate sets, otherwise the coordinates will run out of sync
-		if (wrapping) {
-			cf.origin = cf.cofm(atoms,centergroup_selection);
-			cf.wrap(); 					
+		if (Params::Inst()->sample.pbc.wrapping) {
+		    atoms.assert_selection(Params::Inst()->sample.pbc.selection);
+            Atomselection& thissel = atoms.selections[Params::Inst()->sample.pbc.selection];
+			CartesianCoor3D origin = CenterOfMass(atoms,cf,thissel);
+			cf.wrap(origin);
 		}	
-		
 	}
 	currentframe_i = framenumber;
 }

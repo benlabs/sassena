@@ -56,6 +56,31 @@ CenterOfMass::CenterOfMass(Atoms& atoms,Atomselection& cofm_selection,Atomselect
 	
 }
 
+
+CenterOfMass::CenterOfMass(Atoms& atoms,Frame& frame,Atomselection& selection) {
+	
+	if (selection.empty()) {
+		cerr << "Warning! Computing Center of Mass for an empty atomselection" << endl;
+		cerr << "Setting Center of mass to (0,0,0)" << endl;		
+		m_center = CartesianCoor3D(0,0,0);
+        return;
+	}
+
+	double xt,yt,zt,m,mi;
+	xt = yt = zt = 0.0;
+	m = 0.0;
+
+	for (size_t i=0;i<selection.size();i++) {
+		mi = atoms[selection[i]].mass;
+		m += mi;
+		xt += frame.x[selection[i]]*mi;
+		yt += frame.y[selection[i]]*mi;
+		zt += frame.z[selection[i]]*mi;
+	}
+	
+	m_center =  CartesianCoor3D(xt/m,yt/m,zt/m);
+}
+
 CenterOfMass::operator CartesianCoor3D() {
 	return m_center;
 }

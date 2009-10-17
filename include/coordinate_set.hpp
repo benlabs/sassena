@@ -55,6 +55,8 @@ public:
 
 	void translate(CartesianCoor3D trans);
 	void translate(CartesianCoor3D trans,Atomselection& original_selection, Atomselection& sub_selection);
+	
+    void rotate(CartesianCoor3D axis1,CartesianCoor3D axis2);
 };
 
 #endif

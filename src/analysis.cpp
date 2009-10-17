@@ -50,45 +50,6 @@ using namespace boost::math;
 
 namespace Analysis {
 
-void scatter_sphere_multipole (Sample& sample,Atomselection as,CartesianCoor3D q,double resolution,std::vector<std::complex<double> >& scattering_amplitudes) {
-
-	using namespace boost::numeric::ublas::detail;
-	
-	const int lmax=int(resolution);
-	
-	std::vector<std::vector<complex<double> > > almv;
-
-  	almv.resize(lmax+1);
-  	for (int l=0;l<=lmax;l++) {
-   		almv[l].resize(2*l+1,complex<double>(0,0));
-  	}
-
-  	for (Atomselection::iterator asi=as.begin();asi!=as.end();asi++) {
-		SphericalCoor3D c = sample.frames.current().coord3D(*asi);
-		double esf = sample.atoms[*asi].scatteramp;
-
-		for (int l=0;l<=lmax;l++) {
-			complex<double> fmpiilesf = 4.0*M_PI*pow(complex<double>(0,1.0),l) * esf;
-			double aabess = sph_bessel(l,q.length()*c.r);
-		
-			for (int m=-l;m<=l;m++) {
-		
-			complex<double> aa = conj(spherical_harmonic(l,m,c.theta,c.phi)); 
-
-			almv[l][m+l] += fmpiilesf * aabess* aa;
-			}
-		}
-	
-	}
-
-	// we need to multiply w/ (lmax+1)^2 here b/c single ampltiudes are average-summed
-	double lmax1sqr = (lmax+1) / sqrt(4.0*M_PI);
-	for (int l=0;l<=lmax;l++) {
-		for (int m=-l;m<=l;m++) { 
-			scattering_amplitudes.push_back( lmax1sqr*(almv[l][m+l]) ); 
-		}
-	}
-}
 
 void scatter_cylinder_multipole(Sample& sample,Atomselection as,CartesianCoor3D q,double resolution,std::vector<std::complex<double> >& scattering_amplitudes) {
 

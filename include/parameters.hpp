@@ -142,14 +142,72 @@ private:
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
     {
 		ar & wrapping;
-		ar & center;
+		ar & selection;
     }
 	/////////////////// 
 
 public:	
 	bool wrapping;
-	std::string center;
+	std::string selection;
 };
+
+class SampleAlignmentOriginParameters {
+private:
+	/////////////////// MPI related
+	// make this class serializable to 
+	// allow sample to be transmitted via MPI
+    friend class boost::serialization::access;	
+	template<class Archive> void serialize(Archive & ar, const unsigned int version)
+    {
+		ar & type;
+		ar & selection;
+        ar & basevector;
+    }
+	/////////////////// 
+
+public:	
+    std::string type;
+    std::string selection;
+    CartesianCoor3D basevector;
+};
+
+class SampleAlignmentAxisParameters {
+private:
+	/////////////////// MPI related
+	// make this class serializable to 
+	// allow sample to be transmitted via MPI
+    friend class boost::serialization::access;	
+	template<class Archive> void serialize(Archive & ar, const unsigned int version)
+    {
+		ar & type;
+		ar & selection;
+        ar & basevector;
+    }
+	/////////////////// 
+
+public:	
+    std::string type;
+    std::string selection;
+    CartesianCoor3D basevector;
+};
+class SampleAlignmentParameters {
+private:
+	/////////////////// MPI related
+	// make this class serializable to 
+	// allow sample to be transmitted via MPI
+    friend class boost::serialization::access;	
+	template<class Archive> void serialize(Archive & ar, const unsigned int version)
+    {
+		ar & origin;
+		ar & axis;
+    }
+	/////////////////// 
+
+public:	
+    SampleAlignmentOriginParameters origin;
+    SampleAlignmentAxisParameters axis;
+};
+
 
 class SampleMotionParameters {
 private:
@@ -191,6 +249,7 @@ private:
 		ar & pbc;
 		ar & deuter;
 		ar & motions;
+        ar & alignment;
     }
 	/////////////////// 
 
@@ -198,6 +257,7 @@ public:
 	SampleStructureParameters structure;
 	std::map<std::string,SampleGroupParameters> groups;
 	SampleFramesParameters frames;
+	SampleAlignmentParameters alignment;	
 	SamplePBCParameters pbc;
 	std::vector<SampleMotionParameters> motions;
 	std::vector<std::string> deuter;
@@ -327,6 +387,7 @@ private:
     {
 		ar & type;
 		ar & method;
+        ar & zeromean;
     }
 	/////////////////// 
 
@@ -336,7 +397,8 @@ public:
 		method = "direct";
 	}
 	std::string type;
-	std::string method;	
+	std::string method;
+    bool zeromean;	
 };
 
 class ScatteringInterferenceParameters {

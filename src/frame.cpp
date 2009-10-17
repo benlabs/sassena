@@ -109,32 +109,8 @@ CartesianCoor3D Frame::coord3D(size_t i) {
 	return CartesianCoor3D(x[i],y[i],z[i]);	
 }
 
-CartesianCoor3D Frame::cofm(Atoms& atoms, Atomselection& as) {
-
-	if (as.empty()) {
-		cerr << "Warning! Computing Center of Mass for an empty atomselection" << endl;
-		cerr << "Setting Center of mass to (0,0,0)" << endl;		
-		return CartesianCoor3D(0,0,0);
-	}
-	
-
-	double xt,yt,zt,m,mi;
-	xt = yt = zt = 0.0;
-	m = 0.0;
-
-	for (size_t i=0;i<as.size();i++) {
-		mi = atoms[as[i]].mass;
-		m += mi;
-		xt += x[as[i]]*mi;
-		yt += y[as[i]]*mi;
-		zt += z[as[i]]*mi;
-	}
-	
-	return CartesianCoor3D(xt/m,yt/m,zt/m);
-}
-
 // Map each atom back to the origin unit cell
-void Frame::wrap() {
+void Frame::wrap(CartesianCoor3D origin) {
 	std::vector<CartesianCoor3D>& uc = unitcell;
 	double uc0l = uc[0].length();
 	double uc1l = uc[1].length();
