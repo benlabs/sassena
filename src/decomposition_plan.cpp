@@ -24,9 +24,7 @@
 #include "analysis.hpp"
 #include "coor3d.hpp"
 #include "decompose.hpp"
-#include "log.hpp"
-#include "parameters.hpp"
-#include "database.hpp"
+#include "control.hpp"
 #include "sample.hpp"
 #include "particle_trajectory.hpp"
 
@@ -44,8 +42,10 @@ DecompositionPlan::DecompositionPlan(boost::mpi::communicator thisworld,vector<C
 	size_t bestcolwidth = nn;
 	size_t penalty = compute_penalty(nq,nf,nn,bestworldsplit);
 
-	if (Params::Inst()->debug.decomposition_split==0) {
-		for(size_t worldsplit = 2; worldsplit <= ((nn<nq) ? nn : nq ); ++worldsplit)
+	if (Params::Inst()->limits.decomposition.partitions.automatic) {
+        size_t maxworldsplit = ((nn<nq) ? nn : nq ); // natural limit: number of q vectors
+	    if (Params::Inst()->limits.decomposition.partitions.max < maxworldsplit) maxworldsplit = Params::Inst()->limits.decomposition.partitions.max;
+		for(size_t worldsplit = 2; worldsplit <= maxworldsplit; ++worldsplit)
 		{
 			size_t newpenalty = compute_penalty(nq,nf,nn,worldsplit);
 			size_t colwidth = nn / worldsplit;
@@ -63,7 +63,7 @@ DecompositionPlan::DecompositionPlan(boost::mpi::communicator thisworld,vector<C
 		}		
 	} else {
 		// calculate some partioning schemes, init penalty w/ qsplit==1
-		bestworldsplit = Params::Inst()->debug.decomposition_split;
+		bestworldsplit = Params::Inst()->limits.decomposition.partitions.count;
 		bestcolwidth = nn / bestworldsplit;
 		penalty = compute_penalty(nq,nf,nn,bestworldsplit);
 	}
@@ -80,11 +80,11 @@ DecompositionPlan::DecompositionPlan(boost::mpi::communicator thisworld,vector<C
 	m_frames = frames;
 	// only allow successful construction if load imbalance is sufficiently small
 
-	if (static_imbalance() > Params::Inst()->limits.static_load_imbalance_max) {
+	if (static_imbalance() > Params::Inst()->limits.decomposition.static_imbalance) {
 		if (thisworld.rank()==0) {
 			Err::Inst()->write(string("Total static load balance too high. Try a different number of nodes."));
 
-			Info::Inst()->write(string("Static imbalance limit: ")+to_s(Params::Inst()->limits.static_load_imbalance_max));
+			Info::Inst()->write(string("Static imbalance limit: ")+to_s(Params::Inst()->limits.decomposition.static_imbalance));
 			Info::Inst()->write(string("Computed imbalance: ")+to_s(static_imbalance()));
 			Info::Inst()->write(string("Decomposition Plan: split=")+to_s(bestworldsplit));
 			

@@ -10,7 +10,7 @@
  */
 
 // direct header
-#include "atomselection.hpp"
+#include "sample/atomselection.hpp"
 
 // standard header
 #include <iostream>
@@ -23,12 +23,11 @@
 #include <boost/regex.hpp>
 
 // other headers
-#include "atom.hpp"
-#include "atoms.hpp"
+#include "sample/atom.hpp"
+#include "sample/atoms.hpp"
 #include "decompose.hpp"
-#include "log.hpp"
-#include "parameters.hpp"
-#include "database.hpp"
+#include "control.hpp"
+
 
 using namespace std;
 

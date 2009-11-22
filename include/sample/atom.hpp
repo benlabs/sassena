@@ -9,8 +9,8 @@
  *
  */
 
-#ifndef ATOM_HPP_
-#define ATOM_HPP_
+#ifndef SAMPLE__ATOM_HPP_
+#define SAMPLE__ATOM_HPP_
 
 // common header
 #include "common.hpp"

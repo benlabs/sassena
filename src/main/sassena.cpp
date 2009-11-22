@@ -39,12 +39,10 @@
 #include "coor3d.hpp"
 #include "decompose.hpp"
 #include "decomposition_plan.hpp"
-#include "log.hpp"
-#include "parameters.hpp"
-#include "database.hpp"
+#include "control.hpp"
 #include "performance_analyzer.hpp"
 #include "progress_reporter.hpp"
-#include "sample.hpp"
+#include "sample/sample.hpp"
 #include "scatter_devices.hpp"
 #include "scatter_spectrum.hpp"
 #include "timer.hpp"
@@ -66,8 +64,6 @@ int main(int argc,char** argv) {
     // compute nodes should be silent all the time, except when errors occur.
     // In that case the size and the rank should be included into the error message in the following way:
 
-	Sample sample;
-
 	// make sure any singleton class exists:
 	Info::Inst();
 	Err::Inst();
@@ -80,6 +76,8 @@ int main(int argc,char** argv) {
 	
 	Params* params = Params::Inst();
 	Database* database = Database::Inst();
+
+	Sample sample;
 	
 	Timer timer;
 	timer.start("total");
@@ -144,7 +142,7 @@ int main(int argc,char** argv) {
 		// before calculating anything we need to communicate the sample to any node
 		// this is a one-to-all communication
 
-		sample.frames.clear_cache(); // reduce overhead
+		sample.coordinate_sets.clear_cache(); // reduce overhead
 
 		Info::Inst()->write("Exchanging sample, database & params information with compute nodes... ");
 
@@ -198,11 +196,11 @@ int main(int argc,char** argv) {
 		Info::Inst()->write(string("Searching for decomposition plan: "));
 		Info::Inst()->write(string("nodes    = ")+ to_s(world.size()));
 		Info::Inst()->write(string("qvectors = ")+ to_s(qvectors.size()));
-		Info::Inst()->write(string("frames   = ")+ to_s(sample.frames.size()));	
+		Info::Inst()->write(string("frames   = ")+ to_s(sample.coordinate_sets.size()));	
 	}
 	
 	vector<size_t> frames;
-	for(size_t i = 0; i < sample.frames.size(); ++i)
+	for(size_t i = 0; i < sample.coordinate_sets.size(); ++i)
 	{
 		frames.push_back(i);
 	}
@@ -225,12 +223,14 @@ int main(int argc,char** argv) {
 		p_ScatterDevice = new SelfScatterDevice(local,sample);
 	}
 	else if (params->scattering.interference.type == "all"){
-		if (params->scattering.average.orientation.method == "bruteforce") {
+		if (params->scattering.average.orientation.method == "vectors") {
 			p_ScatterDevice = new AllScatterDevice(local,sample);			
 		} else if (params->scattering.average.orientation.method == "multipole") {
 			//Err::Inst()->write("Multipole method currently not supported");
 			//throw;
 			p_ScatterDevice = new AllMSScatterDevice(local,sample);			
+		} else if (params->scattering.average.orientation.method == "exact") {
+			p_ScatterDevice = new AllExactScatterDevice(local,sample);					    
 		} else if (params->scattering.average.orientation.method == "none") {
 			p_ScatterDevice = new AllScatterDevice(local,sample);					    
 		}
@@ -325,7 +325,7 @@ int main(int argc,char** argv) {
 	delete p_ScatterDevice;
 
 	// make nodes empty, computation finished
-	sample.frames.clear_cache();
+	sample.coordinate_sets.clear_cache();
 
 
 	//------------------------------------------//
@@ -338,6 +338,8 @@ int main(int argc,char** argv) {
 		
 	if (world.rank()==0) {
 		perfanal.report();
+		perfanal.report_relative(timer.sum("total"));
+		
 		Info::Inst()->write(string("Total runtime (s): ")+to_s(timer.sum("total")));
 		Info::Inst()->write("Successfully finished... Have a nice day!");
 	}

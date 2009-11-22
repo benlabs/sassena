@@ -24,9 +24,7 @@
 #include "analysis.hpp"
 #include "coor3d.hpp"
 #include "decompose.hpp"
-#include "log.hpp"
-#include "parameters.hpp"
-#include "database.hpp"
+#include "control.hpp"
 #include "sample.hpp"
 #include "smath.hpp"
 #include "particle_trajectory.hpp"
@@ -42,10 +40,9 @@ SelfScatterDevice::SelfScatterDevice(boost::mpi::communicator& thisworld, Sample
 
 	string target = Params::Inst()->scattering.target;
 	
-
 	size_t nn = thisworld.size(); // Number of Nodes
 	size_t na = sample.atoms.selections[target].size(); // Number of Atoms
-	size_t nf = sample.frames.size();
+	size_t nf = sample.coordinate_sets.size();
 
 	size_t rank = thisworld.rank();
 
@@ -75,6 +72,7 @@ SelfScatterDevice::SelfScatterDevice(boost::mpi::communicator& thisworld, Sample
 
 	vector<size_t> myindexes(minatoms); p_myindexes = &(myindexes[0]);
 	
+	timer.start("sd:init:scatter:assign");	
 	// this is an atom decomposition!
 	boost::mpi::scatter(thisworld,p_indexes,p_myindexes,minatoms,0);	
 	for(size_t i = 0; i < minatoms; ++i)
@@ -94,7 +92,12 @@ SelfScatterDevice::SelfScatterDevice(boost::mpi::communicator& thisworld, Sample
 			particle_trajectories.push_back(ParticleTrajectory(lastindex) );		
 		}	
 	}
+	timer.stop("sd:init:scatter:assign");	
 
+	p_sample->coordinate_sets.set_representation(CARTESIAN);	
+	p_sample->coordinate_sets.set_selection(sample.atoms.selections[target]);
+
+	timer.start("sd:init:scatter:data");	
 	for(size_t r = 0; r < nn; ++r)
 	{
 
@@ -106,12 +109,11 @@ SelfScatterDevice::SelfScatterDevice(boost::mpi::communicator& thisworld, Sample
 			
 			CoordinateSet* p_cs =NULL;
 			if (rank==r) {
-				sample.frames.load(assigned_frames[i],sample.atoms);
-				p_cs = new CoordinateSet(sample.frames.current(),sample.atoms.selections[target]);
-				
-				p_xc = &(p_cs->x[0]);
-				p_yc = &(p_cs->y[0]);
-				p_zc = &(p_cs->z[0]);
+                p_cs = &( p_sample->coordinate_sets.load(assigned_frames[i]) );
+                                
+				p_xc = &(p_cs->c1[0]);
+				p_yc = &(p_cs->c2[0]);
+				p_zc = &(p_cs->c3[0]);
 							
 			}
 			
@@ -129,9 +131,9 @@ SelfScatterDevice::SelfScatterDevice(boost::mpi::communicator& thisworld, Sample
 			}		
 
 			if (rank==r) {
-				p_xc = &(p_cs->x[minatoms]);
-				p_yc = &(p_cs->y[minatoms]);
-				p_zc = &(p_cs->z[minatoms]);
+				p_xc = &(p_cs->c1[minatoms]);
+				p_yc = &(p_cs->c2[minatoms]);
+				p_zc = &(p_cs->c3[minatoms]);
 			}
 
 			double mylastx; 
@@ -146,16 +148,15 @@ SelfScatterDevice::SelfScatterDevice(boost::mpi::communicator& thisworld, Sample
 				particle_trajectories[minatoms].push_back(CartesianCoor3D(mylastx,mylasty,mylastz));
 			}
 				
-			if (rank==r) delete p_cs;
-
 		}
 	}
+	timer.stop("sd:init:scatter:data");	
 	
 	scatterfactors.set_sample(sample);
 	scatterfactors.set_selection(sample.atoms.selections[target]);
 	scatterfactors.set_background(true);
 	
-	a.resize(particle_trajectories.size(),sample.frames.size());
+	a.resize(particle_trajectories.size(),sample.coordinate_sets.size());
 
 }
 
@@ -175,40 +176,14 @@ void SelfScatterDevice::scatter_particle(size_t iparticle, CartesianCoor3D& q) {
 		a(iparticle,j) = exp(-1.0*complex<double>(0,p1))*s;
 	}
 	
-//	double Ar = 0.0;
-//	double Ai = 0.0;
-//	double p, cp, ap;
-//	double M_PI_half = M_PI/2;
-//	double M_PI_3half = 3*M_PI/2;	
-//	double M_PI_twice = 2*M_PI;
-//
-//	double px = thisparticle.x[0];
-//	double py = thisparticle.y[0];
-//	double pz = thisparticle.z[0];
-//
-//	for(size_t j = 0; j < a.size2(); ++j) {
-//		p =  px*q.x + py*q.y + pz*q.z;
-//		double sign_sin = (p<0) ? -1.0 : 1.0;
-//		ap = abs(p);
-//		p = ap - long(ap/M_PI_twice)*M_PI_twice - M_PI;		// wrap p to -pi..pi		
-//		cp = ( p<M_PI_half )  ? p + M_PI_half : p - M_PI_3half;
-//
-//		//pre-fetch next data
-//		px = thisparticle.x[j+1];
-//		py = thisparticle.y[j+1];
-//		pz = thisparticle.z[j+1];	
-//
-//		Ar = sfs[j]*sign_sin*sine(p);
-//		Ai = sfs[j]*sine(cp);
-//	}
-//	a(iframe,0)=complex<double>(Ar,Ai); // sum at this location	
-	
 }
 
 void SelfScatterDevice::scatter_particles(CartesianCoor3D& q) {
 	for(size_t i = 0; i < a.size1(); ++i)
 	{
+		timer.start("sd:fs:f");	    
 		scatter_particle(i,q);
+		timer.stop("sd:fs:f");		
 	}
 }
 
@@ -226,28 +201,41 @@ void SelfScatterDevice::scatter_particle_instant(size_t iparticle, CartesianCoor
 void SelfScatterDevice::scatter_particles_instant(CartesianCoor3D& q) {
 	for(size_t i = 0; i < a.size1(); ++i)
 	{
+		timer.stop("sd:fs:f");		    
 		scatter_particle_instant(i,q);
+		timer.stop("sd:fs:f");			
 	}
 }
 
 void SelfScatterDevice::correlate_particles() {
 
+    vector<complex<double> > acopy(a.size2());
+    	
 	for(size_t i = 0; i < a.size1(); ++i)
 	{
-		for(size_t j = 0; j < a.size2(); ++j) // this iterates tau
-		{
-			complex<double> a1conj = conj( a (i,j) );
-			complex<double> asum(0,0);
-			size_t last_starting_frame = a.size2()-j;
-			for(size_t k = 0; k < last_starting_frame; ++k) // this iterates the starting frame
-			{
-				asum += a1conj*( a (i,k+j) ) ;
-			}
-			a (i,j)  = asum;
-			a (i,j) /= last_starting_frame; // store it in (i,j)
-		}
-		
+	    
+	    for(size_t j = 0; j < a.size2(); ++j) // make a working copy for the current particle i
+	    {
+            acopy[j] = a(i,j);
+	    }
+	    
+	    // overwrite a with correlated values
+	    for(size_t j = 0; j < a.size2(); ++j) // this iterates tau
+	    {
+            a(i,j)=0;
+
+		    size_t last_starting_frame = a.size2()-j;
+		    for(size_t k = 0; k < last_starting_frame; ++k) // this iterates the starting frame
+		    {
+			    a(i,j) += ( acopy[k] )*conj( acopy[j+k] ) ;
+		    }
+
+    	    a(i,j) *= (1.0/last_starting_frame); 
+	    }
+	    
+
 	}
+	
 	// now a contains correlated values
 }
 
@@ -275,11 +263,12 @@ void SelfScatterDevice::crosssum_particles() {
 }
 
 void SelfScatterDevice::execute(CartesianCoor3D& q) {
-	
+    
    string avm = Params::Inst()->scattering.average.orientation.method;
    
    VectorUnfold* p_vectorunfold = NULL;			
-   if (avm=="bruteforce") {
+   timer.start("sd:vector:unfold"); 
+   if (avm=="vectors") {
    	string avv = Params::Inst()->scattering.average.orientation.vectors;
    	string avt = Params::Inst()->scattering.average.orientation.type;
    
@@ -312,6 +301,7 @@ void SelfScatterDevice::execute(CartesianCoor3D& q) {
    p_vectorunfold->execute();
    
    vector<CartesianCoor3D>& qvectors = p_vectorunfold->vectors();
+   timer.stop("sd:vector:unfold"); 
 	
 	
 	/// k, qvectors are prepared:
@@ -319,28 +309,45 @@ void SelfScatterDevice::execute(CartesianCoor3D& q) {
 	
 	if (p_thisworldcomm->rank()==0)  spectrum.resize(a.size2()); // only rank0 node aggregrates results
 
+	timer.start("sd:sf:update");
 	scatterfactors.update(q); // scatter factors only dependent on length of q, hence we can do it once before the loop
+	timer.stop("sd:sf:update");	
+	
 	for(size_t qi = 0; qi < qvectors.size(); ++qi)
 	{
 		vector<complex<double> > thisspectrum;
 		if (Params::Inst()->scattering.correlation.type=="time") {
+		    timer.start("sd:fs");
 			scatter_particles(qvectors[qi]);
-
+		    timer.stop("sd:fs");
+		    
 			if (Params::Inst()->scattering.correlation.method=="direct") {
+			    timer.start("sd:correlate");					
 				correlate_particles(); // if correlation, otherwise do a elementwise conj multiply here	
+				timer.stop("sd:correlate");					
+				
 			} else {
 				Err::Inst()->write("Correlation method not understood. Supported methods: direct");
 				throw;
 			}
 		} else {
+		    timer.start("sd:fs");		    
 			scatter_particles_instant(qvectors[qi]); // this version takes advantage of a*a(conj) = (real,0)
+		    timer.stop("sd:fs");
+		    			
+			timer.start("sd:conjmul");			    			
 			conjmultiply_particles();
+			timer.stop("sd:conjmul");				
 		}
 		crosssum_particles(); // the spectrum is in a(0,x)		
 		assemble_spectrum(); // now rank==0 has the full spectrum in a(0,x)
 
 
-		if (p_thisworldcomm->rank()==0) superpose_spectrum(spectrum);
+		if (p_thisworldcomm->rank()==0) {
+			timer.start("sd:superpose");		    
+		    superpose_spectrum(spectrum);
+			timer.stop("sd:superpose");
+	    }
 	}
 	
 	for(size_t si = 0; si < spectrum.size(); ++si)

@@ -32,9 +32,6 @@
 #include <boost/accumulators/statistics.hpp>
 
 // other headers
-#include "atomselection.hpp"
-#include "coor3d.hpp"
-#include "sample.hpp"
 
 using namespace boost::accumulators;
 

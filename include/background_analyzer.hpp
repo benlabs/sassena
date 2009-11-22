@@ -29,13 +29,13 @@
 #include <boost/mpi.hpp>
 
 // other headers
-#include "atomselection.hpp"
+#include "sample/atomselection.hpp"
 #include "coor3d.hpp"
-#include "coordinate_sets.hpp"
-#include "frame.hpp"
-#include "frames.hpp"
+#include "sample/coordinate_sets.hpp"
+#include "sample/frame.hpp"
+#include "sample/frames.hpp"
 #include "particle_trajectory.hpp"
-#include "sample.hpp"
+#include "sample/sample.hpp"
 #include "scatter_factors.hpp"
 #include "timer.hpp"
 

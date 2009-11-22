@@ -12,15 +12,20 @@
 #include "measures/center_of_mass.hpp"
 
 // other headers
-#include "atoms.hpp"
-#include "atomselection.hpp"
+#include "sample/atoms.hpp"
+#include "sample/atomselection.hpp"
 #include "coor3d.hpp"
-#include "coordinate_set.hpp"
-#include "log.hpp"
+#include "sample/coordinate_set.hpp"
+#include "control.hpp"
 
 using namespace std;
 
 CenterOfMass::CenterOfMass(Atoms& atoms,Atomselection& cofm_selection,Atomselection& cs_selection, CoordinateSet& cs) {
+	
+	if (cs.get_representation()!=CARTESIAN) {
+        Err::Inst()->write("Center of Mass only implementated for cartesian Coordinate Sets");
+        throw;
+	}
 	
 	if (cofm_selection.empty()) {
 		Warn::Inst()->write("Warning! Computing Center of Mass for an empty atomselection");
@@ -42,9 +47,9 @@ CenterOfMass::CenterOfMass(Atoms& atoms,Atomselection& cofm_selection,Atomselect
 			} 
 			mi = atoms[cs_selection[cs_iter]].mass;
 			m += mi;
-			xt += cs.x[cs_iter]*mi;
-			yt += cs.y[cs_iter]*mi;
-			zt += cs.z[cs_iter]*mi;
+			xt += cs.c1[cs_iter]*mi;
+			yt += cs.c2[cs_iter]*mi;
+			zt += cs.c3[cs_iter]*mi;
 			
 			iter++;
 		}

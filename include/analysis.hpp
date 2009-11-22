@@ -24,9 +24,9 @@
 // special library headers
 
 // other headers
-#include "atomselection.hpp"
+#include "sample/atomselection.hpp"
 #include "coor3d.hpp"
-#include "sample.hpp"
+#include "sample/sample.hpp"
 
 extern double b0_cached;
 

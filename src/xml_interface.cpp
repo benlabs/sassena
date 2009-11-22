@@ -108,6 +108,17 @@ XMLInterface::XMLInterface(std::string filename) {
         xmlFreeDoc(p_doc); 
 		throw;
     }
+
+    int maxrecursion=20;
+    while(xmlXIncludeProcess(p_doc)!=0) {
+        maxrecursion--;
+        if (maxrecursion<1) {
+            Err::Inst()->write("Inclusion depth higher then maxrecursion level(20). Aborting...");
+            throw;
+        }
+    }
+//    xmlDocFormatDump(stdout,p_doc,1) ;
+    
 }
 
 XMLInterface::~XMLInterface() { 

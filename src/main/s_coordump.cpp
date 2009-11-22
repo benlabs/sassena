@@ -39,9 +39,7 @@
 #include "coor3d.hpp"
 #include "decompose.hpp"
 #include "decomposition_plan.hpp"
-#include "log.hpp"
-#include "parameters.hpp"
-#include "database.hpp"
+#include "control.hpp"
 #include "performance_analyzer.hpp"
 #include "progress_reporter.hpp"
 #include "sample.hpp"
@@ -81,19 +79,17 @@ int main(int argc,char** argv) {
 	    
     sample.init();
 
-    CoordinateSets csets;
-    csets.set_sample(sample);
-    csets.set_selection(sample.atoms.selections["system"]);
-    
-    for(size_t i = 0; i < sample.frames.size(); ++i) {
-        csets.load(i);
+    sample.coordinate_sets.set_selection(sample.atoms.selections["system"]);
+
+    for(size_t i = 0; i < sample.coordinate_sets.size(); ++i) {
+        sample.coordinate_sets.load(i);
     }
     
     if ( boost::filesystem::exists(string(argv[3])) ) {
         Err::Inst()->write(string("Output file ")+string(argv[3])+string(" already exists. Please delete manually."));
         throw;
     }
-    csets.write_xyz(string(argv[3]));
+    sample.coordinate_sets.write_xyz(string(argv[3]));
     
 		
 	return 0;

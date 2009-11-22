@@ -29,13 +29,10 @@
 #include <boost/mpi.hpp>
 
 // other headers
-#include "atomselection.hpp"
-#include "coor3d.hpp"
-#include "coordinate_sets.hpp"
-#include "frame.hpp"
-#include "frames.hpp"
-#include "particle_trajectory.hpp"
 #include "sample.hpp"
+
+#include "coor3d.hpp"
+#include "particle_trajectory.hpp"
 #include "scatter_factors.hpp"
 #include "timer.hpp"
 
@@ -48,8 +45,6 @@ class AllScatterDevice : public ScatterDevice {
 	Sample* p_sample;
 
 	boost::numeric::ublas::matrix<std::complex<double> > a; // rows = time coordinate, columns = particles
-	
-	CoordinateSets coordinate_sets;
 	
 	ScatterFactors scatterfactors;
 		

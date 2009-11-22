@@ -24,10 +24,8 @@
 #include "analysis.hpp"
 #include "coor3d.hpp"
 #include "decompose.hpp"
-#include "log.hpp"
-#include "parameters.hpp"
-#include "database.hpp"
-#include "sample.hpp"
+#include "control.hpp"
+#include "sample/sample.hpp"
 #include "smath.hpp"
 #include "particle_trajectory.hpp"
 

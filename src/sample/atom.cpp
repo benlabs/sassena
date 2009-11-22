@@ -10,7 +10,7 @@
  */
 
 // direct header
-#include "atom.hpp"
+#include "sample/atom.hpp"
 
 // standard header
 

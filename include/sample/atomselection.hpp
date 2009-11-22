@@ -9,8 +9,8 @@
  *
  */
 
-#ifndef ATOMSELECTION_HPP_
-#define ATOMSELECTION_HPP_
+#ifndef SAMPLE__ATOMSELECTION_HPP_
+#define SAMPLE__ATOMSELECTION_HPP_
 
 // common header
 #include "common.hpp"
@@ -24,8 +24,8 @@
 #include <boost/serialization/list.hpp>
 
 // other headers
-#include "atom.hpp"
-#include "atoms.hpp"
+#include "sample/atom.hpp"
+#include "sample/atoms.hpp"
 class Atoms;
 
 class Atomselection : public std::vector<size_t> {

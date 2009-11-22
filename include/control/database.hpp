@@ -9,8 +9,8 @@
  *
  */
 
-#ifndef DATABASE_HPP_
-#define DATABASE_HPP_
+#ifndef CONTROL__DATABASE_HPP_
+#define CONTROL__DATABASE_HPP_
 
 // common header
 #include "common.hpp"
@@ -27,11 +27,6 @@
 #include <boost/serialization/string.hpp>
 #include <boost/serialization/vector.hpp>
 
-// other headers
-#include "coor3d.hpp"
-#include <libconfig.h++>
-
-
 // This is a wrapper class to interface the settings implementation. The rational is to 
 // move all possible configuration errors towards the initialization of the software
 // preferably the 'parameters' class checks for all required settings and implementents
@@ -42,9 +37,39 @@
 // these constructs are to be used w/ in the code the following way:
 // string fs = Params::Inst()->sample.structure.file
 
-// resolve dependency:
-class CartesianCoor3D;
 
+ class DatabaseExlusionParameters {
+ private:
+ 	/////////////////// MPI related
+ 	// make this class serializable to 
+ 	// allow sample to be transmitted via MPI
+     friend class boost::serialization::access;	
+ 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
+     {
+ 		ar & m_functiontypes;
+ 		ar & m_constants;
+ 		ar & m_quicklookup;
+ 		ar & quicklookup_counter;
+     }
+ 	/////////////////// 
+
+ 	std::map<size_t,size_t> m_functiontypes;
+ 	std::map<size_t,std::vector<double> > m_constants;
+ 	std::map<size_t,double> m_quicklookup; // use a quicklookup table for 
+ 	size_t quicklookup_counter;
+
+ 	void add_quicklookup(size_t ID, double value); 
+ 	void clear_quicklookup();
+
+ public:	
+ 	DatabaseExlusionParameters() : quicklookup_counter(0) {}
+
+ //	void reg(std::string label, std::vector<double> constants,size_t function_type);
+ //	double get(std::string label);
+ 	void reg(size_t ID, std::vector<double> constants,size_t function_type);
+ 	double get(size_t ID,double effvolume,double q);
+
+ };
 
 class DatabaseVolumesParameters {
 private:
@@ -215,6 +240,7 @@ private:
 		ar & names;
 		ar & masses;
 		ar & volumes;
+		ar & exclusionfactors;
 		ar & sfactors;
 		ar & atomIDs;
     }
@@ -225,7 +251,6 @@ private:
 
 	std::vector<std::string> carboncopy;
 
-	void read_conf(std::string filename);
 	void read_xml(std::string filename);
 
 	std::string guessformat(std::string filename);
@@ -235,6 +260,7 @@ public:
 	DatabaseNamesParameters names;
 	DatabaseMassesParameters masses;
 	DatabaseVolumesParameters volumes;	
+	DatabaseExlusionParameters exclusionfactors;	
 	DatabaseSFactorsParameters sfactors;	
 	DatabaseAtomIDsParameters atomIDs;	
 

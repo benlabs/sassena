@@ -82,32 +82,52 @@ SET(LIB_DEPENDENCIES ${LIB_DEPENDENCIES} xdrfile-static)
 
 MESSAGE(STATUS "sassena_lib_depend= " ${LIB_DEPENDENCIES})
 
+ADD_LIBRARY(sass_control SHARED
+	src/control/log.cpp
+	src/control/parameters.cpp
+	src/control/database.cpp
+	src/xml_interface.cpp
+	src/coor3d.cpp
+)
+
+TARGET_LINK_LIBRARIES (sass_control ${LIB_DEPENDENCIES} )
+SET(LIB_DEPENDENCIES ${LIB_DEPENDENCIES} sass_control)
+
+
+ADD_LIBRARY(sass_sample SHARED
+	src/sample/sample.cpp
+	src/sample/atom.cpp
+	src/sample/atoms.cpp
+	src/sample/atomselection.cpp
+	src/sample/coordinate_set.cpp
+	src/sample/coordinate_sets.cpp
+	src/sample/frame.cpp
+	src/sample/frames.cpp
+	src/sample/motion_walker.cpp	
+	
+	src/measures/center_of_mass.cpp
+	src/decompose.cpp
+)
+
+TARGET_LINK_LIBRARIES (sass_sample ${LIB_DEPENDENCIES} )
+SET(LIB_DEPENDENCIES ${LIB_DEPENDENCIES} sass_sample)
+
+
 ADD_EXECUTABLE(sassena 
     src/main/sassena.cpp
 
 	src/analysis.cpp
-	src/atom.cpp 
-	src/atoms.cpp 
-	src/atomselection.cpp 
 	src/common.cpp
 	src/coor3d.cpp 
-	src/coordinate_set.cpp
-	src/coordinate_sets.cpp	
-	src/database.cpp
 	src/decompose.cpp
 	src/decomposition_plan.cpp
 	src/density_grid.cpp
 	src/fftw/fftw++.cc
-	src/frame.cpp 
-	src/frames.cpp 
 	src/grid.cpp  
-	src/log.cpp	 
 	src/measures/center_of_mass.cpp
-	src/motion_walker.cpp
-	src/parameters.cpp 	
 	src/performance_analyzer.cpp
 	src/progress_reporter.cpp
-	src/sample.cpp  
+	src/scatter_devices/all_exact.cpp 	
 	src/scatter_devices/all_multipole.cpp 	
 	src/scatter_devices/all_vectors.cpp 
 	src/scatter_devices/self_vectors.cpp 
@@ -123,28 +143,16 @@ ADD_EXECUTABLE(sassena
 ADD_EXECUTABLE(s_coordump 
     src/main/s_coordump.cpp
 
-	src/atom.cpp 
-	src/atoms.cpp 
-	src/atomselection.cpp 
 	src/common.cpp
 	src/coor3d.cpp 
-	src/coordinate_set.cpp
-	src/coordinate_sets.cpp	
-	src/database.cpp
 	src/decompose.cpp
-	src/frame.cpp 
-	src/frames.cpp 
-	src/log.cpp	 
 	src/measures/center_of_mass.cpp
-	src/motion_walker.cpp
-	src/parameters.cpp 	
-	src/sample.cpp  
 	src/xml_interface.cpp
 	src/vector_unfold.cpp
 	)
 
-TARGET_LINK_LIBRARIES (sassena ${LIB_DEPENDENCIES})
-TARGET_LINK_LIBRARIES (s_coordump ${LIB_DEPENDENCIES})
+TARGET_LINK_LIBRARIES (sassena ${LIB_DEPENDENCIES} )
+TARGET_LINK_LIBRARIES (s_coordump ${LIB_DEPENDENCIES} )
 
 INSTALL(TARGETS sassena RUNTIME DESTINATION bin)
 INSTALL(TARGETS s_coordump RUNTIME DESTINATION bin)

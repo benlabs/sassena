@@ -10,7 +10,7 @@
  */
 
 // direct header
-#include "sample.hpp"
+#include "sample/sample.hpp"
 
 // standard header
 #include <fstream>
@@ -19,10 +19,13 @@
 // special library headers
 
 // other headers
-#include "log.hpp"
-#include "parameters.hpp"
+#include "control.hpp"
 
 using namespace std;
+
+Sample::Sample() {
+    coordinate_sets.set_atoms(atoms);
+}
 
 void Sample::init() {
     	
@@ -51,18 +54,23 @@ void Sample::init() {
     {
     	deuter(params->sample.deuter[i]);
     }
-    	
-    // read in frame information
-    for(size_t i = 0; i < params->sample.frames.size(); ++i)
-    {
-    	SampleFramesetParameters& f = params->sample.frames[i];
-    	Info::Inst()->write(string("Reading frames from: ")+f.filename);
-    	size_t nof = frames.add_frameset(f.filename,f.type,f.first,f.last,f.last_set,f.stride,atoms);			
-    	Info::Inst()->write(string("Found ")+to_s(nof)+string(" frames"));			
-    }
-    Info::Inst()->write(string("Total number of frames found: ")+to_s(frames.size()));
-		
+
+    Params::Inst()->runtime.limits.cache.coordinate_sets = 1;    	
+    coordinate_sets.init();
+    Info::Inst()->write(string("Total number of coordinate sets found: ")+to_s(coordinate_sets.size()));
+	
+	// adjust the coordinate sets cache to the size we need	
+    size_t memusage_per_cs = 3*sizeof(double)*atoms.size();
+    Params::Inst()->runtime.limits.cache.coordinate_sets = long(Params::Inst()->limits.memory.coordinate_sets/memusage_per_cs);
+    Info::Inst()->write(string("Number of cacheable coordinate sets per node: ")+to_s(Params::Inst()->runtime.limits.cache.coordinate_sets));
     
+    // fault if not enough memory for one coordinate set
+    if (memusage_per_cs>Params::Inst()->limits.memory.coordinate_sets) {
+		Err::Inst()->write(string("Insufficient Buffer size for coordinate set."));            
+		Err::Inst()->write(string("Size required:")+to_s(memusage_per_cs)+string(" bytes"));            
+		Err::Inst()->write(string("Configuration Parameter: limits.memory.coordinate_sets"));
+        throw;
+    }
 }
 
 void Sample::deuter(std::string group) {
@@ -111,6 +119,15 @@ void Sample::deuter(std::string group,double coverage,int seed = -1) {
 	for(size_t i = 0; i < total_size; ++i)
 	{
 		if (deuterarray[i]) atoms[as[i]].name = "deuterium";
+	}
+}
+
+void Sample::set_kappa(std::string group, double kappa) {
+	atoms.assert_selection(group);
+	Atomselection& as = atoms.selections[group];
+
+	for (Atomselection::iterator asi=as.begin();asi!=as.end();asi++) {
+		atoms[*asi].kappa=kappa;		
 	}
 }
 

@@ -9,8 +9,8 @@
  *
  */
 
-#ifndef FRAMES_HPP_
-#define FRAMES_HPP_
+#ifndef SAMPLE__FRAMES_HPP_
+#define SAMPLE__FRAMES_HPP_
 
 // common header
 #include "common.hpp"
@@ -29,9 +29,9 @@
 #include <boost/serialization/serialization.hpp>
 
 // other headers
-#include "atoms.hpp"
-#include "atomselection.hpp"
-#include "frame.hpp"
+#include "sample/atoms.hpp"
+#include "sample/atomselection.hpp"
+#include "sample/frame.hpp"
 
 // Forward:
 class Frameset;
@@ -48,11 +48,7 @@ class Frames {
 	friend class boost::serialization::access;	
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
     {
-		ar & framecache;
-		ar & currentframe_i;
 		ar & number_of_frames;
-		ar & wrapping;
-		ar & centergroup_selection;
 		// list all possible derived classes for Frameset
         ar.register_type(static_cast<DCDFrameset*>(NULL));
         ar.register_type(static_cast<PDBFrameset*>(NULL));
@@ -64,10 +60,6 @@ class Frames {
 	
 //	std::vector<FrameFilePosLocator> framefileposlocators;	
 	std::vector<Frameset*> framesets;
-	
-	std::map<size_t,Frame> framecache;
-
-	size_t currentframe_i;
 
 	size_t number_of_frames;
 
@@ -80,29 +72,16 @@ class Frames {
 	
 public:
 	// unit cell behaviour:
-	bool wrapping;
-	Atomselection centergroup_selection;
 
-	Frames() : currentframe_i(-1), number_of_frames(0) {}
-	~Frames();
+	Frames() : number_of_frames(0) {}
 	
 	size_t size();
-	size_t cache_size();
 	
 	// push a frameset, frameset is specialized
-	size_t add_frameset(const std::string filename,const std::string filetype,size_t first, size_t last, bool last_set, size_t stride, Atoms& atoms);
+	size_t add_frameset(const std::string filename,const std::string filetype,size_t first, size_t last, bool last_set, size_t stride);
 
-	// load a frame into the framecache, set as current
-//	void load(size_t framenumber,Atoms& atoms,std::map<std::string,Atomselection>& atomselections);
-//	void load(size_t framenumber,Atoms& atoms,Atomselection& atomselection);
-	void load(size_t framenumber,Atoms& atoms);
-	
-	// retrieve the current frame
-	Frame& current();
-	
-//	void write(std::string filename, std::string af = "pdb") { atoms.write(filename,currentframe(),af); }	
-	
-	void clear_cache();
+	// load a Frame
+	Frame load(size_t framenumber);	
 };
 
 

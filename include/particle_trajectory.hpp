@@ -30,9 +30,9 @@
 #include <boost/serialization/serialization.hpp>
 
 // other headers
-#include "atoms.hpp"
-#include "atomselection.hpp"
-#include "frame.hpp"
+#include "sample/atoms.hpp"
+#include "sample/atomselection.hpp"
+#include "sample/frame.hpp"
 
 class ParticleTrajectory {
 	/////////////////// MPI related

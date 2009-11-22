@@ -24,6 +24,8 @@
 
 #include "scatter_devices/scatter_device.hpp"
 
+#include "scatter_devices/all_exact.hpp"
+
 #include "scatter_devices/all_multipole.hpp"
 
 #include "scatter_devices/all_vectors.hpp"

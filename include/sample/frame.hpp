@@ -9,8 +9,8 @@
  *
  */
 
-#ifndef FRAME_HPP_
-#define FRAME_HPP_
+#ifndef SAMPLE__FRAME_HPP_
+#define SAMPLE__FRAME_HPP_
 
 // common header
 #include "common.hpp"
@@ -27,14 +27,13 @@
 #include <boost/numeric/ublas/io.hpp>
 
 // other headers
-#include "atoms.hpp"
-#include "atomselection.hpp"
+#include "sample/atoms.hpp"
+#include "sample/atomselection.hpp"
 #include "coor3d.hpp"
 
 //forward declaration...
 class Atom;
 class Atoms;
-class Atomselection;
 
 ////////////////////////////////////////////////////////////////////////////////
 // 
@@ -68,12 +67,8 @@ public:
 	std::vector<CartesianCoor3D> unitcell;
 	
 	void clear(); // make frame 'empty'
-	void wrap(CartesianCoor3D origin); // wrap coordinates back to origin cell around the defined origin
-	
+
 	CartesianCoor3D coord3D(size_t i); // get coordinates for i'th atom
-	
-	void push_selections(std::vector<Atomselection>& as);
-	void push_selection(Atomselection& as,Atoms& atoms);	
 };
 
 #endif

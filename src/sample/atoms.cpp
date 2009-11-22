@@ -9,7 +9,7 @@
  *
  */
 // direct header
-#include "atoms.hpp"
+#include "sample/atoms.hpp"
 
 // standard header
 #include <fstream>
@@ -19,12 +19,11 @@
 #include <vector>
 
 // other headers
-#include "atom.hpp"
-#include "atomselection.hpp"
+#include "sample/atom.hpp"
+#include "sample/atomselection.hpp"
 #include "coor3d.hpp"
-#include "log.hpp"
-#include "parameters.hpp"
-#include "database.hpp"
+#include "control.hpp"
+
 
 using namespace std;
 
@@ -134,18 +133,6 @@ void Atoms::read_particle(ifstream& input, string fileformat) {
 			} catch (...) { cerr << "Error at reading particlepdb line:" << endl << line << endl; throw; }
 		}
 	}
-}
-
-void Atoms::push_scatteramps(std::string name) {
-	// get selection
-	Atomselection& as = selections[name];
-	
-	if (scatteramps.find(name)!=scatteramps.end()) scatteramps.erase(name);
-	vector<double>& sa = scatteramps[name];
-	for(size_t i = 0; i < as.size(); ++i)
-	{
-		sa.push_back(this->at(as[i]).scatteramp);
-	}	
 }
 
 

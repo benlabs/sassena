@@ -11,6 +11,7 @@
 
 // direct header
 #include "density_grid.hpp"
+#include "control.hpp"
 
 // standard header
 #include <cmath>
@@ -23,22 +24,37 @@
 using namespace std;
 	
 void DensityGrid::set(CoordinateSet& coordset) {
+    if (coordset.get_representation()!=CARTESIAN) {
+        Err::Inst()->write("Density Grid require cartesian Coordinate Set");
+        throw;
+    }
+    
 	for(size_t i = 0; i < coordset.size(); ++i)
 	{
-		Gridkey3D key = get_cell(CartesianCoor3D(coordset.x[i],coordset.y[i],coordset.z[i]));
+		Gridkey3D key = get_cell(CartesianCoor3D(coordset.c1[i],coordset.c2[i],coordset.c3[i]));
 		(*this)[key] = true;
 	}
 }
 
 void DensityGrid::unset(CoordinateSet& coordset) {
+    if (coordset.get_representation()!=CARTESIAN) {
+        Err::Inst()->write("Density Grid require cartesian Coordinate Set");
+        throw;
+    }
+
 	for(size_t i = 0; i < coordset.size(); ++i)
 	{
-		Gridkey3D key = get_cell(CartesianCoor3D(coordset.x[i],coordset.y[i],coordset.z[i]));
+		Gridkey3D key = get_cell(CartesianCoor3D(coordset.c1[i],coordset.c2[i],coordset.c3[i]));
 		(*this)[key] = false;
 	}
 }
 
 void DensityGrid::unset(CoordinateSet& coordset, double nullrange) {
+    if (coordset.get_representation()!=CARTESIAN) {
+        Err::Inst()->write("Density Grid require cartesian Coordinate Set");
+        throw;
+    }
+    
 	double a_d = box[0].length()/a_cells;
 	double b_d = box[1].length()/b_cells;
 	double c_d = box[2].length()/c_cells;
@@ -58,7 +74,7 @@ void DensityGrid::unset(CoordinateSet& coordset, double nullrange) {
 			{
 				for(size_t i = 0; i < coordset.size(); ++i)
 				{		
-					CartesianCoor3D c(coordset.x[i]+ai*a_d,coordset.y[i]+bi*b_d,coordset.z[i]+ci*c_d);
+					CartesianCoor3D c(coordset.c1[i]+ai*a_d,coordset.c2[i]+bi*b_d,coordset.c3[i]+ci*c_d);
 
 					Gridkey3D key = get_cell(c);
 					(*this)[key] = false;

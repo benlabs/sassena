@@ -18,7 +18,7 @@
 // special library headers
 
 // other headers
-#include "parameters.hpp"
+#include "control.hpp"
 
 using namespace std;
 
@@ -76,7 +76,7 @@ void ScatterSpectrum::write_plain(string fname,string format) {
 			std::vector<std::complex<double> >::iterator testiterator = si2;			
 			
 			if (format == "txt") {
-				ofile <<  qvector.x << "\t" <<  qvector.y << "\t" <<  qvector.z <<  "\t" << framenumber << "\t" << supermaxvalue << "\t" << maxvalues[qvector] << "\t" << Iq0.real() << "\t"  << value <<  endl;			
+				ofile <<  qvector.x << "\t" <<  qvector.y << "\t" <<  qvector.z <<  "\t" << framenumber << "\t" << supermaxvalue << "\t" << maxvalues[qvector] << "\t" << Iq0.real() << "\t"  << si2->real() << "\t"  << si2->imag()  <<  endl;			
 				if ( testiterator++ == si->second.end()) { ofile << endl; } // if we hit the end of frames for current vector...
 			}
 			

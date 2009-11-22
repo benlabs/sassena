@@ -9,7 +9,7 @@
  *
  */
 // direct header
-#include "coordinate_set.hpp"
+#include "sample/coordinate_set.hpp"
 
 // standard header
 #include <fstream>
@@ -19,11 +19,10 @@
 #include <vector>
 
 // other headers
-#include "frame.hpp"
+#include "sample/frame.hpp"
 #include "coor3d.hpp"
-#include "log.hpp"
-#include "parameters.hpp"
-#include "database.hpp"
+#include "control.hpp"
+
 
 using namespace std;
 
@@ -31,7 +30,12 @@ CoordinateSet::CoordinateSet() {
 	m_size = 0;
 }
 
-CoordinateSet::CoordinateSet(Frame& frame,Atomselection& selection) {
+CartesianCoordinateSet::CartesianCoordinateSet(Frame& frame,Atomselection& selection) {
+    m_representation = CARTESIAN;
+    
+    vector<double>& x = c1;
+    vector<double>& y = c2;
+    vector<double>& z = c3;
 
 	m_size = selection.size();
 	x.resize(m_size);
@@ -48,6 +52,10 @@ CoordinateSet::CoordinateSet(Frame& frame,Atomselection& selection) {
 }
 
 CoordinateSet::CoordinateSet(CoordinateSet& original_cs,Atomselection& original_selection, Atomselection& sub_selection) {
+    if (original_cs.get_representation()!=m_representation) {
+        Err::Inst()->write("Incompatible representations of Coordinate Sets");
+        throw;
+    }
 
 	// to construct a new coordinateset from a prior one, the following conditions has to be met:
 	// the selection of the new one must be a subset of the old one
@@ -58,9 +66,9 @@ CoordinateSet::CoordinateSet(CoordinateSet& original_cs,Atomselection& original_
 	}
 	
 	m_size = sub_selection.size();
-	x.resize(m_size);
-	y.resize(m_size);
-	z.resize(m_size);
+	c1.resize(m_size);
+	c2.resize(m_size);
+	c3.resize(m_size);
 
 	// use the complete booleanarray of the selection, this allows translation of the indexes on the fly
 	size_t cs_index_iter = 0;
@@ -68,9 +76,9 @@ CoordinateSet::CoordinateSet(CoordinateSet& original_cs,Atomselection& original_
 	for(size_t i = 0; i < sub_selection.booleanarray.size(); ++i)
 	{
 		if (sub_selection.booleanarray[i]) {
-			x[index_iter] = original_cs.x[cs_index_iter];
-			y[index_iter] = original_cs.y[cs_index_iter];
-			z[index_iter] = original_cs.z[cs_index_iter];
+			c1[index_iter] = original_cs.c1[cs_index_iter];
+			c2[index_iter] = original_cs.c2[cs_index_iter];
+			c3[index_iter] = original_cs.c3[cs_index_iter];
 			index_iter++;
 		}		
 
@@ -78,7 +86,9 @@ CoordinateSet::CoordinateSet(CoordinateSet& original_cs,Atomselection& original_
 	}
 }
 
-void CoordinateSet::translate(CartesianCoor3D trans,Atomselection& original_selection, Atomselection& sub_selection) {
+void CartesianCoordinateSet::translate(CartesianCoor3D trans,Atomselection& original_selection, Atomselection& sub_selection) {
+
+    
 	// to translate only a subpart, the following conditions has to be met:
 	// the sub selection must be a subset of the containing one
 	if ( ! sub_selection.is_subset_of(original_selection) ) {
@@ -90,9 +100,9 @@ void CoordinateSet::translate(CartesianCoor3D trans,Atomselection& original_sele
 	for(size_t i = 0; i < original_selection.booleanarray.size(); ++i)
 	{
 		if (sub_selection.booleanarray[i]) {
-			x[index_iter] += trans.x;
-			y[index_iter] += trans.y;
-			z[index_iter] += trans.z;
+			c1[index_iter] += trans.x;
+			c2[index_iter] += trans.y;
+			c3[index_iter] += trans.z;
 		}		
 
 		if (original_selection.booleanarray[i]) index_iter++;
@@ -101,21 +111,25 @@ void CoordinateSet::translate(CartesianCoor3D trans,Atomselection& original_sele
 }
 
 
-void CoordinateSet::translate(CartesianCoor3D trans) {
-
+void CartesianCoordinateSet::translate(CartesianCoor3D trans) {
 	for(size_t i = 0; i < m_size; ++i)
 	{
-		x[i] += trans.x;
-		y[i] += trans.y;
-		z[i] += trans.z;	
+		c1[i] += trans.x;
+		c2[i] += trans.y;
+		c3[i] += trans.z;	
 	}	
 	
 }
 
-void CoordinateSet::rotate(CartesianCoor3D axis1,CartesianCoor3D axis2) {
+void CartesianCoordinateSet::rotate(CartesianCoor3D axis1,CartesianCoor3D axis2) {
 
     // the axis indicates the direction of the new x-axis!
     // we have to rotate the whole system, so that the old x-axis points towards the new one
+
+    vector<double>& x = c1;
+    vector<double>& y = c2;
+    vector<double>& z = c3;
+    
 
     CartesianCoor3D al1 = CartesianCoor3D(1,0,0);
     CartesianCoor3D al2 = CartesianCoor3D(0,1,0);
@@ -180,7 +194,45 @@ void CoordinateSet::rotate(CartesianCoor3D axis1,CartesianCoor3D axis2) {
 	
 }
 
+CylindricalCoordinateSet::CylindricalCoordinateSet() {
+    m_representation = CYLINDRICAL;
+    m_size = 0;
+}
 
+CylindricalCoordinateSet::CylindricalCoordinateSet(CartesianCoordinateSet& cs) {
+    m_representation = CYLINDRICAL;
+    m_size = cs.size();
+    for(size_t i = 0; i < m_size; ++i)
+    {
+        double x, y, z;
+        CartesianCoor3D cac(cs.c1[i],cs.c2[i],cs.c3[i]);
+        CylinderCoor3D cyc(cac);
+                
+        c1.push_back(cyc.r);
+        c2.push_back(cyc.phi);
+        c3.push_back(cyc.z);
+    }
+}
+
+SphericalCoordinateSet::SphericalCoordinateSet() {
+    m_representation = SPHERICAL;
+    m_size = 0;    
+}
+
+SphericalCoordinateSet::SphericalCoordinateSet(CartesianCoordinateSet& cs) {
+    m_representation = SPHERICAL;
+    m_size = cs.size();
+    for(size_t i = 0; i < m_size; ++i)
+    {
+        double x, y, z;
+        CartesianCoor3D cac(cs.c1[i],cs.c2[i],cs.c3[i]);
+        SphericalCoor3D csc(cac);
+                
+        c1.push_back(csc.r);
+        c2.push_back(csc.phi);
+        c3.push_back(csc.theta);
+    }
+}
 
 
 

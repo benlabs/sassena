@@ -26,9 +26,7 @@
 #include "decompose.hpp"
 #include "fftw/fftw++.h"
 #include <fftw3.h>
-#include "log.hpp"
-#include "parameters.hpp"
-#include "database.hpp"
+#include "control.hpp"
 #include "sample.hpp"
 #include "smath.hpp"
 #include "particle_trajectory.hpp"
@@ -45,7 +43,7 @@ AllScatterDevice::AllScatterDevice(boost::mpi::communicator& thisworld, Sample& 
 
 	size_t nn = thisworld.size(); // Number of Nodes
 	size_t na = sample.atoms.selections[target].size(); // Number of Atoms
-	size_t nf = sample.frames.size();
+	size_t nf = sample.coordinate_sets.size();
 
 	size_t rank = thisworld.rank();
 
@@ -54,22 +52,38 @@ AllScatterDevice::AllScatterDevice(boost::mpi::communicator& thisworld, Sample& 
 	myframes = edecomp.indexes_for(rank);
 
 	if (thisworld.rank()==0) {	
-		Info::Inst()->write(string("Memory Requirements per node: "));
-		Info::Inst()->write(string("Scattering Matrix: ")+to_s(2*8*myframes.size()*1)+string(" bytes"));
 
-		size_t numframes = myframes.size(); 
-		Info::Inst()->write(string("Coordinate Sets: ")+to_s(3*8*myframes.size()*na)+string(" bytes"));
+        size_t memusage_scatmat = 2*sizeof(double)*myframes.size()*1;
+                
+        size_t memusage_per_cs = 3*sizeof(double)*na;
+        size_t memusage_allcs = memusage_per_cs*myframes.size();
+        
+        
+        Info::Inst()->write(string("Memory Requirements per node: "));
+		Info::Inst()->write(string("Scattering Matrix: ")+to_s(memusage_scatmat)+string(" bytes"));
 
 
-		if (Params::Inst()->limits.coordinatesets_cache_max!=0 && Params::Inst()->limits.coordinatesets_cache_max<numframes) {
-			Warn::Inst()->write(string("Insufficient Buffer size for coordinate sets. This is a huge bottleneck for performance!"));
-			Warn::Inst()->write(string("Need at least: ")+to_s(numframes));
+        // fault if not enough memory for scattering matrix
+        if (memusage_scatmat>Params::Inst()->limits.memory.scattering_matrix) {
+			Err::Inst()->write(string("Insufficient Buffer size for scattering matrix."));            
+			Err::Inst()->write(string("Size required:")+to_s(memusage_scatmat)+string(" bytes"));            
+			Err::Inst()->write(string("Configuration Parameter: limits.memory.scattering_matrix"));
+            throw;
+        }
+
+		Info::Inst()->write(string("Coordinate Sets: ")+to_s(myframes.size()*memusage_per_cs)+string(" bytes"));		
+
+        // warn if not enough memory for coordinate sets (cacheable system)
+		if (Params::Inst()->runtime.limits.cache.coordinate_sets<myframes.size()) {
+			Warn::Inst()->write(string("Insufficient Buffer size for coordinate sets. This is a HUGE bottleneck for performance!"));
+			Warn::Inst()->write(string("Need at least: ")+to_s(memusage_allcs)+string(" bytes"));
+			Warn::Inst()->write(string("Configuration Parameter: limits.memory.coordinate_sets"));
 		}		
 	}
 	a.resize(myframes.size(),1); // n x 1 = frames x 1
-	
-	coordinate_sets.set_sample(sample);
-	coordinate_sets.set_selection(sample.atoms.selections[target]);
+
+	p_sample->coordinate_sets.set_selection(sample.atoms.selections[target]);
+	p_sample->coordinate_sets.set_representation(CARTESIAN);	
 	
 	scatterfactors.set_sample(sample);
 	scatterfactors.set_selection(sample.atoms.selections[target]);
@@ -79,11 +93,11 @@ AllScatterDevice::AllScatterDevice(boost::mpi::communicator& thisworld, Sample& 
 // acts like scatter_frame, but does the summation in place
 void AllScatterDevice::scatter_frame_norm1(size_t localframe, CartesianCoor3D& q) {
 
-	size_t noa = coordinate_sets.get_selection().size();
+	size_t noa = p_sample->coordinate_sets.get_selection().size();
 	
 	timer.start("sd:fs:f:ld");												
-	CoordinateSet& cs = coordinate_sets.load(myframes[localframe]);
-	timer.stop("sd:fs:f:ld");												
+	CoordinateSet& cs = p_sample->coordinate_sets.load(myframes[localframe]);
+	timer.stop("sd:fs:f:ld");
 	
 	vector<double>& sfs = scatterfactors.get_all();
 
@@ -106,9 +120,9 @@ void AllScatterDevice::scatter_frame_norm1(size_t localframe, CartesianCoor3D& q
 		double M_PI_3half = 3*M_PI/2;	
 		double M_PI_twice = 2*M_PI;
 
-		double csx = cs.x[0];
-		double csy = cs.y[0];
-		double csz = cs.z[0];
+		double csx = cs.c1[0];
+		double csy = cs.c2[0];
+		double csz = cs.c3[0];
 
 
 		for(size_t j = 0; j < noa; ++j) {
@@ -119,9 +133,9 @@ void AllScatterDevice::scatter_frame_norm1(size_t localframe, CartesianCoor3D& q
 //			cp = ( p<M_PI_half )  ? p + M_PI_half : p - M_PI_3half;
 
 			//pre-fetch next data
-			csx = cs.x[j+1];
-			csy = cs.y[j+1];
-			csz = cs.z[j+1];	
+			csx = cs.c1[j+1];
+			csy = cs.c2[j+1];
+			csz = cs.c3[j+1];	
 
 //			Ar += sfs[j]*sign_sin*sine(p);
 //			Ai += sfs[j]*sine(cp);
@@ -142,13 +156,15 @@ void AllScatterDevice::scatter_frames_norm1(CartesianCoor3D& q) {
 
 
 std::vector<std::complex<double> > AllScatterDevice::correlate_frames_fftw() {
-	// each nodes has computed their assigned frames
+	// each node has computed their assigned frames
 	// the total scattering amplitudes reside in a(x,0)
 
-	//negotiate maximum size for coordinatesets
+	// negotiate maximum size for coordinatesets
 	size_t CSsize = myframes.size();
 	size_t maxCSsize;
+
 	if (Params::Inst()->debug.barriers) p_thisworldcomm->barrier();
+
 	timer.start("sd:corr::areduce");										
 	boost::mpi::all_reduce(*p_thisworldcomm,CSsize,maxCSsize,boost::mpi::maximum<size_t>());
 	timer.stop("sd:corr::areduce");										
@@ -160,7 +176,6 @@ std::vector<std::complex<double> > AllScatterDevice::correlate_frames_fftw() {
 	{
 		local_A[ci] = a(ci,0);
 	}
-
 
 	vector<double> local_Ar = flatten(local_A);
 	vector<double> all_Ar; 
@@ -175,10 +190,10 @@ std::vector<std::complex<double> > AllScatterDevice::correlate_frames_fftw() {
 
     if (p_thisworldcomm->rank()==0) {
 
-    	EvenDecompose edecomp(p_sample->frames.size(),p_thisworldcomm->size());
+    	EvenDecompose edecomp(p_sample->coordinate_sets.size(),p_thisworldcomm->size());
 
     	// this has interleaving A , have to be indexed away
-    	vector<complex<double> > A; A.resize(p_sample->frames.size());	
+    	vector<complex<double> > A; A.resize(p_sample->coordinate_sets.size());	
 
     	for(size_t i = 0; i < p_thisworldcomm->size(); ++i)
     	{
@@ -191,50 +206,41 @@ std::vector<std::complex<double> > AllScatterDevice::correlate_frames_fftw() {
 
         // A contains all complex values in the right order.
         
-    	vector<complex<double> > correlated_a; correlated_a.resize(p_sample->frames.size(),complex<double>(0,0));        
+    	vector<complex<double> > correlated_a; correlated_a.resize(p_sample->coordinate_sets.size(),complex<double>(0,0));        
     	timer.start("sd:cor:correlate");
-        double renorm = 1.0/p_sample->frames.size();
-        Complex *f1=FFTWComplex(p_sample->frames.size());
-        Complex *f2=FFTWComplex(p_sample->frames.size());
+        Complex *f1=FFTWComplex(p_sample->coordinate_sets.size()*2);
+        Complex *f2=FFTWComplex(p_sample->coordinate_sets.size()*2);
 
-        for(size_t i = 0; i < p_sample->frames.size(); ++i) {
+        for(size_t i = 0; i < p_sample->coordinate_sets.size(); ++i) {
            f1[i]=A[i];
         } 
-
-        fft1d Forward(p_sample->frames.size(),-1);
+        for(size_t i = p_sample->coordinate_sets.size(); i < p_sample->coordinate_sets.size()*2; ++i) {
+           f1[i]=0;
+        } 
         
-        fft1d Backward(p_sample->frames.size(),1);
+
+        fft1d Forward(p_sample->coordinate_sets.size()*2,-1);
+        
+        fft1d Backward(p_sample->coordinate_sets.size()*2,1);
+
         Forward.fft(f1);
-        
-
-        for(size_t i = 0; i < p_sample->frames.size(); ++i) {
+        for(size_t i = 0; i < p_sample->coordinate_sets.size()*2; ++i) {
            f2[i]=f1[i]*conj(f1[i]); 
         } 
-        f2[0]=complex<double>(real(f2[0]),real(f2[p_sample->frames.size()]));
         Backward.fft(f2);
 
-        for(size_t i = 0; i < p_sample->frames.size(); ++i) {
-           correlated_a[i]=f2[i]*(renorm*renorm); 
+        double cssize = p_sample->coordinate_sets.size();
+
+        // normalize by:
+        // 2 * cssize = FFTW introduced scaling 
+        // cssize - i = compensate sampling weight (like in direct correlation)
+        for(size_t i = 0; i < p_sample->coordinate_sets.size(); ++i) {           
+           correlated_a[i]=f2[i]*( 1.0 / ( 2*cssize * (cssize -i ) ) ); 
         }
-        
+         
         FFTWdelete(f1);
         FFTWdelete(f2);              
-        
-//        fftw_complex *in,*out;
-//        fftw_plan p;
-//        in  = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * p_sample->frames.size());
-//        for(size_t i = 0; i < p_sample->frames.size(); ++i) {
-//           in[i]=A[i]; 
-//        }        
-//        out  = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * p_sample->frames.size());
-//        p = fftw_plan_dft_1d(p_sample->frames.size(), in,out,FFTW_FORWARD,FFTW_ESTIMATE);
-//        fftw_execute(p);
-//        fftw_destroy_plan(p);
-//        for(size_t i = 0; i < p_sample->frames.size(); ++i) {
-//           correlated_a[i]=out[i]; 
-//        }
-//        fftw_free(in);fftw_free(out);
-        
+  
     	timer.stop("sd:corr:correlate");
         
         return correlated_a;
@@ -249,9 +255,12 @@ std::vector<std::complex<double> > AllScatterDevice::correlate_frames() {
 	// each nodes has computed their assigned frames
 	// the total scattering amplitudes reside in a(x,0)
 
+    size_t NF = p_sample->coordinate_sets.size();
+    size_t NN = p_thisworldcomm->size();
+    
 	//negotiate maximum size for coordinatesets
 	size_t CSsize = myframes.size();
-	size_t maxCSsize;
+	size_t maxCSsize = CSsize;
 	if (Params::Inst()->debug.barriers) p_thisworldcomm->barrier();
 	timer.start("sd:corr::areduce");										
 	boost::mpi::all_reduce(*p_thisworldcomm,CSsize,maxCSsize,boost::mpi::maximum<size_t>());
@@ -260,24 +269,24 @@ std::vector<std::complex<double> > AllScatterDevice::correlate_frames() {
 	vector<complex<double> > local_A;
 	local_A.resize(maxCSsize,complex<double>(0,0));
 	
-	for(size_t ci = 0; ci < myframes.size(); ++ci)
+	for(size_t ci = 0; ci < CSsize; ++ci)
 	{
 		local_A[ci] = a(ci,0);
 	}
 
 
 	vector<double> local_Ar = flatten(local_A);
-	vector<double> all_Ar; all_Ar.resize(2*maxCSsize*p_thisworldcomm->size());	
+	vector<double> all_Ar; all_Ar.resize(2*maxCSsize*NN);	
 
 	if (Params::Inst()->debug.barriers) p_thisworldcomm->barrier();
 	timer.start("sd:corr:agather");										
 	boost::mpi::all_gather(*p_thisworldcomm,&local_Ar[0], 2*maxCSsize ,&all_Ar[0]);
 	timer.stop("sd:corr:agather");										
 
-	EvenDecompose edecomp(p_sample->frames.size(),p_thisworldcomm->size());
+	EvenDecompose edecomp(NF,NN);
 
 	// this has interleaving A , have to be indexed away
-	vector<complex<double> > A; A.resize(p_sample->frames.size());	
+	vector<complex<double> > A; A.resize(NF);	
 
 	for(size_t i = 0; i < p_thisworldcomm->size(); ++i)
 	{
@@ -288,26 +297,26 @@ std::vector<std::complex<double> > AllScatterDevice::correlate_frames() {
 		}
 	}
 
-	RModuloDecompose rmdecomp(p_sample->frames.size(),p_thisworldcomm->size());
+	RModuloDecompose rmdecomp(NF,NN);
 	vector<size_t> mysteps = rmdecomp.indexes_for(p_thisworldcomm->rank());
 	
-	vector<complex<double> > correlated_a; correlated_a.resize(p_sample->frames.size(),complex<double>(0,0));
+	vector<complex<double> > correlated_a; correlated_a.resize(NF,complex<double>(0,0));
 
 	timer.start("sd:cor:correlate");
 	
     complex<double> mean; mean =0.0;
 	if (Params::Inst()->scattering.correlation.zeromean) {
-	    for(size_t i = 0; i < p_sample->frames.size(); ++i)
+	    for(size_t i = 0; i < NF; ++i)
 	    {
             mean += A[i];
 	    }
-        mean = mean * (1.0/p_sample->frames.size());
+        mean = mean * (1.0/NF);
 	}
 												
 	for(size_t i = 0; i < mysteps.size(); ++i)
 	{
 		size_t tau = mysteps[i];
-		size_t last_starting_frame = p_sample->frames.size()-tau;
+		size_t last_starting_frame = NF-tau;
 		for(size_t k = 0; k < last_starting_frame; ++k) // this iterates the starting frame
 		{
 			complex<double> a1 = A[k] - mean;
@@ -367,10 +376,10 @@ vector<complex<double> > AllScatterDevice::conjmultiply_frames() {
 	timer.stop("sd:conjmul:gather");										
 
 	if (p_thisworldcomm->rank()==0) {
-		EvenDecompose edecomp(p_sample->frames.size(),p_thisworldcomm->size());
+		EvenDecompose edecomp(p_sample->coordinate_sets.size(),p_thisworldcomm->size());
 
 		// this has interleaving A , have to be indexed away
-		vector<complex<double> > A; A.resize(p_sample->frames.size());	
+		vector<complex<double> > A; A.resize(p_sample->coordinate_sets.size());	
 
 		for(size_t i = 0; i < p_thisworldcomm->size(); ++i)
 		{
@@ -403,7 +412,7 @@ void AllScatterDevice::execute(CartesianCoor3D& q) {
 				
 	timer.start("sd:vector:unfold");
 	VectorUnfold* p_vectorunfold = NULL;			
-	if (avm=="bruteforce") {
+	if (avm=="vectors") {
 		string avv = Params::Inst()->scattering.average.orientation.vectors;
 		string avt = Params::Inst()->scattering.average.orientation.type;
 
@@ -439,13 +448,13 @@ void AllScatterDevice::execute(CartesianCoor3D& q) {
 	vector<CartesianCoor3D>& qvectors = p_vectorunfold->vectors();
 
 	/// k, qvectors are prepared:
-	vector<complex<double> > spectrum; spectrum.resize(p_sample->frames.size());
+	vector<complex<double> > spectrum; spectrum.resize(p_sample->coordinate_sets.size());
 
 	timer.start("sd:sf:update");
 	scatterfactors.update(q); // scatter factors only dependent on length of q, hence we can do it once before the loop
 	timer.stop("sd:sf:update");
 	
-	for(size_t qi = 0; qi < qvectors.size(); ++qi)
+	for(size_t qi = 0; qi < qvectors.size(); ++qi) // blocking of N
 	{
 		timer.start("sd:fs");
 		scatter_frames_norm1(qvectors[qi]); // put summed scattering amplitudes into first atom entry		
@@ -458,7 +467,7 @@ void AllScatterDevice::execute(CartesianCoor3D& q) {
 				thisspectrum = correlate_frames(); // if correlation, otherwise do a elementwise conj multiply here			
 				timer.stop("sd:correlate");					
     		} else if (Params::Inst()->scattering.correlation.method=="fftw") {
-    				timer.start("sd:correlate");					
+    				timer.start("sd:correlate");
     				thisspectrum = correlate_frames_fftw(); // if correlation, otherwise do a elementwise conj multiply here			
     				timer.stop("sd:correlate");					
     		} else {

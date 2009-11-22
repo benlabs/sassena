@@ -10,44 +10,49 @@
  */
 
 // direct header
-#include "motion_walker.hpp"
-#include "vector_unfold.hpp"
-#include "log.hpp"
+#include "sample/motion_walker.hpp"
+#include "control.hpp"
 
 #include <boost/random/mersenne_twister.hpp>	
 #include <boost/random/normal_distribution.hpp>	
+#include <boost/random/uniform_on_sphere.hpp>	
+
 #include <boost/random/variate_generator.hpp>
 
 using namespace std;
 
 // Brownian Motion
 
-BrownianMotionWalker::BrownianMotionWalker(double displace,long seed,CartesianCoor3D direction) {
+BrownianMotionWalker::BrownianMotionWalker(double displace,long seed,CartesianCoor3D direction): m_init(true) {
 	m_seed = seed;
 	m_direction = direction;
 	m_displace = displace;
-	
-	p_svu = new SphereVectorUnfold(direction/direction.length());
-	p_svu->set_resolution(1000000);
-	p_svu->set_seed(m_seed);
-	p_svu->set_vectors("mcboostunisphere");
-	p_svu->execute();
-	
+}
+
+void BrownianMotionWalker::init() {
 	boost::mt19937 brownian_displace_rng; // that's my random number generator
-	brownian_displace_rng.seed(1000000);		
+	boost::mt19937 spherical_rng; // that's my random number generator
+	brownian_displace_rng.seed(m_seed);
+    spherical_rng.seed(m_seed+1);
+
 	boost::normal_distribution<double> gauss; // that's my distribution
+	boost::uniform_on_sphere<double> sphere(3); // that's my distribution
+
 	p_mynormaldistribution = new boost::variate_generator<boost::mt19937, boost::normal_distribution<double> >(brownian_displace_rng,gauss);
-    boost::variate_generator<boost::mt19937, boost::normal_distribution<double> > asdfasd(brownian_displace_rng,gauss); 
+    p_myspheredistribution = new boost::variate_generator<boost::mt19937, boost::uniform_on_sphere<double> >(spherical_rng,sphere);
+	
+    m_init = false;
 }
 
 BrownianMotionWalker::~BrownianMotionWalker() {
-	delete p_svu;
-    delete p_mynormaldistribution;
+    if (!m_init) {
+    	delete p_myspheredistribution;
+        delete p_mynormaldistribution;        
+    }
 }
 
-
-
 CartesianCoor3D BrownianMotionWalker::translation(size_t timepos) {
+    
 	if (translations.find(timepos)==translations.end()) {
 		generate(timepos);
 	}
@@ -56,6 +61,7 @@ CartesianCoor3D BrownianMotionWalker::translation(size_t timepos) {
 
 
 void BrownianMotionWalker::generate(size_t timepos) {
+    if (m_init) init();    
 	size_t oldtimepos = translations.size();
 	if (timepos<oldtimepos) return; // don't generate anything if we already have it
 
@@ -63,16 +69,13 @@ void BrownianMotionWalker::generate(size_t timepos) {
 	if (oldtimepos>0) {
 		oldtranslation = translations[oldtimepos-1];		
 	}
-
-	if (timepos>p_svu->vectors().size()) {
-		p_svu->set_resolution(p_svu->vectors().size()+timepos+1000000); // this will ensure that we have enough vectors
-	}
     
 	for(size_t ti = oldtimepos; ti <= timepos; ++ti)
 	{
         double normran = (*p_mynormaldistribution)();
-        double displacement = m_displace * normran;
-		translations[ti]= oldtranslation + displacement*p_svu->vectors()[ti] ;
+        vector<double> sphereran = (*p_myspheredistribution)();
+        double displacement = m_displace * normran; 
+		translations[ti]= oldtranslation + displacement*CartesianCoor3D(sphereran[0],sphereran[1],sphereran[2]) ;
 		oldtranslation = translations[ti];
 	}
 }
@@ -80,20 +83,28 @@ void BrownianMotionWalker::generate(size_t timepos) {
 
 // random walk 
 
-RandomMotionWalker::RandomMotionWalker(double displace,long seed,CartesianCoor3D direction) {
+RandomMotionWalker::RandomMotionWalker(double displace,long seed,CartesianCoor3D direction): m_init(true) {
 	m_seed = seed;
 	m_direction = direction;
 	m_displace = displace;
-	
-	p_svu = new SphereVectorUnfold(direction/direction.length());
-	p_svu->set_resolution(1000000);
-	p_svu->set_seed(m_seed);
-	p_svu->set_vectors("mcboostunisphere");
-	p_svu->execute();
 }
 
+void RandomMotionWalker::init() {
+	
+	boost::mt19937 spherical_rng; // that's my random number generator
+    spherical_rng.seed(m_seed);
+
+	boost::uniform_on_sphere<double> sphere(3); // that's my distribution
+    p_myspheredistribution = new boost::variate_generator<boost::mt19937, boost::uniform_on_sphere<double> >(spherical_rng,sphere);
+
+    m_init = false;
+}
+
+
 RandomMotionWalker::~RandomMotionWalker() {
-	delete p_svu;
+    if (!m_init) {    
+	    delete p_myspheredistribution;
+    }
 }
 
 
@@ -107,6 +118,7 @@ CartesianCoor3D RandomMotionWalker::translation(size_t timepos) {
 
 
 void RandomMotionWalker::generate(size_t timepos) {
+    if (m_init) init();
 	size_t oldtimepos = translations.size();
 	if (timepos<oldtimepos) return; // don't generate anything if we already have it
 
@@ -115,13 +127,10 @@ void RandomMotionWalker::generate(size_t timepos) {
 		oldtranslation = translations[oldtimepos-1];		
 	}
 
-	if (timepos>p_svu->vectors().size()) {
-		p_svu->set_resolution(p_svu->vectors().size()+timepos+1000000); // this will ensure that we have enough vectors
-	}
-
 	for(size_t ti = oldtimepos; ti <= timepos; ++ti)
 	{
-		translations[ti]= oldtranslation + m_displace*p_svu->vectors()[ti] ;
+	    vector<double> sphereran = (*p_myspheredistribution)();
+		translations[ti]= oldtranslation + m_displace*CartesianCoor3D(sphereran[0],sphereran[1],sphereran[2]) ;
 		oldtranslation = translations[ti];
 	}
 }

@@ -33,14 +33,12 @@
 #include <boost/random/variate_generator.hpp>	
 
 // other headers
-#include "atom.hpp"
-#include "atomselection.hpp"
+#include "sample/atom.hpp"
+#include "sample/atomselection.hpp"
 #include "coor3d.hpp"
 #include "geometry.hpp"
-#include "log.hpp"
+#include "control.hpp"
 #include "density_grid.hpp"
-#include "parameters.hpp"
-#include "database.hpp"
 #include "sample.hpp"
 #include "timer.hpp"
 
@@ -76,8 +74,8 @@ void scatter_cylinder_multipole(Sample& sample,Atomselection as,CartesianCoor3D 
 	D.resize(lmax+1,complex<double>(0,0));
 
 	for (Atomselection::iterator asi=as.begin();asi!=as.end();asi++) {
-		CartesianCoor3D ct = sample.frames.current().coord3D(*asi);
-		
+//		CartesianCoor3D ct = sample.frames.current().coord3D(*asi);
+        CartesianCoor3D ct(0,0,0);
 		CartesianCoor3D ctparallel = (o*ct)*o; 
 		CartesianCoor3D ctperpenticular = ct - ctparallel; // this contains psi-phi
 		double ctperpenticular_l = ctperpenticular.length();
@@ -133,49 +131,49 @@ void scatter_cylinder_multipole(Sample& sample,Atomselection as,CartesianCoor3D 
 }
 
 void compute_phase_factors(Sample& sample) {
-	// first grid the coordinate system, then calculate the grid-volume for each phase
-	// then calculate the unified kappa
-	
-	
-	// for each phase calculate the summed volumes
-	vector<ScatteringBackgroundPhaseParameters>& phases = Params::Inst()->scattering.background.phases;
-	vector<double> total_volumes(phases.size());
-
-	vector<CoordinateSet> coordinate_sets;
-	// first prepare all coordinate set...
-	for(size_t i = 0; i < phases.size(); ++i)
-	{
-		coordinate_sets.push_back( CoordinateSet(sample.frames.current(),sample.atoms.selections[phases[i].selection]) );
-	}
-	
-	for(size_t i = 0; i < phases.size(); ++i)
-	{
-		Atomselection& phase_atoms = sample.atoms.selections[phases[i].selection];
-
-//		double factor = 1.0;
-//		if (phases[i].scaling=="manual") {
-//			factor = phases[i].factor;
-//		}
-		
-		double volume = 0.0;
-		for(size_t j = 0; j < phase_atoms.size(); ++j)
-		{
-			volume += sample.atoms[phase_atoms[j]].volume;
-		} 
-		total_volumes[i] = volume;	
-
-		DensityGrid densgrid(sample.frames.current().unitcell,0.1,sample.frames.current().origin,false);
-		densgrid.set(coordinate_sets[i]);
-		for(size_t j = 0; j < phases.size(); ++j)
-		{
-			if (i==j) continue;
-			densgrid.unset(coordinate_sets[j],phases[i].nullrange);
-		}			
-	}
-	
-
-	vector<double> grid_volumes(phases.size());
-	
+//	// first grid the coordinate system, then calculate the grid-volume for each phase
+//	// then calculate the unified kappa
+//	
+//	
+//	// for each phase calculate the summed volumes
+//	vector<ScatteringBackgroundPhaseParameters>& phases = Params::Inst()->scattering.background.phases;
+//	vector<double> total_volumes(phases.size());
+//
+//	vector<CoordinateSet> coordinate_sets;
+//	// first prepare all coordinate set...
+//	for(size_t i = 0; i < phases.size(); ++i)
+//	{
+//		coordinate_sets.push_back( CoordinateSet(sample.frames.current(),sample.atoms.selections[phases[i].selection]) );
+//	}
+//	
+//	for(size_t i = 0; i < phases.size(); ++i)
+//	{
+//		Atomselection& phase_atoms = sample.atoms.selections[phases[i].selection];
+//
+////		double factor = 1.0;
+////		if (phases[i].scaling=="manual") {
+////			factor = phases[i].factor;
+////		}
+//		
+//		double volume = 0.0;
+//		for(size_t j = 0; j < phase_atoms.size(); ++j)
+//		{
+//			volume += sample.atoms[phase_atoms[j]].volume;
+//		} 
+//		total_volumes[i] = volume;	
+//
+//		DensityGrid densgrid(sample.frames.current().unitcell,0.1,sample.frames.current().origin,false);
+//		densgrid.set(coordinate_sets[i]);
+//		for(size_t j = 0; j < phases.size(); ++j)
+//		{
+//			if (i==j) continue;
+//			densgrid.unset(coordinate_sets[j],phases[i].nullrange);
+//		}			
+//	}
+//	
+//
+//	vector<double> grid_volumes(phases.size());
+//	
 }
 
 complex<double> background(Sample& sample,Atomselection& as_system, Atomselection& as_solvent, Atomselection& as_particle, int resolution, double hlayer, CartesianCoor3D q,vector<double>& kappas_s,vector<double>& kappas_p) {

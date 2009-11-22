@@ -26,8 +26,8 @@
 #include <boost/regex.hpp>
 
 // other headers
-#include "atomselection.hpp"
-#include "coordinate_set.hpp"
+#include "sample/atomselection.hpp"
+#include "sample/coordinate_set.hpp"
 #include "coor3d.hpp"
 #include "grid.hpp"
 

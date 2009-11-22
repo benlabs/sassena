@@ -35,8 +35,7 @@
 // other headers
 #include "coor3d.hpp"
 #include "geometry.hpp"
-#include "log.hpp"
-#include "parameters.hpp"
+#include "control.hpp"
 
 using namespace std;
 

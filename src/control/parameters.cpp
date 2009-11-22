@@ -1,5 +1,5 @@
 // direct header
-#include "parameters.hpp"
+#include "control/parameters.hpp"
 
 // standard header
 #include <cmath>
@@ -14,7 +14,7 @@
 #include <boost/regex.hpp>
 
 // other headers
-#include "log.hpp"
+#include "control/log.hpp"
 #include "xml_interface.hpp"
 
 using namespace std;
@@ -163,54 +163,33 @@ void Params::read_xml(std::string filename) {
 			} 
 
 			sample.motions.push_back(motion);
-			Info::Inst()->write(string("Adding additional motion to sample: type=")+motion.type+string(", displacement=")+to_s(motion.displace));
+            string selection_string = "system";
+            if (motion.selection!="") selection_string = motion.selection;
+			Info::Inst()->write(string("Adding additional motion to sample: type=")+motion.type+string(", displacement=")+to_s(motion.displace)+string(", selection=")+selection_string);
 		}
 	}	
 		
-	// periodic boundary behavior and/or postprocessing
-	sample.pbc.wrapping = false;	
-	sample.pbc.selection = "system";
-	if (xmli.exists("//sample/pbc")) {
-		if (xmli.exists("//sample/pbc/wrapping")) sample.pbc.wrapping = xmli.get_value<bool>("//sample/pbc/wrapping");
-		if (xmli.exists("//sample/pbc/selection"))   sample.pbc.selection   = xmli.get_value<string>("//sample/pbc/selection");
-		
-		if (sample.pbc.wrapping) {
-			Info::Inst()->write(string("Turned wrapping ON with center group ")+sample.pbc.selection);
-		} else {
-			Info::Inst()->write("Turned wrapping OFF");
-		}
-			
-	} else {
-		Info::Inst()->write("No periodic boundary treatment");
-	}
-	
-	// additional alignment of the sample
-	sample.alignment.origin.type = "manual";	
-	sample.alignment.origin.basevector = CartesianCoor3D(0,0,0);
-	sample.alignment.axis.type = "manual";	
-	sample.alignment.axis.basevector = CartesianCoor3D(1,0,0);
-	if (xmli.exists("//sample/alignment")) {
-    	if (xmli.exists("//sample/alignment/origin")) {
-        	if (xmli.exists("//sample/alignment/origin/type")) sample.alignment.origin.type = xmli.get_value<string>("//sample/alignment/origin/type");
-        	if (xmli.exists("//sample/alignment/origin/selection")) sample.alignment.origin.selection = xmli.get_value<string>("//sample/alignment/origin/selection");
-        	if (xmli.exists("//sample/alignment/origin/basevector")) {
-        	    sample.alignment.origin.basevector.x = xmli.get_value<double>("//sample/alignment/origin/basevector/x");
-        	    sample.alignment.origin.basevector.y = xmli.get_value<double>("//sample/alignment/origin/basevector/y");
-        	    sample.alignment.origin.basevector.z = xmli.get_value<double>("//sample/alignment/origin/basevector/z");    
-        	}
+    
+    if (xmli.exists("//sample/alignments")) {
+
+	    vector<XMLElement> alignments = xmli.get("//sample/alignments/alignment");
+	    for(size_t i = 0; i < alignments.size(); ++i)
+	    {
+	    	xmli.set_current(alignments[i]);
+	    	SampleAlignmentParameters alignment;	
+	    	alignment.type = "center";	 
+	    	alignment.selection = "";
+            alignment.order = "pre";
+	    	if (xmli.exists("./type"))   alignment.type  = xmli.get_value<string>("./type");
+	    	if (xmli.exists("./selection"))  alignment.selection   = xmli.get_value<string>("./selection");			
+	    	if (xmli.exists("./order"))  alignment.order   = xmli.get_value<string>("./order");			
+        
+	    	sample.alignments.push_back(alignment);
+            string selection_string = "system";
+            if (alignment.selection!="") selection_string = alignment.selection;
+	    	Info::Inst()->write(string("Adding additional alignment to sample: type=")+alignment.type+string(", selection=")+selection_string+string(", order=")+alignment.order);
 	    }
-    	if (xmli.exists("//sample/alignment/axis")) {
-        	if (xmli.exists("//sample/alignment/axis/type")) sample.alignment.axis.type = xmli.get_value<string>("//sample/alignment/axis/type");
-        	if (xmli.exists("//sample/alignment/axis/selection")) sample.alignment.axis.selection = xmli.get_value<string>("//sample/alignment/axis/selection");
-        	if (xmli.exists("//sample/alignment/axis/basevector")) {
-        	    sample.alignment.axis.basevector.x = xmli.get_value<double>("//sample/alignment/axis/basevector/x");
-        	    sample.alignment.axis.basevector.y = xmli.get_value<double>("//sample/alignment/axis/basevector/y");
-        	    sample.alignment.axis.basevector.z = xmli.get_value<double>("//sample/alignment/axis/basevector/z");    
-        	}
-	    }
-	} else {
-		Info::Inst()->write("No additional alignment");
-	}
+    }	
 
 	// END OF sample section //
 	// START OF scattering section //
@@ -287,7 +266,7 @@ void Params::read_xml(std::string filename) {
 	
     scattering.correlation.type="none";
     scattering.correlation.method="direct";
-    scattering.correlation.zeromean=true;
+    scattering.correlation.zeromean=false;
     
 	if (xmli.exists("//scattering/correlation")) {
 		if (xmli.exists("//scattering/correlation/type")) {
@@ -340,13 +319,6 @@ void Params::read_xml(std::string filename) {
 		Err::Inst()->write("You have to specify a target (any valid selection)");
 		throw;
 	}
-
-	if (xmli.exists("//scattering/scatterfactors")) {
-		scattering.scatterfactors = xmli.get_value<string>("//scattering/scatterfactors");
-	} else {
-		Err::Inst()->write("You have to specify a scatterfactor type (e.g. neutron-coherent)");
-		throw;
-	}
 	
 	// END OF scattering section //
 	// START OF output section //
@@ -380,26 +352,40 @@ void Params::read_xml(std::string filename) {
 
 	// END OF output section //
 	// START OF limits section //
-	
-	// some limits which are used internally: 
-	// frame cache limit
 
-	limits.framecache_max = 1;
-	limits.coordinatesets_cache_max = 0;
-	limits.static_load_imbalance_max = 0.05; // default is 5% loss due to bad partioning.
-	limits.buffers.allgather_max = 200*1000*1000; // don't use more than: 200 Megabyte for this buffer! calculated: nn*(nf/nn)*2 , e.g. 200*(1000010/200)*2 * 8 byte= 160 Mbyte
+    // assign default memory limits:
+    limits.memory.scattering_matrix = 100*1024*1024; // 100MB
+    limits.memory.coordinate_sets = 500*1024*1024; // 500MB
+    limits.decomposition.static_imbalance = 0.05; // 5% max
+    limits.decomposition.partitions.automatic = true; // pick number of independent partitions based on some heuristics
+    limits.decomposition.partitions.max = 1000000; // virtually dont limit the maximum number of partitions
+    limits.decomposition.partitions.count = 1; // not used if automatic = true, if false -> this determines the split factor
 
-	if (xmli.exists("//limits")) {
-		if (xmli.exists("//limits/framecache_max")) {
-			limits.framecache_max = xmli.get_value<size_t>("//limits/framecache_max");
-		}
-		if (xmli.exists("//limits/coordinatesets_cache_max")) {
-			limits.coordinatesets_cache_max = xmli.get_value<size_t>("//limits/coordinatesets_cache_max");
-		}		
-		if (xmli.exists("//limits/static_load_imbalance_max")) {
-			limits.static_load_imbalance_max = xmli.get_value<double>("//limits/static_load_imbalance_max");
-		}
-		
+	if (xmli.exists("//limits")) {        
+    	if (xmli.exists("//limits/memory")) {
+        	if (xmli.exists("//limits/memory/scattering_matrix")) {
+    	        limits.memory.scattering_matrix = xmli.get_value<size_t>("//limits/memory/scattering_matrix");
+	        }
+        	if (xmli.exists("//limits/memory/coordinate_sets")) {	        
+			    limits.memory.coordinate_sets = xmli.get_value<size_t>("//limits/memory/coordinate_sets");
+    	    }
+	    }
+    	if (xmli.exists("//limits/decomposition")) {
+        	if (xmli.exists("//limits/decomposition/partitions/automatic")) {
+			    limits.decomposition.static_imbalance = xmli.get_value<double>("//limits/decomposition/static_imbalance");
+            }    	    
+        	if (xmli.exists("//limits/decomposition/partitions")) {
+            	if (xmli.exists("//limits/decomposition/partitions/automatic")) {
+    			    limits.decomposition.partitions.automatic = xmli.get_value<bool>("//limits/decomposition/partitions/automatic");
+                }
+            	if (xmli.exists("//limits/decomposition/partitions/max")) {
+    			    limits.decomposition.partitions.max = xmli.get_value<size_t>("//limits/decomposition/partitions/max");
+                }
+            	if (xmli.exists("//limits/decomposition/partitions/count")) {
+    			    limits.decomposition.partitions.count = xmli.get_value<size_t>("//limits/decomposition/partitions/count");                    
+                }
+            }
+        }		
 	}
 
 	// END OF limits section //
@@ -425,6 +411,8 @@ void Params::read_xml(std::string filename) {
 		}		
 	}
 	
+	// initialize some of the runtime parameters:
+    runtime.limits.cache.coordinate_sets = 1;
 };
 
 string Params::guessformat(string filename) {

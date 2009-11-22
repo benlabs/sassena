@@ -22,10 +22,7 @@
 // special library headers
 
 // other headers
-#include "atomselection.hpp"
-#include "sample.hpp"
-#include "frames.hpp"
-#include "coordinate_set.hpp"
+#include "coor3d.hpp"
 
 class VectorUnfold {
 protected:

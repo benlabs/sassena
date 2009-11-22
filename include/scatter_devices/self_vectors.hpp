@@ -29,11 +29,7 @@
 #include <boost/mpi.hpp>
 
 // other headers
-#include "atomselection.hpp"
 #include "coor3d.hpp"
-#include "coordinate_sets.hpp"
-#include "frame.hpp"
-#include "frames.hpp"
 #include "particle_trajectory.hpp"
 #include "sample.hpp"
 #include "scatter_factors.hpp"
@@ -70,7 +66,6 @@ class SelfScatterDevice : public ScatterDevice {
 	void conjmultiply_particles();
 	
 	void superpose_spectrum(std::vector<std::complex<double> >& fullspectrum);	
-
 	
 public: 
 	SelfScatterDevice(boost::mpi::communicator& thisworld, Sample& sample);

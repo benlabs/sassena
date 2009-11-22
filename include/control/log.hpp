@@ -9,8 +9,8 @@
  *
  */
 
-#ifndef LOG_HPP_
-#define LOG_HPP_
+#ifndef CONTROL__LOG_HPP_
+#define CONTROL__LOG_HPP_
 
 // common header
 #include "common.hpp"

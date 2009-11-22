@@ -1,5 +1,5 @@
 // direct header
-#include "database.hpp"
+#include "control/database.hpp"
 
 // standard header
 #include <cmath>
@@ -14,8 +14,8 @@
 #include <boost/regex.hpp>
 
 // other headers
-#include "log.hpp"
-#include "parameters.hpp"
+#include "control/log.hpp"
+#include "control/parameters.hpp"
 #include "xml_interface.hpp"
 
 using namespace std;
@@ -81,10 +81,32 @@ void Database::read_xml(std::string filename) {
 			volumes.reg(ID,values,sizes_function_type);
 		}
 	}
+	
+	
+	if (xmli.exists("//exclusionfactors")) {
+		vector<XMLElement> elements = xmli.get("//exclusionfactors/element");
+		for(size_t i = 0; i < elements.size(); ++i)
+		{
+			xmli.set_current(elements[i]);
+			string label = xmli.get_value<string>("./name");
+			size_t sizes_function_type = xmli.get_value<size_t>("./type");
+			
+			vector<double> values;
+			vector<XMLElement> params = xmli.get("./param");
+			for(size_t i = 0; i < params.size(); ++i)
+			{
+				xmli.set_current(params[i]);
+				values.push_back(xmli.get_value<double>("."));
+			}
+			
+			size_t ID = atomIDs.get(label);
+			exclusionfactors.reg(ID,values,sizes_function_type);
+		}
+	}
 
-	string scatter_factors_name = string("//scatterfactors/")+Params::Inst()->scattering.scatterfactors;
-	if (xmli.exists(scatter_factors_name.c_str())) {
-		vector<XMLElement> elements = xmli.get(scatter_factors_name+"/element");
+
+	if (xmli.exists("//scatterfactors")) {
+		vector<XMLElement> elements = xmli.get("//scatterfactors/element");
 		for(size_t i = 0; i < elements.size(); ++i)
 		{
 			xmli.set_current(elements[i]);
@@ -103,111 +125,21 @@ void Database::read_xml(std::string filename) {
 			sfactors.reg(ID,values,factors_function_type);
 		}
 	} else {
-		Err::Inst()->write("Can't find corresponding scattering factors");
+		Err::Inst()->write("Need scattering factors.");
 		throw;
 	}
 	
 	// END OF database section //
-};
-
-void Database::read_conf(std::string filename) {
-		
-	// configuration file objects are not referenced/destroyed. mind the memory leak if using 'a lot'.
-	libconfig::Config* pconf = new libconfig::Config;
-
-	// store the database line by line into an internal buffer, 
-	// this is for keeping history
-	ifstream dbfile(filename.c_str());
-	string line;
-	while (getline(dbfile,line)) {
-		carboncopy.push_back(line);
-	}
-	dbfile.close();
-
-	// construct the libconfig interface
-	try { pconf->readFile(filename.c_str()); } 
-		catch (libconfig::ParseException &e) { 
-		Err::Inst()->write(string("Parse exception (line ")+to_s(e.getLine())+string("): ")+string(e.getError()));
-		delete pconf; 
-		throw;
-	}
-
-	libconfig::Setting&	rootsetting = pconf->getRoot();
-
-	// START OF database section //
-
-	if (rootsetting["names"].exists("pdb")) {
-		for (int i=0;i<rootsetting["names"]["pdb"].getLength();i++) {	
-			string label = static_cast<string>(rootsetting["names"]["pdb"][i].getName());
-			string regexp = static_cast<string>((const char*) rootsetting["names"]["pdb"][i]);
-			names.pdb.reg(label,regexp);
-		}		
-	}
-
-	for (int i=0;i<rootsetting["masses"].getLength();i++) {	
-		string label = static_cast<string>(rootsetting["masses"][i].getName());
-		double mass = static_cast<double>(rootsetting["masses"][i]);
-		size_t ID = atomIDs.get(label);
-		masses.reg(ID,mass);
-	}		
-
-	for (int i=0;i<rootsetting["sizes"].getLength();i++) {	
-		
-		string label = static_cast<string>(rootsetting["sizes"][i].getName());
-		size_t sizes_function_type = static_cast<long>(rootsetting["sizes"][i][0]);
-		
-		vector<double> values;
-		for(size_t k = 1; k < rootsetting["sizes"][i].getLength(); ++k)
-		{
-			values.push_back(static_cast<double>(rootsetting["sizes"][i][k]));
-		}					
-		
-		size_t ID = atomIDs.get(label);
-		volumes.reg(ID,values,sizes_function_type);
-	}	
-	
-	// determine which probe-type to load: 
-	bool probe_found=false;
-	for (int i=0;i<rootsetting["sfactors"].getLength();i++) {	
-		if (static_cast<string>(rootsetting["sfactors"][i].getName())== Params::Inst()->scattering.scatterfactors) {
-		
-			for (int j=0;j<rootsetting["sfactors"][i].getLength();j++) {	
-				
-				string label = static_cast<string>(rootsetting["sfactors"][i][j].getName());
-				size_t sfactors_function_type = static_cast<long>(rootsetting["sfactors"][i][j][0]);
-				size_t ID = atomIDs.get(label);
-				
-				vector<double> values;
-				for(size_t k = 1; k < rootsetting["sfactors"][i][j].getLength(); ++k)
-				{
-					values.push_back(static_cast<double>(rootsetting["sfactors"][i][j][k]));
-				}					
-
-				sfactors.reg(ID,values,sfactors_function_type);
-			}			
-			
-			probe_found = true;
-			break;
-		}
-	}
-	if (!probe_found) throw;
-	
-	
-	// END OF database section //
-
-	delete pconf;
 };
 
 string Database::guessformat(string filename) {
 	// do the best you can to guess the format
 	boost::regex e_xml(".*\\.xml$");
-	boost::regex e_conf(".*\\.conf$");
 	
 	if (boost::regex_match(filename,e_xml)) return "xml";
-	if (boost::regex_match(filename,e_conf)) return "conf";
 	
 	// else: problem
-	Err::Inst()->write("Database file format could not be detected (ending with: conf, xml ?)");
+	Err::Inst()->write("Database file format could not be detected (ending with: xml ?)");
 	throw;
 }
 
@@ -223,9 +155,6 @@ void Database::init(std::string filename,std::string format) {
 		Info::Inst()->write(string("Detected format: ") + format);
 	}
 	
-	if (format=="conf") {
-		read_conf(filename);
-	}
 	if (format=="xml") {
 		read_xml(filename);
 	}
@@ -361,7 +290,7 @@ double DatabaseVolumesParameters::get(size_t ID) {
 		
 	size_t ft = m_functiontypes[ID];
 	vector<double> v = m_constants[ID];
-	if (ft==0) { // 0 = constants // volume direkt
+	if (ft==0) { // 0 = constants // volume direct
 		return v[0];
 	}
 	
@@ -377,6 +306,40 @@ double DatabaseVolumesParameters::get(size_t ID) {
 }
 
 
+void DatabaseExlusionParameters::reg(size_t ID, vector<double> constants, size_t function_type) {
+	m_constants[ID]=constants;
+	m_functiontypes[ID] = function_type;
+}
+
+void DatabaseExlusionParameters::add_quicklookup(size_t ID,double value) {
+	if (quicklookup_counter>1000000) clear_quicklookup();
+	m_quicklookup[ID]=value;
+	quicklookup_counter++;	
+}
+
+void DatabaseExlusionParameters::clear_quicklookup() {
+	m_quicklookup.clear();
+	quicklookup_counter=0;
+}
+
+double DatabaseExlusionParameters::get(size_t ID,double effvolume,double q) {
+		
+	size_t ft = m_functiontypes[ID];
+	vector<double> v = m_constants[ID];
+	if (ft==0) { // 0 = constants 
+		return v[0];
+	}
+	
+	if (ft==1) { // 1 = linear
+		return effvolume*v[0];
+	}
+	
+	if (ft==2) { // gaussian
+        return effvolume*exp(-1.0*powf(effvolume,2.0/3.0)*powf(q,2)/(4*M_PI))*v[0];
+	}
+
+	// don't need a quicklookup for volume calculations, b/c pretty fast
+}
 
 
 void DatabaseSFactorsParameters::reg(size_t ID, vector<double> constants, size_t function_type) {

@@ -9,8 +9,8 @@
  *
  */
 
-#ifndef PARAMETERS_HPP_
-#define PARAMETERS_HPP_
+#ifndef CONTROL__PARAMETERS_HPP_
+#define CONTROL__PARAMETERS_HPP_
 
 // common header
 #include "common.hpp"
@@ -133,82 +133,6 @@ private:
 public:	
 };
 
-class SamplePBCParameters {
-private:
-	/////////////////// MPI related
-	// make this class serializable to 
-	// allow sample to be transmitted via MPI
-    friend class boost::serialization::access;	
-	template<class Archive> void serialize(Archive & ar, const unsigned int version)
-    {
-		ar & wrapping;
-		ar & selection;
-    }
-	/////////////////// 
-
-public:	
-	bool wrapping;
-	std::string selection;
-};
-
-class SampleAlignmentOriginParameters {
-private:
-	/////////////////// MPI related
-	// make this class serializable to 
-	// allow sample to be transmitted via MPI
-    friend class boost::serialization::access;	
-	template<class Archive> void serialize(Archive & ar, const unsigned int version)
-    {
-		ar & type;
-		ar & selection;
-        ar & basevector;
-    }
-	/////////////////// 
-
-public:	
-    std::string type;
-    std::string selection;
-    CartesianCoor3D basevector;
-};
-
-class SampleAlignmentAxisParameters {
-private:
-	/////////////////// MPI related
-	// make this class serializable to 
-	// allow sample to be transmitted via MPI
-    friend class boost::serialization::access;	
-	template<class Archive> void serialize(Archive & ar, const unsigned int version)
-    {
-		ar & type;
-		ar & selection;
-        ar & basevector;
-    }
-	/////////////////// 
-
-public:	
-    std::string type;
-    std::string selection;
-    CartesianCoor3D basevector;
-};
-class SampleAlignmentParameters {
-private:
-	/////////////////// MPI related
-	// make this class serializable to 
-	// allow sample to be transmitted via MPI
-    friend class boost::serialization::access;	
-	template<class Archive> void serialize(Archive & ar, const unsigned int version)
-    {
-		ar & origin;
-		ar & axis;
-    }
-	/////////////////// 
-
-public:	
-    SampleAlignmentOriginParameters origin;
-    SampleAlignmentAxisParameters axis;
-};
-
-
 class SampleMotionParameters {
 private:
 	/////////////////// MPI related
@@ -235,6 +159,27 @@ public:
 	CartesianCoor3D direction;
 };
 
+
+class SampleAlignmentParameters {
+private:
+	/////////////////// MPI related
+	// make this class serializable to 
+	// allow sample to be transmitted via MPI
+    friend class boost::serialization::access;	
+	template<class Archive> void serialize(Archive & ar, const unsigned int version)
+    {
+		ar & type;
+		ar & selection;
+        ar & order;
+    }
+	/////////////////// 
+
+public:	
+	std::string type;
+	std::string selection;
+    std::string order;
+};
+
 class SampleParameters {
 private:
 	/////////////////// MPI related
@@ -246,10 +191,9 @@ private:
 		ar & structure;
 		ar & groups;
 		ar & frames;
-		ar & pbc;
 		ar & deuter;
 		ar & motions;
-        ar & alignment;
+        ar & alignments;
     }
 	/////////////////// 
 
@@ -257,9 +201,8 @@ public:
 	SampleStructureParameters structure;
 	std::map<std::string,SampleGroupParameters> groups;
 	SampleFramesParameters frames;
-	SampleAlignmentParameters alignment;	
-	SamplePBCParameters pbc;
 	std::vector<SampleMotionParameters> motions;
+    std::vector<SampleAlignmentParameters> alignments;
 	std::vector<std::string> deuter;
 };
 
@@ -473,7 +416,6 @@ private:
     friend class boost::serialization::access;	
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
     {
-		ar & scatterfactors;
 		ar & interference;
 		ar & correlation;
 		ar & target;
@@ -489,8 +431,6 @@ public:
 	ScatteringCorrelationParameters correlation;
 	std::string target;
 
-	std::string scatterfactors;
-	
 	ScatteringVectorsParameters qvectors;
 	
 	ScatteringAverageParameters average;
@@ -542,7 +482,7 @@ public:
 	std::vector<OutputFileParameters> files;
 };
 
-class LimitsBuffersParameters {
+class LimitsMemoryParameters {
 private:
 	/////////////////// MPI related
 	// make this class serializable to 
@@ -550,13 +490,55 @@ private:
     friend class boost::serialization::access;	
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
     {
-		ar & allgather_max;
+		ar & scattering_matrix;
+        ar & coordinate_sets;
     }
 	/////////////////// 
 
 public:
-	size_t allgather_max;
+    size_t scattering_matrix;
+    size_t coordinate_sets;
 };
+
+class LimitsDecompositionPartitionsParameters {
+private:
+	/////////////////// MPI related
+	// make this class serializable to 
+	// allow sample to be transmitted via MPI
+    friend class boost::serialization::access;	
+	template<class Archive> void serialize(Archive & ar, const unsigned int version)
+    {
+        ar & max;
+        ar & automatic;        
+        ar & count;
+    }
+	/////////////////// 
+
+public:
+    size_t max;
+    bool automatic;
+    size_t count;
+    
+};
+
+class LimitsDecompositionParameters {
+private:
+	/////////////////// MPI related
+	// make this class serializable to 
+	// allow sample to be transmitted via MPI
+    friend class boost::serialization::access;	
+	template<class Archive> void serialize(Archive & ar, const unsigned int version)
+    {
+		ar & static_imbalance;
+        ar & partitions;        
+    }
+	/////////////////// 
+
+public:
+    double static_imbalance;
+    LimitsDecompositionPartitionsParameters partitions;
+};
+
 
 class LimitsParameters {
 private:
@@ -566,20 +548,50 @@ private:
     friend class boost::serialization::access;	
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
     {
-		ar & framecache_max;
-		ar & coordinatesets_cache_max;		
-		ar & static_load_imbalance_max;
-		ar & buffers;
+		ar & memory;
+        ar & decomposition;
     }
 	/////////////////// 
 
 public:
-	size_t framecache_max;
-	size_t coordinatesets_cache_max;
-	double static_load_imbalance_max;
-	LimitsBuffersParameters buffers;
+    LimitsMemoryParameters memory;
+    LimitsDecompositionParameters decomposition;
 };
 
+
+// this section is dedicated to parameters which are computed on the fly!
+class RuntimeCacheParameters {
+private:
+	/////////////////// MPI related
+	// make this class serializable to 
+	// allow sample to be transmitted via MPI
+    friend class boost::serialization::access;	
+	template<class Archive> void serialize(Archive & ar, const unsigned int version)
+    {
+		ar & coordinate_sets;
+    }
+	/////////////////// 
+
+public:
+	size_t coordinate_sets;
+};
+
+// this section is dedicated to parameters which are computed on the fly!
+class RuntimeLimitsParameters {
+private:
+	/////////////////// MPI related
+	// make this class serializable to 
+	// allow sample to be transmitted via MPI
+    friend class boost::serialization::access;	
+	template<class Archive> void serialize(Archive & ar, const unsigned int version)
+    {
+		ar & cache;
+    }
+	/////////////////// 
+
+public:
+	RuntimeCacheParameters cache;
+};
 
 // this section is dedicated to parameters which are computed on the fly!
 class RuntimeParameters {
@@ -591,11 +603,13 @@ private:
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
     {
 		ar & config_rootpath;
+        ar & limits;
     }
 	/////////////////// 
 
 public:
 	std::string config_rootpath;
+    RuntimeLimitsParameters limits;
 };
 
 class DebugParameters {

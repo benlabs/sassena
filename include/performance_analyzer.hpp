@@ -28,9 +28,9 @@
 #include <boost/mpi.hpp>
 
 // other headers
-#include "atomselection.hpp"
+#include "sample/atomselection.hpp"
 #include "coor3d.hpp"
-#include "sample.hpp"
+#include "sample/sample.hpp"
 #include "timer.hpp"
 
 using namespace boost::accumulators;
@@ -56,6 +56,7 @@ public:
 	PerformanceAnalyzer(boost::mpi::communicator thisworld, Timer timer);
 	
 	void report();	
+    void report_relative(double totaltime);
 };
 
 

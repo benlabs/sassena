@@ -16,11 +16,11 @@
 #include "common.hpp"
 
 // other headers
-#include "atoms.hpp"
-#include "atomselection.hpp"
+#include "sample/atoms.hpp"
+#include "sample/atomselection.hpp"
 #include "coor3d.hpp"
-#include "coordinate_set.hpp"
-#include "frame.hpp"
+#include "sample/coordinate_set.hpp"
+#include "sample/frame.hpp"
 
 // this helper class takes Atoms and a Coordinateset and returns a cartesian coordinate
 class CenterOfMass {

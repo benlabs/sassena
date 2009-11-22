@@ -9,8 +9,8 @@
  *
  */
 
-#ifndef SCATTER_DEVICES__ALL_MULTIPOLE_HPP_
-#define SCATTER_DEVICES__ALL_MULTIPOLE_HPP_
+#ifndef SCATTER_DEVICES__ALL_EXACT_HPP_
+#define SCATTER_DEVICES__ALL_EXACT_HPP_
 
 // common header
 #include "common.hpp"
@@ -37,8 +37,9 @@
 
 #include "scatter_devices/scatter_device.hpp"
 
+
 // define a parent class for both spherical and clyindrial 
-class AllMSScatterDevice : public ScatterDevice {
+class AllExactScatterDevice : public ScatterDevice {
 
 	boost::mpi::communicator* p_thisworldcomm;
 
@@ -64,48 +65,12 @@ class AllMSScatterDevice : public ScatterDevice {
 	void superpose_spectrum(std::vector<std::complex<double> >& spectrum, std::vector<std::complex<double> >& fullspectrum);	
 
 public: 
-	AllMSScatterDevice(boost::mpi::communicator& thisworld, Sample& sample);
+	AllExactScatterDevice(boost::mpi::communicator& thisworld, Sample& sample);
 
 	void execute(CartesianCoor3D& q); 
 	std::vector<std::complex<double> >& get_spectrum(); // returns F(q,tau)
 };
-
-
-// define a parent class for both spherical and clyindrial 
-class AllMCScatterDevice : public ScatterDevice {
-
-	boost::mpi::communicator* p_thisworldcomm;
-
-	Sample* p_sample;
-
-	boost::numeric::ublas::matrix<std::complex<double> > a; // rows = time coordinate, columns = particles
-
-	ScatterFactors scatterfactors;
-
-	std::vector<size_t> myframes;
-
-	std::vector<std::complex<double> > m_spectrum;
-
-	void scatter_frame(size_t iframe,CartesianCoor3D& q); // a(x,0) contains the total scattering amplitude
-	void scatter_frames(CartesianCoor3D& q); // a(x,0) contains the total scattering amplitude
-	void norm1();
-
-	void scatter_frame_norm1(size_t iframe,CartesianCoor3D& q); // a(x,0) contains the total scattering amplitude
-	void scatter_frames_norm1(CartesianCoor3D& q); // a(x,0) contains the total scattering amplitude
-
-	std::vector<std::complex<double> > gather_frames();
-
-	void superpose_spectrum(std::vector<std::complex<double> >& spectrum, std::vector<std::complex<double> >& fullspectrum);	
-
-public: 
-	AllMCScatterDevice(boost::mpi::communicator& thisworld, Sample& sample);
-
-	void execute(CartesianCoor3D& q); 
-	std::vector<std::complex<double> >& get_spectrum(); // returns F(q,tau)
-};
-
 
 #endif
 
 // end of file
-

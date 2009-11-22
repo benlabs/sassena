@@ -24,12 +24,13 @@
 // special library headers
 #include <libxml/tree.h>
 #include <libxml/parser.h>
+#include <libxml/xinclude.h>
 #include <libxml/xpath.h>
 #include <libxml/xpathInternals.h>
 #include <boost/algorithm/string.hpp>
 #include <boost/lexical_cast.hpp>
 // other headers
-#include "log.hpp"
+#include "control/log.hpp"
 
 class XMLElement {
 	xmlNodePtr node_ptr;

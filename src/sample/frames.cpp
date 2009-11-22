@@ -10,7 +10,7 @@
  */
 
 // direct header
-#include "frames.hpp"
+#include "sample/frames.hpp"
 
 // standard header
 #include <fstream>
@@ -22,11 +22,10 @@
 #include "xdrfile/xdrfile_trr.h"
 
 // other headers
-#include "atomselection.hpp"
-#include "log.hpp"
+#include "sample/atomselection.hpp"
 #include "measures/center_of_mass.hpp"
-#include "parameters.hpp"
-#include "database.hpp"
+#include "control.hpp"
+
 
 
 using namespace std;
@@ -38,13 +37,7 @@ void Frames::test_framenumber(size_t framenumber) {
 	}
 }
 
-Frames::~Frames() {
-	for (size_t i=0;i<framesets.size();i++) {
-		delete framesets[i];
-	}	
-}
-
-size_t Frames::add_frameset(const std::string filename,const std::string filetype,size_t first, size_t last, bool last_set, size_t stride, Atoms& atoms) {
+size_t Frames::add_frameset(const std::string filename,const std::string filetype,size_t first, size_t last, bool last_set, size_t stride) {
 	
 	// Detect frame type
 	if (filetype=="dcd") {
@@ -63,7 +56,7 @@ size_t Frames::add_frameset(const std::string filename,const std::string filetyp
 		while (listfile >> line) {
 			// skip empty lines or lines prepended w/ a '#' !
 			if ((line.size() >0) && (line.substr(0,1) == "#")) continue;
-			total_number_of_frames += add_frameset(line.c_str(), "dcd", first,  last,  last_set,  stride,  atoms);
+			total_number_of_frames += add_frameset(line.c_str(), "dcd", first,  last,  last_set,  stride);
 		}
 		return total_number_of_frames;
 	}
@@ -82,7 +75,7 @@ size_t Frames::add_frameset(const std::string filename,const std::string filetyp
 		while (listfile >> line) {
 			// skip empty lines or lines prepended w/ a '#' !
 			if ((line.size() >0) && (line.substr(0,1) == "#")) continue;			
-			total_number_of_frames += add_frameset(line.c_str(), "pdb",first,  last,  last_set,  stride,  atoms);
+			total_number_of_frames += add_frameset(line.c_str(), "pdb",first,  last,  last_set,  stride);
 		}
 		return total_number_of_frames;		
 	}
@@ -101,7 +94,7 @@ size_t Frames::add_frameset(const std::string filename,const std::string filetyp
 		// increase frame counter
 		number_of_frames += fsp->number_of_frames;
 		return fsp->number_of_frames;
-	}		
+	}
 	else {
 		cerr << "ERROR>> filetype '" << filetype << "' not supported." << endl;
 		throw;
@@ -112,10 +105,6 @@ size_t Frames::add_frameset(const std::string filename,const std::string filetyp
 
 size_t Frames::size() {
 	return number_of_frames;
-}
-
-size_t Frames::cache_size() {
-	return framecache.size();
 }
 
 Frameset& Frames::find_frameset(size_t framenumber) {
@@ -136,114 +125,14 @@ size_t Frames::scope_framenumber(size_t framenumber) {
 	return (framenumber - fs.frame_number_offset);
 }
 
-//void Frames::load(size_t framenumber,Atoms& atoms,std::map<std::string,Atomselection>& atomselections) {
-//	// get frameset
-//	// call 	
-//	if (framecache.find(framenumber)!=framecache.end()) {
-//		currentframe_i = framenumber;
-//	}
-//	else {
-//		if ((Params::Inst()->limits.framecache_max>0) && framecache.size()>Params::Inst()->limits.framecache_max) {
-//			framecache.clear();
-//		}
-//		// locate frameset 
-//		Frameset& fs = find_frameset(framenumber);
-//		// prepare empty frame
-//		Frame& cf = framecache[framenumber];
-//		
-//		// fill frame w/ data
-//		fs.read_frame(scope_framenumber(framenumber),cf);
-//
-//		// postprocessing frame data
-//		// do any wrapping "before" creating coordinate sets, otherwise the coordinates will run out of sync
-//		if (wrapping) {
-//			cf.origin = cf.cofm(atoms,centergroup_selection);
-//			cf.wrap(); 					
-//		}	
-//		
-//		// for each group in atomselections, block data for performance
-//		for (std::map<std::string,Atomselection>::iterator asi=atomselections.begin();asi!=atomselections.end();asi++) {
-//			cf.push_selection(asi->second,atoms);
-//		}
-//	}
-//	currentframe_i = framenumber;
-//	
-//}
-//
-//
-//void Frames::load(size_t framenumber,Atoms& atoms,Atomselection& atomselection) {
-//	// get frameset
-//	// call 
-//	if (framecache.find(framenumber)!=framecache.end()) {
-//		currentframe_i = framenumber;
-//	}
-//	else {
-//		if ((Params::Inst()->limits.framecache_max>0) && framecache.size()>Params::Inst()->limits.framecache_max) {
-//			framecache.clear();
-//		}
-//		// locate frameset 
-//		Frameset& fs = find_frameset(framenumber);
-//		// prepare empty frame
-//		Frame& cf = framecache[framenumber];
-//		
-//		// fill frame w/ data
-//		fs.read_frame(scope_framenumber(framenumber),cf);
-//
-//		// postprocessing frame data
-//		// do any wrapping "before" creating coordinate sets, otherwise the coordinates will run out of sync
-//		if (wrapping) {
-//			cf.origin = cf.cofm(atoms,centergroup_selection);
-//			cf.wrap(); 					
-//		}	
-//		
-//		// for each group in atomselections, block data for performance
-//		cf.push_selection(atomselection,atoms);
-//		
-//	}
-//	currentframe_i = framenumber;
-//	
-//}
+Frame Frames::load(size_t framenumber) {
+	Frameset& fs = find_frameset(framenumber);
 
-void Frames::load(size_t framenumber,Atoms& atoms) {
-	// get frameset
-	// call 
-	if (framecache.find(framenumber)!=framecache.end()) {
-		currentframe_i = framenumber;
-	}
-	else {
-		if ((Params::Inst()->limits.framecache_max>0) && framecache.size()>=Params::Inst()->limits.framecache_max) {
-			clear_cache();
-		}
-		// locate frameset 
-		Frameset& fs = find_frameset(framenumber);
-		// prepare empty frame
-		Frame& cf = framecache[framenumber];
-		
-		// fill frame w/ data
-		fs.read_frame(scope_framenumber(framenumber),cf);
-
-		// postprocessing frame data
-		// do any wrapping "before" creating coordinate sets, otherwise the coordinates will run out of sync
-		if (Params::Inst()->sample.pbc.wrapping) {
-		    atoms.assert_selection(Params::Inst()->sample.pbc.selection);
-            Atomselection& thissel = atoms.selections[Params::Inst()->sample.pbc.selection];
-			CartesianCoor3D origin = CenterOfMass(atoms,cf,thissel);
-			cf.wrap(origin);
-		}	
-	}
-	currentframe_i = framenumber;
-}
-
-
-Frame& Frames::current() {
-	test_framenumber(currentframe_i);
-	return framecache[currentframe_i];
-}
-
-
-
-void Frames::clear_cache() {
-	framecache.clear();
+	// prepare empty frame
+    Frame cf;		
+	fs.read_frame(scope_framenumber(framenumber),cf);
+	
+    return cf;
 }
 
 size_t Frameset::init_frame_byte_offsets() {

@@ -21,8 +21,7 @@
 #include <boost/format.hpp>
 #include <boost/format/group.hpp>
 
-#include "log.hpp"
-#include "parameters.hpp"
+#include "control.hpp"
 #include "timer.hpp"
 
 using namespace std;
@@ -169,6 +168,48 @@ void PerformanceAnalyzer::report() {
 		form % mi->first;
 		form % group(setprecision(3) ,scientific, mi->second.min );
 		form % group(setprecision(3) ,scientific, mi->second.max );
+		Info::Inst()->write(form.str());
+	}
+	Info::Inst()->write("-----------------------------------------------------------------");
+
+}
+
+
+void PerformanceAnalyzer::report_relative(double totaltime) {
+	using boost::io::group;
+	string mthead = (boost::format("%|17| |%|9| |%|12| |%|9| |%|9|") % "measure" % "total" % "count" % "mean" % "stddev").str();
+	string mmhead = (boost::format("%|17| |%|9| |%|9|") % "measure" % "min" % "max").str();
+
+	Info::Inst()->write("                                                                 ");
+	Info::Inst()->write("         Performance Analysis (relative to total time)           ");
+	Info::Inst()->write("-----------------------------------------------------------------");
+	Info::Inst()->write(" mean and total runtimes:                                        ");				
+	Info::Inst()->write("-----------------------------------------------------------------");
+	Info::Inst()->write(mthead);
+	Info::Inst()->write("-----------------------------------------------------------------");
+		
+	for (map<string,PerformanceMeasure>::iterator mi=m_measures.begin();mi!=m_measures.end();mi++) {
+			boost::format form(" %|17|| %|9|| %|12|| %|9|| %|9|");
+			form % mi->first;
+			form % group(setprecision(3),scientific, mi->second.sum / totaltime           );
+			form % mi->second.count ;
+			form % group(setprecision(3),scientific, mi->second.mean / totaltime          );
+			form % group(setprecision(3),scientific, sqrt(mi->second.variance / totaltime) );
+			Info::Inst()->write(form.str());
+		}
+		Info::Inst()->write("-----------------------------------------------------------------");
+
+		Info::Inst()->write("-----------------------------------------------------------------");
+		Info::Inst()->write(" watermarks:                                                     ");				
+		Info::Inst()->write("-----------------------------------------------------------------");
+		Info::Inst()->write(mmhead);
+		Info::Inst()->write("-----------------------------------------------------------------");
+
+	for (map<string,PerformanceMeasure>::iterator mi=m_measures.begin();mi!=m_measures.end();mi++) {
+		boost::format form(" %|17|| %|9|| %|9|");
+		form % mi->first;
+		form % group(setprecision(3) ,scientific, mi->second.min / totaltime);
+		form % group(setprecision(3) ,scientific, mi->second.max / totaltime);
 		Info::Inst()->write(form.str());
 	}
 	Info::Inst()->write("-----------------------------------------------------------------");

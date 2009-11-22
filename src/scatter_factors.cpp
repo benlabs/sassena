@@ -19,12 +19,10 @@
 #include <vector>
 
 // other headers
-#include "coordinate_sets.hpp"
-#include "frame.hpp"
+#include "sample/coordinate_sets.hpp"
+#include "sample/frame.hpp"
 #include "coor3d.hpp"
-#include "log.hpp"
-#include "parameters.hpp"
-#include "database.hpp"
+#include "control.hpp"
 
 using namespace std;
 
@@ -44,17 +42,17 @@ void ScatterFactors::update(CartesianCoor3D q) {
 	
 		// calculate effective scattering length:
 		if (m_background) {
-			double ev = Database::Inst()->volumes.get(atomID);
 			double k  = p_sample->atoms[p_selection->at(i)].kappa;
-				
-			sf = sf - background_sl*k*ev*exp(-1.0*powf(k*ev,2.0/3.0)*powf(ql,2)/(4*M_PI));
+			double v = Database::Inst()->volumes.get(atomID);
+			double efactor = Database::Inst()->exclusionfactors.get(atomID,k*v,ql);
+
+			sf = sf - background_sl*efactor;
 		}
 
 		factors[i] = sf;
 	}
 	
 }
-
 
 void ScatterFactors::set_selection(Atomselection& selection) {
 	factors.resize(selection.size());
