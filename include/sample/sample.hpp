@@ -39,6 +39,10 @@ class Sample {
     {
 		ar & atoms;
 		ar & coordinate_sets;
+		
+		// have to be set, since coordinate_sets is ignorant
+		coordinate_sets.set_atoms(atoms);
+		coordinate_sets.set_selection(atoms.selections["system"]);
     }
 	/////////////////// 
 	

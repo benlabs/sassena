@@ -51,14 +51,15 @@ protected:
         ar.register_type(static_cast<BrownianMotionWalker*>(NULL));
         
 		ar & setcache;
-		ar & p_atoms;
-		ar & p_selection;
 		ar & currentframe_i;
         ar & m_motion_walkers;
         ar & m_prealignments;
         ar & m_postalignments;
         ar & m_representation;
         
+		// DONT set back references. have to be set from the outside
+		// p_atoms;
+		// p_selection;
     }
     
 	std::map<size_t,CoordinateSet*> setcache;

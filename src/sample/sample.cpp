@@ -58,6 +58,8 @@ void Sample::init() {
     Params::Inst()->runtime.limits.cache.coordinate_sets = 1;    	
     coordinate_sets.init();
     Info::Inst()->write(string("Total number of coordinate sets found: ")+to_s(coordinate_sets.size()));
+	coordinate_sets.set_atoms(atoms);
+	coordinate_sets.set_selection(atoms.selections["system"]);
 	
 	// adjust the coordinate sets cache to the size we need	
     size_t memusage_per_cs = 3*sizeof(double)*atoms.size();

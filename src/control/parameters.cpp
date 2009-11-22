@@ -218,7 +218,7 @@ void Params::read_xml(std::string filename) {
 			scattering.background.gridspacing = xmli.get_value<double>("//scattering/background/gridspacing");  				
 		}
 		if (xmli.exists("//scattering/background/stride")) {
-			scattering.background.stride  = xmli.get_value<double>("//scattering/background/stride"); 				
+			scattering.background.stride  = xmli.get_value<size_t>("//scattering/background/stride"); 				
 		}		
 	}	
 	// generating qqqvectors, i.e. the spectrum

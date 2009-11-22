@@ -46,7 +46,8 @@ CoordinateSets::~CoordinateSets() {
 }
 
 void CoordinateSets::init() {
-    
+
+
     // read in frame information
     for(size_t i = 0; i < Params::Inst()->sample.frames.size(); ++i)
     {
