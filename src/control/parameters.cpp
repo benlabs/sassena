@@ -371,7 +371,7 @@ void Params::read_xml(std::string filename) {
     	    }
 	    }
     	if (xmli.exists("//limits/decomposition")) {
-        	if (xmli.exists("//limits/decomposition/partitions/automatic")) {
+        	if (xmli.exists("//limits/decomposition/static_imbalance")) {
 			    limits.decomposition.static_imbalance = xmli.get_value<double>("//limits/decomposition/static_imbalance");
             }    	    
         	if (xmli.exists("//limits/decomposition/partitions")) {

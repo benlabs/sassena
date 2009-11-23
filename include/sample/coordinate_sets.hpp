@@ -52,6 +52,7 @@ protected:
         
 		ar & setcache;
 		ar & currentframe_i;
+		ar & frames;
         ar & m_motion_walkers;
         ar & m_prealignments;
         ar & m_postalignments;
@@ -67,6 +68,8 @@ protected:
 	std::vector< std::pair<std::string,std::string> > m_prealignments;
 	std::vector< std::pair<std::string,std::string> > m_postalignments;
 
+    Frames frames;
+
 	Atoms* p_atoms;
 	Atomselection* p_selection;
 	
@@ -79,8 +82,6 @@ public:
 	CoordinateSets();
 	~CoordinateSets() ;
 	
-    Frames frames;
-
 	CoordinateSet& current();
 	CoordinateSet& load(size_t frame);	
 	void clear_cache();

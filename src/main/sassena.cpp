@@ -183,6 +183,7 @@ int main(int argc,char** argv) {
 		
 	}
 
+
 	//------------------------------------------//
 	//
 	// Scattering calculation
@@ -200,6 +201,8 @@ int main(int argc,char** argv) {
 	}
 	
 	vector<size_t> frames;
+	std::cerr << world.rank() << " " <<  sample.coordinate_sets.size() << std::endl;
+	
 	for(size_t i = 0; i < sample.coordinate_sets.size(); ++i)
 	{
 		frames.push_back(i);

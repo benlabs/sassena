@@ -41,7 +41,7 @@ DecompositionPlan::DecompositionPlan(boost::mpi::communicator thisworld,vector<C
 	size_t bestworldsplit = 1;
 	size_t bestcolwidth = nn;
 	size_t penalty = compute_penalty(nq,nf,nn,bestworldsplit);
-
+	
 	if (Params::Inst()->limits.decomposition.partitions.automatic) {
         size_t maxworldsplit = ((nn<nq) ? nn : nq ); // natural limit: number of q vectors
 	    if (Params::Inst()->limits.decomposition.partitions.max < maxworldsplit) maxworldsplit = Params::Inst()->limits.decomposition.partitions.max;
@@ -50,6 +50,9 @@ DecompositionPlan::DecompositionPlan(boost::mpi::communicator thisworld,vector<C
 			size_t newpenalty = compute_penalty(nq,nf,nn,worldsplit);
 			size_t colwidth = nn / worldsplit;
 			size_t colheight = nf / colwidth + ( (nf % colwidth)==0 ? 0 : 1 );
+
+			// only do a partition split if we can afford it memory-wise!
+			if (worldsplit >= ( Params::Inst()->runtime.limits.cache.coordinate_sets / colheight ) ) break;
 
 			// hard limit: frames per node
 			if (colheight>1000) break;

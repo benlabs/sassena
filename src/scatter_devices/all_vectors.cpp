@@ -406,6 +406,7 @@ void AllScatterDevice::superpose_spectrum(vector<complex<double> >& spectrum, ve
 	}
 }
 
+
 void AllScatterDevice::execute(CartesianCoor3D& q) {
 			
 	string avm = Params::Inst()->scattering.average.orientation.method;

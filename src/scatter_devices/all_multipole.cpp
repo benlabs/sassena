@@ -227,6 +227,7 @@ void AllMSScatterDevice::superpose_spectrum(vector<complex<double> >& spectrum, 
 	}
 }
 
+
 void AllMSScatterDevice::execute(CartesianCoor3D& q) {
 			
 	string avm = Params::Inst()->scattering.average.orientation.method;
@@ -474,6 +475,7 @@ void AllMCScatterDevice::superpose_spectrum(vector<complex<double> >& spectrum, 
 		fullspectrum[j] += spectrum[j];
 	}
 }
+
 
 void AllMCScatterDevice::execute(CartesianCoor3D& q) {
 			
