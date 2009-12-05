@@ -51,8 +51,6 @@ public:
 	Atoms() {}
 	Atoms(std::string filename, std::string fileformat = "pdb");
 	
-	void read_particle( std::ifstream& input, std::string fileformat = "pdb");
-	void read_solvent( std::ifstream& input, std::string fileformat = "pdb");
 	void read_deuter( std::ifstream& input, std::string fileformat = "pdb");
 
 	void write( std::string filename,Frame& frame, std::string fileformat = "pdb");

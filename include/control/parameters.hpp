@@ -267,6 +267,71 @@ public:
 };
 
 
+class ScatteringAverageOrientationVectorsParameters : public std::vector<CartesianCoor3D> {
+private:
+	/////////////////// MPI related
+	// make this class serializable to 
+	// allow sample to be transmitted via MPI
+    friend class boost::serialization::access;	
+	template<class Archive> void serialize(Archive & ar, const unsigned int version)
+    {
+		ar & boost::serialization::base_object<std::vector<CartesianCoor3D> >(*this);
+		ar & type;
+		ar & algorithm;
+		ar & resolution;
+		ar & file;
+		ar & axis;
+		ar & seed;
+    }
+	/////////////////// 
+
+public:	
+	std::string type;
+	std::string algorithm;
+	std::string file;
+	CartesianCoor3D axis;
+	long resolution;
+	long seed;
+	
+	void create();
+};
+
+class ScatteringAverageOrientationMultipoleParameters {
+private:
+	/////////////////// MPI related
+	// make this class serializable to 
+	// allow sample to be transmitted via MPI
+    friend class boost::serialization::access;	
+	template<class Archive> void serialize(Archive & ar, const unsigned int version)
+    {
+		ar & type;
+		ar & resolution;
+		ar & axis;
+    }
+	/////////////////// 
+
+public:	
+	std::string type;
+	long resolution;
+	CartesianCoor3D axis;
+};
+
+class ScatteringAverageOrientationExactParameters {
+private:
+	/////////////////// MPI related
+	// make this class serializable to 
+	// allow sample to be transmitted via MPI
+    friend class boost::serialization::access;	
+	template<class Archive> void serialize(Archive & ar, const unsigned int version)
+    {
+		ar & type;
+    }
+	/////////////////// 
+
+public:	
+	std::string type; 
+};
+
 class ScatteringAverageOrientationParameters {
 private:
 	/////////////////// MPI related
@@ -276,32 +341,18 @@ private:
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
     {
 		ar & type;
-		ar & method;
 		ar & vectors;
-		ar & resolution;
-		ar & origin;
-		ar & axis;
+		ar & multipole;
+		ar & exact;
     }
 	/////////////////// 
+	
+public:		
+	std::string type; 
+	ScatteringAverageOrientationVectorsParameters vectors;
+	ScatteringAverageOrientationMultipoleParameters multipole;
+	ScatteringAverageOrientationExactParameters exact;
 
-public:	
-	ScatteringAverageOrientationParameters() {
-		type = "none";
-		method = "bruteforce";
-		vectors = "mcboostunisphere";
-		resolution = 1000;
-		origin = "";
-		axis = CartesianCoor3D(1,0,0);
-	}
-	
-	std::string type;
-	std::string method;
-	std::string vectors;
-	double resolution;
-	
-	std::string origin;
-	CartesianCoor3D axis;
-	
 };
 
 class ScatteringAverageParameters {

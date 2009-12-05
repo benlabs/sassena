@@ -115,43 +115,14 @@ void Atoms::read_deuter(ifstream& input,string fileformat) {
 				}
 
 				atom_counter++;
-			} catch (...) { cerr << "Error at reading deuterpdb line:" << endl << line << endl; throw; }
+			} catch (...) { 
+				Err::Inst()->write(string("Error at reading deuterpdb line:"));
+				Err::Inst()->write(line);
+				throw;
+			}
 		}
 	}
 }
-
-void Atoms::read_particle(ifstream& input, string fileformat) {
-	
-	string line; double beta;
-	int atom_counter =0;
-	while (getline(input,line)) {
-		if (line.substr(0,6)=="ATOM  ") {
-			try {
-				beta = atof(line.substr(60,65).c_str());
-				if (beta==1.0) (*this)[atom_counter].particle=true; else (*this)[atom_counter].particle=false;
-				atom_counter++;
-			} catch (...) { cerr << "Error at reading particlepdb line:" << endl << line << endl; throw; }
-		}
-	}
-}
-
-
-void Atoms::read_solvent(ifstream& input, string fileformat) {
-	
-	string line; double beta;
-	int atom_counter =0;
-	while (getline(input,line)) {
-		if (line.substr(0,6)=="ATOM  ") {
-			try {
-				beta = atof(line.substr(60,65).c_str());
-				if (beta==1.0) (*this)[atom_counter].solvent=true; else (*this)[atom_counter].solvent=false;
-				atom_counter++;
-			} catch (...) { cerr << "Error at reading solventpdb line:" << endl << line << endl; throw; }
-		}
-	}
-}
-
-
 
 /* pdb file format , atom section:
 Record Format

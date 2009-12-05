@@ -65,8 +65,8 @@ CenterOfMass::CenterOfMass(Atoms& atoms,Atomselection& cofm_selection,Atomselect
 CenterOfMass::CenterOfMass(Atoms& atoms,Frame& frame,Atomselection& selection) {
 	
 	if (selection.empty()) {
-		cerr << "Warning! Computing Center of Mass for an empty atomselection" << endl;
-		cerr << "Setting Center of mass to (0,0,0)" << endl;		
+		Err::Inst()->write("Warning! Computing Center of Mass for an empty atomselection");
+		Err::Inst()->write("Setting Center of mass to (0,0,0)");		
 		m_center = CartesianCoor3D(0,0,0);
         return;
 	}

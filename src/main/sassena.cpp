@@ -201,8 +201,7 @@ int main(int argc,char** argv) {
 	}
 	
 	vector<size_t> frames;
-	std::cerr << world.rank() << " " <<  sample.coordinate_sets.size() << std::endl;
-	
+		
 	for(size_t i = 0; i < sample.coordinate_sets.size(); ++i)
 	{
 		frames.push_back(i);
@@ -226,15 +225,22 @@ int main(int argc,char** argv) {
 		p_ScatterDevice = new SelfScatterDevice(local,sample);
 	}
 	else if (params->scattering.interference.type == "all"){
-		if (params->scattering.average.orientation.method == "vectors") {
+		if (params->scattering.average.orientation.type == "vectors") {
 			p_ScatterDevice = new AllScatterDevice(local,sample);			
-		} else if (params->scattering.average.orientation.method == "multipole") {
+		} else if (params->scattering.average.orientation.type == "multipole") {
 			//Err::Inst()->write("Multipole method currently not supported");
 			//throw;
-			p_ScatterDevice = new AllMSScatterDevice(local,sample);			
-		} else if (params->scattering.average.orientation.method == "exact") {
+			if (params->scattering.average.orientation.multipole.type == "sphere") {
+				p_ScatterDevice = new AllMSScatterDevice(local,sample);			
+			} else if (params->scattering.average.orientation.multipole.type == "cylinder") {
+				p_ScatterDevice = new AllMCScatterDevice(local,sample);			
+			} else {
+				Err::Inst()->write(string("scattering.average.orientation.multipole.type not understood: ")+params->scattering.average.orientation.multipole.type);
+				throw;
+			}
+		} else if (params->scattering.average.orientation.type == "exact") {
 			p_ScatterDevice = new AllExactScatterDevice(local,sample);					    
-		} else if (params->scattering.average.orientation.method == "none") {
+		} else if (params->scattering.average.orientation.type == "none") {
 			p_ScatterDevice = new AllScatterDevice(local,sample);					    
 		}
 	}
@@ -273,7 +279,7 @@ int main(int argc,char** argv) {
 	if (world.rank()==0) {
 		Info::Inst()->write(string("Waiting for all nodes to finish calculations..."));		
 	}
-
+	world.barrier();	
 	
 	//------------------------------------------//
 	//

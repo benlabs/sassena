@@ -68,8 +68,7 @@ AllMSScatterDevice::AllMSScatterDevice(boost::mpi::communicator& thisworld, Samp
             throw;
         }
 
-        size_t used_cache_cs = (Params::Inst()->runtime.limits.cache.coordinate_sets>myframes.size()) ? Params::Inst()->runtime.limits.cache.coordinate_sets : myframes.size();
-		Info::Inst()->write(string("Coordinate Sets: ")+to_s(used_cache_cs*memusage_per_cs)+string(" bytes"));		
+		Info::Inst()->write(string("Coordinate Sets: ")+to_s(myframes.size()*memusage_per_cs)+string(" bytes"));		
 
         // warn if not enough memory for coordinate sets (cacheable system)
 		if (Params::Inst()->runtime.limits.cache.coordinate_sets<myframes.size()) {
@@ -96,7 +95,7 @@ void AllMSScatterDevice::scatter_frame_norm1(size_t iframe, CartesianCoor3D& q) 
 	
 	// this is a specially hacked version of CoordinateSet , it contains r, phi, theta at x,y,z repectively
 	timer.start("sd:fs:f:ld");	
-	CoordinateSet& cs = p_sample->coordinate_sets.load(iframe); 
+	CoordinateSet& cs = p_sample->coordinate_sets.load(myframes[iframe]); 
 	timer.stop("sd:fs:f:ld");	
 	vector<double>& sfs = scatterfactors.get_all();
 
@@ -113,7 +112,7 @@ void AllMSScatterDevice::scatter_frame_norm1(size_t iframe, CartesianCoor3D& q) 
 
 	using namespace boost::numeric::ublas::detail;
 	
-	long resolution = Params::Inst()->scattering.average.orientation.resolution;	
+	long resolution = Params::Inst()->scattering.average.orientation.multipole.resolution;	
 	const int lmax=int(resolution);
 	
 	std::vector<std::vector<complex<double> > > almv;
@@ -216,7 +215,8 @@ vector<complex<double> > AllMSScatterDevice::gather_frames() {
 
 		return A;
 	} else {
-		// return is empty
+		vector<complex<double> > A;
+		return A;
 	}
 }
 
@@ -228,15 +228,8 @@ void AllMSScatterDevice::superpose_spectrum(vector<complex<double> >& spectrum, 
 }
 
 
-void AllMSScatterDevice::execute(CartesianCoor3D& q) {
-			
-	string avm = Params::Inst()->scattering.average.orientation.method;
-				
-	VectorUnfold* p_vectorunfold = NULL;							
-	p_vectorunfold = new NoVectorUnfold(q);	
-	p_vectorunfold->execute();
-	vector<CartesianCoor3D>& qvectors = p_vectorunfold->vectors();
-
+void AllMSScatterDevice::execute(CartesianCoor3D q) {
+		
 	/// k, qvectors are prepared:
 	vector<complex<double> > spectrum; spectrum.resize(p_sample->coordinate_sets.size());
 
@@ -244,37 +237,21 @@ void AllMSScatterDevice::execute(CartesianCoor3D& q) {
 	scatterfactors.update(q); // scatter factors only dependent on length of q, hence we can do it once before the loop
 	timer.stop("sd:sf:update");
 	
-	for(size_t qi = 0; qi < qvectors.size(); ++qi)
-	{		
-		timer.start("sd:fs");	    
-		scatter_frames_norm1(qvectors[qi]); // put summed scattering amplitudes into first atom entry
-		timer.stop("sd:fs");
+	timer.start("sd:fs");	    
+	scatter_frames_norm1(q); // put summed scattering amplitudes into first atom entry
+	timer.stop("sd:fs");
 			
-		vector<complex<double> > thisspectrum;
-		if (Params::Inst()->scattering.correlation.type=="time") {
-			Err::Inst()->write("Correlation not supported with the multipole method for spherical averaging");
-			throw;
-		} else {
-			timer.start("sd:gatherframes");			    
-			thisspectrum = gather_frames();
-			timer.stop("sd:gatherframes");				
-		}
-
-		if (p_thisworldcomm->rank()==0) {
-			timer.start("sd:superpose");	
-		    superpose_spectrum(thisspectrum,spectrum);
-			timer.stop("sd:superpose");			    
-	    }
-	}
-	
-	for(size_t si = 0; si < spectrum.size(); ++si)
-	{
-		spectrum[si] /= qvectors.size();
+	if (Params::Inst()->scattering.correlation.type=="time") {
+		Err::Inst()->write("Correlation not supported with the multipole method for spherical averaging");
+		throw;
+	} else {
+		timer.start("sd:gatherframes");			    
+		spectrum = gather_frames();
+		timer.stop("sd:gatherframes");				
 	}
 	
 	m_spectrum = spectrum;
 	
-	delete p_vectorunfold;
 }
 
 vector<complex<double> >& AllMSScatterDevice::get_spectrum() {
@@ -350,7 +327,7 @@ void AllMCScatterDevice::scatter_frame_norm1(size_t iframe, CartesianCoor3D& q) 
 	size_t noa = p_sample->coordinate_sets.get_selection().size();
 	
 	// this is a specially hacked version of CoordinateSet , it contains r, phi, theta at x,y,z repectively
-	CoordinateSet& cs = p_sample->coordinate_sets.load(iframe); 
+	CoordinateSet& cs = p_sample->coordinate_sets.load(myframes[iframe]); 
 	vector<double>& sfs = scatterfactors.get_all();
 
 	//	for(size_t j = 0; j < a.size2(); ++j)
@@ -367,7 +344,7 @@ void AllMCScatterDevice::scatter_frame_norm1(size_t iframe, CartesianCoor3D& q) 
 
 	using namespace boost::numeric::ublas::detail;
 	
-	long resolution = Params::Inst()->scattering.average.orientation.resolution;	
+	long resolution = Params::Inst()->scattering.average.orientation.multipole.resolution;	
 	const int lmax=int(resolution);
 	
 	std::vector<std::vector<complex<double> > > almv;
@@ -465,7 +442,8 @@ vector<complex<double> > AllMCScatterDevice::gather_frames() {
 
 		return A;
 	} else {
-		// return is empty
+		vector<complex<double> > A;
+		return A;
 	}
 }
 
@@ -477,42 +455,28 @@ void AllMCScatterDevice::superpose_spectrum(vector<complex<double> >& spectrum, 
 }
 
 
-void AllMCScatterDevice::execute(CartesianCoor3D& q) {
+void AllMCScatterDevice::execute(CartesianCoor3D q) {
 			
-	string avm = Params::Inst()->scattering.average.orientation.method;
-				
-	VectorUnfold* p_vectorunfold = NULL;							
-	p_vectorunfold = new NoVectorUnfold(q);	
-	p_vectorunfold->execute();
-	vector<CartesianCoor3D>& qvectors = p_vectorunfold->vectors();
 
 	/// k, qvectors are prepared:
 	vector<complex<double> > spectrum; spectrum.resize(p_sample->coordinate_sets.size());
 
+	timer.start("sd:sf:update");
 	scatterfactors.update(q); // scatter factors only dependent on length of q, hence we can do it once before the loop
-	for(size_t qi = 0; qi < qvectors.size(); ++qi)
-	{		
-		scatter_frames_norm1(qvectors[qi]); // put summed scattering amplitudes into first atom entry
+	timer.stop("sd:sf:update");
 	
-		vector<complex<double> > thisspectrum;
-		if (Params::Inst()->scattering.correlation.type=="time") {
-			Err::Inst()->write("Correlation not supported with the multipole method for cylindrical averaging");
-			throw;
-		} else {
-			thisspectrum = gather_frames();
-		}
+	timer.start("sd:fs");	    
+	scatter_frames_norm1(q); // put summed scattering amplitudes into first atom entry
+	timer.stop("sd:fs");
 
-		if (p_thisworldcomm->rank()==0) superpose_spectrum(thisspectrum,spectrum);
-	}
-	
-	for(size_t si = 0; si < spectrum.size(); ++si)
-	{
-		spectrum[si] /= qvectors.size();
+	if (Params::Inst()->scattering.correlation.type=="time") {
+		Err::Inst()->write("Correlation not supported with the multipole method for cylindrical averaging");
+		throw;
+	} else {
+		spectrum = gather_frames();
 	}
 	
 	m_spectrum = spectrum;
-	
-	delete p_vectorunfold;
 }
 
 vector<complex<double> >& AllMCScatterDevice::get_spectrum() {

@@ -66,7 +66,7 @@ class AllMSScatterDevice : public ScatterDevice {
 public: 
 	AllMSScatterDevice(boost::mpi::communicator& thisworld, Sample& sample);
 
-	void execute(CartesianCoor3D& q); 
+	void execute(CartesianCoor3D q); 
 	std::vector<std::complex<double> >& get_spectrum(); // returns F(q,tau)
 };
 
@@ -100,7 +100,7 @@ class AllMCScatterDevice : public ScatterDevice {
 public: 
 	AllMCScatterDevice(boost::mpi::communicator& thisworld, Sample& sample);
 
-	void execute(CartesianCoor3D& q); 
+	void execute(CartesianCoor3D q); 
 	std::vector<std::complex<double> >& get_spectrum(); // returns F(q,tau)
 };
 

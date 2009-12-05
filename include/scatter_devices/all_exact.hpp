@@ -67,7 +67,7 @@ class AllExactScatterDevice : public ScatterDevice {
 public: 
 	AllExactScatterDevice(boost::mpi::communicator& thisworld, Sample& sample);
 
-	void execute(CartesianCoor3D& q); 
+	void execute(CartesianCoor3D q); 
 	std::vector<std::complex<double> >& get_spectrum(); // returns F(q,tau)
 };
 

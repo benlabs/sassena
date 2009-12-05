@@ -42,7 +42,7 @@ SET(WALLFLAGS ${WALLFLAGS} "-ftree-vectorize  ")
 
 #ADD_DEFINITIONS( -O3 -fPIC -DBOOST_UBLAS_NDEBUG -DNDEBUG  -funroll-loops -ftree-vectorizer-verbose=3 -pg )
 #ADD_DEFINITIONS( -O3 -fPIC )
-ADD_DEFINITIONS( -fPIC )
+ADD_DEFINITIONS( -fPIC -g)
 #SET(CMAKE_EXE_LINKER_FLAGS -pg -lc_p)
 
 

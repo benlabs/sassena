@@ -12,6 +12,9 @@
 #include <boost/filesystem.hpp>
 #include <boost/math/special_functions/factorials.hpp>
 #include <boost/regex.hpp>
+#include <boost/random/mersenne_twister.hpp>	
+#include <boost/random/uniform_on_sphere.hpp>	
+#include <boost/random/variate_generator.hpp>	
 
 // other headers
 #include "control/log.hpp"
@@ -280,29 +283,71 @@ void Params::read_xml(std::string filename) {
 		}
 	}
 
+	// defaults
 	scattering.average.orientation.type = "none";
+	scattering.average.orientation.vectors.type = "sphere";
+	scattering.average.orientation.vectors.algorithm = "boost_uniform_on_sphere";
+	scattering.average.orientation.vectors.resolution = 100;
+	scattering.average.orientation.vectors.seed = 0;
+	scattering.average.orientation.vectors.axis = CartesianCoor3D(0,0,1);
+	scattering.average.orientation.vectors.file = "";
+
+	scattering.average.orientation.multipole.type = "sphere";
+	scattering.average.orientation.multipole.resolution = 20;
+	scattering.average.orientation.multipole.axis = CartesianCoor3D(0,0,1);
+
+	scattering.average.orientation.exact.type = "sphere";
 		
 	if (xmli.exists("//scattering/average")) {
 		if (xmli.exists("//scattering/average/orientation")) {
 			if (xmli.exists("//scattering/average/orientation/type")) { // sphere cylinder none
 				scattering.average.orientation.type = xmli.get_value<string>("//scattering/average/orientation/type");
 			}
-			if (xmli.exists("//scattering/average/orientation/method")) { // bruteforce multipole debye
-				scattering.average.orientation.method = xmli.get_value<string>("//scattering/average/orientation/method");
-			}
-			if (xmli.exists("//scattering/average/orientation/vectors")) { // mcboostuniform linearraster...
-				scattering.average.orientation.vectors = xmli.get_value<string>("//scattering/average/orientation/vectors");
-			}
-			if (xmli.exists("//scattering/average/orientation/resolution")) { // count vectors ... , or order for multipole...
-				scattering.average.orientation.resolution = xmli.get_value<double>("//scattering/average/orientation/resolution");
-			}
-			if (xmli.exists("//scattering/average/orientation/axis")) { // necessary for cylinder
-				scattering.average.orientation.axis.x = xmli.get_value<double>("//scattering/average/orientation/axis/x");
-				scattering.average.orientation.axis.y = xmli.get_value<double>("//scattering/average/orientation/axis/y");
-				scattering.average.orientation.axis.z = xmli.get_value<double>("//scattering/average/orientation/axis/z");
-			}
-			if (xmli.exists("//scattering/average/orientation/origin")) { // necessary for cylinder, sphere
-				scattering.average.orientation.origin = xmli.get_value<string>("//scattering/average/orientation/origin");
+			if (scattering.average.orientation.type=="vectors") {
+				if (xmli.exists("//scattering/average/orientation/vectors/type")) { // count vectors ... , or order for multipole...
+					scattering.average.orientation.vectors.type = xmli.get_value<string>("//scattering/average/orientation/vectors/type");
+				}
+				if (xmli.exists("//scattering/average/orientation/vectors/algorithm")) { // count vectors ... , or order for multipole...
+					scattering.average.orientation.vectors.algorithm = xmli.get_value<string>("//scattering/average/orientation/vectors/algorithm");
+				}
+				if (xmli.exists("//scattering/average/orientation/vectors/resolution")) { // count vectors ... , or order for multipole...
+					scattering.average.orientation.vectors.resolution = xmli.get_value<double>("//scattering/average/orientation/vectors/resolution");
+				}
+				if (xmli.exists("//scattering/average/orientation/vectors/seed")) { // count vectors ... , or order for multipole...
+					scattering.average.orientation.vectors.seed = xmli.get_value<long>("//scattering/average/orientation/vectors/seed");
+				}	
+				if (xmli.exists("//scattering/average/orientation/vectors/file")) { // count vectors ... , or order for multipole...
+					scattering.average.orientation.vectors.file = get_filepath(xmli.get_value<string>("//scattering/average/orientation/vectors/file"));
+				}		
+				if (xmli.exists("//scattering/average/orientation/vectors/axis")) { // count vectors ... , or order for multipole...
+					scattering.average.orientation.vectors.axis.x = xmli.get_value<double>("//scattering/average/orientation/vectors/axis/x");
+					scattering.average.orientation.vectors.axis.y = xmli.get_value<double>("//scattering/average/orientation/vectors/axis/y");
+					scattering.average.orientation.vectors.axis.z = xmli.get_value<double>("//scattering/average/orientation/vectors/axis/z");					
+				}						
+				
+				scattering.average.orientation.vectors.create();
+				
+			} else if (scattering.average.orientation.type=="multipole") {
+				if (xmli.exists("//scattering/average/orientation/multipole/type")) { // count vectors ... , or order for multipole...
+					scattering.average.orientation.multipole.type = xmli.get_value<string>("//scattering/average/orientation/multipole/type");
+				}
+				if (xmli.exists("//scattering/average/orientation/multipole/resolution")) { // count vectors ... , or order for multipole...
+					scattering.average.orientation.multipole.resolution = xmli.get_value<double>("//scattering/average/orientation/multipole/resolution");
+				}
+				if (xmli.exists("//scattering/average/orientation/multipole/axis")) { // count vectors ... , or order for multipole...
+					scattering.average.orientation.multipole.axis.x = xmli.get_value<double>("//scattering/average/orientation/multipole/axis/x");
+					scattering.average.orientation.multipole.axis.y = xmli.get_value<double>("//scattering/average/orientation/multipole/axis/y");
+					scattering.average.orientation.multipole.axis.z = xmli.get_value<double>("//scattering/average/orientation/multipole/axis/z");					
+				}						
+				
+
+			} else if (scattering.average.orientation.type=="exact") {
+				if (xmli.exists("//scattering/average/orientation/exact/type")) { // count vectors ... , or order for multipole...
+					scattering.average.orientation.exact.type = xmli.get_value<string>("//scattering/average/orientation/exact/type");
+				}				
+			} else if (scattering.average.orientation.type!="none") {
+				Err::Inst()->write(string("Orientation averaging type not understood: ")+scattering.average.orientation.type);
+				throw;
 			}
 		}
 	}
@@ -460,6 +505,67 @@ void Params::write(std::string filename, std::string format) {
 
 	if (format=="xml") {
 		Err::Inst()->write("XML parameters format (write) not yet implemented.");
+		throw;
+	}
+}
+
+void ScatteringAverageOrientationVectorsParameters::create() {
+	
+	if (type=="file") {
+		
+		ifstream qqqfile(file.c_str());
+	
+		double x,y,z; 
+		while (qqqfile >> x >> y >> z) {
+			CartesianCoor3D q(x,y,z); 
+			double ql = q.length();
+			if (ql!=0) q = (1.0/ql) * q;
+			this->push_back(q);
+		}
+		
+	} else if (type=="sphere") {
+		if (algorithm=="boost_uniform_on_sphere") {
+	
+			boost::mt19937 rng; // that's my random number generator
+			rng.seed(seed);
+			boost::uniform_on_sphere<double> s(3); // that's my distribution
+			boost::variate_generator<boost::mt19937, boost::uniform_on_sphere<double> > mysphere(rng,s);
+	
+			for(size_t i = 0; i < resolution; ++i)
+			{
+				vector<double> r = mysphere();
+				this->push_back( CartesianCoor3D(r[0],r[1],r[2]) );							
+			}
+		} else {
+			Err::Inst()->write(string("Vectors algorithm not understood: ")+algorithm);
+			throw;
+		}
+	} else if (type=="cylinder") {
+		if (algorithm=="boost_uniform_on_sphere") {
+			boost::mt19937 rng; // that's my random number generator
+			rng.seed(seed);
+			boost::uniform_on_sphere<double> s(2); // that's my distribution
+			boost::variate_generator<boost::mt19937, boost::uniform_on_sphere<double> > mysphere(rng,s);
+	
+			for(size_t i = 0; i < resolution; ++i)
+			{
+				vector<double> r = mysphere();
+				this->push_back( CartesianCoor3D(r[0],r[1],0) ); 							
+			}			
+		} else if (algorithm=="raster_linear") {
+	
+			const double M_2PI = 2*M_PI;
+			const double radincr = (M_2PI)/(360*resolution);			
+
+			for (double phi=0;phi<M_2PI;phi+=radincr) {	
+					this->push_back( CartesianCoor3D(cos(phi),sin(phi),0) );	
+			}
+		} else {
+			Err::Inst()->write(string("Vectors algorithm not understood: ")+algorithm);
+			throw;
+		}
+	} else {
+		Err::Inst()->write(string("Vectors orientation averaging type not understood: ")+type);
 		throw;
 	}
 }

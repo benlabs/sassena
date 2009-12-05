@@ -262,47 +262,47 @@ void SelfScatterDevice::crosssum_particles() {
 	// now a(0,x) contains the summed spectrum
 }
 
-void SelfScatterDevice::execute(CartesianCoor3D& q) {
-    
-   string avm = Params::Inst()->scattering.average.orientation.method;
-   
-   VectorUnfold* p_vectorunfold = NULL;			
-   timer.start("sd:vector:unfold"); 
-   if (avm=="vectors") {
-   	string avv = Params::Inst()->scattering.average.orientation.vectors;
-   	string avt = Params::Inst()->scattering.average.orientation.type;
-   
-   	if (avt=="sphere") {
-   		SphereVectorUnfold* p_vu = new SphereVectorUnfold(q);
-   		p_vu->set_resolution(Params::Inst()->scattering.average.orientation.resolution);
-   		p_vu->set_vectors(Params::Inst()->scattering.average.orientation.vectors);
-   		p_vu->set_seed(0);
-   		p_vectorunfold = p_vu; 
-   	}
-   	if (avt=="cylinder") {
-   		CylinderVectorUnfold* p_vu = new CylinderVectorUnfold(q);
-   		p_vu->set_resolution(Params::Inst()->scattering.average.orientation.resolution);
-   		p_vu->set_vectors(Params::Inst()->scattering.average.orientation.vectors);
-   		p_vu->set_axis(Params::Inst()->scattering.average.orientation.axis);
-   		p_vu->set_seed(0);			
-   		p_vectorunfold = p_vu; 
-   	}		 
-   	else if (avt=="file") {
-   		p_vectorunfold = new FileVectorUnfold(q);
-   	}
-   }
-   else if (avm=="multipole") {
-   	p_vectorunfold = new NoVectorUnfold(q);
-   }
-   else { // default: no unfold
-   	p_vectorunfold = new NoVectorUnfold(q);
-   }
-   
-   p_vectorunfold->execute();
-   
-   vector<CartesianCoor3D>& qvectors = p_vectorunfold->vectors();
-   timer.stop("sd:vector:unfold"); 
+void SelfScatterDevice::execute(CartesianCoor3D q) {
 	
+	vector<CartesianCoor3D> qvectors;	
+	
+	if (Params::Inst()->scattering.average.orientation.vectors.size()>0) {
+		if (Params::Inst()->scattering.average.orientation.vectors.type=="sphere") {
+			double ql = q.length();
+			
+			for(size_t i = 0; i < Params::Inst()->scattering.average.orientation.vectors.size(); ++i)
+			{
+				qvectors.push_back(ql*Params::Inst()->scattering.average.orientation.vectors[i]);
+			}					
+		} else if (Params::Inst()->scattering.average.orientation.vectors.type=="cylinder") {
+			CartesianCoor3D o = Params::Inst()->scattering.average.orientation.vectors.axis;
+			// make sure o is normalized;
+			o = o / o.length();
+			
+			// get the part of the scattering vector perpenticular to the o- orientation
+			CartesianCoor3D qparallel = (o*q)*o; 
+			CartesianCoor3D qperpenticular = q - qparallel; 			
+			double qperpenticular_l = qperpenticular.length();
+			double qparallel_l = qparallel.length();
+
+			CartesianCoor3D e1 = o.cross_product(qperpenticular) ;
+			CartesianCoor3D e2 = qperpenticular;
+			
+			if (qperpenticular_l==0.0)  { 
+				qvectors.push_back( qparallel );
+			}
+			else {
+				for(size_t i = 0; i < Params::Inst()->scattering.average.orientation.vectors.size(); ++i)
+				{
+					CartesianCoor3D& vec = Params::Inst()->scattering.average.orientation.vectors[i];
+					CartesianCoor3D qnew = qparallel + vec.x * e1 + vec.y * e2;					
+					qvectors.push_back(qnew);
+				}
+			}				
+		}
+	} else {
+		qvectors.push_back(q);
+	}
 	
 	/// k, qvectors are prepared:
 	vector<complex<double> > spectrum; 

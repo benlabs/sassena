@@ -69,8 +69,7 @@ AllExactScatterDevice::AllExactScatterDevice(boost::mpi::communicator& thisworld
             throw;
         }
 
-        size_t used_cache_cs = (Params::Inst()->runtime.limits.cache.coordinate_sets>myframes.size()) ? Params::Inst()->runtime.limits.cache.coordinate_sets : myframes.size();
-		Info::Inst()->write(string("Coordinate Sets: ")+to_s(used_cache_cs*memusage_per_cs)+string(" bytes"));		
+		Info::Inst()->write(string("Coordinate Sets: ")+to_s(myframes.size()*memusage_per_cs)+string(" bytes"));		
 
         // warn if not enough memory for coordinate sets (cacheable system)
 		if (Params::Inst()->runtime.limits.cache.coordinate_sets<myframes.size()) {
@@ -98,7 +97,7 @@ void AllExactScatterDevice::scatter_frame_norm1(size_t iframe, CartesianCoor3D& 
 	
 	// this is a specially hacked version of CoordinateSet , it contains r, phi, theta at x,y,z repectively
 	timer.start("sd:fs:f:ld");	
-	CoordinateSet& cs = p_sample->coordinate_sets.load(iframe); 
+	CoordinateSet& cs = p_sample->coordinate_sets.load(myframes[iframe]); 
 	timer.stop("sd:fs:f:ld");	
 	vector<double>& sfs = scatterfactors.get_all();
 
@@ -178,7 +177,8 @@ vector<complex<double> > AllExactScatterDevice::gather_frames() {
 
 		return A;
 	} else {
-		// return is empty
+		vector<complex<double> > A;
+		return A;
 	}
 }
 
@@ -189,53 +189,30 @@ void AllExactScatterDevice::superpose_spectrum(vector<complex<double> >& spectru
 	}
 }
 
-void AllExactScatterDevice::execute(CartesianCoor3D& q) {
+void AllExactScatterDevice::execute(CartesianCoor3D q) {
 			
-	string avm = Params::Inst()->scattering.average.orientation.method;
-				
-	VectorUnfold* p_vectorunfold = NULL;							
-	p_vectorunfold = new NoVectorUnfold(q);	
-	p_vectorunfold->execute();
-	vector<CartesianCoor3D>& qvectors = p_vectorunfold->vectors();
-
 	/// k, qvectors are prepared:
 	vector<complex<double> > spectrum; spectrum.resize(p_sample->coordinate_sets.size());
 
 	timer.start("sd:sf:update");
-	scatterfactors.update(q); // scatter factors only dependent on length of q, hence we can do it once before the loop
+	scatterfactors.update(q); 
 	timer.stop("sd:sf:update");
 	
-	for(size_t qi = 0; qi < qvectors.size(); ++qi)
-	{		
-		timer.start("sd:fs");	    
-		scatter_frames_norm1(qvectors[qi]); // put summed scattering amplitudes into first atom entry
-		timer.stop("sd:fs");
-			
-		vector<complex<double> > thisspectrum;
-		if (Params::Inst()->scattering.correlation.type=="time") {
-			Err::Inst()->write("Correlation not supported with the exact method for spherical averaging");
-			throw;
-		} else {
-			timer.start("sd:gatherframes");			    
-			thisspectrum = gather_frames();
-			timer.stop("sd:gatherframes");				
-		}
+	timer.start("sd:fs");	    
+	scatter_frames_norm1(q); // put summed scattering amplitudes into first atom entry
+	timer.stop("sd:fs");
+		
+	if (Params::Inst()->scattering.correlation.type=="time") {
+		Err::Inst()->write("Correlation not supported with the exact method for spherical averaging");
+		throw;
+	} else {
+		timer.start("sd:gatherframes");			    
+		spectrum = gather_frames();
+		timer.stop("sd:gatherframes");				
+	}
 
-		if (p_thisworldcomm->rank()==0) {
-			timer.start("sd:superpose");	
-		    superpose_spectrum(thisspectrum,spectrum);
-			timer.stop("sd:superpose");			    
-	    }
-	}
-	
-	for(size_t si = 0; si < spectrum.size(); ++si)
-	{
-		spectrum[si] /= qvectors.size();
-	}
-	
 	m_spectrum = spectrum;
-	
-	delete p_vectorunfold;
+
 }
 
 vector<complex<double> >& AllExactScatterDevice::get_spectrum() {
