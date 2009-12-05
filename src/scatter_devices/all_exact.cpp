@@ -95,7 +95,6 @@ void AllExactScatterDevice::scatter_frame_norm1(size_t iframe, CartesianCoor3D& 
 
 	size_t noa = p_sample->coordinate_sets.get_selection().size();
 	
-	// this is a specially hacked version of CoordinateSet , it contains r, phi, theta at x,y,z repectively
 	timer.start("sd:fs:f:ld");	
 	CoordinateSet& cs = p_sample->coordinate_sets.load(myframes[iframe]); 
 	timer.stop("sd:fs:f:ld");	
@@ -110,7 +109,7 @@ void AllExactScatterDevice::scatter_frame_norm1(size_t iframe, CartesianCoor3D& 
     {
 		double r1   = cs.c1[i];
         double esf1 = sfs[i];
-        A += esf1*esf1;
+        A += 2*esf1*esf1;
 	    for(size_t j = i+1; j < noa; ++j) {
     		double r2   = cs.c1[j];
             double rd = r1-r2;
@@ -121,6 +120,7 @@ void AllExactScatterDevice::scatter_frame_norm1(size_t iframe, CartesianCoor3D& 
   
 	a(iframe,0)=complex<double>(A,0); // sum at this location
 }
+
 
 void AllExactScatterDevice::scatter_frames_norm1(CartesianCoor3D& q) {
 	

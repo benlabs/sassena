@@ -298,6 +298,8 @@ int main(int argc,char** argv) {
 	if (headindicator==1) {
 		// gather results on head of heads
 		vector<ScatterSpectrum> scatspecs;
+		Info::Inst()->write(string("Aggregrating spectra, local count:")+to_s(scatter_spectrum.size()));
+
 		boost::mpi::gather(headcomm,scatter_spectrum,scatspecs,0);
 		
 		if (headcomm.rank()==0) {

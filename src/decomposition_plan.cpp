@@ -68,6 +68,13 @@ DecompositionPlan::DecompositionPlan(boost::mpi::communicator thisworld,vector<C
 		// calculate some partioning schemes, init penalty w/ qsplit==1
 		bestworldsplit = Params::Inst()->limits.decomposition.partitions.count;
 		bestcolwidth = nn / bestworldsplit;
+		
+		if (bestcolwidth<1) {
+			Err::Inst()->write("Not allowed: Number of partitions higher than number of nodes");
+			Err::Inst()->write("adjust: limits.decomposition.partitions.count");
+			throw;
+		}
+		
 		penalty = compute_penalty(nq,nf,nn,bestworldsplit);
 	}
 		
