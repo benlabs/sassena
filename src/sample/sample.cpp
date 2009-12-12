@@ -49,11 +49,6 @@ void Sample::init() {
     	atoms.add_selection("system",true);		
     }
     
-    // apply deuteration
-    for(size_t i = 0; i < params->sample.deuter.size(); ++i)
-    {
-    	deuter(params->sample.deuter[i]);
-    }
 
     Params::Inst()->runtime.limits.cache.coordinate_sets = 1;    	
     coordinate_sets.init();
@@ -73,55 +68,6 @@ void Sample::init() {
 		Err::Inst()->write(string("Configuration Parameter: limits.memory.coordinate_sets"));
         throw;
     }
-}
-
-void Sample::deuter(std::string group) {
-	atoms.assert_selection(group);
-	
-	for (Atomselection::iterator asi=atoms.selections[group].begin();asi!=atoms.selections[group].end();asi++) {
-		atoms[*asi].name="deuterium";		
-	}	
-}
-
-// does random substitution
-void Sample::deuter(std::string group,double coverage,int seed = -1) {
-	
-	if (seed==-1) seed = time(NULL);
-	srand(seed);
-
-	atoms.assert_selection(group);
-	Atomselection& as = atoms.selections[group];
-	
-	// in order to exactly get the "percentage" given by coverage 100% = 1.0
-	// we have to create a temporary list and test afterwards 
-	size_t total_size = as.size();
-	size_t target_size = int(coverage)*total_size;
-
-	vector<bool> deuterarray(total_size);
-	size_t real_size = 0;
-	for(size_t i = 0; i < total_size; ++i)
-	{
-		if (coverage==0.0) {
-			deuterarray[i]=false;
-		}
-		else if (coverage==1.0) {
-			deuterarray[i]=true;			
-		}
-		else if ( coverage > (1.0*rand()/RAND_MAX) ) {
-			deuterarray[i]=true;
-			real_size++;
-		}
-		else {
-			deuterarray[i]=false;			
-		}
-	}
-	
-	Info::Inst()->write(string(" Deuterated with random substitution, seed = ") +to_s(seed) +string(", totalsize/targetsize/realsize=") + to_s(total_size) +string("/") + to_s(target_size) + string("/") + to_s(real_size));
-	
-	for(size_t i = 0; i < total_size; ++i)
-	{
-		if (deuterarray[i]) atoms[as[i]].name = "deuterium";
-	}
 }
 
 void Sample::set_kappa(std::string group, double kappa) {

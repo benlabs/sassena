@@ -102,28 +102,6 @@ void Atoms::add(string filename, string fileformat) {
 	}	
 }
 
-void Atoms::read_deuter(ifstream& input,string fileformat) {
-	
-	string line; double beta;
-	int atom_counter =0;
-	while (getline(input,line)) {
-		if (line.substr(0,6)=="ATOM  ") {
-			try {
-				beta = atof(line.substr(60,65).c_str());
-				if (beta==1.0) {
-					(*this)[atom_counter].name="deuterium";
-				}
-
-				atom_counter++;
-			} catch (...) { 
-				Err::Inst()->write(string("Error at reading deuterpdb line:"));
-				Err::Inst()->write(line);
-				throw;
-			}
-		}
-	}
-}
-
 /* pdb file format , atom section:
 Record Format
 
@@ -209,7 +187,6 @@ void Atoms::write(string filename,Frame& frame, string fileformat) {
 	#endif
 	}	
 }
-
 
 void Atoms::add_selection(std::string name, std::string filename, std::string format,std::string select,double select_value) {
 	if (format=="ndx") {

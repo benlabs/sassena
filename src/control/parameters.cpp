@@ -82,21 +82,6 @@ void Params::read_xml(std::string filename) {
 		}
 		sample.groups[sname] = SampleGroupParameters(sname,fn,ff,sn,sv);
 	}
-
-	// apply deuteration
-	if (xmli.exists("//sample/deuterations")) {
-		vector<XMLElement> deuterations = xmli.get("//sample/deuterations/deuteration");
-		for(size_t i = 0; i < deuterations.size(); ++i)
-		{
-			xmli.set_current(deuterations[i]);
-			string deuter = xmli.get_value<string>(".");
-			Info::Inst()->write(string("Deuteration of group ") + deuter);	
-			sample.deuter.push_back(deuter);
-		}
-	}
-	else {
-		Info::Inst()->write("No explicit deuteration");		
-	}
 	
 	// END OF sample section //	
 
@@ -151,7 +136,7 @@ void Params::read_xml(std::string filename) {
 			motion.type = "linear";	
 			motion.displace = 0.0; 
 			motion.direction=CartesianCoor3D(1,0,0);
-			motion.selection = "";
+			motion.selection = "system";
 			motion.seed = 0;
 			motion.frequency=2*M_PI/1000.0; // corresponds to one full cycle per 1000 frames, used for linear oscillation and rotation
 			if (xmli.exists("./type"))   motion.type  = xmli.get_value<string>("./type");
@@ -166,9 +151,7 @@ void Params::read_xml(std::string filename) {
 			} 
 
 			sample.motions.push_back(motion);
-            string selection_string = "system";
-            if (motion.selection!="") selection_string = motion.selection;
-			Info::Inst()->write(string("Adding additional motion to sample: type=")+motion.type+string(", displacement=")+to_s(motion.displace)+string(", selection=")+selection_string);
+			Info::Inst()->write(string("Adding additional motion to sample: type=")+motion.type+string(", displacement=")+to_s(motion.displace)+string(", selection=")+motion.selection);
 		}
 	}	
 		
@@ -197,6 +180,9 @@ void Params::read_xml(std::string filename) {
 	// END OF sample section //
 	// START OF scattering section //
 
+    scattering.center = false;
+	if (xmli.exists("//scattering/center")) scattering.center = xmli.get_value<bool>("//scattering/center");
+    
 	scattering.background.type = "manual";
 	scattering.background.factor = 0.0;
 	
@@ -311,7 +297,7 @@ void Params::read_xml(std::string filename) {
 					scattering.average.orientation.vectors.algorithm = xmli.get_value<string>("//scattering/average/orientation/vectors/algorithm");
 				}
 				if (xmli.exists("//scattering/average/orientation/vectors/resolution")) { // count vectors ... , or order for multipole...
-					scattering.average.orientation.vectors.resolution = xmli.get_value<double>("//scattering/average/orientation/vectors/resolution");
+					scattering.average.orientation.vectors.resolution = xmli.get_value<long>("//scattering/average/orientation/vectors/resolution");
 				}
 				if (xmli.exists("//scattering/average/orientation/vectors/seed")) { // count vectors ... , or order for multipole...
 					scattering.average.orientation.vectors.seed = xmli.get_value<long>("//scattering/average/orientation/vectors/seed");
@@ -332,7 +318,7 @@ void Params::read_xml(std::string filename) {
 					scattering.average.orientation.multipole.type = xmli.get_value<string>("//scattering/average/orientation/multipole/type");
 				}
 				if (xmli.exists("//scattering/average/orientation/multipole/resolution")) { // count vectors ... , or order for multipole...
-					scattering.average.orientation.multipole.resolution = xmli.get_value<double>("//scattering/average/orientation/multipole/resolution");
+					scattering.average.orientation.multipole.resolution = xmli.get_value<long>("//scattering/average/orientation/multipole/resolution");
 				}
 				if (xmli.exists("//scattering/average/orientation/multipole/axis")) { // count vectors ... , or order for multipole...
 					scattering.average.orientation.multipole.axis.x = xmli.get_value<double>("//scattering/average/orientation/multipole/axis/x");

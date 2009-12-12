@@ -61,9 +61,6 @@ public:
 	// default routine for reading structure information from file.
 	void add_atoms(std::string filename,std::string fileformat) { return atoms.add(filename,fileformat); }
 	
-	void deuter(std::string group);
-	void deuter(std::string group,double coverage,int seed);
-    
     void set_kappa(std::string group, double kappa);
     
 };

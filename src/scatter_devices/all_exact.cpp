@@ -83,6 +83,9 @@ AllExactScatterDevice::AllExactScatterDevice(boost::mpi::communicator& thisworld
 	
 	p_sample->coordinate_sets.set_representation(SPHERICAL);		
 	p_sample->coordinate_sets.set_selection(p_sample->atoms.selections[target]);
+	if (Params::Inst()->scattering.center) {
+    	p_sample->coordinate_sets.add_postalignment(target,"center");		    
+	}
 	
 	scatterfactors.set_sample(*p_sample);
 	scatterfactors.set_selection(sample.atoms.selections[target]);
@@ -189,6 +192,12 @@ void AllExactScatterDevice::superpose_spectrum(vector<complex<double> >& spectru
 	}
 }
 
+void AllExactScatterDevice::multiply_alignmentfactors(CartesianCoor3D q) {
+    // not yet implemented
+    Err::Inst()->write("centering w/ alignment not yet implemented");
+    throw;
+}
+
 void AllExactScatterDevice::execute(CartesianCoor3D q) {
 			
 	/// k, qvectors are prepared:
@@ -201,6 +210,10 @@ void AllExactScatterDevice::execute(CartesianCoor3D q) {
 	timer.start("sd:fs");	    
 	scatter_frames_norm1(q); // put summed scattering amplitudes into first atom entry
 	timer.stop("sd:fs");
+	
+	if (Params::Inst()->scattering.center) {
+        multiply_alignmentfactors(q);
+	}	
 		
 	if (Params::Inst()->scattering.correlation.type=="time") {
 		Err::Inst()->write("Correlation not supported with the exact method for spherical averaging");

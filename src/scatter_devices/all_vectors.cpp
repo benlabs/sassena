@@ -85,6 +85,11 @@ AllScatterDevice::AllScatterDevice(boost::mpi::communicator& thisworld, Sample& 
 	p_sample->coordinate_sets.set_selection(sample.atoms.selections[target]);
 	p_sample->coordinate_sets.set_representation(CARTESIAN);	
 	
+	if (Params::Inst()->scattering.center) {
+    	p_sample->coordinate_sets.add_postalignment(target,"center");		    
+	}
+
+	
 	scatterfactors.set_sample(sample);
 	scatterfactors.set_selection(sample.atoms.selections[target]);
 	scatterfactors.set_background(true);
@@ -250,7 +255,6 @@ std::vector<std::complex<double> > AllScatterDevice::correlate_frames_fftw() {
     }
 }
 
-
 std::vector<std::complex<double> > AllScatterDevice::correlate_frames() {
 	// each nodes has computed their assigned frames
 	// the total scattering amplitudes reside in a(x,0)
@@ -343,7 +347,6 @@ vector<complex<double> > AllScatterDevice::conjmultiply_frames() {
 	// each node has computed their assigned frames
 	// the total scattering amplitudes reside in a(x,0)
 
-
 	//negotiate maximum size for coordinatesets
 	size_t CSsize = myframes.size();
 	size_t maxCSsize;
@@ -406,6 +409,22 @@ void AllScatterDevice::superpose_spectrum(vector<complex<double> >& spectrum, ve
 	}
 }
 
+void AllScatterDevice::multiply_alignmentfactors(CartesianCoor3D q) {
+    
+    for(size_t i = 0; i < a.size1(); ++i)
+	{
+        if (a.size2()<1) continue;
+        size_t iframe = myframes[i];
+        vector<CartesianCoor3D> avectors = p_sample->coordinate_sets.get_postalignmentvectors(iframe);
+        CartesianCoor3D& bigR = *(avectors.rbegin());
+        complex<double> factor = exp(complex<double>(0,q*bigR));
+	    for(size_t j = 0; j < a.size2(); ++j)
+	    {
+            a(i,j) = a(i,j) * factor;
+	    }
+    }
+    
+}
 
 void AllScatterDevice::execute(CartesianCoor3D q) {
 			
@@ -461,6 +480,10 @@ void AllScatterDevice::execute(CartesianCoor3D q) {
 		timer.start("sd:fs");
 		scatter_frames_norm1(qvectors[qi]); // put summed scattering amplitudes into first atom entry		
 		timer.stop("sd:fs");
+		
+		if (Params::Inst()->scattering.center) {
+            multiply_alignmentfactors(q);
+		}
 		
 		vector<complex<double> > thisspectrum;
 		if (Params::Inst()->scattering.correlation.type=="time") {

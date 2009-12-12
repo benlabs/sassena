@@ -60,6 +60,7 @@ protected:
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
     {
         ar & boost::serialization::base_object<MotionWalker, LinearMotionWalker>(*this);
+        ar & m_translate;
     }    
 	CartesianCoor3D m_translate;
 	
@@ -78,6 +79,7 @@ protected:
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
     {
         ar & boost::serialization::base_object<MotionWalker, FixedMotionWalker>(*this);
+        ar & m_translate;        
     }    
     
 	CartesianCoor3D m_translate;
@@ -95,6 +97,9 @@ protected:
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
     {
         ar & boost::serialization::base_object<MotionWalker, OscillationMotionWalker>(*this);
+
+        ar & m_translate;        
+        ar & m_frequency;
     }
 	CartesianCoor3D m_translate;
 	double m_frequency;

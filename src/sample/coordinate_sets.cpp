@@ -114,6 +114,7 @@ void CoordinateSets::init() {
 	}	
     
 }
+
 void CoordinateSets::load_into_cache(size_t framenumber) {
 	CartesianCoordinateSet* pcset = NULL;
 	if ( Params::Inst()->runtime.limits.cache.coordinate_sets < setcache.size() ) {
@@ -123,6 +124,7 @@ void CoordinateSets::load_into_cache(size_t framenumber) {
 	pcset = new CartesianCoordinateSet(frame,*p_selection);
 
     // align here
+    m_prealignmentvectors[framenumber].clear();    
     for(size_t i = 0; i < m_prealignments.size(); ++i)
     {
 		string sel = m_prealignments[i].first;
@@ -131,6 +133,7 @@ void CoordinateSets::load_into_cache(size_t framenumber) {
 			p_atoms->assert_selection(sel);        
             CartesianCoor3D origin = CenterOfMass(*p_atoms,p_atoms->selections[sel],*p_selection,*pcset);
             pcset->translate(-1.0*origin,*p_selection, p_atoms->selections[sel]);
+            m_prealignmentvectors[framenumber].push_back(-1.0*origin);
         }
     }
     
@@ -149,6 +152,7 @@ void CoordinateSets::load_into_cache(size_t framenumber) {
 	}		
 
     // align here
+    m_postalignmentvectors[framenumber].clear();
     for(size_t i = 0; i < m_postalignments.size(); ++i)
     {
 		string sel = m_postalignments[i].first;
@@ -157,6 +161,7 @@ void CoordinateSets::load_into_cache(size_t framenumber) {
 			p_atoms->assert_selection(sel);        
             CartesianCoor3D origin = CenterOfMass(*p_atoms,p_atoms->selections[sel],*p_selection,*pcset);
             pcset->translate(-1.0*origin,*p_selection, p_atoms->selections[sel]);
+            m_postalignmentvectors[framenumber].push_back(-1.0*origin);
         }
     }
     
@@ -170,6 +175,21 @@ void CoordinateSets::load_into_cache(size_t framenumber) {
         delete pcset;
 	}	
 }
+
+std::vector<CartesianCoor3D> CoordinateSets::get_prealignmentvectors(size_t framenumber) {
+    return m_prealignmentvectors[framenumber];
+}
+
+std::vector<CartesianCoor3D> CoordinateSets::get_postalignmentvectors(size_t framenumber) {
+    return m_postalignmentvectors[framenumber];    
+}
+
+void CoordinateSets::add_postalignment(std::string selection,std::string type) {
+    m_postalignments.push_back(make_pair(selection,type));
+    // this method invalidates cache
+    clear_cache();
+}
+
 
 void CoordinateSets::set_representation(CoordinateRepresentation representation) {
     // a change of representation invalides the cache:
@@ -220,8 +240,10 @@ void CoordinateSets::clear_cache() {
 	for(sci_iterator sci = setcache.begin(); sci != setcache.end(); ++sci)
 	{
 		delete sci->second;
-	}
+	}	
 	setcache.clear();
+    m_prealignmentvectors.clear();
+    m_postalignmentvectors.clear();
 }
 
 void CoordinateSets::set_selection(Atomselection& selection) {

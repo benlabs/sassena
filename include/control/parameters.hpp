@@ -191,7 +191,6 @@ private:
 		ar & structure;
 		ar & groups;
 		ar & frames;
-		ar & deuter;
 		ar & motions;
         ar & alignments;
     }
@@ -203,7 +202,6 @@ public:
 	SampleFramesParameters frames;
 	std::vector<SampleMotionParameters> motions;
     std::vector<SampleAlignmentParameters> alignments;
-	std::vector<std::string> deuter;
 };
 
 class ScatteringBackgroundPhaseParameters {
@@ -459,6 +457,7 @@ public:
 	void create_from_scans();
 };
 
+
 class ScatteringParameters {
 private:
 	/////////////////// MPI related
@@ -473,10 +472,12 @@ private:
 		ar & qvectors;
 		ar & average;
 		ar & background;
+        ar & center;
     }
 	/////////////////// 
 
 public:
+    bool center;
 	
 	ScatteringInterferenceParameters interference;
 	ScatteringCorrelationParameters correlation;

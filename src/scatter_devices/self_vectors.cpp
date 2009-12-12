@@ -97,6 +97,10 @@ SelfScatterDevice::SelfScatterDevice(boost::mpi::communicator& thisworld, Sample
 	p_sample->coordinate_sets.set_representation(CARTESIAN);	
 	p_sample->coordinate_sets.set_selection(sample.atoms.selections[target]);
 
+	if (Params::Inst()->scattering.center) {
+    	p_sample->coordinate_sets.add_postalignment(target,"center");		    
+	}
+
 	timer.start("sd:init:scatter:data");	
 	for(size_t r = 0; r < nn; ++r)
 	{
@@ -155,7 +159,7 @@ SelfScatterDevice::SelfScatterDevice(boost::mpi::communicator& thisworld, Sample
 	scatterfactors.set_sample(sample);
 	scatterfactors.set_selection(sample.atoms.selections[target]);
 	scatterfactors.set_background(true);
-	
+		
 	a.resize(particle_trajectories.size(),sample.coordinate_sets.size());
 
 }
@@ -262,6 +266,12 @@ void SelfScatterDevice::crosssum_particles() {
 	// now a(0,x) contains the summed spectrum
 }
 
+void SelfScatterDevice::multiply_alignmentfactors(CartesianCoor3D q) {
+    // not yet implemented
+    Err::Inst()->write("centering w/ alignment not yet implemented");
+    throw;
+}
+
 void SelfScatterDevice::execute(CartesianCoor3D q) {
 	
 	vector<CartesianCoor3D> qvectors;	
@@ -312,7 +322,7 @@ void SelfScatterDevice::execute(CartesianCoor3D q) {
 	timer.start("sd:sf:update");
 	scatterfactors.update(q); // scatter factors only dependent on length of q, hence we can do it once before the loop
 	timer.stop("sd:sf:update");	
-	
+		
 	for(size_t qi = 0; qi < qvectors.size(); ++qi)
 	{
 		vector<complex<double> > thisspectrum;
@@ -321,6 +331,10 @@ void SelfScatterDevice::execute(CartesianCoor3D q) {
 			scatter_particles(qvectors[qi]);
 		    timer.stop("sd:fs");
 		    
+		    if (Params::Inst()->scattering.center) {
+                multiply_alignmentfactors(q);
+        	}
+        	
 			if (Params::Inst()->scattering.correlation.method=="direct") {
 			    timer.start("sd:correlate");					
 				correlate_particles(); // if correlation, otherwise do a elementwise conj multiply here	

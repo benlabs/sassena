@@ -55,9 +55,14 @@ class AllMSScatterDevice : public ScatterDevice {
 	void scatter_frame(size_t iframe,CartesianCoor3D& q); // a(x,0) contains the total scattering amplitude
 	void scatter_frames(CartesianCoor3D& q); // a(x,0) contains the total scattering amplitude
 	void norm1();
-
+	
 	void scatter_frame_norm1(size_t iframe,CartesianCoor3D& q); // a(x,0) contains the total scattering amplitude
 	void scatter_frames_norm1(CartesianCoor3D& q); // a(x,0) contains the total scattering amplitude
+
+	std::vector<std::complex<double> > correlate_frames(long mpindex);
+	void conjmultiply_frames();
+    void multiply_alignmentfactors(CartesianCoor3D q);
+
 
 	std::vector<std::complex<double> > gather_frames();
 
@@ -78,7 +83,7 @@ class AllMCScatterDevice : public ScatterDevice {
 
 	Sample* p_sample;
 
-	boost::numeric::ublas::matrix<std::complex<double> > a; // rows = time coordinate, columns = particles
+	boost::numeric::ublas::matrix<std::complex<double> > a; // rows = time coordinate, columns = multipole moments
 
 	ScatterFactors scatterfactors;
 
@@ -92,6 +97,10 @@ class AllMCScatterDevice : public ScatterDevice {
 
 	void scatter_frame_norm1(size_t iframe,CartesianCoor3D& q); // a(x,0) contains the total scattering amplitude
 	void scatter_frames_norm1(CartesianCoor3D& q); // a(x,0) contains the total scattering amplitude
+
+	std::vector<std::complex<double> > correlate_frames(long mpindex);
+	void conjmultiply_frames();
+    void multiply_alignmentfactors(CartesianCoor3D q);
 
 	std::vector<std::complex<double> > gather_frames();
 

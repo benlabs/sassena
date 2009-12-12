@@ -64,6 +64,7 @@ class SelfScatterDevice : public ScatterDevice {
 	void crosssum_particles();
 	void correlate_particles();
 	void conjmultiply_particles();
+    void multiply_alignmentfactors(CartesianCoor3D q);
 	
 	void superpose_spectrum(std::vector<std::complex<double> >& fullspectrum);	
 	

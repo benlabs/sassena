@@ -57,6 +57,8 @@ protected:
         ar & m_prealignments;
         ar & m_postalignments;
         ar & m_representation;
+        ar & m_prealignmentvectors;
+        ar & m_postalignmentvectors;
         
 		// DONT set back references. have to be set from the outside
 		// p_atoms;
@@ -64,9 +66,13 @@ protected:
     }
     
 	std::map<size_t,CoordinateSet*> setcache;
+    std::map<size_t,std::vector<CartesianCoor3D> > m_prealignmentvectors;
+    std::map<size_t,std::vector<CartesianCoor3D> > m_postalignmentvectors;
+
 	std::vector< std::pair<std::string,MotionWalker*> > m_motion_walkers;
 	std::vector< std::pair<std::string,std::string> > m_prealignments;
 	std::vector< std::pair<std::string,std::string> > m_postalignments;
+
 
     Frames frames;
 
@@ -84,6 +90,10 @@ public:
 	
 	CoordinateSet& current();
 	CoordinateSet& load(size_t frame);	
+
+	std::vector<CartesianCoor3D> get_prealignmentvectors(size_t frame);	
+	std::vector<CartesianCoor3D> get_postalignmentvectors(size_t frame);	
+	
 	void clear_cache();
 	
 	// use these to initialize the coordinate set:
@@ -92,6 +102,8 @@ public:
 	
     void set_representation(CoordinateRepresentation representation);
     CoordinateRepresentation get_representation();
+    void add_prealignment(std::string selection,std::string type);
+    void add_postalignment(std::string selection,std::string type);
 	
     void write_xyz(std::string filename); // dumps coordinates to file in xyz format
 	
