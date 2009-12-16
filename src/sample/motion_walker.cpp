@@ -23,8 +23,9 @@ using namespace std;
 
 // Brownian Motion
 
-BrownianMotionWalker::BrownianMotionWalker(double displace,long seed,CartesianCoor3D direction): m_init(true) {
+BrownianMotionWalker::BrownianMotionWalker(double displace,long seed,long sampling, CartesianCoor3D direction): m_init(true) {
 	m_seed = seed;
+    m_sampling = sampling;
 	m_direction = direction;
 	m_displace = displace;
 }
@@ -74,6 +75,12 @@ void BrownianMotionWalker::generate(size_t timepos) {
 	{
         double normran = (*p_mynormaldistribution)();
         vector<double> sphereran = (*p_myspheredistribution)();
+	    for(size_t i = 0; i < (m_sampling-1); ++i)
+        {
+            double discard_normran = (*p_mynormaldistribution)();
+            vector<double> discard_sphereran = (*p_myspheredistribution)();
+        }
+	    
         double displacement = m_displace * normran; 
 		translations[ti]= oldtranslation + displacement*CartesianCoor3D(sphereran[0],sphereran[1],sphereran[2]) ;
 		oldtranslation = translations[ti];
@@ -83,8 +90,9 @@ void BrownianMotionWalker::generate(size_t timepos) {
 
 // random walk 
 
-RandomMotionWalker::RandomMotionWalker(double displace,long seed,CartesianCoor3D direction): m_init(true) {
+RandomMotionWalker::RandomMotionWalker(double displace,long seed,long sampling, CartesianCoor3D direction): m_init(true) {
 	m_seed = seed;
+    m_sampling = sampling;
 	m_direction = direction;
 	m_displace = displace;
 }
@@ -129,7 +137,12 @@ void RandomMotionWalker::generate(size_t timepos) {
 
 	for(size_t ti = oldtimepos; ti <= timepos; ++ti)
 	{
-	    vector<double> sphereran = (*p_myspheredistribution)();
+        vector<double> sphereran = (*p_myspheredistribution)();
+        for(size_t i = 0; i < (m_sampling-1); ++i)
+        {
+            vector<double> discard_sphereran = (*p_myspheredistribution)();
+        }
+        
 		translations[ti]= oldtranslation + m_displace*CartesianCoor3D(sphereran[0],sphereran[1],sphereran[2]) ;
 		oldtranslation = translations[ti];
 	}
@@ -138,20 +151,20 @@ void RandomMotionWalker::generate(size_t timepos) {
 
 // oscillation
 
-OscillationMotionWalker::OscillationMotionWalker(double displace,double frequency,CartesianCoor3D direction) {
+OscillationMotionWalker::OscillationMotionWalker(double displace,double frequency,long sampling, CartesianCoor3D direction) {
 	m_translate = displace*direction/direction.length();
 	m_frequency = frequency;
+    m_sampling = sampling;
 }
 
 CartesianCoor3D OscillationMotionWalker::translation(size_t timepos) {
-	return m_translate*sin(2*M_PI*timepos*m_frequency);
+	return m_translate*sin(2*M_PI*timepos*m_frequency*m_sampling);
 }
-
 
 // linear motion
 
-LinearMotionWalker::LinearMotionWalker(double displace,CartesianCoor3D direction) {
-	m_translate = displace*direction/direction.length();
+LinearMotionWalker::LinearMotionWalker(double displace,long sampling, CartesianCoor3D direction) {
+	m_translate = displace*sampling*direction/direction.length();
 }
 
 CartesianCoor3D LinearMotionWalker::translation(size_t timepos) {

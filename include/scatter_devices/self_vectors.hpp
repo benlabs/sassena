@@ -52,6 +52,8 @@ class SelfScatterDevice : public ScatterDevice {
 	
 	std::vector<std::complex<double> > m_spectrum;
 
+    std::map<size_t,std::vector<CartesianCoor3D> > m_all_postalignmentvectors;
+    
 	void scatter_particle(size_t iparticle, CartesianCoor3D& q);	
 	void scatter_particles(CartesianCoor3D& q);	
 	
@@ -63,6 +65,7 @@ class SelfScatterDevice : public ScatterDevice {
 	void assemble_spectrum();
 	void crosssum_particles();
 	void correlate_particles();
+	void correlate_particles_fftw();
 	void conjmultiply_particles();
     void multiply_alignmentfactors(CartesianCoor3D q);
 	

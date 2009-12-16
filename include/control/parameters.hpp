@@ -147,6 +147,7 @@ private:
 		ar & frequency;
 		ar & selection;
 		ar & seed;
+        ar & sampling;
     }
 	/////////////////// 
 
@@ -156,6 +157,7 @@ public:
 	double frequency;
 	std::string selection;
 	long seed;
+	long sampling;	
 	CartesianCoor3D direction;
 };
 

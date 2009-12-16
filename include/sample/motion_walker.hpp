@@ -68,7 +68,7 @@ protected:
     LinearMotionWalker() {}
 
 public:
-	LinearMotionWalker(double displace,CartesianCoor3D direction);
+	LinearMotionWalker(double displace,long sampling, CartesianCoor3D direction);
 	
 	CartesianCoor3D translation(size_t timepos);
 };
@@ -100,13 +100,15 @@ protected:
 
         ar & m_translate;        
         ar & m_frequency;
+        ar & m_sampling;
     }
 	CartesianCoor3D m_translate;
 	double m_frequency;
+    long m_sampling;
 
 	OscillationMotionWalker() {}
 public:
-	OscillationMotionWalker(double displace,double frequency, CartesianCoor3D direction);
+	OscillationMotionWalker(double displace,double frequency,long sampling, CartesianCoor3D direction);
 	
 	CartesianCoor3D translation(size_t timepos);
 };
@@ -122,6 +124,7 @@ protected:
         ar & m_displace;
         ar & m_seed;
         ar & m_direction;
+        ar & m_sampling;
     }
 	std::map<size_t,CartesianCoor3D> translations;
 	
@@ -129,7 +132,8 @@ protected:
 	
 	double m_displace;
 	long m_seed;
-	
+    long m_sampling;
+    	
 	CartesianCoor3D m_direction;
     boost::variate_generator<boost::mt19937, boost::uniform_on_sphere<double> >* p_myspheredistribution;
     void init();
@@ -138,7 +142,7 @@ protected:
 	RandomMotionWalker(): m_init(true) {}    
 
 public:
-	RandomMotionWalker(double displace,long seed, CartesianCoor3D direction);
+	RandomMotionWalker(double displace,long seed,long sampling,  CartesianCoor3D direction);
 	~RandomMotionWalker();
 	
 	
@@ -155,6 +159,7 @@ protected:
         ar & boost::serialization::base_object<MotionWalker, BrownianMotionWalker>(*this);
         ar & m_displace;
         ar & m_seed;
+        ar & m_sampling;
         ar & m_direction;        
     }
 	std::map<size_t,CartesianCoor3D> translations;
@@ -163,6 +168,7 @@ protected:
     
 	double m_displace;
 	long m_seed;
+    long m_sampling;
 	
 	CartesianCoor3D m_direction;
     boost::variate_generator<boost::mt19937, boost::normal_distribution<double> >* p_mynormaldistribution;
@@ -175,7 +181,7 @@ protected:
     BrownianMotionWalker() : m_init(true) {}	
 public:
 	
-	BrownianMotionWalker(double displace,long seed, CartesianCoor3D direction);
+	BrownianMotionWalker(double displace,long seed,long sampling,  CartesianCoor3D direction);
 	~BrownianMotionWalker();
 	
 	

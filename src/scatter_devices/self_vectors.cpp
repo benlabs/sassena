@@ -25,6 +25,8 @@
 #include "coor3d.hpp"
 #include "decompose.hpp"
 #include "control.hpp"
+#include "fftw/fftw++.h"
+#include <fftw3.h>
 #include "sample.hpp"
 #include "smath.hpp"
 #include "particle_trajectory.hpp"
@@ -140,6 +142,18 @@ SelfScatterDevice::SelfScatterDevice(boost::mpi::communicator& thisworld, Sample
 				p_zc = &(p_cs->c3[minatoms]);
 			}
 
+	        // we have to exchange alignment information
+            // b/c the individual nodes don't have all the alignment vectors at once
+            // but they are needed
+	        if (Params::Inst()->scattering.center) {
+                vector<CartesianCoor3D> myavectors;
+                if (rank==r) {
+                	myavectors = p_sample->coordinate_sets.get_postalignmentvectors(assigned_frames[i]);
+			    }
+    		    boost::mpi::broadcast(thisworld,myavectors,r);
+                m_all_postalignmentvectors[assigned_frames[i]]=myavectors;
+	        }
+	        
 			double mylastx; 
 			double mylasty; 
 			double mylastz; 
@@ -159,6 +173,8 @@ SelfScatterDevice::SelfScatterDevice(boost::mpi::communicator& thisworld, Sample
 	scatterfactors.set_sample(sample);
 	scatterfactors.set_selection(sample.atoms.selections[target]);
 	scatterfactors.set_background(true);
+	
+
 		
 	a.resize(particle_trajectories.size(),sample.coordinate_sets.size());
 
@@ -243,6 +259,46 @@ void SelfScatterDevice::correlate_particles() {
 	// now a contains correlated values
 }
 
+
+void SelfScatterDevice::correlate_particles_fftw() {
+
+    vector<complex<double> > acopy(a.size2());
+    	
+    size_t asize1=a.size1();
+    size_t asize2 = a.size2();
+    size_t asize22 = (2*a.size2());
+    
+    fft1d Forward(asize22,-1);
+    fft1d Backward(asize22,1);
+
+    Complex *f1=FFTWComplex(asize22);
+    Complex *f2=FFTWComplex(asize22);
+
+    for(size_t i = 0; i < asize1; ++i)
+	{	    
+    	timer.start("sd:cor:correlate");    
+    	
+    	// make a working copy for the current particle i
+	    for(size_t j = 0; j < asize2; ++j) f1[j] = a(i,j);
+	    for(size_t j = a.size2(); j < asize22; ++j) f1[j] = 0;
+	    
+        Forward.fft(f1);
+        for(size_t j = 0; j < asize22; ++j) {
+           f2[j]=f1[j]*conj(f1[j]); 
+        } 
+        Backward.fft(f2);
+
+        for(size_t j = 0; j < asize2; ++j) {           
+           a(i,j)=f2[j]*( 1.0 / ( 2*asize2 * (asize2 -j ) ) ); 
+        }
+	}
+
+    FFTWdelete(f1);
+    FFTWdelete(f2);
+
+	// now a contains correlated values
+}
+
 void SelfScatterDevice::conjmultiply_particles() {
 
 	for(size_t i = 0; i < a.size1(); ++i)
@@ -267,9 +323,20 @@ void SelfScatterDevice::crosssum_particles() {
 }
 
 void SelfScatterDevice::multiply_alignmentfactors(CartesianCoor3D q) {
-    // not yet implemented
-    Err::Inst()->write("centering w/ alignment not yet implemented");
-    throw;
+
+    for(size_t j = 0; j < a.size2(); ++j)
+    {
+        // a2 index is frame number!
+        vector<CartesianCoor3D>& avectors = m_all_postalignmentvectors[j];
+        CartesianCoor3D& bigR = *(avectors.rbegin());
+        complex<double> factor = exp(complex<double>(0,q*bigR));	        
+        
+        // factor the same for each atom
+        for(size_t i = 0; i < a.size1(); ++i)
+    	{
+            a(i,j) = a(i,j) * factor;
+        }
+    }    
 }
 
 void SelfScatterDevice::execute(CartesianCoor3D q) {
@@ -340,8 +407,12 @@ void SelfScatterDevice::execute(CartesianCoor3D q) {
 				correlate_particles(); // if correlation, otherwise do a elementwise conj multiply here	
 				timer.stop("sd:correlate");					
 				
+			} else if (Params::Inst()->scattering.correlation.method=="fftw") {
+			    timer.start("sd:correlate");					
+				correlate_particles_fftw(); // if correlation, otherwise do a elementwise conj multiply here	
+				timer.stop("sd:correlate");								    
 			} else {
-				Err::Inst()->write("Correlation method not understood. Supported methods: direct");
+				Err::Inst()->write("Correlation method not understood. Supported methods: direct fftw");
 				throw;
 			}
 		} else {

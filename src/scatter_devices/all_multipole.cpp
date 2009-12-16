@@ -26,6 +26,8 @@
 #include "coor3d.hpp"
 #include "decompose.hpp"
 #include "control.hpp"
+#include "fftw/fftw++.h"
+#include <fftw3.h>
 #include "sample.hpp"
 #include "smath.hpp"
 #include "particle_trajectory.hpp"
@@ -230,6 +232,101 @@ void AllMSScatterDevice::conjmultiply_frames() {
 }
 
 
+std::vector<std::complex<double> > AllMSScatterDevice::correlate_frames_fftw(long mpindex) {
+	// each node has computed their assigned frames
+	// the total scattering amplitudes reside in a(x,0)
+
+	// negotiate maximum size for coordinatesets
+	size_t CSsize = myframes.size();
+	size_t maxCSsize;
+
+	if (Params::Inst()->debug.barriers) p_thisworldcomm->barrier();
+
+	timer.start("sd:corr::areduce");										
+	boost::mpi::all_reduce(*p_thisworldcomm,CSsize,maxCSsize,boost::mpi::maximum<size_t>());
+	timer.stop("sd:corr::areduce");										
+
+	vector<complex<double> > local_A;
+	local_A.resize(maxCSsize,complex<double>(0,0));
+	
+	for(size_t ci = 0; ci < myframes.size(); ++ci)
+	{
+		local_A[ci] = a(ci,mpindex);
+	}
+
+	vector<double> local_Ar = flatten(local_A);
+	vector<double> all_Ar; 
+	if (p_thisworldcomm->rank()==0) {
+    	all_Ar.resize(2*maxCSsize*p_thisworldcomm->size());		    
+	}
+
+	if (Params::Inst()->debug.barriers) p_thisworldcomm->barrier();
+	timer.start("sd:corr:gather");										
+	boost::mpi::gather(*p_thisworldcomm,&local_Ar[0], 2*maxCSsize ,&all_Ar[0],0);
+	timer.stop("sd:corr:gather");										
+
+    if (p_thisworldcomm->rank()==0) {
+
+    	EvenDecompose edecomp(p_sample->coordinate_sets.size(),p_thisworldcomm->size());
+
+    	// this has interleaving A , have to be indexed away
+    	vector<complex<double> > A; A.resize(p_sample->coordinate_sets.size());	
+
+    	for(size_t i = 0; i < p_thisworldcomm->size(); ++i)
+    	{
+    		vector<size_t> findexes = edecomp.indexes_for(i);
+    		for(size_t j = 0; j < findexes.size(); ++j)
+    		{
+    			A[ findexes[j] ] = complex<double>(all_Ar[ 2*maxCSsize*i + 2*j ],all_Ar[ 2*maxCSsize*i + 2*j +1]);
+    		}
+    	}
+
+        // A contains all complex values in the right order.
+        
+    	vector<complex<double> > correlated_a; correlated_a.resize(p_sample->coordinate_sets.size(),complex<double>(0,0));        
+    	timer.start("sd:cor:correlate");
+        Complex *f1=FFTWComplex(p_sample->coordinate_sets.size()*2);
+        Complex *f2=FFTWComplex(p_sample->coordinate_sets.size()*2);
+
+        for(size_t i = 0; i < p_sample->coordinate_sets.size(); ++i) {
+           f1[i]=A[i];
+        } 
+        for(size_t i = p_sample->coordinate_sets.size(); i < p_sample->coordinate_sets.size()*2; ++i) {
+           f1[i]=0;
+        } 
+        
+
+        fft1d Forward(p_sample->coordinate_sets.size()*2,-1);
+        
+        fft1d Backward(p_sample->coordinate_sets.size()*2,1);
+
+        Forward.fft(f1);
+        for(size_t i = 0; i < p_sample->coordinate_sets.size()*2; ++i) {
+           f2[i]=f1[i]*conj(f1[i]); 
+        } 
+        Backward.fft(f2);
+
+        double cssize = p_sample->coordinate_sets.size();
+
+        // normalize by:
+        // 2 * cssize = FFTW introduced scaling 
+        // cssize - i = compensate sampling weight (like in direct correlation)
+        for(size_t i = 0; i < p_sample->coordinate_sets.size(); ++i) {           
+           correlated_a[i]=f2[i]*( 1.0 / ( 2*cssize * (cssize -i ) ) ); 
+        }
+         
+        FFTWdelete(f1);
+        FFTWdelete(f2);              
+  
+    	timer.stop("sd:corr:correlate");
+        
+        return correlated_a;
+    } else {
+        vector<std::complex<double> > out; // return an empty array for none-root
+        return out;
+    }
+}
+
 std::vector<std::complex<double> > AllMSScatterDevice::correlate_frames(long mpindex) {
 	// each nodes has computed their assigned frames
 	// the total scattering amplitudes reside in a(x,0)
@@ -362,22 +459,29 @@ void AllMSScatterDevice::execute(CartesianCoor3D q) {
     	if (Params::Inst()->scattering.correlation.type=="time") {
     		if (Params::Inst()->scattering.correlation.method=="direct") {
     			timer.start("sd:correlate");
-    			for(size_t i = 0; i < (1+4*(Params::Inst()->scattering.average.orientation.multipole.resolution)); ++i)
+    			for(size_t i = 0; i < a.size2(); ++i)
     			{
-    			    vector<complex<double> > thisspectrum;
+        		    vector<complex<double> > thisspectrum;
         			thisspectrum = correlate_frames(i); // if correlation, otherwise do a elementwise conj multiply here			
-        			for(size_t csi = 0; csi < p_sample->coordinate_sets.size(); ++csi)
+        			for(size_t csi = 0; csi < thisspectrum.size(); ++csi)
         			{
                         spectrum[csi]+=thisspectrum[csi];
         			}
     			}					
     			timer.stop("sd:correlate");					
     		} else if (Params::Inst()->scattering.correlation.method=="fftw") {
-    //				timer.start("sd:correlate");
-    //				thisspectrum = correlate_frames_fftw(); // if correlation, otherwise do a elementwise conj multiply here			
-    //				timer.stop("sd:correlate");	
-    			Err::Inst()->write("Correlation method not understood. Supported methods: direct ");
-                throw;
+				timer.start("sd:correlate");
+    			for(size_t i = 0; i < a.size2(); ++i)
+    			{
+        		    vector<complex<double> > thisspectrum;
+        			thisspectrum = correlate_frames_fftw(i); // if correlation, otherwise do a elementwise conj multiply here			
+        			for(size_t csi = 0; csi < thisspectrum.size(); ++csi)
+        			{
+                        spectrum[csi]+=thisspectrum[csi];
+        			}
+    			}					
+
+				timer.stop("sd:correlate");	
     		} else {
     			Err::Inst()->write("Correlation method not understood. Supported methods: direct fftw");
     			throw;
@@ -549,6 +653,101 @@ void AllMCScatterDevice::scatter_frame_norm1(size_t iframe, CartesianCoor3D& q) 
 //	}
 //	
 //	a(iframe,0)=total; // sum at this location
+}
+
+std::vector<std::complex<double> > AllMCScatterDevice::correlate_frames_fftw(long mpindex) {
+	// each node has computed their assigned frames
+	// the total scattering amplitudes reside in a(x,0)
+
+	// negotiate maximum size for coordinatesets
+	size_t CSsize = myframes.size();
+	size_t maxCSsize;
+
+	if (Params::Inst()->debug.barriers) p_thisworldcomm->barrier();
+
+	timer.start("sd:corr::areduce");										
+	boost::mpi::all_reduce(*p_thisworldcomm,CSsize,maxCSsize,boost::mpi::maximum<size_t>());
+	timer.stop("sd:corr::areduce");										
+
+	vector<complex<double> > local_A;
+	local_A.resize(maxCSsize,complex<double>(0,0));
+	
+	for(size_t ci = 0; ci < myframes.size(); ++ci)
+	{
+		local_A[ci] = a(ci,mpindex);
+	}
+
+	vector<double> local_Ar = flatten(local_A);
+	vector<double> all_Ar; 
+	if (p_thisworldcomm->rank()==0) {
+    	all_Ar.resize(2*maxCSsize*p_thisworldcomm->size());		    
+	}
+
+	if (Params::Inst()->debug.barriers) p_thisworldcomm->barrier();
+	timer.start("sd:corr:gather");										
+	boost::mpi::gather(*p_thisworldcomm,&local_Ar[0], 2*maxCSsize ,&all_Ar[0],0);
+	timer.stop("sd:corr:gather");										
+
+    if (p_thisworldcomm->rank()==0) {
+
+    	EvenDecompose edecomp(p_sample->coordinate_sets.size(),p_thisworldcomm->size());
+
+    	// this has interleaving A , have to be indexed away
+    	vector<complex<double> > A; A.resize(p_sample->coordinate_sets.size());	
+
+    	for(size_t i = 0; i < p_thisworldcomm->size(); ++i)
+    	{
+    		vector<size_t> findexes = edecomp.indexes_for(i);
+    		for(size_t j = 0; j < findexes.size(); ++j)
+    		{
+    			A[ findexes[j] ] = complex<double>(all_Ar[ 2*maxCSsize*i + 2*j ],all_Ar[ 2*maxCSsize*i + 2*j +1]);
+    		}
+    	}
+
+        // A contains all complex values in the right order.
+        
+    	vector<complex<double> > correlated_a; correlated_a.resize(p_sample->coordinate_sets.size(),complex<double>(0,0));        
+    	timer.start("sd:cor:correlate");
+        Complex *f1=FFTWComplex(p_sample->coordinate_sets.size()*2);
+        Complex *f2=FFTWComplex(p_sample->coordinate_sets.size()*2);
+
+        for(size_t i = 0; i < p_sample->coordinate_sets.size(); ++i) {
+           f1[i]=A[i];
+        } 
+        for(size_t i = p_sample->coordinate_sets.size(); i < p_sample->coordinate_sets.size()*2; ++i) {
+           f1[i]=0;
+        } 
+        
+
+        fft1d Forward(p_sample->coordinate_sets.size()*2,-1);
+        
+        fft1d Backward(p_sample->coordinate_sets.size()*2,1);
+
+        Forward.fft(f1);
+        for(size_t i = 0; i < p_sample->coordinate_sets.size()*2; ++i) {
+           f2[i]=f1[i]*conj(f1[i]); 
+        } 
+        Backward.fft(f2);
+
+        double cssize = p_sample->coordinate_sets.size();
+
+        // normalize by:
+        // 2 * cssize = FFTW introduced scaling 
+        // cssize - i = compensate sampling weight (like in direct correlation)
+        for(size_t i = 0; i < p_sample->coordinate_sets.size(); ++i) {           
+           correlated_a[i]=f2[i]*( 1.0 / ( 2*cssize * (cssize -i ) ) ); 
+        }
+         
+        FFTWdelete(f1);
+        FFTWdelete(f2);              
+  
+    	timer.stop("sd:corr:correlate");
+        
+        return correlated_a;
+    } else {
+        vector<std::complex<double> > out; // return an empty array for none-root
+        return out;
+    }
 }
 
 std::vector<std::complex<double> > AllMCScatterDevice::correlate_frames(long mpindex) {
@@ -750,22 +949,29 @@ void AllMCScatterDevice::execute(CartesianCoor3D q) {
 	if (Params::Inst()->scattering.correlation.type=="time") {
 		if (Params::Inst()->scattering.correlation.method=="direct") {
 			timer.start("sd:correlate");
-			for(size_t i = 0; i < (1+4*(Params::Inst()->scattering.average.orientation.multipole.resolution)); ++i)
+			for(size_t i = 0; i < a.size2(); ++i)
 			{
 			    vector<complex<double> > thisspectrum;
     			thisspectrum = correlate_frames(i); // if correlation, otherwise do a elementwise conj multiply here			
-    			for(size_t csi = 0; csi < p_sample->coordinate_sets.size(); ++csi)
+                for(size_t csi = 0; csi < thisspectrum.size(); ++csi)
     			{
                     spectrum[csi]+=thisspectrum[csi];
     			}
 			}					
 			timer.stop("sd:correlate");					
 		} else if (Params::Inst()->scattering.correlation.method=="fftw") {
-//				timer.start("sd:correlate");
-//				thisspectrum = correlate_frames_fftw(); // if correlation, otherwise do a elementwise conj multiply here			
-//				timer.stop("sd:correlate");	
-			Err::Inst()->write("Correlation method not understood. Supported methods: direct ");
-            throw;
+				timer.start("sd:correlate");
+    			for(size_t i = 0; i < a.size2(); ++i)
+    			{
+    			    vector<complex<double> > thisspectrum;
+        			thisspectrum = correlate_frames_fftw(i); // if correlation, otherwise do a elementwise conj multiply here			
+                    for(size_t csi = 0; csi < thisspectrum.size(); ++csi)
+        			{
+                        spectrum[csi]+=thisspectrum[csi];
+        			}
+    			}					
+
+				timer.stop("sd:correlate");	
 		} else {
 			Err::Inst()->write("Correlation method not understood. Supported methods: direct fftw");
 			throw;

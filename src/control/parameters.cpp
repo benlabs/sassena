@@ -138,11 +138,13 @@ void Params::read_xml(std::string filename) {
 			motion.direction=CartesianCoor3D(1,0,0);
 			motion.selection = "system";
 			motion.seed = 0;
+			motion.sampling = 1;			
 			motion.frequency=2*M_PI/1000.0; // corresponds to one full cycle per 1000 frames, used for linear oscillation and rotation
 			if (xmli.exists("./type"))   motion.type  = xmli.get_value<string>("./type");
 			if (xmli.exists("./displace"))  motion.displace   = xmli.get_value<double>("./displace");
 			if (xmli.exists("./frequency"))  motion.frequency   = xmli.get_value<double>("./frequency");			
 			if (xmli.exists("./seed"))  motion.seed   = xmli.get_value<long>("./seed");			
+			if (xmli.exists("./sampling"))  motion.seed   = xmli.get_value<long>("./sampling");			
 			if (xmli.exists("./selection"))  motion.selection   = xmli.get_value<string>("./selection");			
 			if (xmli.exists("./direction")) {
 				motion.direction.x   = xmli.get_value<double>("./direction/x");

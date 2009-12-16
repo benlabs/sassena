@@ -64,19 +64,19 @@ void CoordinateSets::init() {
 			SampleMotionParameters& motion = Params::Inst()->sample.motions[i];
 			MotionWalker* p_mw = NULL;
 			if (motion.type=="linear") {
-				p_mw = new LinearMotionWalker(motion.displace,motion.direction);
+				p_mw = new LinearMotionWalker(motion.displace,motion.sampling,motion.direction);
 			}
 			else if (motion.type=="fixed") {
 				p_mw = new FixedMotionWalker(motion.displace,motion.direction);
 			}
 			else if (motion.type=="oscillation") {
-				p_mw = new OscillationMotionWalker(motion.displace,motion.frequency, motion.direction);
+				p_mw = new OscillationMotionWalker(motion.displace,motion.frequency,motion.sampling, motion.direction);
 			}
 			else if (motion.type=="randomwalk") {
-				p_mw = new RandomMotionWalker(motion.displace,motion.seed, motion.direction);				
+				p_mw = new RandomMotionWalker(motion.displace,motion.seed,motion.sampling, motion.direction);				
 			}
 			else if (motion.type=="brownian") {
-				p_mw = new BrownianMotionWalker(motion.displace,motion.seed, motion.direction);				
+				p_mw = new BrownianMotionWalker(motion.displace,motion.seed,motion.sampling, motion.direction);				
 			}
 			else if (motion.type=="none") {
                 p_mw = NULL;
