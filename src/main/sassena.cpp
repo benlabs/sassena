@@ -222,11 +222,11 @@ int main(int argc,char** argv) {
 	ScatterDevice* p_ScatterDevice = NULL;
 
 	if (params->scattering.interference.type == "self") {
-		p_ScatterDevice = new SelfScatterDevice(local,sample);
+		p_ScatterDevice = new SelfVectorsScatterDevice(local,sample);
 	}
 	else if (params->scattering.interference.type == "all"){
 		if (params->scattering.average.orientation.type == "vectors") {
-			p_ScatterDevice = new AllScatterDevice(local,sample);			
+			p_ScatterDevice = new AllVectorsScatterDevice(local,sample);			
 		} else if (params->scattering.average.orientation.type == "multipole") {
 			//Err::Inst()->write("Multipole method currently not supported");
 			//throw;
@@ -241,7 +241,7 @@ int main(int argc,char** argv) {
 		} else if (params->scattering.average.orientation.type == "exact") {
 			p_ScatterDevice = new AllExactScatterDevice(local,sample);					    
 		} else if (params->scattering.average.orientation.type == "none") {
-			p_ScatterDevice = new AllScatterDevice(local,sample);					    
+			p_ScatterDevice = new AllVectorsScatterDevice(local,sample);					    
 		}
 	}
 	

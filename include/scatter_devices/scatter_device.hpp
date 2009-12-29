@@ -9,8 +9,8 @@
  *
  */
 
-#ifndef SCATTER_DEVICES__SCATTER_DEVICES_HPP_
-#define SCATTER_DEVICES__SCATTER_DEVICES_HPP_
+#ifndef SCATTER_DEVICES__SCATTER_DEVICE_HPP_
+#define SCATTER_DEVICES__SCATTER_DEVICE_HPP_
 
 // common header
 #include "common.hpp"

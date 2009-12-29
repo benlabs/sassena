@@ -30,6 +30,54 @@ CoordinateSet::CoordinateSet() {
 	m_size = 0;
 }
 
+
+CoordinateSet::CoordinateSet(CoordinateSet& cs,Atomselection& cs_selection, Atomselection& sub_selection) {
+    Atomselection& csel = cs_selection;
+    Atomselection& ssel = sub_selection;
+
+    size_t csel_total = csel.indexes.size();
+    size_t ssel_total = ssel.indexes.size();
+    
+    if (csel_total<1) {
+        return;
+    }
+    if (ssel_total<1) {
+        return;
+    }
+    
+    size_t csel_iter = 0;
+    size_t ssel_iter = 0;
+    size_t count =0;
+    while( ( csel_iter < csel_total) && (ssel_iter < ssel_total) ) {
+        size_t csel_index = csel.indexes[csel_iter];
+        size_t ssel_index = ssel.indexes[ssel_iter];
+        
+        if (csel_index==ssel_index) {
+    		c1.push_back(cs.c1[csel_iter]);
+    		c2.push_back(cs.c2[csel_iter]);
+    		c3.push_back(cs.c3[csel_iter]);
+            count++;
+            
+            ssel_iter++;
+            csel_iter++;           
+        } else if (csel_index>ssel_index) {
+            ssel_iter++;
+        } else if (csel_index<ssel_index) {
+            csel_iter++;
+        }
+    }
+    
+    m_size = count;
+    m_representation = cs.get_representation();
+    
+}
+
+CartesianCoordinateSet::CartesianCoordinateSet(CartesianCoordinateSet& cs,Atomselection& cs_selection, Atomselection& sub_selection) :
+ CoordinateSet(cs,cs_selection,sub_selection)
+{
+    // inherit copy constructor from parent
+}
+
 CartesianCoordinateSet::CartesianCoordinateSet(Frame& frame,Atomselection& selection) {
     m_representation = CARTESIAN;
     
@@ -37,77 +85,56 @@ CartesianCoordinateSet::CartesianCoordinateSet(Frame& frame,Atomselection& selec
     vector<double>& y = c2;
     vector<double>& z = c3;
 
-	m_size = selection.size();
+	m_size = selection.indexes.size();
 	x.resize(m_size);
 	y.resize(m_size);
 	z.resize(m_size);
 
 	for(size_t i = 0; i < m_size; ++i)
 	{
-		size_t thisindex = selection[i] ;
+		size_t thisindex = selection.indexes[i];
 		x[i] = frame.x[thisindex];
 		y[i] = frame.y[thisindex];
 		z[i] = frame.z[thisindex];		
 	}
 }
 
-CoordinateSet::CoordinateSet(CoordinateSet& original_cs,Atomselection& original_selection, Atomselection& sub_selection) {
-    if (original_cs.get_representation()!=m_representation) {
-        Err::Inst()->write("Incompatible representations of Coordinate Sets");
-        throw;
-    }
-
-	// to construct a new coordinateset from a prior one, the following conditions has to be met:
-	// the selection of the new one must be a subset of the old one
-	// otherwise an exception is raised. 
-	if ( ! sub_selection.is_subset_of(original_selection) ) {
-		Err::Inst()->write("Tried to construct a coordinate set from one which it isn't a subset of!");
-		throw;
-	}
+void CartesianCoordinateSet::translate(CartesianCoor3D trans, Atomselection& cs_selection, Atomselection& sub_selection) {
 	
-	m_size = sub_selection.size();
-	c1.resize(m_size);
-	c2.resize(m_size);
-	c3.resize(m_size);
+    Atomselection& csel = cs_selection;
+    Atomselection& ssel = sub_selection;
 
-	// use the complete booleanarray of the selection, this allows translation of the indexes on the fly
-	size_t cs_index_iter = 0;
-	size_t index_iter = 0;	
-	for(size_t i = 0; i < sub_selection.booleanarray.size(); ++i)
-	{
-		if (sub_selection.booleanarray[i]) {
-			c1[index_iter] = original_cs.c1[cs_index_iter];
-			c2[index_iter] = original_cs.c2[cs_index_iter];
-			c3[index_iter] = original_cs.c3[cs_index_iter];
-			index_iter++;
-		}		
-
-		if (original_selection.booleanarray[i]) cs_index_iter++;
-	}
-}
-
-void CartesianCoordinateSet::translate(CartesianCoor3D trans,Atomselection& original_selection, Atomselection& sub_selection) {
-
+    size_t csel_total = csel.indexes.size();
+    size_t ssel_total = ssel.indexes.size();
     
-	// to translate only a subpart, the following conditions has to be met:
-	// the sub selection must be a subset of the containing one
-	if ( ! sub_selection.is_subset_of(original_selection) ) {
-		Err::Inst()->write("Tried to translate a coordinate with an incompatible atomselection!");
-		throw;
-	}
-
-	size_t index_iter = 0;	
-	for(size_t i = 0; i < original_selection.booleanarray.size(); ++i)
-	{
-		if (sub_selection.booleanarray[i]) {
-			c1[index_iter] += trans.x;
-			c2[index_iter] += trans.y;
-			c3[index_iter] += trans.z;
-		}		
-
-		if (original_selection.booleanarray[i]) index_iter++;
-	}
-	
+    if (csel_total<1) {
+        return;
+    }
+    if (ssel_total<1) {
+        return;
+    }
+    
+    size_t csel_iter = 0;
+    size_t ssel_iter = 0;
+    
+    while( ( csel_iter < csel_total) && (ssel_iter < ssel_total) ) {
+        size_t csel_index = csel.indexes[csel_iter];
+        size_t ssel_index = ssel.indexes[ssel_iter];
+        
+        if (csel_index==ssel_index) {
+			c1[csel_iter] += trans.x;
+			c2[csel_iter] += trans.y;
+			c3[csel_iter] += trans.z;
+			
+            ssel_iter++;
+            csel_iter++;           
+        } else if (csel_index>ssel_index) {
+            ssel_iter++;
+        } else if (csel_index<ssel_index) {
+            csel_iter++;
+        }
+    }
+    
 }
 
 

@@ -1,5 +1,5 @@
 /*
- *  scatter_devices/self_vectors.hpp
+ *  scatterdevices.hpp
  *
  *  Created on: May 26, 2008
  *  Authors:
@@ -9,8 +9,8 @@
  *
  */
 
-#ifndef SCATTER_DEVICES__SELF_VECTORS_HPP_
-#define SCATTER_DEVICES__SELF_VECTORS_HPP_
+#ifndef SCATTER_DEVICES__ALL_HPP_
+#define SCATTER_DEVICES__ALL_HPP_
 
 // common header
 #include "common.hpp"
@@ -29,49 +29,54 @@
 #include <boost/mpi.hpp>
 
 // other headers
+#include "sample.hpp"
+
 #include "coor3d.hpp"
 #include "particle_trajectory.hpp"
-#include "sample.hpp"
 #include "scatter_factors.hpp"
 #include "timer.hpp"
 
 #include "scatter_devices/scatter_device.hpp"
 
-class SelfVectorsScatterDevice : public ScatterDevice {
-private:
+class AllScatterDevice : public ScatterDevice {
+protected:
 	boost::mpi::communicator* p_thisworldcomm;
-
 	Sample* p_sample;
-	
+
+    // first = q, second = frames
+	std::vector< std::vector< std::complex<double> > >* p_a; 
 	std::vector< std::complex<double> >* p_asingle; 
 	
-	std::vector<ParticleTrajectory> particle_trajectories;
-	
-	ScatterFactors scatterfactors;	
-	
-    std::vector<CartesianCoor3D> qvectors;
-	
-	std::vector<std::complex<double> > m_spectrum;
-
-    std::map<size_t,std::vector<CartesianCoor3D> > m_all_postalignmentvectors;
-    
-	void scatter(size_t ai, size_t mi);	
-	
-    void init(CartesianCoor3D& q);
-	void correlate();
-    void norm();
-    size_t get_numberofmoments();
-    
-    void multiply_alignmentfactors(size_t mi);
-    void gather_sum();
+	ScatterFactors scatterfactors;
+	std::vector<size_t> myframes;
 		
-public: 
-	SelfVectorsScatterDevice(boost::mpi::communicator& thisworld, Sample& sample);
+	std::vector<std::complex<double> > m_spectrum;		
 
+	// have to be implemented by concrete classes:
+    virtual void init(CartesianCoor3D& q) = 0;
+    virtual void norm() = 0;
+    virtual size_t get_numberofmoments() = 0 ;	
+	virtual void scatter(size_t moffset,size_t mcount) = 0 ;
+
+
+    void multiply_alignmentfactors(CartesianCoor3D q);
+    
+    void exchange();
+    void correlate();
+    void gather_sum();
+    
+    void conjmultiply();
+    void sum();
+    void gather_cat();
+	
+public: 
+	AllScatterDevice(boost::mpi::communicator& thisworld, Sample& sample);
+	~AllScatterDevice();
+	
 	void execute(CartesianCoor3D q); 
 	std::vector<std::complex<double> >& get_spectrum(); // returns F(q,tau)
-	
 };
+
 
 #endif
 

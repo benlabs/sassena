@@ -42,25 +42,31 @@ class Atoms : public std::vector<Atom> {
     {
 		ar & boost::serialization::base_object<std::vector<Atom> >(*this);
 		ar & selections;
+        ar & system_selection;
     }
 	///////////////////
 public:	
 	
 	std::map<std::string,Atomselection> selections;	
-
+    Atomselection system_selection;
+    
 	Atoms() {}
 	Atoms(std::string filename, std::string fileformat = "pdb");
 	
 	void write( std::string filename,Frame& frame, std::string fileformat = "pdb");
-	void print_statistics();
 
 	void add(std::string filename, std::string fileformat = "pdb");
-	void add(std::string label);
-	
-	void add_selection(std::string name, std::string filename, std::string format,std::string select,double select_value);
-	void add_selection(std::string name,bool select);
+
+    // support for selections
+    std::vector<std::pair<std::string,Atomselection> > select_ndx(std::string filename);
+    Atomselection select_pdb(std::string filename, std::string select,double select_value);
+    Atomselection select(std::string label="");
+    
+	void push_selection(std::string name, Atomselection& selection);
+    void clear_selections();
 	
 	void assert_selection(std::string groupname); // throws an exception when groupname isn't found.
+	
 	~Atoms() {}
 };
 

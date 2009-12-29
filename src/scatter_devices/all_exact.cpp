@@ -40,12 +40,12 @@ AllExactScatterDevice::AllExactScatterDevice(boost::mpi::communicator& thisworld
 
 	string target = Params::Inst()->scattering.target;
 
-	size_t nn = thisworld.size(); // Number of Nodes
-	size_t na = sample.atoms.selections[target].size(); // Number of Atoms
-	size_t nf = sample.coordinate_sets.size();
+	size_t NN = thisworld.size(); // Number of Nodes
+	size_t NA = sample.atoms.selections[target].indexes.size(); // Number of Atoms
+	size_t NF = sample.coordinate_sets.size();
 
 	size_t rank = thisworld.rank();
-	EvenDecompose edecomp(nf,nn);
+	EvenDecompose edecomp(NF,NN);
 	
 	myframes = edecomp.indexes_for(rank);
 	
@@ -53,7 +53,7 @@ AllExactScatterDevice::AllExactScatterDevice(boost::mpi::communicator& thisworld
 
         size_t memusage_scatmat = 2*sizeof(double)*myframes.size()*1;
                 
-        size_t memusage_per_cs = 3*sizeof(double)*na;
+        size_t memusage_per_cs = 3*sizeof(double)*NA;
         size_t memusage_allcs = memusage_per_cs*myframes.size();
         
         
@@ -96,7 +96,7 @@ AllExactScatterDevice::AllExactScatterDevice(boost::mpi::communicator& thisworld
 // acts like scatter_frame, but does the summation in place
 void AllExactScatterDevice::scatter_frame_norm1(size_t iframe, CartesianCoor3D& q) {
 
-	size_t noa = p_sample->coordinate_sets.get_selection().size();
+	size_t noa = p_sample->coordinate_sets.get_selection().indexes.size();
 	
 	timer.start("sd:fs:f:ld");	
 	CoordinateSet& cs = p_sample->coordinate_sets.load(myframes[iframe]); 

@@ -27,44 +27,57 @@ CenterOfMass::CenterOfMass(Atoms& atoms,Atomselection& cofm_selection,Atomselect
         throw;
 	}
 	
-	if (cofm_selection.empty()) {
+    size_t csel_total = cs_selection.indexes.size();
+    size_t ssel_total = cofm_selection.indexes.size();
+    
+	if (ssel_total<1) {
 		Warn::Inst()->write("Warning! Computing Center of Mass for an empty atomselection");
 		Warn::Inst()->write("Setting Center of mass to (0,0,0)");
 		m_center = CartesianCoor3D(0,0,0);
-	}
+	} else if (csel_total<1) {
+		Warn::Inst()->write("Warning! Computing Center of Mass for an empty coordinate set");
+		Warn::Inst()->write("Setting Center of mass to (0,0,0)");
+		m_center = CartesianCoor3D(0,0,0);	    
+	} else {
 
-	double xt,yt,zt,m,mi;
-	xt = yt = zt = 0.0;
-	m = 0.0;
+    	double xt,yt,zt,m,mi;
+    	xt = yt = zt = 0.0;
+    	m = 0.0;
 
-	size_t iter = 0; 
-	size_t cs_iter = 0;
-	for(size_t i = 0; i < cofm_selection.booleanarray.size(); ++i)
-	{
-		if (cofm_selection.booleanarray[i]) {
-			if (! cs_selection.booleanarray[i]) {
-				Err::Inst()->write("Called CenterOfMass with two incompatible atom selections");
-			} 
-			mi = atoms[cs_selection[cs_iter]].mass;
-			m += mi;
-			xt += cs.c1[cs_iter]*mi;
-			yt += cs.c2[cs_iter]*mi;
-			zt += cs.c3[cs_iter]*mi;
-			
-			iter++;
-		}
-		if (cs_selection.booleanarray[i]) cs_iter++;
-		
-	}
-		
-	m_center = CartesianCoor3D(xt/m,yt/m,zt/m);
+        size_t csel_iter = 0;
+        size_t ssel_iter = 0;
+
+        while( ( csel_iter < csel_total) && (ssel_iter < ssel_total) ) {
+            size_t csel_index = cs_selection.indexes[csel_iter];
+            size_t ssel_index = cofm_selection.indexes[ssel_iter];
+
+            if (csel_index==ssel_index) {
+                mi = atoms[csel_index].mass;
+    			m += mi;
+    			
+    			xt += cs.c1[csel_iter]*mi;
+    			yt += cs.c2[csel_iter]*mi;
+    			zt += cs.c3[csel_iter]*mi;
+    			
+                ssel_iter++;
+                csel_iter++;           
+            } else if (csel_index>ssel_index) {
+                ssel_iter++;
+            } else if (csel_index<ssel_index) {
+                csel_iter++;
+            }
+        }
+        
+    	m_center = CartesianCoor3D(xt/m,yt/m,zt/m);
+
+	}		
 	
 }
 
 
 CenterOfMass::CenterOfMass(Atoms& atoms,Frame& frame,Atomselection& selection) {
 	
-	if (selection.empty()) {
+	if (selection.indexes.empty()) {
 		Err::Inst()->write("Warning! Computing Center of Mass for an empty atomselection");
 		Err::Inst()->write("Setting Center of mass to (0,0,0)");		
 		m_center = CartesianCoor3D(0,0,0);
@@ -75,12 +88,12 @@ CenterOfMass::CenterOfMass(Atoms& atoms,Frame& frame,Atomselection& selection) {
 	xt = yt = zt = 0.0;
 	m = 0.0;
 
-	for (size_t i=0;i<selection.size();i++) {
-		mi = atoms[selection[i]].mass;
+	for (size_t i=0;i<selection.indexes.size();i++) {
+		mi = atoms[selection.indexes[i]].mass;
 		m += mi;
-		xt += frame.x[selection[i]]*mi;
-		yt += frame.y[selection[i]]*mi;
-		zt += frame.z[selection[i]]*mi;
+		xt += frame.x[selection.indexes[i]]*mi;
+		yt += frame.y[selection.indexes[i]]*mi;
+		zt += frame.z[selection.indexes[i]]*mi;
 	}
 	
 	m_center =  CartesianCoor3D(xt/m,yt/m,zt/m);

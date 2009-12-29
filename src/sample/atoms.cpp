@@ -28,21 +28,9 @@
 using namespace std;
 
 
-
 // for the pdb format (ATOM entry look below)
 Atoms::Atoms(string filename, string fileformat) {
 	add(filename,fileformat);
-}
-
-void Atoms::add(string label) {
-	Atom temp_atom;
-	temp_atom.name = label;
-	temp_atom.ID = Database::Inst()->atomIDs.get(temp_atom.name); // get a unique ID for the name
-	temp_atom.mass = Database::Inst()->masses.get(temp_atom.ID);	
-	// make sure kappa is initialized:
-	temp_atom.kappa = 1.0;	
-	temp_atom.volume = Database::Inst()->volumes.get(temp_atom.ID);
-	push_back(temp_atom);
 }
  
 // for the pdb format (ATOM entry look below)
@@ -94,12 +82,9 @@ void Atoms::add(string filename, string fileformat) {
 			}
 			line_counter++;
 		}		
-	
-	#ifdef DEBUG
-		clog << "Finished reading pdb file" << endl;
-		clog << "Lines read: " << line_counter << ", Atoms read: " << atom_counter << endl;
-	#endif
 	}	
+	
+    system_selection = select();
 }
 
 /* pdb file format , atom section:
@@ -123,25 +108,6 @@ COLUMNS        DATA  TYPE    FIELD        DEFINITION
 77 - 78        LString(2)    element      Element symbol, right-justified.
 79 - 80        LString(2)    charge       Charge  on the atom.
 */
-
-void Atoms::print_statistics() {
-	clog << "Size of Atom-Vector: " << (*this).size() << endl;
-	map<string,int> counts;
-	for (vector<Atom>::iterator atom_i=(*this).begin();atom_i!=(*this).end();atom_i++) {
-		if (counts.find(atom_i->name)!=counts.end()) counts[atom_i->name]++; else counts[atom_i->name]=1;
-	}
-	for (map<string,int>::iterator counts_i=counts.begin();counts_i!=counts.end();counts_i++) {
-		clog << counts_i->first << " counted " << counts_i->second << " times." << endl;
-	}
-	int particle=0; int solvent=0;
-	for (Atoms::iterator ai=begin();ai!=end();ai++) {
-		if (ai->particle) particle++;
-		if (ai->solvent) solvent++;
-	}
-	cout << "Stats for the particle/solvent system:" << endl;
-	cout << "Particle atoms: " << particle<< endl;
-	cout << "Solvent atoms: " << solvent<< endl;
-}
 
 void Atoms::write(string filename,Frame& frame, string fileformat) {
 
@@ -179,63 +145,99 @@ void Atoms::write(string filename,Frame& frame, string fileformat) {
 			ofile << endl;
 			atom_counter++;
 			line_counter++;
-		}		
-	
-	#ifdef DEBUG
-		clog << "Finished writing pdb file" << endl;
-		clog << "Lines written: " << line_counter << ", Atoms written: " << atom_counter << endl;
-	#endif
-	}	
-}
-
-void Atoms::add_selection(std::string name, std::string filename, std::string format,std::string select,double select_value) {
-	if (format=="ndx") {
-			ifstream ndxfile(filename.c_str());
-			int linecounter = 0;
-			string line; 
-			map<string,vector<size_t> > indexes;
-			int bracketcounter =0;
-			string name = "";
-			
-			while (getline(ndxfile,line)) {
-				size_t pos = line.find("[");
-				if ( pos !=string::npos )  {
-					size_t pos2 = line.find("]");
-					if (pos2==string::npos) {
-						Err::Inst()->write("ndx file is missing closing bracket");					
-						throw;
-					}
-					stringstream cleannamestream(line.substr(pos+1,pos2-pos));
-					string cleanname; cleannamestream >> cleanname;
-					name = cleanname;
-				}
-				else if (name!="") {
-					stringstream thisline(line);
-					size_t index=0;
-					while (thisline>>index) {
-						indexes[name].push_back(index-1); // ndx files start with 1 as an index
-					}
-				}
-			}
-			for (map<string,vector<size_t> >::iterator ii=indexes.begin();ii!=indexes.end();ii++) {
-				selections[ii->first] = Atomselection(*this,ii->second,ii->first);									
-				Info::Inst()->write(string("Adding selection: ") + ii->first);
-			}
-	}
-	else if (format=="pdb") {
-		if (name=="") {
-			Err::Inst()->write("pdb selection entries must specify a name for the selection");
-			throw;
 		}
-		selections[name] = Atomselection(*this,filename,format,select,select_value,name);			
-		Info::Inst()->write(string("Adding selection: ") + name);
-		
-	}
-
+	}			
 }
 
-void Atoms::add_selection(std::string name,bool select) {
-	selections[name] = Atomselection(*this,select,name);	
+
+Atomselection Atoms::select(string label) {
+    Atomselection selection;
+
+    for(size_t i = 0; i < this->size(); ++i)
+    {
+        if (label=="") { // default: add
+            selection.add(this->at(i).index);
+        } else if ( this->at(i).name ==label) {
+            selection.add(this->at(i).index);
+        }
+    }
+    
+    return selection;
+}
+
+Atomselection Atoms::select_pdb(std::string filename, std::string select, double select_value) {
+    Atomselection selection;
+
+	ifstream pdbfile(filename.c_str());
+	size_t linecounter = 0;
+	if (select=="beta") {
+		string line; double beta;
+		while (getline(pdbfile,line)) {
+			if (line.substr(0,6)=="ATOM  ") {
+				try {
+					beta = atof(line.substr(60,65).c_str());
+					if (beta==select_value) {
+						selection.add(linecounter);
+					}
+					
+				} catch (...) { cerr << "Error at reading atomselection line:" << endl << line << endl; throw; }
+				linecounter++;				
+			}
+		}
+	} else {
+        Err::Inst()->write("atomselection only supports beta at the moment");
+        throw;
+	}
+
+    return selection;
+}
+
+vector<pair<string,Atomselection> > Atoms::select_ndx(std::string filename) {
+    vector<pair<string,Atomselection> > result;
+    
+   	ifstream ndxfile(filename.c_str());
+   	int linecounter = 0;
+   	string line; 
+   	map<string,vector<size_t> > indexes;
+   	int bracketcounter =0;
+   	string name = "";
+   	
+   	while (getline(ndxfile,line)) {
+   		size_t pos = line.find("[");
+   		if ( pos !=string::npos )  {
+   			size_t pos2 = line.find("]");
+   			if (pos2==string::npos) {
+   				Err::Inst()->write("ndx file is missing closing bracket");					
+   				throw;
+   			}
+   			stringstream cleannamestream(line.substr(pos+1,pos2-pos));
+   			string cleanname; cleannamestream >> cleanname;
+   			name = cleanname;
+   		}
+   		else if (name!="") {
+   			stringstream thisline(line);
+   			size_t index=0;
+   			while (thisline>>index) {
+   				indexes[name].push_back(index-1); // ndx files start with 1 as an index
+   			}
+   		}
+   	}
+   	
+   	for (map<string,vector<size_t> >::iterator ii=indexes.begin();ii!=indexes.end();ii++) {
+   		Atomselection selection;
+   		for(size_t i = 0; i < ii->second.size(); ++i)
+   		{
+               selection.add(ii->second[i]);
+   		}
+        result.push_back(make_pair<string,Atomselection>(ii->first,selection));
+   		Info::Inst()->write(string("Adding selection: ") + ii->first);
+   	}
+
+    return result;
+}
+
+void Atoms::push_selection(std::string name, Atomselection& selection) {
+    selections[name] = selection;
 }
 
 
@@ -246,4 +248,7 @@ void Atoms::assert_selection(std::string groupname) {
 	}
 }
 
+void Atoms::clear_selections() {
+    selections.clear();
+}
 // end of file

@@ -50,7 +50,7 @@ protected:
     CoordinateRepresentation m_representation;
 public:
     CoordinateSet();
-	CoordinateSet(CoordinateSet& cs,Atomselection& original_selection, Atomselection& sub_selection); 
+	CoordinateSet(CoordinateSet& cs,Atomselection& cs_selection, Atomselection& sub_selection); 
 	
 	std::vector<double> c1; // x-coordinates
 	std::vector<double> c2; // y-coordinates
@@ -71,11 +71,12 @@ class CartesianCoordinateSet : public CoordinateSet {
 
 public:
 	CartesianCoordinateSet();
+	CartesianCoordinateSet(CartesianCoordinateSet& cs,Atomselection& cs_selection, Atomselection& sub_selection); 
 	CartesianCoordinateSet(Frame& frame,Atomselection& selection); 
 
     // implement transformations in Cartesian Space
 	void translate(CartesianCoor3D trans);
-	void translate(CartesianCoor3D trans,Atomselection& original_selection, Atomselection& sub_selection);
+	void translate(CartesianCoor3D trans, Atomselection& cs_selection, Atomselection& sub_selection);
 	
     void rotate(CartesianCoor3D axis1,CartesianCoor3D axis2);
 };

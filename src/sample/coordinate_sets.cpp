@@ -117,11 +117,17 @@ void CoordinateSets::init() {
 
 void CoordinateSets::load_into_cache(size_t framenumber) {
 	CartesianCoordinateSet* pcset = NULL;
+	
 	if ( Params::Inst()->runtime.limits.cache.coordinate_sets < setcache.size() ) {
 		clear_cache();
 	}
+
 	Frame frame = frames.load(framenumber);
-	pcset = new CartesianCoordinateSet(frame,*p_selection);
+	pcset = new CartesianCoordinateSet(frame,p_atoms->system_selection);
+	
+    if ( frame.x.size() != p_atoms->system_selection.indexes.size() ) {
+        Err::Inst()->write(string("Wrong number of atoms, frame:")+to_s(framenumber));
+    }
 
     // align here
     m_prealignmentvectors[framenumber].clear();    
@@ -130,25 +136,21 @@ void CoordinateSets::load_into_cache(size_t framenumber) {
 		string sel = m_prealignments[i].first;
 		string type = m_prealignments[i].second;
         if (type=="center") {
-			p_atoms->assert_selection(sel);        
-            CartesianCoor3D origin = CenterOfMass(*p_atoms,p_atoms->selections[sel],*p_selection,*pcset);
-            pcset->translate(-1.0*origin,*p_selection, p_atoms->selections[sel]);
+			p_atoms->assert_selection(sel);
+            CartesianCoor3D origin = CenterOfMass(*p_atoms,p_atoms->selections[sel],p_atoms->system_selection,*pcset);
+            pcset->translate(-1.0*origin);
             m_prealignmentvectors[framenumber].push_back(-1.0*origin);
         }
     }
-    
+        
 	// apply motions, operate in cartesian space
 	for(size_t i = 0; i < m_motion_walkers.size(); ++i)
 	{
 		string sel = m_motion_walkers[i].first;
 		MotionWalker* p_mw = m_motion_walkers[i].second;
 
-		if (sel == "") {
-			pcset->translate(p_mw->translation(framenumber),*p_selection, p_atoms->selections[sel]);		
-		} else {
-			p_atoms->assert_selection(sel);
-			pcset->translate(p_mw->translation(framenumber),*p_selection, p_atoms->selections[sel]);						
-		}	
+		p_atoms->assert_selection(sel);
+		pcset->translate(p_mw->translation(framenumber),p_atoms->system_selection, p_atoms->selections[sel]);						
 	}		
 
     // align here
@@ -159,20 +161,25 @@ void CoordinateSets::load_into_cache(size_t framenumber) {
 		string type = m_postalignments[i].second;
         if (type=="center") {
 			p_atoms->assert_selection(sel);        
-            CartesianCoor3D origin = CenterOfMass(*p_atoms,p_atoms->selections[sel],*p_selection,*pcset);
-            pcset->translate(-1.0*origin,*p_selection, p_atoms->selections[sel]);
+            CartesianCoor3D origin = CenterOfMass(*p_atoms,p_atoms->selections[sel],p_atoms->system_selection,*pcset);
+            pcset->translate(-1.0*origin);            
             m_postalignmentvectors[framenumber].push_back(-1.0*origin);
         }
-    }
+    }    
     
+    // reduce the coordinate set to the target selection
+	CartesianCoordinateSet* pcset_reduced = new CartesianCoordinateSet(*pcset,p_atoms->system_selection,*p_selection);
+    delete pcset;
+    
+    // convert to the current representation
 	if (m_representation==CARTESIAN) {
- 	    setcache[framenumber] = pcset;
+ 	    setcache[framenumber] = pcset_reduced;
 	} else if (m_representation==SPHERICAL) {
-	    setcache[framenumber] = new SphericalCoordinateSet(*pcset); 	    
-        delete pcset;
+	    setcache[framenumber] = new SphericalCoordinateSet(*pcset_reduced); 	    
+        delete pcset_reduced;
 	} else if (m_representation==CYLINDRICAL) {
-	    setcache[framenumber] = new CylindricalCoordinateSet(*pcset); 	    
-        delete pcset;
+	    setcache[framenumber] = new CylindricalCoordinateSet(*pcset_reduced); 	    
+        delete pcset_reduced;
 	}	
 }
 

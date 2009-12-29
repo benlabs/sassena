@@ -34,15 +34,15 @@ void ScatterFactors::update(CartesianCoor3D q) {
 	
 	double background_sl = Params::Inst()->scattering.background.factor;
 
-	for(size_t i = 0; i < p_selection->size(); ++i)
+	for(size_t i = 0; i < p_selection->indexes.size(); ++i)
 	{
-		size_t atomID = p_sample->atoms[p_selection->at(i)].ID;
+		size_t atomID = p_sample->atoms[p_selection->indexes[i]].ID;
 		double ql = q.length();
 		double sf = Database::Inst()->sfactors.get(atomID,ql);
 	
 		// calculate effective scattering length:
 		if (m_background) {
-			double k  = p_sample->atoms[p_selection->at(i)].kappa;
+			double k  = p_sample->atoms[p_selection->indexes[i]].kappa;
 			double v = Database::Inst()->volumes.get(atomID);
 			double efactor = Database::Inst()->exclusionfactors.get(atomID,k*v,ql);
 
@@ -55,7 +55,7 @@ void ScatterFactors::update(CartesianCoor3D q) {
 }
 
 void ScatterFactors::set_selection(Atomselection& selection) {
-	factors.resize(selection.size());
+	factors.resize(selection.indexes.size());
 	p_selection = &selection;
 }
 

@@ -40,15 +40,33 @@ void Sample::init() {
     {
     	SampleGroupParameters& sp = sgpi->second;
     	Info::Inst()->write(string("Reading selection file: ")+sp.file);
-    	atoms.add_selection(sp.name,sp.file,sp.format,sp.select,sp.select_value);
+    	if (sp.format=="ndx") {
+        	vector<pair<string,Atomselection> > sels = atoms.select_ndx(sp.file);    	    
+        	for(size_t i = 0; i < sels.size(); ++i)
+        	{
+                atoms.push_selection(sels[i].first,sels[i].second);
+        	}
+    	} else if (sp.format=="pdb") {
+        	Atomselection sel = atoms.select_pdb(sp.file,sp.select,sp.select_value);    	    
+            atoms.push_selection(sp.name,sel);
+    	} else {
+            Err::Inst()->write("Selection file format not understood");
+            throw;
+    	}
     }
     
     // add custom selections here ( if not already set! )
-    if (atoms.selections.find("system")==atoms.selections.end()) {
-    	// this shortcut creates a full selection
-    	atoms.add_selection("system",true);		
+    if (atoms.selections.find("system")!=atoms.selections.end()) {
+        Warn::Inst()->write("Renaming selection system to system_RENAMED_BY_SASSENA");
+        Warn::Inst()->write("system is a reserved selection word and includes all atoms");
+        map<string,Atomselection>::iterator si = atoms.selections.find("system");
+        atoms.selections["system_RENAMED_BY_SASSENA"]=si->second;
+        atoms.selections.erase(si);
     }
-    
+	// this shortcut creates a full selection
+	Atomselection sel = atoms.select();		
+    atoms.push_selection("system",sel); // provide two alternative ways to access a full selection
+    atoms.system_selection = sel;
 
     Params::Inst()->runtime.limits.cache.coordinate_sets = 1;    	
     coordinate_sets.init();
@@ -74,8 +92,8 @@ void Sample::set_kappa(std::string group, double kappa) {
 	atoms.assert_selection(group);
 	Atomselection& as = atoms.selections[group];
 
-	for (Atomselection::iterator asi=as.begin();asi!=as.end();asi++) {
-		atoms[*asi].kappa=kappa;		
+	for (size_t i=0;i<as.indexes.size();i++) {
+		atoms[as.indexes[i]].kappa=kappa;		
 	}
 }
 

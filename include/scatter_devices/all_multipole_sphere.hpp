@@ -9,8 +9,8 @@
  *
  */
 
-#ifndef SCATTER_DEVICES__ALL_VECTORS_HPP_
-#define SCATTER_DEVICES__ALL_VECTORS_HPP_
+#ifndef SCATTER_DEVICES__MULTIPOLE_SPHERE_HPP_
+#define SCATTER_DEVICES__MULTIPOLE_SPHERE_HPP_
 
 // common header
 #include "common.hpp"
@@ -38,9 +38,10 @@
 
 #include "scatter_devices/all.hpp"
 
-class AllVectorsScatterDevice : public AllScatterDevice {
+class AllMSScatterDevice : public AllScatterDevice {
 private:
-    std::vector<CartesianCoor3D> qvectors;
+    std::vector<std::pair<long,long> > moments;
+    CartesianCoor3D q;
     
 	// have to be implemented by concrete classes:
     void init(CartesianCoor3D& q);
@@ -49,7 +50,7 @@ private:
     void norm();	
 
 public:
-	AllVectorsScatterDevice(boost::mpi::communicator& thisworld, Sample& sample);
+	AllMSScatterDevice(boost::mpi::communicator& thisworld, Sample& sample);
 
 };
 

@@ -23,45 +23,25 @@
 #include <boost/serialization/access.hpp>
 #include <boost/serialization/list.hpp>
 
-// other headers
-#include "sample/atom.hpp"
-#include "sample/atoms.hpp"
-class Atoms;
-
-class Atomselection : public std::vector<size_t> {
+class Atomselection {
 	// make this class serializable to 
 	// allow sample to be transmitted via MPI
     friend class boost::serialization::access;	
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
     {
-		ar & boost::serialization::base_object<std::vector<size_t> >(*this);
-		ar & booleanarray;
-		ar & name;
+        ar & indexes;
     }
 	///////////////////
 public:	
-	std::vector<bool> booleanarray; // map an atom index position to a yes/no value
-	std::string name;
-	
-	enum PDBSELECT {SEGID,RESID,RESNAME,BETA};
-
-	Atomselection(Atoms& atoms,std::string filename,std::string format,std::string select,double select_value,std::string name="");
-	Atomselection(Atoms& atoms,std::string filename,std::string format,std::string name="");
-	Atomselection(Atoms& atoms,bool select = false,std::string name="");
-	Atomselection(Atoms& atoms,std::vector<size_t> indexes,std::string name="");
-
+    std::vector<size_t> indexes;    
+    
 	Atomselection& operator+=(const Atomselection& );
-	// empty atomselection is actually invalid!
-	Atomselection() {}
+	Atomselection& operator-=(const Atomselection& );
 	
-	void add(const Atom& atom);
-	void remove(const Atom& atom);
+	void add(size_t index);
+	void remove(size_t index);
 	
-	std::vector<Atomselection> slice(size_t number);
-	Atomselection subset(size_t offset,size_t maxcount);
-	
-	// test whether this selection is a subset of an-other selection 
-	bool is_subset_of(Atomselection& other);
+	std::vector<Atomselection> slice(size_t parts);
 };
 
 #endif
