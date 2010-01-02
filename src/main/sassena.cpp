@@ -349,7 +349,7 @@ int main(int argc,char** argv) {
 		
 	if (world.rank()==0) {
 		perfanal.report();
-		perfanal.report_relative(timer.sum("total"));
+		perfanal.report_relative(timer.sum("total")*world.size());
 		
 		Info::Inst()->write(string("Total runtime (s): ")+to_s(timer.sum("total")));
 		Info::Inst()->write("Successfully finished... Have a nice day!");

@@ -30,10 +30,7 @@ EvenDecompose::EvenDecompose(size_t total, size_t slices) {
 
 	size_t minperslice = total/slices;
 	size_t leftover = total - (slices*minperslice);
-	
-	// if we have less total than slices, there will be some empty...
-	if (minperslice==0)	leftover = 0;
-	
+		
 	for(size_t i = 0; i < slices; ++i)
 	{
 		size_t thisslice = minperslice;

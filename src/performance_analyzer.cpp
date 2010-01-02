@@ -181,7 +181,7 @@ void PerformanceAnalyzer::report_relative(double totaltime) {
 	string mmhead = (boost::format("%|17| |%|9| |%|9|") % "measure" % "min" % "max").str();
 
 	Info::Inst()->write("                                                                 ");
-	Info::Inst()->write("         Performance Analysis (relative to total time)           ");
+	Info::Inst()->write("         Performance Analysis (relative to total time * nodes)   ");
 	Info::Inst()->write("-----------------------------------------------------------------");
 	Info::Inst()->write(" mean and total runtimes:                                        ");				
 	Info::Inst()->write("-----------------------------------------------------------------");
