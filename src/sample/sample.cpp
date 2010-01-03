@@ -29,9 +29,11 @@ Sample::Sample() {
 
 void Sample::init() {
     	
+    Info::Inst()->write("Initializing sample...");
+    	
     Params* params = Params::Inst();
     // create the sample via structure file	
-    Info::Inst()->write(string("Reading structure information from file: ")+params->sample.structure.file);
+    Info::Inst()->write(string("Reading structure from file: ")+params->sample.structure.file);
     add_atoms(params->sample.structure.file,params->sample.structure.format);
     Info::Inst()->write(string("Done. Atoms read: ")+to_s(atoms.size()));
     
@@ -86,15 +88,6 @@ void Sample::init() {
 		Err::Inst()->write(string("Configuration Parameter: limits.memory.coordinate_sets"));
         throw;
     }
-}
-
-void Sample::set_kappa(std::string group, double kappa) {
-	atoms.assert_selection(group);
-	Atomselection& as = atoms.selections[group];
-
-	for (size_t i=0;i<as.indexes.size();i++) {
-		atoms[as.indexes[i]].kappa=kappa;		
-	}
 }
 
 // end of file

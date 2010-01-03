@@ -10,7 +10,7 @@
  */
 
 // direct header
-#include "decompose.hpp"
+#include "decomposition/decompose.hpp"
 
 // standard header
 #include <iostream>

@@ -23,7 +23,7 @@
 // special library headers
 
 // other headers
-#include "timer.hpp"
+#include "report/timer.hpp"
 
 class ProgressReporter {
 

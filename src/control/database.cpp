@@ -16,7 +16,7 @@
 // other headers
 #include "control/log.hpp"
 #include "control/parameters.hpp"
-#include "xml_interface.hpp"
+#include "io/xml_interface.hpp"
 
 using namespace std;
 
@@ -34,6 +34,7 @@ void Database::read_xml(std::string filename) {
 	
 	XMLInterface xmli(filename);
 
+    Info::Inst()->write("Reading database...");
 	// now read the database
 	
 	// START OF database section //
@@ -159,10 +160,10 @@ void Database::init(std::string filename,std::string format) {
 		read_xml(filename);
 	}
 
-	Info::Inst()->write("Checking parameters...");	
+	Info::Inst()->write("Checking database...");	
 	
 	if (check()) {
-		Info::Inst()->write("Check succeeded. Parameters seem OK.");			
+		Info::Inst()->write("Check succeeded. Database seems OK.");			
 	}
 	else {
 		Err::Inst()->write("Check failed. Please check your input file.");

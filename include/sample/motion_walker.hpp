@@ -37,7 +37,7 @@
 #include <boost/random/variate_generator.hpp>
 
 // other headers
-#include "coor3d.hpp"
+#include "math/coor3d.hpp"
 
 class MotionWalker {
 protected:

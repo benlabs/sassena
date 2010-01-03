@@ -28,7 +28,7 @@
 #include <boost/serialization/vector.hpp>
 
 // other headers
-#include "coor3d.hpp"
+#include "math/coor3d.hpp"
 
 
 class ScatterSpectrum : public std::vector<std::pair<CartesianCoor3D,std::vector<std::complex<double> > > > {

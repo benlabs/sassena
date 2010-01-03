@@ -10,7 +10,7 @@
  */
 
 // direct header
-#include "performance_analyzer.hpp"
+#include "report/performance_analyzer.hpp"
 
 #include <deque>
 
@@ -22,7 +22,7 @@
 #include <boost/format/group.hpp>
 
 #include "control.hpp"
-#include "timer.hpp"
+#include "report/timer.hpp"
 
 using namespace std;
 

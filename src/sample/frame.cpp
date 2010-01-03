@@ -19,7 +19,7 @@
 // other headers
 #include "sample/atoms.hpp"
 #include "sample/atomselection.hpp"
-#include "coor3d.hpp"
+#include "math/coor3d.hpp"
 
 using namespace std;
 

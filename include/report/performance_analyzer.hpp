@@ -29,9 +29,9 @@
 
 // other headers
 #include "sample/atomselection.hpp"
-#include "coor3d.hpp"
+#include "math/coor3d.hpp"
 #include "sample/sample.hpp"
-#include "timer.hpp"
+#include "report/timer.hpp"
 
 using namespace boost::accumulators;
 

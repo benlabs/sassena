@@ -35,17 +35,16 @@
 #include <boost/serialization/vector.hpp>
 
 // other headers
-#include "analysis.hpp"
-#include "coor3d.hpp"
-#include "decompose.hpp"
-#include "decomposition_plan.hpp"
+#include "math/coor3d.hpp"
+#include "decomposition/decompose.hpp"
+#include "decomposition/decomposition_plan.hpp"
 #include "control.hpp"
-#include "performance_analyzer.hpp"
-#include "progress_reporter.hpp"
+#include "report/performance_analyzer.hpp"
+#include "report/progress_reporter.hpp"
+#include "report/timer.hpp"
 #include "sample/sample.hpp"
-#include "scatter_devices.hpp"
-#include "scatter_spectrum.hpp"
-#include "timer.hpp"
+#include "scatter_devices/scatter_device_factory.hpp"
+#include "scatter_devices/scatter_spectrum.hpp"
 
 using namespace std;
 
@@ -114,10 +113,8 @@ int main(int argc,char** argv) {
 	
 		timer.start("sample::setup");
 	    
-	    Info::Inst()->write("reading params");
         params->init(string(argv[1]));
 
-        Info::Inst()->write("reading database");
         database->init(string(argv[2]));
 	    
         sample.init();
@@ -215,39 +212,8 @@ int main(int argc,char** argv) {
 	boost::mpi::communicator local = dplan.split();
 	
 	vector<CartesianCoor3D> myqvectors = dplan.qvectors();
-	if (world.rank()==0) {
-		Info::Inst()->write(string("Scattering target selection: ")+params->scattering.target);
-	}
 
-	ScatterDevice* p_ScatterDevice = NULL;
-
-	if (params->scattering.interference.type == "self") {
-		p_ScatterDevice = new SelfVectorsScatterDevice(local,sample);
-	}
-	else if (params->scattering.interference.type == "all"){
-		if (params->scattering.average.orientation.type == "vectors") {
-			p_ScatterDevice = new AllVectorsScatterDevice(local,sample);			
-		} else if (params->scattering.average.orientation.type == "multipole") {
-			//Err::Inst()->write("Multipole method currently not supported");
-			//throw;
-			if (params->scattering.average.orientation.multipole.type == "sphere") {
-				p_ScatterDevice = new AllMSScatterDevice(local,sample);			
-			} else if (params->scattering.average.orientation.multipole.type == "cylinder") {
-				p_ScatterDevice = new AllMCScatterDevice(local,sample);			
-			} else {
-				Err::Inst()->write(string("scattering.average.orientation.multipole.type not understood: ")+params->scattering.average.orientation.multipole.type);
-				throw;
-			}
-		} else if (params->scattering.average.orientation.type == "exact") {
-			p_ScatterDevice = new AllExactScatterDevice(local,sample);					    
-		} else if (params->scattering.average.orientation.type == "none") {
-			p_ScatterDevice = new AllVectorsScatterDevice(local,sample);					    
-		}
-	}
-	
-	if (p_ScatterDevice==NULL) {
-		Err::Inst()->write("Error initializing ScatterDevice");
-	}
+	ScatterDevice* p_ScatterDevice = ScatterDeviceFactory::create(local,sample);
 
 	ScatterSpectrum scatter_spectrum;
 

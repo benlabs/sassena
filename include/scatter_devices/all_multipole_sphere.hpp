@@ -31,10 +31,8 @@
 // other headers
 #include "sample.hpp"
 
-#include "coor3d.hpp"
-#include "particle_trajectory.hpp"
-#include "scatter_factors.hpp"
-#include "timer.hpp"
+#include "math/coor3d.hpp"
+#include "report/timer.hpp"
 
 #include "scatter_devices/all.hpp"
 

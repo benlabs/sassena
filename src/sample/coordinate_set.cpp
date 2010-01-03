@@ -20,7 +20,7 @@
 
 // other headers
 #include "sample/frame.hpp"
-#include "coor3d.hpp"
+#include "math/coor3d.hpp"
 #include "control.hpp"
 
 

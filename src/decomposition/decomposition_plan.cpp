@@ -10,7 +10,7 @@
  */
 
 // direct header
-#include "decomposition_plan.hpp"
+#include "decomposition/decomposition_plan.hpp"
 
 // standard header
 #include <complex>
@@ -21,12 +21,10 @@
 #include <boost/accumulators/statistics.hpp>
 
 // other headers
-#include "analysis.hpp"
-#include "coor3d.hpp"
-#include "decompose.hpp"
+#include "math/coor3d.hpp"
+#include "decomposition/decompose.hpp"
 #include "control.hpp"
 #include "sample.hpp"
-#include "particle_trajectory.hpp"
 
 
 using namespace std;

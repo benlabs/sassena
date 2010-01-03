@@ -10,7 +10,7 @@
  */
 
 // direct header
-#include "xml_interface.hpp"
+#include "io/xml_interface.hpp"
 #include <assert.h>
 
 using namespace std;

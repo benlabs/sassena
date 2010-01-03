@@ -38,10 +38,11 @@ class ScatterFactors {
 	bool m_background;
 	
 	std::vector<double> factors;
+    std::vector<double> m_kappas;
 public:
 	ScatterFactors();
 	
-	// use these to initialize the coordinate set:
+	// use these to initialize the scatterfactors set:
 	void set_selection(Atomselection& selection);
 	void set_sample(Sample& sample);
 	
@@ -51,6 +52,8 @@ public:
 	std::vector<double>& get_all();
 	
 	void update(CartesianCoor3D q);
+	void update_kappas();
+	
 	void set_background(bool status);
 };
 

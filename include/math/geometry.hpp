@@ -22,7 +22,7 @@
 #include <libconfig.h++>
 
 // other headers
-#include "coor3d.hpp"
+#include "math/coor3d.hpp"
 
 
 // this class is adapted from code on:http://local.wasp.uwa.edu.au/~pbourke/geometry/platonic/

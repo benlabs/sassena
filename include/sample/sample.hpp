@@ -60,9 +60,7 @@ public:
 
 	// default routine for reading structure information from file.
 	void add_atoms(std::string filename,std::string fileformat) { return atoms.add(filename,fileformat); }
-	
-    void set_kappa(std::string group, double kappa);
-    
+	    
 };
 
 #endif

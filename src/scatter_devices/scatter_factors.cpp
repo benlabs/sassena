@@ -9,7 +9,7 @@
  *
  */
 // direct header
-#include "scatter_factors.hpp"
+#include "scatter_devices/scatter_factors.hpp"
 
 // standard header
 #include <fstream>
@@ -21,13 +21,38 @@
 // other headers
 #include "sample/coordinate_sets.hpp"
 #include "sample/frame.hpp"
-#include "coor3d.hpp"
+#include "math/coor3d.hpp"
 #include "control.hpp"
 
 using namespace std;
 
 ScatterFactors::ScatterFactors() {
 	m_background=true;
+	
+	
+}
+
+void ScatterFactors::update_kappas() {
+    // kappas fully map atoms
+    // this way indexes can be used as addresses
+
+    std::vector<ScatteringBackgroundKappaParameters>& kappas = Params::Inst()->scattering.background.kappas;
+    
+    if (p_sample==NULL) {
+        Err::Inst()->write("ScatterFactors::update_kappas: sample not set");
+        throw;
+    }
+    
+    for(size_t i = 0; i < kappas.size(); ++i)
+    {
+        p_sample->atoms.assert_selection(kappas[i].selection);
+        Atomselection& selection = p_sample->atoms.selections[kappas[i].selection];
+        for(size_t j = 0; j < selection.indexes.size(); ++j)
+        {
+            m_kappas[selection.indexes[j]] = kappas[i].value;
+        }
+    }
+    
 }
 
 void ScatterFactors::update(CartesianCoor3D q) {
@@ -42,7 +67,7 @@ void ScatterFactors::update(CartesianCoor3D q) {
 	
 		// calculate effective scattering length:
 		if (m_background) {
-			double k  = p_sample->atoms[p_selection->indexes[i]].kappa;
+			double k  = m_kappas[p_selection->indexes[i]];
 			double v = Database::Inst()->volumes.get(atomID);
 			double efactor = Database::Inst()->exclusionfactors.get(atomID,k*v,ql);
 
@@ -65,6 +90,9 @@ Atomselection& ScatterFactors::get_selection() {
 
 void ScatterFactors::set_sample(Sample& sample) {
 	p_sample = &sample;
+	
+    m_kappas.resize(p_sample->atoms.size(),1.0); // default to factor of 1.0
+    update_kappas();
 }
 
 double ScatterFactors::get(size_t atomselectionindex) {

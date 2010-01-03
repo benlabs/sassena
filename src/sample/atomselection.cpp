@@ -25,7 +25,7 @@
 // other headers
 #include "sample/atom.hpp"
 #include "sample/atoms.hpp"
-#include "decompose.hpp"
+#include "decomposition/decompose.hpp"
 #include "control.hpp"
 
 

@@ -29,11 +29,11 @@
 #include <boost/mpi.hpp>
 
 // other headers
-#include "coor3d.hpp"
-#include "particle_trajectory.hpp"
+#include "math/coor3d.hpp"
+#include "scatter_devices/particle_trajectory.hpp"
 #include "sample.hpp"
-#include "scatter_factors.hpp"
-#include "timer.hpp"
+#include "scatter_devices/scatter_factors.hpp"
+#include "report/timer.hpp"
 
 #include "scatter_devices/scatter_device.hpp"
 

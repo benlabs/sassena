@@ -10,7 +10,7 @@
  */
 
 // direct header
-#include "coor3d.hpp"
+#include "math/coor3d.hpp"
 
 // standard header
 #include <cmath>

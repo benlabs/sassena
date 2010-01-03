@@ -32,59 +32,49 @@ class Atom {
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
     {
 		ar & ID;
-		ar & original_name;
-		ar & residue_name;
-		ar & chainid;
-		ar & resseq;
-		ar & occupancy;
-		ar & tempFactor;
-		ar & element;
-		ar & charge;
 		ar & name;   
+
+//		ar & original_name;
+//		ar & residue_name;
+//		ar & chainid;
+//		ar & resseq;
+//		ar & occupancy;
+//		ar & tempFactor;
+//		ar & element;
+//		ar & charge;
+
 		ar & index;  
 		ar & mass;
-		ar & excluded_volume;
-		ar & scatteramp;
-		ar & beta;
-		ar & x;
-		ar & y;
-		ar & z;		
-		ar & particle;
-		ar & solvent;
-		ar & kappa;
-		ar & volume;
+
+//		ar & beta;
+//		ar & x;
+//		ar & y;
+//		ar & z;		
     }
 	///////////////////
 public:
 
-	Atom() : particle(false), solvent(false) {}
-
 	size_t ID;
-	// additional info needed for "rewriting":
-	std::string original_name;
-	std::string residue_name;
-	std::string chainid;
-	std::string resseq;
-	std::string occupancy;
-	std::string tempFactor;
-	std::string element;
-	std::string charge;
-			
 	std::string name;	
+
+	// additional info needed for "rewriting":
+//	std::string original_name;
+//	std::string residue_name;
+//	std::string chainid;
+//	std::string resseq;
+//	std::string occupancy;
+//	std::string tempFactor;
+//	std::string element;
+//	std::string charge;
+//			
 	size_t index;
 	double mass;
-	double excluded_volume;
-	double scatteramp;
 	// x-ray scattering factor q-dependent.
 	// ignore for now
 	//	double scattering_factor_xray;
-	double beta;
-	double x,y,z;
-	// indicators:
-	bool particle;
-	bool solvent;
-	double kappa;
-	double volume;
+//	double beta;
+//	double x,y,z;
+//	// indicators:
 };
 
 #endif

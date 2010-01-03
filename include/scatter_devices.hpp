@@ -32,6 +32,8 @@
 
 #include "scatter_devices/self_vectors.hpp"
 
+#include "scatter_devices/scatter_spectrum.hpp"
+
 #endif
 
 // end of file

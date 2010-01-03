@@ -18,7 +18,7 @@
 
 // other headers
 #include "control/log.hpp"
-#include "xml_interface.hpp"
+#include "io/xml_interface.hpp"
 
 using namespace std;
 
@@ -55,6 +55,8 @@ void Params::read_xml(std::string filename) {
 	// START OF sample section //	
 	XMLInterface xmli(filename);
 
+	Info::Inst()->write("Reading parameters...");
+	
 	// now read the parameters
 	
 	sample.structure.file   = get_filepath(xmli.get_value<std::string>("//sample/structure/file"));
@@ -183,34 +185,34 @@ void Params::read_xml(std::string filename) {
 	// START OF scattering section //
 
     scattering.center = false;
-	if (xmli.exists("//scattering/center")) scattering.center = xmli.get_value<bool>("//scattering/center");
-    
-	scattering.background.type = "manual";
+	if (xmli.exists("//scattering/center")) {
+        scattering.center = xmli.get_value<bool>("//scattering/center");	    
+	    Info::Inst()->write(string("scattering.center=")+to_s(scattering.center));		    
+	} 
 	scattering.background.factor = 0.0;
-	
+    	
 	if (xmli.exists("//scattering/background")) {
-        if (xmli.exists("//scattering/background/type")) scattering.background.type = xmli.get_value<string>("//scattering/background/type");
-		if (xmli.exists("//scattering/background/factor")) scattering.background.factor = xmli.get_value<double>("//scattering/background/factor");
+		if (xmli.exists("//scattering/background/factor")) {
+		    scattering.background.factor = xmli.get_value<double>("//scattering/background/factor");
+		    Info::Inst()->write(string("scattering.background.factor=")+to_s(scattering.background.factor));		    		    
+	    }
 
-		if (xmli.exists("//scattering/background/phases")) {
-			vector<XMLElement> phases = xmli.get("//scattering/background/phases");
-				
-			for(size_t i = 0; i < phases.size(); ++i)
-			{
-				xmli.set_current(phases[i]);
-				ScatteringBackgroundPhaseParameters struc;
-				struc.selection = xmli.get_value<string>("./selection");					
-				if (xmli.exists("./scaling")) struc.scaling = xmli.get_value<string>("./scaling");	
-				if (xmli.exists("./factor")) struc.factor = xmli.get_value<double>("./factor");		
-				scattering.background.phases.push_back(struc);
-			}
-		}
-		if (xmli.exists("//scattering/background/gridspacing")) {
-			scattering.background.gridspacing = xmli.get_value<double>("//scattering/background/gridspacing");  				
-		}
-		if (xmli.exists("//scattering/background/stride")) {
-			scattering.background.stride  = xmli.get_value<size_t>("//scattering/background/stride"); 				
-		}		
+        if (xmli.exists("//scattering/background/kappas")) {
+
+    	    vector<XMLElement> kappas = xmli.get("//scattering/background/kappas/kappa");
+    	    for(size_t i = 0; i < kappas.size(); ++i)
+    	    {
+    	    	xmli.set_current(kappas[i]);
+    	    	ScatteringBackgroundKappaParameters kappa;	
+    	    	kappa.selection = "system";	 
+    	    	kappa.value = 1.0;
+    	    	if (xmli.exists("./selection"))   kappa.selection  = xmli.get_value<string>("./selection");
+    	    	if (xmli.exists("./value"))  kappa.value   = xmli.get_value<double>("./value");			
+
+    	    	scattering.background.kappas.push_back(kappa);
+    	    	Info::Inst()->write(string("Rescaling volumes: selection=")+kappa.selection+string(", value=")+to_s(kappa.value));
+    	    }
+        }
 	}	
 	// generating qqqvectors, i.e. the spectrum
 
@@ -257,17 +259,15 @@ void Params::read_xml(std::string filename) {
 	
     scattering.correlation.type="none";
     scattering.correlation.method="direct";
-    scattering.correlation.zeromean=false;
     
 	if (xmli.exists("//scattering/correlation")) {
 		if (xmli.exists("//scattering/correlation/type")) {
 			scattering.correlation.type = xmli.get_value<string>("//scattering/correlation/type");
+		    Info::Inst()->write(string("scattering.correlation.type=")+scattering.correlation.type);
 		}
 		if (xmli.exists("//scattering/correlation/method")) {
 			scattering.correlation.method = xmli.get_value<string>("//scattering/correlation/method");
-		}
-		if (xmli.exists("//scattering/correlation/zeromean")) {
-			scattering.correlation.zeromean = xmli.get_value<bool>("//scattering/correlation/zeromean");
+		    Info::Inst()->write(string("scattering.correlation.method=")+scattering.correlation.method);
 		}
 	}
 
@@ -288,21 +288,28 @@ void Params::read_xml(std::string filename) {
 		
 	if (xmli.exists("//scattering/average")) {
 		if (xmli.exists("//scattering/average/orientation")) {
-			if (xmli.exists("//scattering/average/orientation/type")) { // sphere cylinder none
+			if (xmli.exists("//scattering/average/orientation/type")) { // vectors multipole
 				scattering.average.orientation.type = xmli.get_value<string>("//scattering/average/orientation/type");
 			}
+		    Info::Inst()->write(string("scattering.average.orientation.type=")+scattering.average.orientation.type);
+			
 			if (scattering.average.orientation.type=="vectors") {
+        
 				if (xmli.exists("//scattering/average/orientation/vectors/type")) { // count vectors ... , or order for multipole...
 					scattering.average.orientation.vectors.type = xmli.get_value<string>("//scattering/average/orientation/vectors/type");
+                    Info::Inst()->write(string("scattering.average.orientation.vectors.type=")+scattering.average.orientation.vectors.type);				    
 				}
 				if (xmli.exists("//scattering/average/orientation/vectors/algorithm")) { // count vectors ... , or order for multipole...
 					scattering.average.orientation.vectors.algorithm = xmli.get_value<string>("//scattering/average/orientation/vectors/algorithm");
+                    Info::Inst()->write(string("scattering.average.orientation.vectors.algorithm=")+scattering.average.orientation.vectors.algorithm);				    
 				}
 				if (xmli.exists("//scattering/average/orientation/vectors/resolution")) { // count vectors ... , or order for multipole...
 					scattering.average.orientation.vectors.resolution = xmli.get_value<long>("//scattering/average/orientation/vectors/resolution");
+                    Info::Inst()->write(string("scattering.average.orientation.vectors.resolution=")+to_s(scattering.average.orientation.vectors.resolution));				    
 				}
 				if (xmli.exists("//scattering/average/orientation/vectors/seed")) { // count vectors ... , or order for multipole...
 					scattering.average.orientation.vectors.seed = xmli.get_value<long>("//scattering/average/orientation/vectors/seed");
+                    Info::Inst()->write(string("scattering.average.orientation.vectors.seed=")+to_s(scattering.average.orientation.vectors.seed));
 				}	
 				if (xmli.exists("//scattering/average/orientation/vectors/file")) { // count vectors ... , or order for multipole...
 					scattering.average.orientation.vectors.file = get_filepath(xmli.get_value<string>("//scattering/average/orientation/vectors/file"));
@@ -315,24 +322,21 @@ void Params::read_xml(std::string filename) {
 				
 				scattering.average.orientation.vectors.create();
 				
-			} else if (scattering.average.orientation.type=="multipole") {
+			} else if (scattering.average.orientation.type=="multipole") {			    
 				if (xmli.exists("//scattering/average/orientation/multipole/type")) { // count vectors ... , or order for multipole...
 					scattering.average.orientation.multipole.type = xmli.get_value<string>("//scattering/average/orientation/multipole/type");
+                    Info::Inst()->write(string("scattering.average.orientation.multipole.type=")+scattering.average.orientation.multipole.type);				    
 				}
 				if (xmli.exists("//scattering/average/orientation/multipole/resolution")) { // count vectors ... , or order for multipole...
 					scattering.average.orientation.multipole.resolution = xmli.get_value<long>("//scattering/average/orientation/multipole/resolution");
+                    Info::Inst()->write(string("scattering.average.orientation.multipole.resolution=")+to_s(scattering.average.orientation.multipole.resolution));				    
 				}
 				if (xmli.exists("//scattering/average/orientation/multipole/axis")) { // count vectors ... , or order for multipole...
 					scattering.average.orientation.multipole.axis.x = xmli.get_value<double>("//scattering/average/orientation/multipole/axis/x");
 					scattering.average.orientation.multipole.axis.y = xmli.get_value<double>("//scattering/average/orientation/multipole/axis/y");
 					scattering.average.orientation.multipole.axis.z = xmli.get_value<double>("//scattering/average/orientation/multipole/axis/z");					
 				}						
-				
-
-			} else if (scattering.average.orientation.type=="exact") {
-				if (xmli.exists("//scattering/average/orientation/exact/type")) { // count vectors ... , or order for multipole...
-					scattering.average.orientation.exact.type = xmli.get_value<string>("//scattering/average/orientation/exact/type");
-				}				
+							
 			} else if (scattering.average.orientation.type!="none") {
 				Err::Inst()->write(string("Orientation averaging type not understood: ")+scattering.average.orientation.type);
 				throw;
@@ -340,18 +344,22 @@ void Params::read_xml(std::string filename) {
 		}
 	}
 	
+    scattering.interference.type="all";
+	
 	if (xmli.exists("//scattering/interference")) {
 		if (xmli.exists("//scattering/interference/type")) {
 			scattering.interference.type = xmli.get_value<string>("//scattering/interference/type");
 		}
 	}
+	Info::Inst()->write(string("scattering.interference.type=")+scattering.interference.type);
+
+	
+    scattering.target = "system";
 		
 	if (xmli.exists("//scattering/target")) {
 		scattering.target = xmli.get_value<string>("//scattering/target");
-	} else {
-		Err::Inst()->write("You have to specify a target (any valid selection)");
-		throw;
 	}
+	Info::Inst()->write(string("scattering.target=")+scattering.target);
 	
 	// END OF scattering section //
 	// START OF output section //
@@ -427,8 +435,6 @@ void Params::read_xml(std::string filename) {
 	
 	debug.timer = false; // this adds a log message when a timer is started/stopped
 	debug.barriers = false; // this de-/activates collective barriers before each collective operation, this way all nodes are synchronized before the communication takes place. This is an important step towards analysis of timing.
-	debug.scatter_from_frame = false;
-	debug.decomposition_split=0; // 0 stands for automatic
 	if (xmli.exists("//debug")) {
 		if (xmli.exists("//debug/timer")) {
 			debug.timer = xmli.get_value<bool>("//debug/timer");
@@ -436,12 +442,6 @@ void Params::read_xml(std::string filename) {
 		if (xmli.exists("//debug/barriers")) {
 			debug.barriers = xmli.get_value<bool>("//debug/barriers");
 		}
-		if (xmli.exists("//debug/scatter_from_frame")) {
-			debug.scatter_from_frame = xmli.get_value<bool>("//debug/scatter_from_frame");
-		}	
-		if (xmli.exists("//debug/decomposition_split")) {
-			debug.decomposition_split = xmli.get_value<size_t>("//debug/decomposition_split");
-		}		
 	}
 	
 	// initialize some of the runtime parameters:

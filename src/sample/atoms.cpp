@@ -21,7 +21,7 @@
 // other headers
 #include "sample/atom.hpp"
 #include "sample/atomselection.hpp"
-#include "coor3d.hpp"
+#include "math/coor3d.hpp"
 #include "control.hpp"
 
 
@@ -54,23 +54,23 @@ void Atoms::add(string filename, string fileformat) {
 				try {
 					temp_atom.name = Database::Inst()->names.pdb.get(line.substr(12,4));
 					temp_atom.ID = Database::Inst()->atomIDs.get(temp_atom.name); // get a unique ID for the name
-					temp_atom.original_name = line.substr(12,4);
-					temp_atom.residue_name = line.substr(17,4);
-					temp_atom.chainid = line.substr(21,1);
-					temp_atom.resseq = line.substr(22,4);
-					temp_atom.occupancy = line.substr(54,6);
-					temp_atom.tempFactor = line.substr(60,6);
-					temp_atom.element = line.substr(76,2);
-					temp_atom.charge = line.substr(78,2);	
-																														
-					temp_atom.x = atof(line.substr(30,8).c_str());
-					temp_atom.y = atof(line.substr(38,8).c_str());
-					temp_atom.z = atof(line.substr(46,8).c_str());
-					temp_atom.beta = atof(line.substr(60,65).c_str());
-					temp_atom.mass = Database::Inst()->masses.get(temp_atom.ID);	
+					
+					// independent atomic constants:
+					temp_atom.mass = Database::Inst()->masses.get(temp_atom.ID);
+					
+//					temp_atom.original_name = line.substr(12,4);
+//					temp_atom.residue_name = line.substr(17,4);
+//					temp_atom.chainid = line.substr(21,1);
+//					temp_atom.resseq = line.substr(22,4);
+//					temp_atom.occupancy = line.substr(54,6);
+//					temp_atom.tempFactor = line.substr(60,6);
+//					temp_atom.element = line.substr(76,2);
+//					temp_atom.charge = line.substr(78,2);																															
+//					temp_atom.x = atof(line.substr(30,8).c_str());
+//					temp_atom.y = atof(line.substr(38,8).c_str());
+//					temp_atom.z = atof(line.substr(46,8).c_str());
+//					temp_atom.beta = atof(line.substr(60,65).c_str());
 					// make sure kappa is initialized:
-					temp_atom.kappa = 1.0;	
-					temp_atom.volume = Database::Inst()->volumes.get(temp_atom.ID);
 				} catch (...) { 
 					Err::Inst()->write(string("Error at reading pdb line:"));
 					Err::Inst()->write(line);
@@ -109,45 +109,45 @@ COLUMNS        DATA  TYPE    FIELD        DEFINITION
 79 - 80        LString(2)    charge       Charge  on the atom.
 */
 
-void Atoms::write(string filename,Frame& frame, string fileformat) {
-
-	ofstream ofile(filename.c_str());
-
-	if (fileformat == "pdb") {
-		string line;
-		Atom temp_atom;
-		int line_counter=0; int atom_counter =0;
-		// lookup table for speedup:
-		map<string,string> quicklookup;
-		
-		for(Atoms::iterator ati=begin();ati!=end();ati++) {
-			ofile << setw(6) << "ATOM  ";           // table entry identifier
-			if (ati->index<100000)
-				ofile << setw(5) << ati->index;         // Atom serial number
-			else
-				ofile << "*****";         // Atom serial number			
-			ofile << setw(1) << " ";                // --not used--
-			ofile << setw(4) << ati->original_name; // Atom name.
-			ofile << setw(1) << " ";                // chain identifier
-			ofile << setw(4) << ati->residue_name;  // residue name
-			ofile << setw(1) << ati->chainid;       // Chain identifier
-			ofile << setw(4) << ati->resseq;        // Residue sequence number
-			ofile << setw(1) << " ";                // Code for insertion of residues
-			ofile << setw(3) << "   ";              // --not used--
-			ofile << setw(8) << setiosflags(ios::fixed) << setprecision(3) << frame.x[ati->index];             // Orthogonal coordinates for X in Angstroms
-			ofile << setw(8) << setiosflags(ios::fixed) << setprecision(3) << frame.y[ati->index];             // Orthogonal coordinates for Y in Angstroms
-			ofile << setw(8) << setiosflags(ios::fixed) << setprecision(3) << frame.z[ati->index];             // Orthogonal coordinates for Z in Angstroms
-			ofile << setw(6) << ati->occupancy;     // Occupancy
-			ofile << setw(6) << ati->tempFactor;    // Temperature  factor
-			ofile << setw(10)<< "          ";       // --not used--
-			ofile << setw(2) << ati->element;       // Element symbol, right-justified
-			ofile << setw(2) << ati->charge;        // Charge  on the atom
-			ofile << endl;
-			atom_counter++;
-			line_counter++;
-		}
-	}			
-}
+//void Atoms::write(string filename,Frame& frame, string fileformat) {
+//
+//	ofstream ofile(filename.c_str());
+//
+//	if (fileformat == "pdb") {
+//		string line;
+//		Atom temp_atom;
+//		int line_counter=0; int atom_counter =0;
+//		// lookup table for speedup:
+//		map<string,string> quicklookup;
+//		
+//		for(Atoms::iterator ati=begin();ati!=end();ati++) {
+//			ofile << setw(6) << "ATOM  ";           // table entry identifier
+//			if (ati->index<100000)
+//				ofile << setw(5) << ati->index;         // Atom serial number
+//			else
+//				ofile << "*****";         // Atom serial number			
+//			ofile << setw(1) << " ";                // --not used--
+//			ofile << setw(4) << ati->original_name; // Atom name.
+//			ofile << setw(1) << " ";                // chain identifier
+//			ofile << setw(4) << ati->residue_name;  // residue name
+//			ofile << setw(1) << ati->chainid;       // Chain identifier
+//			ofile << setw(4) << ati->resseq;        // Residue sequence number
+//			ofile << setw(1) << " ";                // Code for insertion of residues
+//			ofile << setw(3) << "   ";              // --not used--
+//			ofile << setw(8) << setiosflags(ios::fixed) << setprecision(3) << frame.x[ati->index];             // Orthogonal coordinates for X in Angstroms
+//			ofile << setw(8) << setiosflags(ios::fixed) << setprecision(3) << frame.y[ati->index];             // Orthogonal coordinates for Y in Angstroms
+//			ofile << setw(8) << setiosflags(ios::fixed) << setprecision(3) << frame.z[ati->index];             // Orthogonal coordinates for Z in Angstroms
+//			ofile << setw(6) << ati->occupancy;     // Occupancy
+//			ofile << setw(6) << ati->tempFactor;    // Temperature  factor
+//			ofile << setw(10)<< "          ";       // --not used--
+//			ofile << setw(2) << ati->element;       // Element symbol, right-justified
+//			ofile << setw(2) << ati->charge;        // Charge  on the atom
+//			ofile << endl;
+//			atom_counter++;
+//			line_counter++;
+//		}
+//	}			
+//}
 
 
 Atomselection Atoms::select(string label) {

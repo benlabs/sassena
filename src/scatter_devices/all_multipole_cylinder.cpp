@@ -22,16 +22,12 @@
 #include <boost/math/special_functions.hpp>
 
 // other headers
-#include "analysis.hpp"
-#include "coor3d.hpp"
-#include "decompose.hpp"
-#include "fftw/fftw++.h"
+#include "math/coor3d.hpp"
+#include "math/smath.hpp"
+#include "decomposition/decompose.hpp"
 #include <fftw3.h>
 #include "control.hpp"
 #include "sample.hpp"
-#include "smath.hpp"
-#include "particle_trajectory.hpp"
-#include "vector_unfold.hpp"
 
 using namespace std;
 

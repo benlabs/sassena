@@ -17,9 +17,9 @@
 
 // special library headers
 #include <boost/filesystem.hpp>
-#include "xdrfile/xdrfile.h"
-#include "xdrfile/xdrfile_xtc.h"
-#include "xdrfile/xdrfile_trr.h"
+#include "io/xdrfile/xdrfile.h"
+#include "io/xdrfile/xdrfile_xtc.h"
+#include "io/xdrfile/xdrfile_trr.h"
 
 // other headers
 #include "sample/atomselection.hpp"

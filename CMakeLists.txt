@@ -73,25 +73,35 @@ INCLUDE_DIRECTORIES(${LIBXML2_INCLUDE_DIR})
 
 # set the global link dependencies and include dirs
 SET(LIB_DEPENDENCIES ${CONFIG_LIBRARIES} ${Boost_LIBRARIES} ${LIBXML2_LIBRARIES} ${FFTW3_LIBRARIES} ) 
-INCLUDE_DIRECTORIES( ${Sassena_SOURCE_DIR}/include/xdrfile)
+INCLUDE_DIRECTORIES( ${Sassena_SOURCE_DIR}/include/io/xdrfile)
 
 
-ADD_LIBRARY(xdrfile-static STATIC src/xdrfile/xdrfile.c src/xdrfile/xdrfile_xtc.c src/xdrfile/xdrfile_trr.c )
-SET_TARGET_PROPERTIES(xdrfile-static PROPERTIES OUTPUT_NAME "xdrfile")
-SET(LIB_DEPENDENCIES ${LIB_DEPENDENCIES} xdrfile-static)
 
 MESSAGE(STATUS "sassena_lib_depend= " ${LIB_DEPENDENCIES})
 
-ADD_LIBRARY(sass_control SHARED
+ADD_LIBRARY(sass_math SHARED
+	src/math/coor3d.cpp	
+)
+TARGET_LINK_LIBRARIES (sass_math ${LIB_DEPENDENCIES} )
+SET(LIB_DEPENDENCIES ${LIB_DEPENDENCIES} sass_math)
+
+ADD_LIBRARY(sass_controlio SHARED
+	src/io/xml_interface.cpp
+	src/io/xdrfile/xdrfile.c
+	src/io/xdrfile/xdrfile_xtc.c
+	src/io/xdrfile/xdrfile_trr.c
 	src/control/log.cpp
 	src/control/parameters.cpp
 	src/control/database.cpp
-	src/xml_interface.cpp
-	src/coor3d.cpp
 )
+TARGET_LINK_LIBRARIES (sass_controlio ${LIB_DEPENDENCIES} )
+SET(LIB_DEPENDENCIES ${LIB_DEPENDENCIES} sass_controlio)
 
-TARGET_LINK_LIBRARIES (sass_control ${LIB_DEPENDENCIES} )
-SET(LIB_DEPENDENCIES ${LIB_DEPENDENCIES} sass_control)
+ADD_LIBRARY(sass_measures SHARED
+	src/measures/center_of_mass.cpp
+)
+TARGET_LINK_LIBRARIES (sass_measures ${LIB_DEPENDENCIES} )
+SET(LIB_DEPENDENCIES ${LIB_DEPENDENCIES} sass_measures)
 
 
 ADD_LIBRARY(sass_sample SHARED
@@ -105,74 +115,90 @@ ADD_LIBRARY(sass_sample SHARED
 	src/sample/frames.cpp
 	src/sample/motion_walker.cpp	
 	
-	src/measures/center_of_mass.cpp
-	src/decompose.cpp
 )
-
 TARGET_LINK_LIBRARIES (sass_sample ${LIB_DEPENDENCIES} )
 SET(LIB_DEPENDENCIES ${LIB_DEPENDENCIES} sass_sample)
 
 
-ADD_EXECUTABLE(sassena 
-    src/main/sassena.cpp
+ADD_LIBRARY(sass_decomposition SHARED
+	src/decomposition/decompose.cpp
+	src/decomposition/decomposition_plan.cpp	
+)
+TARGET_LINK_LIBRARIES (sass_decomposition ${LIB_DEPENDENCIES} )
+SET(LIB_DEPENDENCIES ${LIB_DEPENDENCIES} sass_decomposition)
 
-	src/analysis.cpp
-	src/common.cpp
-	src/coor3d.cpp 
-	src/decompose.cpp
-	src/decomposition_plan.cpp
-	src/density_grid.cpp
-	src/fftw/fftw++.cc
-	src/grid.cpp  
-	src/measures/center_of_mass.cpp
-	src/performance_analyzer.cpp
-	src/progress_reporter.cpp
-	src/scatter_devices/all_exact.cpp 	
-	src/scatter_devices/all.cpp 	
-	src/scatter_devices/all_vectors.cpp 
-	src/scatter_devices/all_multipole_sphere.cpp 
-	src/scatter_devices/all_multipole_cylinder.cpp 	
+#ADD_LIBRARY(xdrfile-static STATIC src/xdrfile/xdrfile.c src/xdrfile/xdrfile_xtc.c src/xdrfile/xdrfile_trr.c )
+#SET_TARGET_PROPERTIES(xdrfile-static PROPERTIES OUTPUT_NAME "xdrfile")
+#SET(LIB_DEPENDENCIES ${LIB_DEPENDENCIES} xdrfile-static)
+
+
+ADD_LIBRARY(sass_report SHARED
+	src/report/performance_analyzer.cpp
+	src/report/progress_reporter.cpp
+	src/report/timer.cpp
+)
+TARGET_LINK_LIBRARIES (sass_report ${LIB_DEPENDENCIES} )
+SET(LIB_DEPENDENCIES ${LIB_DEPENDENCIES} sass_report)
+
+
+#TARGET_LINK_LIBRARIES (sass_control ${LIB_DEPENDENCIES} )
+#SET(LIB_DEPENDENCIES ${LIB_DEPENDENCIES} sass_control)
+
+#TARGET_LINK_LIBRARIES (sass_sample ${LIB_DEPENDENCIES} )
+#SET(LIB_DEPENDENCIES ${LIB_DEPENDENCIES} sass_sample)
+
+
+ADD_LIBRARY(sass_scatter_devices SHARED
+	src/scatter_devices/scatter_factors.cpp
+	src/scatter_devices/scatter_device_factory.cpp
+	src/scatter_devices/scatter_spectrum.cpp
+	src/scatter_devices/all.cpp
+	src/scatter_devices/all_vectors.cpp
+	src/scatter_devices/all_multipole_sphere.cpp
+	src/scatter_devices/all_multipole_cylinder.cpp
 	src/scatter_devices/self_vectors.cpp
-	src/scatter_factors.cpp
-	src/scatter_spectrum.cpp 
-	src/scatter_spectrum_writer.cpp 
-	src/timer.cpp 
-	src/xml_interface.cpp
-	src/vector_unfold.cpp
-	)
-	
-	
-ADD_EXECUTABLE(s_coordump 
-    src/main/s_coordump.cpp
+)
+TARGET_LINK_LIBRARIES (sass_scatter_devices ${LIB_DEPENDENCIES} )
+SET(LIB_DEPENDENCIES ${LIB_DEPENDENCIES} sass_scatter_devices)
 
+
+ADD_EXECUTABLE(sassena 
 	src/common.cpp
-	src/coor3d.cpp 
-	src/decompose.cpp
-	src/measures/center_of_mass.cpp
-	src/xml_interface.cpp
-	src/vector_unfold.cpp
-	)
+    src/main/sassena.cpp
+)
+	
+	
+#ADD_EXECUTABLE(s_coordump 
+#    src/main/s_coordump.cpp
+#
+#	src/common.cpp
+#	src/coor3d.cpp 
+#	src/decompose.cpp
+#	src/measures/center_of_mass.cpp
+#	src/xml_interface.cpp
+#	src/vector_unfold.cpp
+#	)
 
 
 	
-ADD_EXECUTABLE(s_savesample 
-    src/main/s_savesample.cpp
-
-	src/common.cpp
-	src/coor3d.cpp 
-	src/decompose.cpp
-	src/measures/center_of_mass.cpp
-	src/xml_interface.cpp
-	src/vector_unfold.cpp
-	)
+#ADD_EXECUTABLE(s_savesample 
+#    src/main/s_savesample.cpp
+#
+#	src/common.cpp
+#	src/coor3d.cpp 
+#	src/decompose.cpp
+#	src/measures/center_of_mass.cpp
+#	src/xml_interface.cpp
+#	src/vector_unfold.cpp
+#	)
 	
 TARGET_LINK_LIBRARIES (sassena ${LIB_DEPENDENCIES} )
-TARGET_LINK_LIBRARIES (s_coordump ${LIB_DEPENDENCIES} )
-TARGET_LINK_LIBRARIES (s_savesample ${LIB_DEPENDENCIES} )
+#TARGET_LINK_LIBRARIES (s_coordump ${LIB_DEPENDENCIES} )
+#TARGET_LINK_LIBRARIES (s_savesample ${LIB_DEPENDENCIES} )
 
 INSTALL(TARGETS sassena RUNTIME DESTINATION bin)
-INSTALL(TARGETS s_coordump RUNTIME DESTINATION bin)
-INSTALL(TARGETS s_savesample RUNTIME DESTINATION bin)
+#INSTALL(TARGETS s_coordump RUNTIME DESTINATION bin)
+#INSTALL(TARGETS s_savesample RUNTIME DESTINATION bin)
 
 SET(CPACK_PACKAGE_NAME "Sassena")
 SET(CPACK_PACKAGE_VENDOR "Benjamin Lindner (ben@benlabs.net), Franci Merzel (franci.merzel@ki.si)")
@@ -230,25 +256,25 @@ ENABLE_TESTING()
 
 
 # additional tools:
-ADD_EXECUTABLE(normalize tools/normalize.cpp)
-TARGET_LINK_LIBRARIES (normalize )
-INSTALL(TARGETS normalize RUNTIME DESTINATION bin/tools)
-
-ADD_EXECUTABLE(grid tools/grid.cpp src/coor3d.cpp)
-TARGET_LINK_LIBRARIES (grid )
-INSTALL(TARGETS grid RUNTIME DESTINATION bin/tools)
-
-ADD_EXECUTABLE(grid_frames tools/grid_frames.cpp src/coor3d.cpp)
-TARGET_LINK_LIBRARIES (grid_frames )
-INSTALL(TARGETS grid_frames RUNTIME DESTINATION bin/tools)
+#ADD_EXECUTABLE(normalize tools/normalize.cpp)
+#TARGET_LINK_LIBRARIES (normalize )
+#INSTALL(TARGETS normalize RUNTIME DESTINATION bin/tools)
+#
+#ADD_EXECUTABLE(grid tools/grid.cpp src/coor3d.cpp)
+#TARGET_LINK_LIBRARIES (grid )
+#INSTALL(TARGETS grid RUNTIME DESTINATION bin/tools)
+#
+#ADD_EXECUTABLE(grid_frames tools/grid_frames.cpp src/coor3d.cpp)
+#TARGET_LINK_LIBRARIES (grid_frames )
+#INSTALL(TARGETS grid_frames RUNTIME DESTINATION bin/tools)
 
 
 # additional tools:
-ADD_EXECUTABLE(map tools/map.cpp src/coor3d.cpp)
-TARGET_LINK_LIBRARIES (map )
-INSTALL(TARGETS map RUNTIME DESTINATION bin/tools)
+#ADD_EXECUTABLE(map tools/map.cpp src/coor3d.cpp)
+#TARGET_LINK_LIBRARIES (map )
+#INSTALL(TARGETS map RUNTIME DESTINATION bin/tools)
 
-ADD_TEST(unit_coor3d "Coordinate 3D type system")
-ADD_TEST(unit_exp "Boost Special functions")
-ADD_TEST(unit_boostmpi  "Boost MPI implementation")
-ADD_TEST(unit_libconfig  "Libconfig implementation")
+#ADD_TEST(unit_coor3d "Coordinate 3D type system")
+#ADD_TEST(unit_exp "Boost Special functions")
+#ADD_TEST(unit_boostmpi  "Boost MPI implementation")
+#ADD_TEST(unit_libconfig  "Libconfig implementation")

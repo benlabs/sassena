@@ -10,7 +10,7 @@
  */
 
 // direct header
-#include "scatter_spectrum.hpp"
+#include "scatter_devices/scatter_spectrum.hpp"
 
 // standard header
 #include <fstream>

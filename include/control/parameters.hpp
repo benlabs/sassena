@@ -28,7 +28,7 @@
 #include <boost/serialization/vector.hpp>
 
 // other headers
-#include "coor3d.hpp"
+#include "math/coor3d.hpp"
 
 // This is a wrapper class to interface the settings implementation. The rational is to 
 // move all possible configuration errors towards the initialization of the software
@@ -206,7 +206,7 @@ public:
     std::vector<SampleAlignmentParameters> alignments;
 };
 
-class ScatteringBackgroundPhaseParameters {
+class ScatteringBackgroundKappaParameters {
 private:
 	/////////////////// MPI related
 	// make this class serializable to 
@@ -214,23 +214,14 @@ private:
     friend class boost::serialization::access;	
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
     {
-		ar & selection;
-		ar & scaling;
-		ar & factor;	
-		ar & nullrange;	
+        ar & selection;
+        ar & value;
     }
 	/////////////////// 
 
 public:	
-	ScatteringBackgroundPhaseParameters()  {
-		scaling = "auto";
-		factor = 1.0;
-	}
-
 	std::string selection;
-	double factor;
-	std::string scaling;
-	double nullrange;
+	double value;
 };
 
 class ScatteringBackgroundParameters {
@@ -243,27 +234,15 @@ private:
     {
 		ar & type;
 		ar & factor;
-		ar & phases;
-		ar & gridspacing;
-		ar & stride;
+		ar & kappas;
     }
 	/////////////////// 
 
 public:	
-	ScatteringBackgroundParameters() {
-		stride = 1;
-		gridspacing = 3;
-		factor = 0.0;
-		type = "manual";
-	}
-
-	std::string type;
-	double factor;
-
-	std::vector<ScatteringBackgroundPhaseParameters> phases;
-	
-	double gridspacing;
-	size_t stride;
+    std::string type;
+    double factor;
+    
+    std::vector<ScatteringBackgroundKappaParameters> kappas;
 };
 
 
@@ -381,18 +360,12 @@ private:
     {
 		ar & type;
 		ar & method;
-        ar & zeromean;
     }
 	/////////////////// 
 
 public:	
-	ScatteringCorrelationParameters() {
-		type = "none";
-		method = "direct";
-	}
 	std::string type;
 	std::string method;
-    bool zeromean;	
 };
 
 class ScatteringInterferenceParameters {
@@ -408,9 +381,6 @@ private:
 	/////////////////// 
 
 public:	
-	ScatteringInterferenceParameters() {
-		type = "all";
-	}
 	std::string type;
 };
 
@@ -676,16 +646,12 @@ private:
     {
 		ar & timer;
 		ar & barriers;
-		ar & scatter_from_frame;
-		ar & decomposition_split;
     }
 	/////////////////// 
 
 public:
 	bool timer;
 	bool barriers;
-	bool scatter_from_frame;
-	size_t decomposition_split;
 };
 
 

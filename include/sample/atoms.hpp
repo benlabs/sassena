@@ -53,7 +53,7 @@ public:
 	Atoms() {}
 	Atoms(std::string filename, std::string fileformat = "pdb");
 	
-	void write( std::string filename,Frame& frame, std::string fileformat = "pdb");
+//	void write( std::string filename,Frame& frame, std::string fileformat = "pdb");
 
 	void add(std::string filename, std::string fileformat = "pdb");
 

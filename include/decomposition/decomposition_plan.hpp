@@ -29,7 +29,7 @@
 #include <boost/mpi.hpp>
 
 // other headers
-#include "coor3d.hpp"
+#include "math/coor3d.hpp"
 
 class DecompositionPlan {
 

@@ -10,7 +10,7 @@
  */
 
 // direct header
-#include "progress_reporter.hpp"
+#include "report/progress_reporter.hpp"
 #include "control.hpp"
 
 using namespace std;
