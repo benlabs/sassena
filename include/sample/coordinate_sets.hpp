@@ -60,6 +60,7 @@ protected:
         ar & m_prealignmentvectors;
         ar & m_postalignmentvectors;
         
+        ar & m_representation;
 		// DONT set back references. have to be set from the outside
 		// p_atoms;
 		// p_selection;

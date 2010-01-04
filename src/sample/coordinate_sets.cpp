@@ -180,7 +180,10 @@ void CoordinateSets::load_into_cache(size_t framenumber) {
 	} else if (m_representation==CYLINDRICAL) {
 	    setcache[framenumber] = new CylindricalCoordinateSet(*pcset_reduced); 	    
         delete pcset_reduced;
-	}	
+	} else {
+        Err::Inst()->write("CoordinateSets::load_into_cache: representation not understood");
+        throw;
+	}
 }
 
 std::vector<CartesianCoor3D> CoordinateSets::get_prealignmentvectors(size_t framenumber) {
