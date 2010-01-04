@@ -35,17 +35,8 @@
 #include <boost/serialization/vector.hpp>
 
 // other headers
-#include "analysis.hpp"
-#include "coor3d.hpp"
-#include "decompose.hpp"
-#include "decomposition_plan.hpp"
 #include "control.hpp"
-#include "performance_analyzer.hpp"
-#include "progress_reporter.hpp"
-#include "sample/sample.hpp"
-#include "scatter_devices.hpp"
-#include "scatter_spectrum.hpp"
-#include "timer.hpp"
+#include "sample.hpp"
 
 
 #include <boost/archive/binary_iarchive.hpp>
@@ -127,8 +118,6 @@ int main(int argc,char** argv) {
 		//
 		//------------------------------------------//
 	
-		Info::Inst()->write(string("Set background scattering length density set to ")+to_s(Params::Inst()->scattering.background.factor));
-		
 		//------------------------------------------//
 		//
 		// Communication of the sample
@@ -139,23 +128,28 @@ int main(int argc,char** argv) {
 		// before calculating anything we need to communicate the sample to any node
 		// this is a one-to-all communication
 
-		std::ofstream db_ofile("testdb.bin");
-		std::ofstream p_ofile("testp.bin");
-		std::ofstream sample_ofile("testsample.bin");
+        std::string sample_filename = string("dumpcontrol-sample-")+to_s(world.rank())+string(".bin");
+        std::string params_filename = string("dumpcontrol-params-")+to_s(world.rank())+string(".bin");
+        std::string database_filename = string("dumpcontrol-database-")+to_s(world.rank())+string(".bin");
 
-		
+		std::ofstream sample_ofile(sample_filename.c_str());
+		std::ofstream database_ofile(database_filename.c_str());
+		std::ofstream params_ofile(params_filename.c_str());
+
 		sample.coordinate_sets.clear_cache(); // reduce overhead
-		boost::archive::text_oarchive db_oarchive(db_ofile);
-		boost::archive::text_oarchive p_oarchive(p_ofile);
-		boost::archive::text_oarchive sample_oarchive(sample_ofile);
 
-		db_oarchive << *database ;
-		p_oarchive << *params ;
+		boost::archive::text_oarchive sample_oarchive(sample_ofile);
+		boost::archive::text_oarchive database_oarchive(database_ofile);
+		boost::archive::text_oarchive params_oarchive(params_ofile);
+
+
+		params_oarchive << *params ;
+		database_oarchive << *database ;
 		sample_oarchive << sample ;
 
-		db_ofile.close();
-		p_ofile.close();
 		sample_ofile.close();
+		database_ofile.close();
+		params_ofile.close();
 		
 
 	return 0;

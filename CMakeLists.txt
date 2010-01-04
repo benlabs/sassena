@@ -181,24 +181,18 @@ ADD_EXECUTABLE(sassena
 
 
 	
-#ADD_EXECUTABLE(s_savesample 
-#    src/main/s_savesample.cpp
-#
-#	src/common.cpp
-#	src/coor3d.cpp 
-#	src/decompose.cpp
-#	src/measures/center_of_mass.cpp
-#	src/xml_interface.cpp
-#	src/vector_unfold.cpp
-#	)
+ADD_EXECUTABLE(s_dumpcontrol
+	src/common.cpp
+    src/main/s_dumpcontrol.cpp
+)
 	
 TARGET_LINK_LIBRARIES (sassena ${LIB_DEPENDENCIES} )
 #TARGET_LINK_LIBRARIES (s_coordump ${LIB_DEPENDENCIES} )
-#TARGET_LINK_LIBRARIES (s_savesample ${LIB_DEPENDENCIES} )
+TARGET_LINK_LIBRARIES (s_dumpcontrol ${LIB_DEPENDENCIES} )
 
 INSTALL(TARGETS sassena RUNTIME DESTINATION bin)
 #INSTALL(TARGETS s_coordump RUNTIME DESTINATION bin)
-#INSTALL(TARGETS s_savesample RUNTIME DESTINATION bin)
+INSTALL(TARGETS s_dumpcontrol RUNTIME DESTINATION bin)
 
 SET(CPACK_PACKAGE_NAME "Sassena")
 SET(CPACK_PACKAGE_VENDOR "Benjamin Lindner (ben@benlabs.net), Franci Merzel (franci.merzel@ki.si)")
