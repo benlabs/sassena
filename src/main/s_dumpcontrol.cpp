@@ -112,14 +112,14 @@ int main(int argc,char** argv) {
             database->init(string(argv[2]));
 
             sample.init();
-    	    
+   
     		broadcast(world,*params,0);
     		broadcast(world,*database,0);
-    		broadcast(world,sample,0);	        
+   		    broadcast(world,sample,0);	        
 	    } else {
-    		world.recv(0,boost::mpi::any_tag, *params);			
+ 		    world.recv(0,boost::mpi::any_tag, *params);			
     		world.recv(0,boost::mpi::any_tag, *database);			
-    		world.recv(0,boost::mpi::any_tag, sample);	
+            world.recv(0,boost::mpi::any_tag, sample);	
 	    }
 	    
 

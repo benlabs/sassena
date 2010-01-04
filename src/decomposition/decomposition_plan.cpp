@@ -201,3 +201,4 @@ size_t DecompositionPlan::worlds() {
 	return m_bestworldsplit;
 }
 
+// end of file

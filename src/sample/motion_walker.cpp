@@ -181,4 +181,4 @@ CartesianCoor3D FixedMotionWalker::translation(size_t timepos) {
 	return m_translate;
 }
 
-
+// end of file

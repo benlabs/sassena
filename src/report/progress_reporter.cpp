@@ -74,3 +74,5 @@ size_t ProgressReporter::compute_nextreport() {
 	
 	return m_maximum; // default
 }
+
+// end of file

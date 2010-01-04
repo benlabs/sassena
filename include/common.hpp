@@ -54,3 +54,5 @@ std::vector<double> flatten(std::vector<std::complex<double> >& cvalues);
 std::vector<std::complex<double> > compress(std::vector<double>& rvalues);
 
 #endif
+
+// end of file

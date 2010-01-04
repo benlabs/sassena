@@ -106,3 +106,5 @@ vector<double>& ScatterFactors::get_all() {
 void ScatterFactors::set_background(bool status) {
 	m_background = status;
 }
+
+// end of file

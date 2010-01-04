@@ -18,3 +18,5 @@ std::vector<std::complex<double> > compress(std::vector<double>& rvalues) {
 	}
 	return cvalues;
 }
+
+// end of file
