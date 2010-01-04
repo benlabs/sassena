@@ -59,14 +59,8 @@ SelfVectorsScatterDevice::SelfVectorsScatterDevice(boost::mpi::communicator& thi
 
 	size_t* p_indexes; size_t* p_myindexes;
 	// construct particle_trajectories first
-	vector<size_t> selectionindexes(NA);
 	if (rank==0) {
-//		sample.frames.load(0,sample.atoms);
-//		p_cs = new CoordinateSet(sample.frames.current(),sample.atoms.selections[target]);
-		// don't use the real atom indexes, but the selection indexes instead, this will work well with the scatterfactors class			
-//		p_indexes = &(sample.atoms.selections[target][0]); 
-		for(size_t i = 0; i < selectionindexes.size(); ++i) selectionindexes[i]=i;
-		p_indexes = &(selectionindexes[0]);
+		p_indexes = &(sample.atoms.selections[target].indexes[0]);
 	}
 
 	vector<size_t> myindexes(minatoms); p_myindexes = &(myindexes[0]);
@@ -82,7 +76,7 @@ SelfVectorsScatterDevice::SelfVectorsScatterDevice(boost::mpi::communicator& thi
 	if (leftoveratoms>0) {
 		
 		if (rank==0) {
-			p_indexes = &(sample.atoms.selections[target].indexes[minatoms]);
+			p_indexes = &(sample.atoms.selections[target].indexes[NN*minatoms]);
 		}
 
 		size_t lastindex; p_myindexes = &(lastindex);
@@ -105,7 +99,6 @@ SelfVectorsScatterDevice::SelfVectorsScatterDevice(boost::mpi::communicator& thi
 	{
 
 		vector<size_t> assigned_frames = edecomp.indexes_for(r);
-		
 		for(size_t i = 0; i < assigned_frames.size(); ++i)
 		{
 			double  *p_xc,*p_yc,*p_zc;	
@@ -124,20 +117,45 @@ SelfVectorsScatterDevice::SelfVectorsScatterDevice(boost::mpi::communicator& thi
 			vector<double> myyc(minatoms);
 			vector<double> myzc(minatoms);
 
+	        timer.start("sd:data:scatter1");
+	        
 			boost::mpi::scatter(thisworld,p_xc,&(myxc[0]),minatoms,r);
 			boost::mpi::scatter(thisworld,p_yc,&(myyc[0]),minatoms,r);
 			boost::mpi::scatter(thisworld,p_zc,&(myzc[0]),minatoms,r);	
-
+	        
+	        timer.stop("sd:data:scatter1");
+			
 			for(size_t pi = 0; pi < minatoms; ++pi)
 			{
 				particle_trajectories[pi].push_back(CartesianCoor3D(myxc[pi],myyc[pi],myzc[pi]));
 			}		
 
-			if (rank==r) {
-				p_xc = &(p_cs->c1[minatoms]);
-				p_yc = &(p_cs->c2[minatoms]);
-				p_zc = &(p_cs->c3[minatoms]);
+
+	        if (leftoveratoms>0) {
+
+    			if (rank==r) {
+    				p_xc = &(p_cs->c1[NN*minatoms]);
+    				p_yc = &(p_cs->c2[NN*minatoms]);
+    				p_zc = &(p_cs->c3[NN*minatoms]);
+    			}
+    	            
+    			double mylastx; 
+    			double mylasty; 
+    			double mylastz; 
+    
+    	        timer.start("sd:data:scatter2");
+    			
+    			boost::mpi::scatter(thisworld,p_xc,&mylastx,1,r);
+    			boost::mpi::scatter(thisworld,p_yc,&mylasty,1,r);
+    			boost::mpi::scatter(thisworld,p_zc,&mylastz,1,r);	
+    
+    	        timer.stop("sd:data:scatter2");
+    
+    			if (rank<leftoveratoms) {
+    				particle_trajectories[minatoms].push_back(CartesianCoor3D(mylastx,mylasty,mylastz));
+    			}
 			}
+
 
 	        // we have to exchange alignment information
             // b/c the individual nodes don't have all the alignment vectors at once
@@ -150,18 +168,6 @@ SelfVectorsScatterDevice::SelfVectorsScatterDevice(boost::mpi::communicator& thi
     		    boost::mpi::broadcast(thisworld,myavectors,r);
                 m_all_postalignmentvectors[assigned_frames[i]]=myavectors;
 	        }
-	        
-			double mylastx; 
-			double mylasty; 
-			double mylastz; 
-			
-			boost::mpi::scatter(thisworld,p_xc,&mylastx,1,r);
-			boost::mpi::scatter(thisworld,p_yc,&mylasty,1,r);
-			boost::mpi::scatter(thisworld,p_zc,&mylastz,1,r);	
-
-			if (rank<leftoveratoms) {
-				particle_trajectories[minatoms].push_back(CartesianCoor3D(mylastx,mylasty,mylastz));
-			}
 				
 		}
 	}
