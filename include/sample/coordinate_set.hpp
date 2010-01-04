@@ -31,7 +31,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 enum CoordinateRepresentation { 
-    CARTESIAN, SPHERICAL, CYLINDRICAL 
+    CARTESIAN=10, SPHERICAL=20, CYLINDRICAL=30 
 };
 
 // This class is used by Frame to store selection specific coordinate arrays
