@@ -25,7 +25,7 @@ class Info {
 private:
 	Info() {}
 	Info(const Info&) {}
-	Info& operator=(const Info&) {}
+    Info& operator=(const Info&) { return *this; }
 	
 	static size_t counter;	
 	
@@ -45,7 +45,7 @@ class Warn {
 private:
 	Warn() {}
 	Warn(const Warn&) {}
-	Warn& operator=(const Warn&) {}
+    Warn& operator=(const Warn&) { return *this; }
 	
 	static size_t counter;
 	std::string prefix;
@@ -65,7 +65,7 @@ class Err {
 private:
 	Err() {}
 	Err(const Err&) {}
-	Err& operator=(const Err&) {}
+	Err& operator=(const Err&) { return *this; }
 		
 	static size_t counter;		
 

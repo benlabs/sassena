@@ -69,13 +69,12 @@ CoordinateSet::CoordinateSet(CoordinateSet& cs,Atomselection& cs_selection, Atom
     
     m_size = count;
     m_representation = cs.get_representation();
-    
-    Err::Inst()->write(string("coordinate set with #atoms: ")+to_s(c1.size()));
 }
 
 CartesianCoordinateSet::CartesianCoordinateSet(CartesianCoordinateSet& cs,Atomselection& cs_selection, Atomselection& sub_selection) :
  CoordinateSet(cs,cs_selection,sub_selection)
 {
+    m_representation = CARTESIAN;
     // inherit copy constructor from parent
 }
 

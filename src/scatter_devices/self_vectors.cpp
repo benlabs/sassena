@@ -40,6 +40,10 @@ SelfVectorsScatterDevice::SelfVectorsScatterDevice(boost::mpi::communicator& thi
 
 	string target = Params::Inst()->scattering.target;
 
+	p_sample->coordinate_sets.set_representation(CARTESIAN);	
+	p_sample->coordinate_sets.set_selection(sample.atoms.selections[target]);
+
+
 	size_t rank = thisworld.rank();
 	size_t NN = thisworld.size(); // Number of Nodes
 
