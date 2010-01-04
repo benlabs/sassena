@@ -55,6 +55,13 @@ private:
 
     std::map<size_t,std::vector<CartesianCoor3D> > m_all_postalignmentvectors;
     
+    
+    std::vector<size_t> m_indexes;
+    std::vector<std::vector<double> > m_x;
+    std::vector<std::vector<double> > m_y;
+    std::vector<std::vector<double> > m_z;
+    
+    
 	void scatter(size_t ai, size_t mi);	
 	
     void init(CartesianCoor3D& q);

@@ -78,8 +78,8 @@ size_t EvenDecompose::rank_of(size_t index) {
 	size_t rank = 0;
 	for(size_t i = 0; i < this->size(); ++i)
 	{
-		total += this->at(i);
-		if (index>total) break;
+		total += (*this)[i];
+		if (index<total) break;
 		rank++;
 	}
 	

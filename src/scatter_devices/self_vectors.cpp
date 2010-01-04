@@ -32,147 +32,93 @@
 
 using namespace std;
 
+
 SelfVectorsScatterDevice::SelfVectorsScatterDevice(boost::mpi::communicator& thisworld, Sample& sample){
 
 	p_thisworldcomm = &thisworld;
 	p_sample = &sample; // keep a reference to the sample
 
 	string target = Params::Inst()->scattering.target;
-	
+
+	size_t rank = thisworld.rank();
 	size_t NN = thisworld.size(); // Number of Nodes
+
 	size_t NA = sample.atoms.selections[target].indexes.size(); // Number of Atoms
 	size_t NF = sample.coordinate_sets.size();
 
-	size_t rank = thisworld.rank();
+	EvenDecompose framesdecomp(NF,NN);
+    vector<size_t> myframes = framesdecomp.indexes_for(rank);
+    size_t NMYF = myframes.size();
 
-	EvenDecompose edecomp(NF,NN);
-
+	EvenDecompose indexdecomp(NA,NN);
+    m_indexes = indexdecomp.indexes_for(rank);
+    size_t NMYI = m_indexes.size();
+    
 	if (NN>NA) {
 		Err::Inst()->write("Not enough atoms for decomposition");
 		throw;
 	}
 
-	size_t minatoms = NA/NN;	
-	size_t leftoveratoms = NA % NN;	
-
-//	CoordinateSet* p_cs =NULL;
-
-	size_t* p_indexes; size_t* p_myindexes;
-	// construct particle_trajectories first
-	if (rank==0) {
-		p_indexes = &(sample.atoms.selections[target].indexes[0]);
-	}
-
-	vector<size_t> myindexes(minatoms); p_myindexes = &(myindexes[0]);
-	
-	timer.start("sd:assign");	
-	// this is an atom decomposition!
-	boost::mpi::scatter(thisworld,p_indexes,p_myindexes,minatoms,0);	
-	for(size_t i = 0; i < minatoms; ++i)
-	{
-		particle_trajectories.push_back(ParticleTrajectory(myindexes[i]) );
-	}
-
-	if (leftoveratoms>0) {
-		
-		if (rank==0) {
-			p_indexes = &(sample.atoms.selections[target].indexes[NN*minatoms]);
-		}
-
-		size_t lastindex; p_myindexes = &(lastindex);
-		boost::mpi::scatter(thisworld,p_indexes,p_myindexes,1,0);	
-		if (rank<leftoveratoms) {
-			particle_trajectories.push_back(ParticleTrajectory(lastindex) );		
-		}	
-	}
-	timer.stop("sd:assign");	
-
-	p_sample->coordinate_sets.set_representation(CARTESIAN);	
-	p_sample->coordinate_sets.set_selection(sample.atoms.selections[target]);
-
-	if (Params::Inst()->scattering.center) {
-    	p_sample->coordinate_sets.add_postalignment(target,"center");		    
-	}
-
-	timer.start("sd:data");	
-	for(size_t r = 0; r < NN; ++r)
-	{
-
-		vector<size_t> assigned_frames = edecomp.indexes_for(r);
-		for(size_t i = 0; i < assigned_frames.size(); ++i)
-		{
-			double  *p_xc,*p_yc,*p_zc;	
-			
-			CoordinateSet* p_cs =NULL;
-			if (rank==r) {
-                p_cs = &( p_sample->coordinate_sets.load(assigned_frames[i]) );
-                                
-				p_xc = &(p_cs->c1[0]);
-				p_yc = &(p_cs->c2[0]);
-				p_zc = &(p_cs->c3[0]);
-							
-			}
-			
-			vector<double> myxc(minatoms);
-			vector<double> myyc(minatoms);
-			vector<double> myzc(minatoms);
-
-	        timer.start("sd:data:scatter1");
-	        
-			boost::mpi::scatter(thisworld,p_xc,&(myxc[0]),minatoms,r);
-			boost::mpi::scatter(thisworld,p_yc,&(myyc[0]),minatoms,r);
-			boost::mpi::scatter(thisworld,p_zc,&(myzc[0]),minatoms,r);	
-	        
-	        timer.stop("sd:data:scatter1");
-			
-			for(size_t pi = 0; pi < minatoms; ++pi)
-			{
-				particle_trajectories[pi].push_back(CartesianCoor3D(myxc[pi],myyc[pi],myzc[pi]));
-			}		
-
-
-	        if (leftoveratoms>0) {
-
-    			if (rank==r) {
-    				p_xc = &(p_cs->c1[NN*minatoms]);
-    				p_yc = &(p_cs->c2[NN*minatoms]);
-    				p_zc = &(p_cs->c3[NN*minatoms]);
-    			}
-    	            
-    			double mylastx; 
-    			double mylasty; 
-    			double mylastz; 
+    m_x.resize(NMYI);
+    m_y.resize(NMYI);
+    m_z.resize(NMYI);
+    for(size_t ii = 0; ii < NMYI; ++ii)
+    {
+        m_x[ii].resize(NF);
+        m_y[ii].resize(NF);
+        m_z[ii].resize(NF);
+    }
     
-    	        timer.start("sd:data:scatter2");
-    			
-    			boost::mpi::scatter(thisworld,p_xc,&mylastx,1,r);
-    			boost::mpi::scatter(thisworld,p_yc,&mylasty,1,r);
-    			boost::mpi::scatter(thisworld,p_zc,&mylastz,1,r);	
-    
-    	        timer.stop("sd:data:scatter2");
-    
-    			if (rank<leftoveratoms) {
-    				particle_trajectories[minatoms].push_back(CartesianCoor3D(mylastx,mylasty,mylastz));
-    			}
-			}
+    timer.start("sd:data");
+    for(size_t fi = 0; fi < NF; ++fi)
+    {
+        size_t activerank = framesdecomp.rank_of(fi);
 
+        // this will be scoped to the relevant q vector
+        std::list< boost::mpi::request > requests;
 
-	        // we have to exchange alignment information
-            // b/c the individual nodes don't have all the alignment vectors at once
-            // but they are needed
-	        if (Params::Inst()->scattering.center) {
-                vector<CartesianCoor3D> myavectors;
-                if (rank==r) {
-                	myavectors = p_sample->coordinate_sets.get_postalignmentvectors(assigned_frames[i]);
-			    }
-    		    boost::mpi::broadcast(thisworld,myavectors,r);
-                m_all_postalignmentvectors[assigned_frames[i]]=myavectors;
-	        }
-				
-		}
-	}
-	timer.stop("sd:data");	
-	
+        // receive a block of x coordinates for a single frame in order of indexes
+        vector<double> myxcoords(NMYI);
+        vector<double> myycoords(NMYI);
+        vector<double> myzcoords(NMYI);
+        
+        requests.push_back( p_thisworldcomm->irecv(activerank,0,&(myxcoords[0]),NMYI) );
+        requests.push_back( p_thisworldcomm->irecv(activerank,0,&(myycoords[0]),NMYI) );
+        requests.push_back( p_thisworldcomm->irecv(activerank,0,&(myzcoords[0]),NMYI) );
+        
+        if ( rank == activerank ) {
+			CoordinateSet* p_cs = &( p_sample->coordinate_sets.load(fi) );        
+
+            size_t segoffset = 0;        
+            for(size_t i = 0; i < NN; ++i)
+            {
+                // send a portion of coordinates TO a node
+                double* p_xsegment = (double*) &(p_cs->c1[segoffset]);
+                double* p_ysegment = (double*) &(p_cs->c2[segoffset]);
+                double* p_zsegment = (double*) &(p_cs->c3[segoffset]);
+                size_t seglength = indexdecomp.indexes_for(i).size();
+                
+                requests.push_back( p_thisworldcomm->isend(i,0,p_xsegment,seglength) );
+                requests.push_back( p_thisworldcomm->isend(i,0,p_ysegment,seglength) );
+                requests.push_back( p_thisworldcomm->isend(i,0,p_zsegment,seglength) );
+                segoffset += seglength;
+            }
+        }
+        
+        boost::mpi::wait_all(requests.begin(),requests.end());
+
+        // copy coordinates to the right location:
+        for(size_t i = 0; i < NMYI; ++i)
+        {
+            m_x[i][fi]=myxcoords[i];
+            m_y[i][fi]=myycoords[i];
+            m_z[i][fi]=myzcoords[i];
+        }
+
+    }
+    timer.stop("sd:data");
+    
+    
 	p_asingle = new vector< complex<double> >; // initialize with no siz
 	
 	scatterfactors.set_sample(sample);
@@ -183,10 +129,15 @@ SelfVectorsScatterDevice::SelfVectorsScatterDevice(boost::mpi::communicator& thi
 
 void SelfVectorsScatterDevice::scatter(size_t ai, size_t mi) {
 
-	ParticleTrajectory& thisparticle = particle_trajectories[ai];
+//	ParticleTrajectory& thisparticle = particle_trajectories[ai];
+    vector<double>& x = m_x[ai];
+    vector<double>& y = m_y[ai];
+    vector<double>& z = m_z[ai];
+    
 	// this is broken <-- revise this!!!
-	double s = scatterfactors.get(thisparticle.atom_selection_index());
-	
+//	double s = scatterfactors.get(thisparticle.atom_selection_index());
+	double s = scatterfactors.get(m_indexes[ai]);
+    
     size_t NF = p_sample->coordinate_sets.size();
 	
     p_asingle->resize(NF,0);	
@@ -197,9 +148,13 @@ void SelfVectorsScatterDevice::scatter(size_t ai, size_t mi) {
     
 	for(size_t j = 0; j < NF; ++j)
 	{
-		double x1 = thisparticle.x[j];
-		double y1 = thisparticle.y[j];
-		double z1 = thisparticle.z[j];	
+//		double x1 = thisparticle.x[j];
+//		double y1 = thisparticle.y[j];
+//		double z1 = thisparticle.z[j];	
+		double x1 = x[j];
+		double y1 = y[j];
+		double z1 = z[j];	
+
 		double p1 = x1*qx+y1*qy+z1*qz;
         
         double sp1 = sin(p1);
@@ -316,7 +271,7 @@ void SelfVectorsScatterDevice::execute(CartesianCoor3D q) {
     // correlate or sum up
     if (Params::Inst()->scattering.correlation.type=="time") {
 
-        for (long ai = 0; ai < particle_trajectories.size(); ai++) {
+        for (long ai = 0; ai < m_indexes.size(); ai++) {
             for(long mi = 0; mi < NM; mi++)
             {        
                 // compute a block of q vectors:
