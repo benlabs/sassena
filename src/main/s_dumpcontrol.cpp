@@ -102,15 +102,27 @@ int main(int argc,char** argv) {
 		//
 		//------------------------------------------//	
 	
-	    
-	    Info::Inst()->write("reading params");
-        params->init(string(argv[1]));
+		Info::Inst()->write("Exchanging sample, database & params information with compute nodes... ");
 
-        Info::Inst()->write("reading database");
-        database->init(string(argv[2]));
+	    if (world.rank()==0) {
+	        Info::Inst()->write("reading params");
+            params->init(string(argv[1]));
+
+            Info::Inst()->write("reading database");
+            database->init(string(argv[2]));
+
+            sample.init();
+    	    
+    		broadcast(world,*params,0);
+    		broadcast(world,*database,0);
+    		broadcast(world,sample,0);	        
+	    } else {
+    		world.recv(0,boost::mpi::any_tag, *params);			
+    		world.recv(0,boost::mpi::any_tag, *database);			
+    		world.recv(0,boost::mpi::any_tag, sample);	
+	    }
 	    
-        sample.init();
-	    
+
 
 		//------------------------------------------//
 		//

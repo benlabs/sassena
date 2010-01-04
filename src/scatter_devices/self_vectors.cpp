@@ -76,7 +76,6 @@ SelfVectorsScatterDevice::SelfVectorsScatterDevice(boost::mpi::communicator& thi
 
         // this will be scoped to the relevant q vector
         std::list< boost::mpi::request > requests;
-
         // receive a block of x coordinates for a single frame in order of indexes
         vector<double> myxcoords(NMYI);
         vector<double> myycoords(NMYI);
@@ -85,17 +84,17 @@ SelfVectorsScatterDevice::SelfVectorsScatterDevice(boost::mpi::communicator& thi
         requests.push_back( p_thisworldcomm->irecv(activerank,0,&(myxcoords[0]),NMYI) );
         requests.push_back( p_thisworldcomm->irecv(activerank,0,&(myycoords[0]),NMYI) );
         requests.push_back( p_thisworldcomm->irecv(activerank,0,&(myzcoords[0]),NMYI) );
-        
+  
         if ( rank == activerank ) {
-			CoordinateSet* p_cs = &( p_sample->coordinate_sets.load(fi) );        
+			CoordinateSet& p_cs = p_sample->coordinate_sets.load(fi);        
 
             size_t segoffset = 0;        
             for(size_t i = 0; i < NN; ++i)
             {
                 // send a portion of coordinates TO a node
-                double* p_xsegment = (double*) &(p_cs->c1[segoffset]);
-                double* p_ysegment = (double*) &(p_cs->c2[segoffset]);
-                double* p_zsegment = (double*) &(p_cs->c3[segoffset]);
+                double* p_xsegment = (double*) &(p_cs.c1[segoffset]);
+                double* p_ysegment = (double*) &(p_cs.c2[segoffset]);
+                double* p_zsegment = (double*) &(p_cs.c3[segoffset]);
                 size_t seglength = indexdecomp.indexes_for(i).size();
                 
                 requests.push_back( p_thisworldcomm->isend(i,0,p_xsegment,seglength) );
