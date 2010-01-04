@@ -9,8 +9,8 @@
  *
  */
 
-#ifndef DECOMPOSE_HPP_
-#define DECOMPOSE_HPP_
+#ifndef DECOMPOSITION__DECOMPOSE_HPP_
+#define DECOMPOSITION__DECOMPOSE_HPP_
 
 // common header
 #include "common.hpp"

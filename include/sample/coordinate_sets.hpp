@@ -51,19 +51,20 @@ protected:
         ar.register_type(static_cast<BrownianMotionWalker*>(NULL));
         
 		ar & setcache;
-		ar & currentframe_i;
-		ar & frames;
+        ar & m_prealignmentvectors;
+        ar & m_postalignmentvectors;
+
         ar & m_motion_walkers;
         ar & m_prealignments;
         ar & m_postalignments;
-        ar & m_representation;
-        ar & m_prealignmentvectors;
-        ar & m_postalignmentvectors;
-        
-        ar & m_representation;
+
+		ar & frames;
+
 		// DONT set back references. have to be set from the outside
 		// p_atoms;
 		// p_selection;
+
+        ar & m_representation;
     }
     
 	std::map<size_t,CoordinateSet*> setcache;
@@ -80,8 +81,6 @@ protected:
 	Atoms* p_atoms;
 	Atomselection* p_selection;
 	
-	size_t currentframe_i;
-
     CoordinateRepresentation m_representation;
 	void load_into_cache(size_t framenumber);
 	
@@ -89,7 +88,6 @@ public:
 	CoordinateSets();
 	~CoordinateSets() ;
 	
-	CoordinateSet& current();
 	CoordinateSet& load(size_t frame);	
 
 	std::vector<CartesianCoor3D> get_prealignmentvectors(size_t frame);	
@@ -115,4 +113,5 @@ public:
 };
 
 #endif
+
 // end of file

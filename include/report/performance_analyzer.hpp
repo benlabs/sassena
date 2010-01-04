@@ -9,8 +9,8 @@
  *
  */
 
-#ifndef PERFORMANCE_ANALYZER_HPP_
-#define PERFORMANCE_ANALYZER_HPP_
+#ifndef REPORT__PERFORMANCE_ANALYZER_HPP_
+#define REPORT__PERFORMANCE_ANALYZER_HPP_
 
 // common header
 #include "common.hpp"

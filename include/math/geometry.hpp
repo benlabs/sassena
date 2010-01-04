@@ -9,8 +9,8 @@
  *
  */
 
-#ifndef GEOMETRY_HPP_
-#define GEOMETRY_HPP_
+#ifndef MATH__GEOMETRY_HPP_
+#define MATH__GEOMETRY_HPP_
 
 // common header
 #include "common.hpp"
@@ -26,8 +26,7 @@
 
 
 // this class is adapted from code on:http://local.wasp.uwa.edu.au/~pbourke/geometry/platonic/
-class DrawSphereHelper
-{
+class DrawSphereHelper {
 public:
 	std::vector<CartesianCoor3D> vectors;
 	
@@ -147,5 +146,6 @@ public:
 
 };
 
-
 #endif
+
+// end of file

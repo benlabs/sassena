@@ -9,8 +9,8 @@
  *
  */
 
-#ifndef XML_INTERFACE_HPP_
-#define XML_INTERFACE_HPP_
+#ifndef IO__XML_INTERFACE_HPP_
+#define IO__XML_INTERFACE_HPP_
 
 // common header
 #include "common.hpp"

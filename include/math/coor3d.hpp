@@ -9,8 +9,8 @@
  *
  */
 
-#ifndef COOR3D_HPP_
-#define COOR3D_HPP_
+#ifndef MATH__COOR3D_HPP_
+#define MATH__COOR3D_HPP_
 
 // common header
 #include "common.hpp"
@@ -116,3 +116,5 @@ public:
 CartesianCoor3D rotate(CartesianCoor3D,std::string axis,double rad);
 
 #endif
+
+// end of file

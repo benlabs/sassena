@@ -9,8 +9,8 @@
  *
  */
 
-#ifndef PROGRESS_REPORTER_HPP_
-#define PROGRESS_REPORTER_HPP_
+#ifndef REPORT__PROGRESS_REPORTER_HPP_
+#define REPORT__PROGRESS_REPORTER_HPP_
 
 // common header
 #include "common.hpp"

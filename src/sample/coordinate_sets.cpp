@@ -227,7 +227,6 @@ CoordinateSet& CoordinateSets::load(size_t framenumber) {
 
 	pcset = setcache[framenumber];
 	
-	currentframe_i = framenumber;
 	return *pcset;
 }
 
@@ -266,11 +265,6 @@ void CoordinateSets::set_selection(Atomselection& selection) {
 Atomselection& CoordinateSets::get_selection() {
 	return *p_selection;
 }
-
-CoordinateSet& CoordinateSets::current() {
-	return *(setcache[currentframe_i]);
-}
-
 
 
 // end of file

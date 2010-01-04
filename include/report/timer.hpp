@@ -9,8 +9,8 @@
  *
  */
 
-#ifndef TIMER_HPP_
-#define TIMER_HPP_
+#ifndef REPORT__TIMER_HPP_
+#define REPORT__TIMER_HPP_
 
 // common header
 #include "common.hpp"

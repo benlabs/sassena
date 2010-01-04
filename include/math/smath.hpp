@@ -9,8 +9,8 @@
  *
  */
 
-#ifndef SMATH_HPP_
-#define SMATH_HPP_
+#ifndef MATH__SMATH_HPP_
+#define MATH__SMATH_HPP_
 
 // common header
 #include "common.hpp"
