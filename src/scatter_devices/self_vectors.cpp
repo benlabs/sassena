@@ -63,15 +63,9 @@ SelfVectorsScatterDevice::SelfVectorsScatterDevice(boost::mpi::communicator& thi
 		throw;
 	}
 
-    m_x.resize(NMYI);
-    m_y.resize(NMYI);
-    m_z.resize(NMYI);
-    for(size_t ii = 0; ii < NMYI; ++ii)
-    {
-        m_x[ii].resize(NF);
-        m_y[ii].resize(NF);
-        m_z[ii].resize(NF);
-    }
+    m_x.assign(NMYI,vector<double>(NF));
+    m_y.assign(NMYI,vector<double>(NF));
+    m_z.assign(NMYI,vector<double>(NF));
     
     timer.start("sd:data");
     for(size_t fi = 0; fi < NF; ++fi)
@@ -143,7 +137,7 @@ void SelfVectorsScatterDevice::scatter(size_t ai, size_t mi) {
     
     size_t NF = p_sample->coordinate_sets.size();
 	
-    p_asingle->resize(NF,0);	
+    p_asingle->assign(NF,0);	
 
     double qx = qvectors[mi].x;
     double qy = qvectors[mi].y;
@@ -188,8 +182,7 @@ void SelfVectorsScatterDevice::correlate() {
     
     size_t NF = p_sample->coordinate_sets.size();
     
-    std::vector< std::complex<double> >* p_correlated_a = new std::vector< std::complex<double> >;
-    p_correlated_a->resize(NF);
+    std::vector< std::complex<double> >* p_correlated_a = new std::vector< std::complex<double> >(NF);
       
     std::vector< std::complex<double> >& complete_a = (*p_asingle);
     std::vector< std::complex<double> >& correlated_a = (*p_correlated_a);
@@ -268,7 +261,7 @@ void SelfVectorsScatterDevice::execute(CartesianCoor3D q) {
     long NM = get_numberofmoments();
     long NF = p_sample->coordinate_sets.size();
     
-	m_spectrum.resize(NF,0);
+	m_spectrum.assign(NF,0);
 
     timer.start("sd:compute");
     // correlate or sum up
@@ -303,7 +296,7 @@ void SelfVectorsScatterDevice::execute(CartesianCoor3D q) {
         // if not time correlated, the conjmultiply negates phase information
         // this simplifies formulas
  
-        p_asingle->resize(NF,0);
+        p_asingle->assign(NF,0);
  
         for (long ai = 0; ai < particle_trajectories.size(); ai++) {
             ParticleTrajectory& thisparticle = particle_trajectories[ai];

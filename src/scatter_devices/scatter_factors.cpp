@@ -91,7 +91,7 @@ Atomselection& ScatterFactors::get_selection() {
 void ScatterFactors::set_sample(Sample& sample) {
 	p_sample = &sample;
 	
-    m_kappas.resize(p_sample->atoms.size(),1.0); // default to factor of 1.0
+    m_kappas.assign(p_sample->atoms.size(),1.0); // default to factor of 1.0
     update_kappas();
 }
 

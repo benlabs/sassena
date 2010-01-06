@@ -143,8 +143,7 @@ void AllScatterDevice::exchange() {
     boost::mpi::all_gather(*p_thisworldcomm,NMYF,&(nframes[0]));
 
     // this vector is indexed by the process
-    std::vector< std::vector< std::complex<double> > > newa;
-    newa.resize(NN);
+    std::vector< std::vector< std::complex<double> > > newa(NN);
     for(size_t i = 0; i < NN; ++i)
     {
         newa[i].resize(nframes[i]);
@@ -197,7 +196,7 @@ void AllScatterDevice::correlate() {
     size_t NF = p_sample->coordinate_sets.size();
     
     std::vector< std::complex<double> >* p_correlated_a = new std::vector< std::complex<double> >;
-    p_correlated_a->resize(NF);
+    p_correlated_a->assign(NF,0);
       
     std::vector< std::complex<double> >& complete_a = (*p_asingle);
     std::vector< std::complex<double> >& correlated_a = (*p_correlated_a);
@@ -280,8 +279,8 @@ void AllScatterDevice::conjmultiply() {
 void AllScatterDevice::sum() {
     
     size_t NMYF = myframes.size();
-    
-    p_asingle->resize(NMYF,0);
+
+    p_asingle->assign(NMYF,0);
 
     vector< complex<double> >& newa = (*p_asingle);
     for(size_t qi = 0; qi < p_a->size(); ++qi)
@@ -340,14 +339,13 @@ void AllScatterDevice::gather_cat() {
     boost::mpi::all_gather(*p_thisworldcomm,NMYF,&(nframes[0]));
     
     if (p_thisworldcomm->rank()==0) {
-        vector< complex<double> > received_a;
         vector< complex<double> >& a = (*p_asingle);
         
         // only receive from other nodes
         for(size_t i = 1; i < NN; ++i)
         {
-            received_a.resize(nframes[i]);
-            double* p_a_double = (double*) &(received_a.at(0));   
+            vector< complex<double> > received_a(nframes[i]);
+            double* p_a_double = (double*) &(received_a[0]);   
             p_thisworldcomm->recv(i,0,p_a_double,2*nframes[i]);
             
             size_t thisNF = nframes[i];
@@ -381,7 +379,7 @@ void AllScatterDevice::execute(CartesianCoor3D q) {
 
     long NMBLOCK = (NN<NM) ? NN : NM;
     
-	m_spectrum.resize(NF,0);
+    m_spectrum.assign(NF,0);
 
     for(long mi = 0; mi < NM; mi+=NMBLOCK)
     {        

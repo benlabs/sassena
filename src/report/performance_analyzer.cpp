@@ -39,14 +39,14 @@ PerformanceAnalyzer::PerformanceAnalyzer(boost::mpi::communicator thisworld, Tim
 	vector<int> all_keyflags;
 	
 	//	vector<double> all_sum, all_count, all_mean, all_variance, all_min, all_max;
-	all_sum.resize(thisworld.size());
-	all_count.resize(thisworld.size());
-	all_mean.resize(thisworld.size());
-	all_variance.resize(thisworld.size());
-	all_min.resize(thisworld.size());
-	all_max.resize(thisworld.size());
+	all_sum.assign(thisworld.size(),0);
+	all_count.assign(thisworld.size(),0);
+	all_mean.assign(thisworld.size(),0);
+	all_variance.assign(thisworld.size(),0);
+	all_min.assign(thisworld.size(),0);
+	all_max.assign(thisworld.size(),0);
 
-	all_keyflags.resize(thisworld.size());
+	all_keyflags.assign(thisworld.size(),0);
 
 	// first negotiate keys 
 	vector<string> my_keys = timer.keys();

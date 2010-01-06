@@ -90,11 +90,7 @@ void AllMSScatterDevice::scatter(size_t moffset,size_t mcount) {
    string target = Params::Inst()->scattering.target;
    size_t NOA = p_sample->atoms.selections[target].indexes.size();
    
-   p_a->resize(NM);
-   for(size_t i = 0; i < NM; ++i)
-   {
-       (*p_a)[i].resize(NMYF,0);
-   }
+   p_a->assign(NM,std::vector<complex<double> >(NMYF,0));
    
    for(size_t fi = 0; fi < NMYF; ++fi)
    {
