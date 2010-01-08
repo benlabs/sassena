@@ -51,7 +51,7 @@ AllVectorsScatterDevice::AllVectorsScatterDevice(boost::mpi::communicator& thisw
     
 	if (thisworld.rank()==0) {	
 
-        size_t memusage_scatmat = 2*sizeof(double)*NM*NMYF;
+        size_t memusage_scatmat = 2*sizeof(double)*NMBLOCK*NMYF;
 
 		Info::Inst()->write(string("Memory(Scattering Matrix): ")+to_s(memusage_scatmat)+string(" bytes"));
 
