@@ -30,7 +30,6 @@
 
 // other headers
 #include "math/coor3d.hpp"
-#include "scatter_devices/particle_trajectory.hpp"
 #include "sample.hpp"
 #include "scatter_devices/scatter_factors.hpp"
 #include "report/timer.hpp"
@@ -44,8 +43,6 @@ private:
 	Sample* p_sample;
 	
 	std::vector< std::complex<double> >* p_asingle; 
-	
-	std::vector<ParticleTrajectory> particle_trajectories;
 	
 	ScatterFactors scatterfactors;	
 	
@@ -66,6 +63,7 @@ private:
 	
     void init(CartesianCoor3D& q);
 	void correlate();
+    void infinite_correlate();
     void norm();
     size_t get_numberofmoments();
     

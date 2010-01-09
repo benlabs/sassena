@@ -27,7 +27,6 @@
 #include <fftw3.h>
 #include "control.hpp"
 #include "sample.hpp"
-#include "scatter_devices/particle_trajectory.hpp"
 
 
 using namespace std;
@@ -126,13 +125,11 @@ SelfVectorsScatterDevice::SelfVectorsScatterDevice(boost::mpi::communicator& thi
 
 void SelfVectorsScatterDevice::scatter(size_t ai, size_t mi) {
 
-//	ParticleTrajectory& thisparticle = particle_trajectories[ai];
     vector<double>& x = m_x[ai];
     vector<double>& y = m_y[ai];
     vector<double>& z = m_z[ai];
     
 	// this is broken <-- revise this!!!
-//	double s = scatterfactors.get(thisparticle.atom_selection_index());
 	double s = scatterfactors.get(m_indexes[ai]);
     
     size_t NF = p_sample->coordinate_sets.size();
@@ -145,9 +142,6 @@ void SelfVectorsScatterDevice::scatter(size_t ai, size_t mi) {
     
 	for(size_t j = 0; j < NF; ++j)
 	{
-//		double x1 = thisparticle.x[j];
-//		double y1 = thisparticle.y[j];
-//		double z1 = thisparticle.z[j];	
 		double x1 = x[j];
 		double y1 = y[j];
 		double z1 = z[j];	
@@ -248,6 +242,29 @@ void SelfVectorsScatterDevice::correlate() {
     p_asingle = p_correlated_a;
 }
 
+
+void SelfVectorsScatterDevice::infinite_correlate() {
+    if (p_asingle->size()<1) return;
+    
+    size_t NF = p_sample->coordinate_sets.size();
+          
+    std::vector< std::complex<double> >& complete_a = (*p_asingle);
+    
+    complex<double> asum = 0;
+    for(size_t tau = 0; tau < NF; ++tau)
+    {
+   		 asum += complete_a[tau];
+    }
+
+    asum /= NF;
+    asum *= conj(asum);
+    
+    for(size_t tau = 0; tau < NF; ++tau)
+    {
+        complete_a[tau] = asum;
+    }
+}
+
 void SelfVectorsScatterDevice::execute(CartesianCoor3D q) {
 	
     init(q);
@@ -285,31 +302,54 @@ void SelfVectorsScatterDevice::execute(CartesianCoor3D q) {
     	        timer.stop("sd:correlate");	        
 
                 vector<complex<double> >& spectrum = (*p_asingle);
-        	    for(size_t j = 0; j < spectrum.size(); ++j)
+        	    for(size_t fi = 0; fi < NF; ++fi)
         	    {
-        	    	m_spectrum[j] += spectrum[j];
+        	    	m_spectrum[fi] += spectrum[fi];
         	    }	
-        	}				
-    	}
-    	
+        	}
+        }			
+    } else if (Params::Inst()->scattering.correlation.type=="infinite-time") {
+    
+        for (long ai = 0; ai < m_indexes.size(); ai++) {
+            for(long mi = 0; mi < NM; mi++)
+            {        
+                // compute a block of q vectors:
+    	        timer.start("sd:scatterblock");
+    	        scatter(ai,mi);	// fills p_asingle
+    	        timer.stop("sd:scatterblock");            
+    
+    	        // operate on (*p_asingle)
+    	        if (Params::Inst()->scattering.center) {
+                    multiply_alignmentfactors(mi);
+    	        }		
+    
+    	        timer.start("sd:correlate");	                    
+                infinite_correlate();
+    	        timer.stop("sd:correlate");	        
+    
+                vector<complex<double> >& spectrum = (*p_asingle);
+        	    for(size_t fi = 0; fi < NF; ++fi)
+        	    {
+        	    	m_spectrum[fi] += spectrum[fi];
+        	    }	
+        	}			
+    	}  	
     } else {
         // if not time correlated, the conjmultiply negates phase information
         // this simplifies formulas
  
-        p_asingle->assign(NF,0);
+//        p_asingle->assign(NF,0);
  
-        for (long ai = 0; ai < particle_trajectories.size(); ai++) {
-            ParticleTrajectory& thisparticle = particle_trajectories[ai];
-        	// this is broken <-- revise this!!!
-        	double s = scatterfactors.get(thisparticle.atom_selection_index());
+        for (long ai = 0; ai < m_indexes.size(); ai++) {
+        	double s = scatterfactors.get(m_indexes[ai]);
             for(size_t fi = 0; fi < NF; ++fi)
             {
-                m_spectrum[fi] += s*s;
+                m_spectrum[fi] += NM*s*s;
             }
         }
     	
     }
-    timer.start("sd:compute");    
+    timer.stop("sd:compute");    
     	
 	
 	// these functions operate on m_spectrum:
