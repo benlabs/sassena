@@ -62,6 +62,7 @@ protected:
     
     void exchange();
     void correlate();
+    void infinite_correlate();
     void gather_sum();
     
     void conjmultiply();

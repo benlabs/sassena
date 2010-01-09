@@ -262,6 +262,29 @@ void AllScatterDevice::correlate() {
     p_asingle = p_correlated_a;
 }
 
+
+void AllScatterDevice::infinite_correlate() {
+    if (p_asingle->size()<1) return;
+    
+    size_t NF = p_sample->coordinate_sets.size();
+          
+    std::vector< std::complex<double> >& complete_a = (*p_asingle);
+    
+    complex<double> asum = 0;
+    for(size_t tau = 0; tau < NF; ++tau)
+    {
+   		 asum += complete_a[tau];
+    }
+
+    asum /= NF;
+    asum *= conj(asum);
+    
+    for(size_t tau = 0; tau < NF; ++tau)
+    {
+        complete_a[tau] = asum;
+    }
+}
+
 void AllScatterDevice::conjmultiply() {
     
     size_t NQBLOCK = p_a->size();
@@ -405,8 +428,23 @@ void AllScatterDevice::execute(CartesianCoor3D q) {
 
     	    timer.start("sd:gather_sum");	                    
             gather_sum(); // head node has everything in a (vector< complex<double> >)
-    	    timer.stop("sd:gather_sum");	        
-		    
+    	    timer.stop("sd:gather_sum");
+    	    	        
+    	} else if (Params::Inst()->scattering.correlation.type=="infinite-time") {
+
+            // transpose data
+            timer.start("sd:exchange");	        
+            exchange();
+            timer.stop("sd:exchange");	        
+        
+            timer.start("sd:correlate");	                    
+            infinite_correlate();
+            timer.stop("sd:correlate");	        
+        
+            timer.start("sd:gather_sum");	                    
+            gather_sum(); // head node has everything in a (vector< complex<double> >)
+            timer.stop("sd:gather_sum");	        
+        
 		} else {
 
     	    timer.start("sd:conjmultiply");	                                
