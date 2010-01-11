@@ -186,13 +186,21 @@ ADD_EXECUTABLE(s_dumpcontrol
     src/main/s_dumpcontrol.cpp
 )
 	
+ADD_EXECUTABLE(s_cofm
+	src/common.cpp
+    src/main/s_cofm.cpp
+)
+
+	
 TARGET_LINK_LIBRARIES (sassena ${LIB_DEPENDENCIES} )
 #TARGET_LINK_LIBRARIES (s_coordump ${LIB_DEPENDENCIES} )
 TARGET_LINK_LIBRARIES (s_dumpcontrol ${LIB_DEPENDENCIES} )
+TARGET_LINK_LIBRARIES (s_cofm ${LIB_DEPENDENCIES} )
 
 INSTALL(TARGETS sassena RUNTIME DESTINATION bin)
 #INSTALL(TARGETS s_coordump RUNTIME DESTINATION bin)
 INSTALL(TARGETS s_dumpcontrol RUNTIME DESTINATION bin)
+INSTALL(TARGETS s_cofm RUNTIME DESTINATION bin)
 
 SET(CPACK_PACKAGE_NAME "Sassena")
 SET(CPACK_PACKAGE_VENDOR "Benjamin Lindner (ben@benlabs.net), Franci Merzel (franci.merzel@ki.si)")
