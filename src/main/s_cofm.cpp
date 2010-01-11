@@ -74,6 +74,7 @@ int main(int argc,char** argv) {
 	Database* database = Database::Inst();
 
 	Sample sample;
+	if (world.rank()==0) {
 	
 		//------------------------------------------//
 		//
@@ -105,25 +106,25 @@ int main(int argc,char** argv) {
 		//------------------------------------------//	
 	
 		Info::Inst()->write("Exchanging sample, database & params information with compute nodes... ");
+	}
 
-	    if (world.rank()==0) {
-	        Info::Inst()->write("reading params");
-            params->init(string(argv[1]));
+    if (world.rank()==0) {
+        Info::Inst()->write("reading params");
+        params->init(string(argv[1]));
 
-            Info::Inst()->write("reading database");
-            database->init(string(argv[2]));
+        Info::Inst()->write("reading database");
+        database->init(string(argv[2]));
 
-            sample.init();
+        sample.init();
    
-    		broadcast(world,*params,0);
-    		broadcast(world,*database,0);
-   		    broadcast(world,sample,0);	        
-	    } else {
- 		    world.recv(0,boost::mpi::any_tag, *params);			
-    		world.recv(0,boost::mpi::any_tag, *database);			
-            world.recv(0,boost::mpi::any_tag, sample);	
-	    }
-	    
+		broadcast(world,*params,0);
+		broadcast(world,*database,0);
+	    broadcast(world,sample,0);	        
+    } else {
+	    world.recv(0,boost::mpi::any_tag, *params);			
+		world.recv(0,boost::mpi::any_tag, *database);			
+        world.recv(0,boost::mpi::any_tag, sample);	
+    }
 
 
 		//------------------------------------------//
@@ -159,12 +160,12 @@ int main(int argc,char** argv) {
         
         std::list< boost::mpi::request > requests;
 
-        vector< vector<CartesianCoor3D> > allcofm;        
+        vector< vector<CartesianCoor3D> > allcofm(NN);        
         if (world.rank()==0) {
 
             for(size_t ni = 0; ni < NN; ++ni)
             {
-                requests.push_back( world.irecv(ni,0,allcofm) );                
+                requests.push_back( world.irecv(ni,0,allcofm[ni]) );                
             }
         }
 
@@ -209,7 +210,7 @@ int main(int argc,char** argv) {
             for(size_t i = 0; i < allcofmdelta.size(); ++i)
             {
                 ofiledelta << allcofmdelta[i].x << "\t"<< allcofmdelta[i].y << "\t"<< allcofmdelta[i].z << "\t" << endl;
-                ofiledelta << allcofmdelta[i].length() << endl;                
+                ofileabsdelta << allcofmdelta[i].length() << endl;                
             }
                         
         }

@@ -34,6 +34,7 @@ inline double sign(double a,double b) { return (b<0.0) ? -a : a; }
 inline float sign(float a,float b) { return (b<0.0) ? -a : a; }
 
 class CartesianCoor3D {
+protected:
 	// make this class serializable to 
 	// allow sample to be transmitted via MPI
     friend class boost::serialization::access;	
