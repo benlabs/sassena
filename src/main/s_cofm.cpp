@@ -207,13 +207,22 @@ int main(int argc,char** argv) {
             ofstream ofiledelta("cofm-delta.txt");
             ofstream ofileabsdelta("cofm-absdelta.txt");
             
+            double mean_cofm = 0;
+            double mean_cofm2 = 0;
             for(size_t i = 0; i < allcofmdelta.size(); ++i)
             {
                 ofiledelta << allcofmdelta[i].x << "\t"<< allcofmdelta[i].y << "\t"<< allcofmdelta[i].z << "\t" << endl;
-                ofileabsdelta << allcofmdelta[i].length() << endl;                
-            }
-                        
+                ofileabsdelta << allcofmdelta[i].length() << endl;       
+                mean_cofm += allcofmdelta[i].length();
+                mean_cofm2 += allcofmdelta[i].length()*allcofmdelta[i].length();
+            }       
+            
+            Info::Inst()->write(string("Stats:"))           ;
+            Info::Inst()->write(string("Mean Center of Mass motion (Angstroem) = ")+to_s(mean_cofm/allcofmdelta.size()));    
+            Info::Inst()->write(string("Variance Center of Mass motion (Angstroem) = ")+to_s(mean_cofm2/allcofmdelta.size()));    
+
         }
+        
 
 	return 0;
 }
