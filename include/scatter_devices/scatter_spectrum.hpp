@@ -31,7 +31,7 @@
 #include "math/coor3d.hpp"
 
 
-class ScatterSpectrum : public std::vector<std::pair<CartesianCoor3D,std::vector<std::complex<double> > > > {
+class ScatterSpectrum {
 private:
 	/////////////////// MPI related
 	// make this class serializable to 
@@ -39,16 +39,25 @@ private:
     friend class boost::serialization::access;	
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
     {
-		ar & boost::serialization::base_object<std::vector<std::pair<CartesianCoor3D,std::vector<std::complex<double> > > > >(*this);
+        ar & data;
     }
 	///////////////////
+	
+    std::vector<std::pair<CartesianCoor3D,std::vector<std::complex<double> > > > data;
+    
 public:
 	ScatterSpectrum() {}	
 	ScatterSpectrum(std::vector<ScatterSpectrum> scatspecs);
 	
+    void add(CartesianCoor3D q, std::vector<std::complex<double> > spectrum);
+    size_t size() { return data.size(); }
+    
+    std::pair<CartesianCoor3D,std::vector<std::complex<double> > >& operator[](size_t index) { return data[index]; }
+	
 	void write_average(std::string fname,std::string format);
 	void write_plain(std::string fname,std::string format);
 	
+    void transform();
 };
 
 #endif

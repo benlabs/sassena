@@ -236,7 +236,7 @@ int main(int argc,char** argv) {
 			
 			if (local.rank()==0) {
 				// results are aggregated in 0-node
-				scatter_spectrum.push_back( make_pair(myqvectors[qi],p_ScatterDevice->get_spectrum() ) ) ;
+				scatter_spectrum.add( myqvectors[qi],p_ScatterDevice->get_spectrum() ) ;
 			}
 					
 			timer.stop("scatter");
@@ -270,7 +270,9 @@ int main(int argc,char** argv) {
 		
 		if (headcomm.rank()==0) {
 			ScatterSpectrum fss(scatspecs); // fss = final scatter spectrum
-
+            ScatterSpectrum fsst = fss;
+            fsst.transform();
+            
 			timer.start("result::output");
 			std::string prefix = Params::Inst()->output.prefix;
 			for(std::vector<OutputFileParameters>::iterator ofi = Params::Inst()->output.files.begin(); ofi != Params::Inst()->output.files.end(); ++ofi)
@@ -280,6 +282,8 @@ int main(int argc,char** argv) {
 					fss.write_plain(ofi->filename,ofi->format);				
 				} else if (ofi->method=="average") {
 					fss.write_average(ofi->filename,ofi->format);
+                } else if (ofi->method=="transform-plain") {
+					fsst.write_plain(ofi->filename,ofi->format);                    
 				} else {
 					Warn::Inst()->write(string("Output method not understood: ")+ofi->method);
 				}
