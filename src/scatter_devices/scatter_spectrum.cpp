@@ -47,17 +47,22 @@ void ScatterSpectrum::transform() {
 
         fftw_complex *wspace;
         fftw_plan p1;
-        wspace = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * NF);
-        p1 = fftw_plan_dft_1d(NF, wspace, wspace, FFTW_FORWARD, FFTW_ESTIMATE);
+        wspace = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * 2*NF);
+        p1 = fftw_plan_dft_1d(2*NF, wspace, wspace, FFTW_FORWARD, FFTW_ESTIMATE);
 
         for(size_t i = 0; i < NF; ++i) {
             wspace[i][0]= fqt[i].real();            
             wspace[i][1]= fqt[i].imag();                        
         }
+        for(size_t i = NF; i < 2*NF; ++i) {
+            wspace[i][0]= 0;            
+            wspace[i][1]= 0;                        
+        }
+        
         fftw_execute(p1); /* repeat as needed */
 
-        for(size_t i = 0; i < NF; ++i) {
-            fqt[i]=complex<double>(wspace[i][0],wspace[i][1])*( 1.0 / ( NF ) );
+        for(size_t i = 0; i < 2*NF; ++i) {
+            fqt[i]=complex<double>(wspace[i][0],wspace[i][1])*( 1.0 / ( 2*NF ) );
         }
         
         fftw_destroy_plan(p1);
