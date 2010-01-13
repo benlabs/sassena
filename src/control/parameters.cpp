@@ -106,10 +106,15 @@ void Params::read_xml(std::string filename) {
 	// START OF sample section //	
 
 	// read in frame information
-	size_t def_first=0;	size_t def_last=0;	bool def_last_set=false; size_t def_stride = 1;
+	size_t def_first=0;	
+	size_t def_last=0;	
+	bool def_last_set=false; 
+	size_t def_stride = 1;
+    size_t def_clones = 1;
 	if (xmli.exists("//sample/frames/first"))   def_first  = xmli.get_value<size_t>("//sample/frames/first");
 	if (xmli.exists("//sample/frames/last"))  { def_last   = xmli.get_value<size_t>("//sample/frames/last"); def_last_set = true; }
 	if (xmli.exists("//sample/frames/stride"))  def_stride = xmli.get_value<size_t>("//sample/frames/stride");
+	if (xmli.exists("//sample/frames/clones"))  def_clones = xmli.get_value<size_t>("//sample/frames/clones");
 	
 	vector<XMLElement> framesets = xmli.get("//sample/frames/frameset");
 	for(size_t i = 0; i < framesets.size(); ++i)
@@ -122,6 +127,7 @@ void Params::read_xml(std::string filename) {
 		if (xmli.exists("./first"))   fset.first  = xmli.get_value<size_t>("./first");
 		if (xmli.exists("./last"))  { fset.last   = xmli.get_value<size_t>("./last"); fset.last_set = true; }
 		if (xmli.exists("./stride"))  fset.stride = xmli.get_value<size_t>("./stride");
+		if (xmli.exists("./clones"))  fset.clones = xmli.get_value<size_t>("./clones");
 		
 		sample.frames.push_back(fset);
 		Info::Inst()->write(string("Added frames from ")+fset.filename+string(" using format: ")+fset.type);

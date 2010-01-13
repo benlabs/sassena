@@ -61,7 +61,7 @@ void ScatterSpectrum::transform() {
         
         fftw_execute(p1); /* repeat as needed */
 
-        for(size_t i = 0; i < 2*NF; ++i) {
+        for(size_t i = 0; i < NF; ++i) {
             fqt[i]=complex<double>(wspace[i][0],wspace[i][1])*( 1.0 / ( 2*NF ) );
         }
         

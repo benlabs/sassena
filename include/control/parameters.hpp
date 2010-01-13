@@ -105,12 +105,14 @@ private:
 		ar & stride;
 		ar & filename;
 		ar & type;
+        ar & clones;
     }
 	/////////////////// 
 
 public:	
 	size_t first;
 	size_t last;
+    size_t clones;
 	bool last_set;
 	size_t stride;
 	std::string filename;
