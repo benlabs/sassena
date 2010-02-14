@@ -119,12 +119,11 @@ int main(int argc,char** argv) {
 	        sample.coordinate_sets.clear_cache(); // reduce overhead
 		
 		    timer.stop("sample::setup");
-        }
-        catch {
+        } catch(...) {
             initstatus = false; 
         }
         
-        world.broadcast(world,status,0);            
+        broadcast(world,initstatus,0);            
         
 		//------------------------------------------//
 		//
