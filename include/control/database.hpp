@@ -37,7 +37,6 @@
 // these constructs are to be used w/ in the code the following way:
 // string fs = Params::Inst()->sample.structure.file
 
-
  class DatabaseExlusionParameters {
  private:
  	/////////////////// MPI related

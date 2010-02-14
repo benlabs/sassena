@@ -98,35 +98,49 @@ int main(int argc,char** argv) {
 		Info::Inst()->write("   to be published                                                       ");		
 		Info::Inst()->write(".........................................................................");
 		Info::Inst()->write("");
+    }
+    
+    
 
-		//------------------------------------------//
-		//
-		// Test the mpi environment
-		//
-		//------------------------------------------//	
-	
-		//------------------------------------------//
-		//
-		// Setting up the sample
-		//
-		//------------------------------------------//	
-	
-		timer.start("sample::setup");
+    bool initstatus = true;
+    
+	if (world.rank()==0) {
 	    
-        params->init(string(argv[1]));
+		try {
 
-        database->init(string(argv[2]));
+    		timer.start("sample::setup");
 	    
-        sample.init();
-	    
-		timer.stop("sample::setup");
+            params->init(string(argv[1]));
 
+            database->init(string(argv[2]));
+	    
+            sample.init();
+	    
+	        sample.coordinate_sets.clear_cache(); // reduce overhead
+		
+		    timer.stop("sample::setup");
+        }
+        catch {
+            initstatus = false; 
+        }
+        
+        world.broadcast(world,status,0);            
+        
 		//------------------------------------------//
 		//
 		// Preparation, Analysis of the system
 		//
 		//------------------------------------------//
+	}
+	else {
+		world.recv(0,boost::mpi::any_tag, initstatus);			
+
+	}
+	// if something went wrong during initialization, exit now.
+    if (!initstatus) return 1;
 	
+	if (world.rank()==0) {
+	    
 		Info::Inst()->write(string("Set background scattering length density set to ")+to_s(Params::Inst()->scattering.background.factor));
 		
 		//------------------------------------------//
@@ -139,7 +153,6 @@ int main(int argc,char** argv) {
 		// before calculating anything we need to communicate the sample to any node
 		// this is a one-to-all communication
 
-		sample.coordinate_sets.clear_cache(); // reduce overhead
 
 		Info::Inst()->write("Exchanging sample, database & params information with compute nodes... ");
 

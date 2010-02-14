@@ -122,6 +122,7 @@ void Params::read_xml(std::string filename) {
 		xmli.set_current(framesets[i]);
 		SampleFramesetParameters fset;	
 		fset.first = def_first;	fset.last = def_last; fset.last_set = def_last_set; fset.stride = def_stride;
+        fset.clones = def_clones;
 		fset.filename = get_filepath(xmli.get_value<string>("./file"));
 		fset.type = xmli.get_value<string>("./format");
 		if (xmli.exists("./first"))   fset.first  = xmli.get_value<size_t>("./first");

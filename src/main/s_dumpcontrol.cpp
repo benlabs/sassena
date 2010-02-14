@@ -25,8 +25,6 @@
 #include <boost/regex.hpp>
 #include <boost/accumulators/accumulators.hpp>
 #include <boost/accumulators/statistics.hpp>
-#include <boost/archive/text_oarchive.hpp>
-#include <boost/archive/text_iarchive.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/mpi.hpp>
 #include <boost/math/special_functions.hpp>
@@ -38,7 +36,9 @@
 #include "control.hpp"
 #include "sample.hpp"
 
-
+#include <boost/archive/impl/archive_serializer_map.ipp>
+#include <boost/archive/text_oarchive.hpp>
+#include <boost/archive/text_iarchive.hpp>
 #include <boost/archive/binary_iarchive.hpp>
 #include <boost/archive/binary_oarchive.hpp>
 using namespace std;

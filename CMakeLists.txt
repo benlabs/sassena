@@ -7,85 +7,47 @@ SET(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/modules")
 # project related information
 PROJECT(Sassena)
 SET(CMAKE_BUILD_TYPE Release)
-
 ## some global compiler flags
 SET(WALLFLAGS ${WALLFLAGS} "-ftree-vectorize  ")
-##SET(WALLFLAGS ${WALLFLAGS} "-Waddress                        "        )
-##SET(WALLFLAGS ${WALLFLAGS} "-Warray-bounds                   "        )
-##SET(WALLFLAGS ${WALLFLAGS} "-Wc++0x-compat                   "        )
-#SET(WALLFLAGS ${WALLFLAGS} "-Wchar-subscripts                "        )
-##SET(WALLFLAGS ${WALLFLAGS} "-Wenum-compare              		"  )
-##SET(WALLFLAGS ${WALLFLAGS} "-Wimplicit-int                   "        )
-##SET(WALLFLAGS ${WALLFLAGS} "-Wimplicit-function-declaration  "        )
-#SET(WALLFLAGS ${WALLFLAGS} "-Wcomment                        "        )
-#SET(WALLFLAGS ${WALLFLAGS} "-Wformat                         "        )
-##SET(WALLFLAGS ${WALLFLAGS} "-Wmain                      		"  )
-#SET(WALLFLAGS ${WALLFLAGS} "-Wmissing-braces                 "        )
-##SET(WALLFLAGS ${WALLFLAGS} "-Wnonnull                        "        )
-#SET(WALLFLAGS ${WALLFLAGS} "-Wparentheses                    "        )
-##SET(WALLFLAGS ${WALLFLAGS} "-Wpointer-sign                   "        )
-#SET(WALLFLAGS ${WALLFLAGS} "-Wreorder                        "        )
-#SET(WALLFLAGS ${WALLFLAGS} "-Wreturn-type                    "        )
-#SET(WALLFLAGS ${WALLFLAGS} "-Wsequence-point                 "        )
-#SET(WALLFLAGS ${WALLFLAGS} "-Wsign-compare                   "        )
-#SET(WALLFLAGS ${WALLFLAGS} "-Wstrict-aliasing                "        )
-##SET(WALLFLAGS ${WALLFLAGS} "-Wstrict-overflow              "        )
-#SET(WALLFLAGS ${WALLFLAGS} "-Wswitch                         "        )
-#SET(WALLFLAGS ${WALLFLAGS} "-Wtrigraphs                      "        )
-#SET(WALLFLAGS ${WALLFLAGS} "-Wuninitialized                  "        )
-#SET(WALLFLAGS ${WALLFLAGS} "-Wunknown-pragmas                "        )
-#SET(WALLFLAGS ${WALLFLAGS} "-Wunused-function                "        )
-#SET(WALLFLAGS ${WALLFLAGS} "-Wunused-label                   "        )
-#SET(WALLFLAGS ${WALLFLAGS} "-Wunused-value                   "        )
-##SET(WALLFLAGS ${WALLFLAGS} -Wunused-variable                   ) 
-##SET(WALLFLAGS ${WALLFLAGS} "-Wvolatile-register-var"              )
-
-#ADD_DEFINITIONS( -O3 -fPIC -DBOOST_UBLAS_NDEBUG -DNDEBUG  -funroll-loops -ftree-vectorizer-verbose=3 -pg )
-#ADD_DEFINITIONS( -O3 -fPIC )
-ADD_DEFINITIONS( -fPIC -g -Wall)
+ADD_DEFINITIONS( -fPIC -g -Wall )
 #SET(CMAKE_EXE_LINKER_FLAGS -pg -lc_p)
 
 
+INCLUDE_DIRECTORIES(${Sassena_SOURCE_DIR}/include)
 
+SET(Boost_USE_STATIC_LIBS ON)
 # the elegant way to set up boost
-SET(BOOST_ROOT ${EXTERNAL_ROOT})
 SET(Boost_ADDITIONAL_VERSIONS "1.37")
 # accumulators are included in boost 1.36+
-FIND_PACKAGE(Boost 1.36 REQUIRED COMPONENTS regex mpi serialization system filesystem)
+FIND_PACKAGE(Boost 1.42 REQUIRED COMPONENTS regex mpi serialization system filesystem)
 INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS}/geometry)
 
-
+SET(FFTW3_DIR /Users/benlin/sw/benmac-x86-64)
 FIND_PACKAGE(FFTW3 REQUIRED)
 INCLUDE_DIRECTORIES(${FFTW3_INCLUDE_DIR})
 
 FIND_PACKAGE(MPI REQUIRED)
 SET(CMAKE_CXX_COMPILER ${MPI_COMPILER})
 
-# set the libconfig++ library
-SET(CONFIG_ROOT ${EXTERNAL_ROOT})
-FIND_PACKAGE(Config REQUIRED)
-INCLUDE_DIRECTORIES(${Sassena_SOURCE_DIR}/include)
-INCLUDE_DIRECTORIES(${CONFIG_INCLUDE_DIR})
-
 # libxml support
-FIND_PACKAGE(LibXml2 REQUIRED)
+FIND_PACKAGE(libxml2 REQUIRED)
 INCLUDE_DIRECTORIES(${LIBXML2_INCLUDE_DIR})
 
 # set the global link dependencies and include dirs
-SET(LIB_DEPENDENCIES ${CONFIG_LIBRARIES} ${Boost_LIBRARIES} ${LIBXML2_LIBRARIES} ${FFTW3_LIBRARIES} ) 
+SET(LIB_DEPENDENCIES ${Boost_LIBRARIES} ${LIBXML2_LIBRARIES} ${FFTW3_LIBRARIES} ) 
 INCLUDE_DIRECTORIES( ${Sassena_SOURCE_DIR}/include/io/xdrfile)
 
 
 
 MESSAGE(STATUS "sassena_lib_depend= " ${LIB_DEPENDENCIES})
 
-ADD_LIBRARY(sass_math SHARED
+ADD_LIBRARY(sass_math 
 	src/math/coor3d.cpp	
 )
 TARGET_LINK_LIBRARIES (sass_math ${LIB_DEPENDENCIES} )
 SET(LIB_DEPENDENCIES ${LIB_DEPENDENCIES} sass_math)
 
-ADD_LIBRARY(sass_controlio SHARED
+ADD_LIBRARY(sass_controlio STATIC
 	src/io/xml_interface.cpp
 	src/io/xdrfile/xdrfile.c
 	src/io/xdrfile/xdrfile_xtc.c
@@ -97,14 +59,14 @@ ADD_LIBRARY(sass_controlio SHARED
 TARGET_LINK_LIBRARIES (sass_controlio ${LIB_DEPENDENCIES} )
 SET(LIB_DEPENDENCIES ${LIB_DEPENDENCIES} sass_controlio)
 
-ADD_LIBRARY(sass_measures SHARED
+ADD_LIBRARY(sass_measures STATIC
 	src/measures/center_of_mass.cpp
 )
 TARGET_LINK_LIBRARIES (sass_measures ${LIB_DEPENDENCIES} )
 SET(LIB_DEPENDENCIES ${LIB_DEPENDENCIES} sass_measures)
 
 
-ADD_LIBRARY(sass_sample SHARED
+ADD_LIBRARY(sass_sample STATIC
 	src/sample/sample.cpp
 	src/sample/atom.cpp
 	src/sample/atoms.cpp
@@ -120,7 +82,7 @@ TARGET_LINK_LIBRARIES (sass_sample ${LIB_DEPENDENCIES} )
 SET(LIB_DEPENDENCIES ${LIB_DEPENDENCIES} sass_sample)
 
 
-ADD_LIBRARY(sass_decomposition SHARED
+ADD_LIBRARY(sass_decomposition STATIC
 	src/decomposition/decompose.cpp
 	src/decomposition/decomposition_plan.cpp	
 )
@@ -132,7 +94,7 @@ SET(LIB_DEPENDENCIES ${LIB_DEPENDENCIES} sass_decomposition)
 #SET(LIB_DEPENDENCIES ${LIB_DEPENDENCIES} xdrfile-static)
 
 
-ADD_LIBRARY(sass_report SHARED
+ADD_LIBRARY(sass_report STATIC
 	src/report/performance_analyzer.cpp
 	src/report/progress_reporter.cpp
 	src/report/timer.cpp
@@ -148,7 +110,7 @@ SET(LIB_DEPENDENCIES ${LIB_DEPENDENCIES} sass_report)
 #SET(LIB_DEPENDENCIES ${LIB_DEPENDENCIES} sass_sample)
 
 
-ADD_LIBRARY(sass_scatter_devices SHARED
+ADD_LIBRARY(sass_scatter_devices STATIC
 	src/scatter_devices/scatter_factors.cpp
 	src/scatter_devices/scatter_device_factory.cpp
 	src/scatter_devices/scatter_spectrum.cpp
