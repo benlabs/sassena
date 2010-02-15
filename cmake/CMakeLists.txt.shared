@@ -1,0 +1,7 @@
+SET(cmake_policy NO_POLICY_SCOPE)
+
+INCLUDE(${CMAKE_PROJECT_PATH}/CMakeLists.txt.depends)
+INCLUDE(${CMAKE_PROJECT_PATH}/CMakeLists.txt.intern)
+INCLUDE(${CMAKE_PROJECT_PATH}/CMakeLists.txt.executables)
+
+INCLUDE(${CMAKE_PROJECT_PATH}/CMakeLists.txt.packages)

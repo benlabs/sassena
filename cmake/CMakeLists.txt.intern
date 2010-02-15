@@ -1,0 +1,73 @@
+SET(cmake_policy NO_POLICY_SCOPE)
+
+INCLUDE_DIRECTORIES(${Sassena_SOURCE_DIR}/include)
+INCLUDE_DIRECTORIES( ${Sassena_SOURCE_DIR}/include/io/xdrfile)
+
+ADD_LIBRARY(sass_math 
+	src/math/coor3d.cpp	
+)
+SET(LIB_DEPENDENCIES ${LIB_DEPENDENCIES} sass_math)
+
+ADD_LIBRARY(sass_controlio 
+	src/io/xml_interface.cpp
+	src/io/xdrfile/xdrfile.c
+	src/io/xdrfile/xdrfile_xtc.c
+	src/io/xdrfile/xdrfile_trr.c
+	src/control/log.cpp
+	src/control/parameters.cpp
+	src/control/database.cpp
+)
+SET(LIB_DEPENDENCIES ${LIB_DEPENDENCIES} sass_controlio)
+
+ADD_LIBRARY(sass_measures 
+	src/measures/center_of_mass.cpp
+)
+SET(LIB_DEPENDENCIES ${LIB_DEPENDENCIES} sass_measures)
+
+
+ADD_LIBRARY(sass_sample
+	src/sample/sample.cpp
+	src/sample/atom.cpp
+	src/sample/atoms.cpp
+	src/sample/atomselection.cpp
+	src/sample/coordinate_set.cpp
+	src/sample/coordinate_sets.cpp
+	src/sample/frame.cpp
+	src/sample/frames.cpp
+	src/sample/motion_walker.cpp	
+	
+)
+SET(LIB_DEPENDENCIES ${LIB_DEPENDENCIES} sass_sample)
+
+ADD_LIBRARY(sass_decomposition
+	src/decomposition/decompose.cpp
+	src/decomposition/decomposition_plan.cpp	
+)
+SET(LIB_DEPENDENCIES ${LIB_DEPENDENCIES} sass_decomposition)
+
+ADD_LIBRARY(sass_report 
+	src/report/performance_analyzer.cpp
+	src/report/progress_reporter.cpp
+	src/report/timer.cpp
+)
+SET(LIB_DEPENDENCIES ${LIB_DEPENDENCIES} sass_report)
+
+ADD_LIBRARY(sass_scatter_devices 
+	src/scatter_devices/scatter_factors.cpp
+	src/scatter_devices/scatter_device_factory.cpp
+	src/scatter_devices/scatter_spectrum.cpp
+	src/scatter_devices/all.cpp
+	src/scatter_devices/all_vectors.cpp
+	src/scatter_devices/all_multipole_sphere.cpp
+	src/scatter_devices/all_multipole_cylinder.cpp
+	src/scatter_devices/self_vectors.cpp
+)
+SET(LIB_DEPENDENCIES ${LIB_DEPENDENCIES} sass_scatter_devices)
+
+TARGET_LINK_LIBRARIES (sass_math ${LIB_DEPENDENCIES} )
+TARGET_LINK_LIBRARIES (sass_controlio ${LIB_DEPENDENCIES} )
+TARGET_LINK_LIBRARIES (sass_measures ${LIB_DEPENDENCIES} )
+TARGET_LINK_LIBRARIES (sass_sample ${LIB_DEPENDENCIES} )
+TARGET_LINK_LIBRARIES (sass_decomposition ${LIB_DEPENDENCIES} )
+TARGET_LINK_LIBRARIES (sass_report ${LIB_DEPENDENCIES} )
+TARGET_LINK_LIBRARIES (sass_scatter_devices ${LIB_DEPENDENCIES} )

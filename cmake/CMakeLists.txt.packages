@@ -1,0 +1,79 @@
+
+SET(CPACK_PACKAGE_NAME "Sassena")
+SET(CPACK_PACKAGE_VENDOR "Benjamin Lindner (ben@benlabs.net), Franci Merzel (franci.merzel@ki.si)")
+SET(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Sassena: a method for calculating small-angle X-ray and neutron scattering from explicit-atom models of solvated particles")
+SET(CPACK_PACKAGE_VERSION "2.0.0")
+SET(CPACK_PACKAGE_VERSION_MAJOR "2")
+SET(CPACK_PACKAGE_VERSION_MINOR "0")
+SET(CPACK_PACKAGE_VERSION_PATCH "0")
+
+INCLUDE(CPack)
+
+ENABLE_TESTING()
+# unit tests:
+#ADD_EXECUTABLE(unit_coor3d tests/unit_coor3d.cpp src/coor3d.cpp)
+#TARGET_LINK_LIBRARIES (unit_coor3d ${LIB_DEPENDENCIES})
+#INSTALL(TARGETS unit_coor3d RUNTIME DESTINATION bin/units)
+#
+#ADD_EXECUTABLE(unit_boostmpi tests/unit_boostmpi.cpp)
+#TARGET_LINK_LIBRARIES (unit_boostmpi ${LIB_DEPENDENCIES})
+#INSTALL(TARGETS unit_boostmpi RUNTIME DESTINATION bin/units)
+#
+#ADD_EXECUTABLE(unit_exp tests/unit_exp.cpp src/coor3d.cpp)
+#TARGET_LINK_LIBRARIES (unit_exp ${LIB_DEPENDENCIES})
+#INSTALL(TARGETS unit_exp RUNTIME DESTINATION bin/units)
+#
+#ADD_EXECUTABLE(unit_libconfig tests/unit_libconfig.cpp)
+#TARGET_LINK_LIBRARIES (unit_libconfig ${LIB_DEPENDENCIES})
+#INSTALL(TARGETS unit_libconfig RUNTIME DESTINATION bin/units)
+#
+#ADD_EXECUTABLE(unit_triangulation tests/unit_triangulation.cpp src/coor3d.cpp)
+#TARGET_LINK_LIBRARIES (unit_triangulation ${LIB_DEPENDENCIES})
+#INSTALL(TARGETS unit_triangulation RUNTIME DESTINATION bin/units)
+#
+#ADD_EXECUTABLE(unit_randomnumbers tests/unit_randomnumbers.cpp src/coor3d.cpp)
+#TARGET_LINK_LIBRARIES (unit_randomnumbers ${LIB_DEPENDENCIES})
+#INSTALL(TARGETS unit_randomnumbers RUNTIME DESTINATION bin/units)
+#
+#ADD_EXECUTABLE(unit_ranklogic tests/unit_ranklogic.cpp src/tasks.cpp src/coor3d.cpp)
+#TARGET_LINK_LIBRARIES (unit_ranklogic ${LIB_DEPENDENCIES})
+#INSTALL(TARGETS unit_ranklogic RUNTIME DESTINATION bin/units)
+#
+#ADD_EXECUTABLE(unit_serializestatic tests/unit_serializestatic.cpp )
+#TARGET_LINK_LIBRARIES (unit_serializestatic ${LIB_DEPENDENCIES})
+#INSTALL(TARGETS unit_serializestatic RUNTIME DESTINATION bin/units)
+#
+#ADD_EXECUTABLE(unit_mpicollectives tests/unit_mpicollectives.cpp src/timer.cpp src/log.cpp)
+#TARGET_LINK_LIBRARIES (unit_mpicollectives ${LIB_DEPENDENCIES})
+#INSTALL(TARGETS unit_mpicollectives RUNTIME DESTINATION bin/units)
+#
+#ADD_EXECUTABLE(unit_sasstest 
+#	tests/unit_sasstest.cpp 
+#	src/sample.cpp src/parameters.cpp src/log.cpp src/frame.cpp src/frames.cpp src/atom.cpp src/atoms.cpp src/atomselection.cpp src/coor3d.cpp src/settings.cpp src/tasks.cpp src/decompose.cpp src/scatterdevices.cpp src/coordinateset.cpp src/scatterspectrum.cpp src/analysis.cpp src/grid.cpp)
+#TARGET_LINK_LIBRARIES (unit_sasstest ${LIB_DEPENDENCIES})
+#INSTALL(TARGETS unit_sasstest RUNTIME DESTINATION bin/units)
+
+
+# additional tools:
+#ADD_EXECUTABLE(normalize tools/normalize.cpp)
+#TARGET_LINK_LIBRARIES (normalize )
+#INSTALL(TARGETS normalize RUNTIME DESTINATION bin/tools)
+#
+#ADD_EXECUTABLE(grid tools/grid.cpp src/coor3d.cpp)
+#TARGET_LINK_LIBRARIES (grid )
+#INSTALL(TARGETS grid RUNTIME DESTINATION bin/tools)
+#
+#ADD_EXECUTABLE(grid_frames tools/grid_frames.cpp src/coor3d.cpp)
+#TARGET_LINK_LIBRARIES (grid_frames )
+#INSTALL(TARGETS grid_frames RUNTIME DESTINATION bin/tools)
+
+
+# additional tools:
+#ADD_EXECUTABLE(map tools/map.cpp src/coor3d.cpp)
+#TARGET_LINK_LIBRARIES (map )
+#INSTALL(TARGETS map RUNTIME DESTINATION bin/tools)
+
+#ADD_TEST(unit_coor3d "Coordinate 3D type system")
+#ADD_TEST(unit_exp "Boost Special functions")
+#ADD_TEST(unit_boostmpi  "Boost MPI implementation")
+#ADD_TEST(unit_libconfig  "Libconfig implementation")
