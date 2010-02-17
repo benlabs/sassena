@@ -27,6 +27,7 @@
 #include "sample/atoms.hpp"
 #include "decomposition/decompose.hpp"
 #include "control.hpp"
+#include "log.hpp"
 
 
 using namespace std;

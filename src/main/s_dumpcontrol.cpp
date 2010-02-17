@@ -34,6 +34,7 @@
 
 // other headers
 #include "control.hpp"
+#include "log.hpp"
 #include "sample.hpp"
 
 #include <boost/archive/impl/archive_serializer_map.ipp>

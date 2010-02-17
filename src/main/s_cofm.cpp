@@ -36,8 +36,9 @@
 
 // other headers
 #include "control.hpp"
+#include "log.hpp"
 #include "decomposition/decompose.hpp"
-#include "measures/center_of_mass.hpp"
+#include "sample/center_of_mass.hpp"
 #include "sample.hpp"
 
 

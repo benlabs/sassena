@@ -1,5 +1,5 @@
 /*
- *  scatter_devices.hpp
+ *  log.hpp
  *
  *  Created on: May 26, 2008
  *  Authors:
@@ -9,11 +9,10 @@
  *
  */
 
-#ifndef CONTROL_HPP_
-#define CONTROL_HPP_
+#ifndef LOG_HPP_
+#define LOG_HPP_
 
-#include "control/parameters.hpp"
-#include "control/database.hpp"
+#include "log/log.hpp"
 
 #endif
 

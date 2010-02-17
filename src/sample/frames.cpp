@@ -23,8 +23,9 @@
 
 // other headers
 #include "sample/atomselection.hpp"
-#include "measures/center_of_mass.hpp"
+#include "sample/center_of_mass.hpp"
 #include "control.hpp"
+#include "log.hpp"
 
 
 

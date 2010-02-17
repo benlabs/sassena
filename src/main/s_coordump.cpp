@@ -40,6 +40,7 @@
 #include "decompose.hpp"
 #include "decomposition_plan.hpp"
 #include "control.hpp"
+#include "log.hpp"
 #include "performance_analyzer.hpp"
 #include "progress_reporter.hpp"
 #include "sample.hpp"

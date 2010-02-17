@@ -24,7 +24,7 @@
 #include "math/coor3d.hpp"
 #include "decomposition/decompose.hpp"
 #include "control.hpp"
-#include "sample.hpp"
+#include "log.hpp"
 
 
 using namespace std;

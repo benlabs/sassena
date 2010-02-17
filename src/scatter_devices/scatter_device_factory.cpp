@@ -14,6 +14,7 @@
 
 // other headers
 #include "control.hpp"
+#include "log.hpp"
 #include "scatter_devices/all_multipole_sphere.hpp"
 #include "scatter_devices/all_multipole_cylinder.hpp"
 #include "scatter_devices/all_vectors.hpp"

@@ -23,6 +23,7 @@
 #include "sample/frame.hpp"
 #include "math/coor3d.hpp"
 #include "control.hpp"
+#include "log.hpp"
 
 using namespace std;
 

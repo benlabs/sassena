@@ -1,0 +1,4 @@
+#define Sassena_VERSION_MAJOR    @Sassena_VERSION_MAJOR@
+#define Sassena_VERSION_MINOR    @Sassena_VERSION_MINOR@
+#define Sassena_VERSION_REVISION @Sassena_VERSION_REVISION@
+#define Sassena_VERSIONSTRING "@Sassena_VERSION_MAJOR@.@Sassena_VERSION_MINOR@.@Sassena_VERSION_REVISION@"

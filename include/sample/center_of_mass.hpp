@@ -9,8 +9,8 @@
  *
  */
 
-#ifndef MEASURES__CENTER_OF_MASS_HPP_
-#define MEASURES__CENTER_OF_MASS_HPP_
+#ifndef SAMPLE__CENTER_OF_MASS_HPP_
+#define SAMPLE__CENTER_OF_MASS_HPP_
 
 // common header
 #include "common.hpp"

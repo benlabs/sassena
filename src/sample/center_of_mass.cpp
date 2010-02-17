@@ -9,7 +9,7 @@
  *
  */
 // direct header
-#include "measures/center_of_mass.hpp"
+#include "sample/center_of_mass.hpp"
 
 // other headers
 #include "sample/atoms.hpp"
@@ -17,6 +17,7 @@
 #include "math/coor3d.hpp"
 #include "sample/coordinate_set.hpp"
 #include "control.hpp"
+#include "log.hpp"
 
 using namespace std;
 

@@ -12,6 +12,7 @@
 // direct header
 #include "sample/motion_walker.hpp"
 #include "control.hpp"
+#include "log.hpp"
 
 #include <boost/random/mersenne_twister.hpp>	
 #include <boost/random/normal_distribution.hpp>	

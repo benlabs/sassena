@@ -12,6 +12,7 @@
 // direct header
 #include "report/progress_reporter.hpp"
 #include "control.hpp"
+#include "log.hpp"
 
 using namespace std;
 

@@ -14,7 +14,7 @@
 #include <boost/regex.hpp>
 
 // other headers
-#include "control/log.hpp"
+#include "log/log.hpp"
 #include "control/parameters.hpp"
 #include "io/xml_interface.hpp"
 

@@ -30,7 +30,7 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/lexical_cast.hpp>
 // other headers
-#include "control/log.hpp"
+#include "log/log.hpp"
 
 class XMLElement {
 	xmlNodePtr node_ptr;

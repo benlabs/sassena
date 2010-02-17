@@ -22,6 +22,7 @@
 #include <boost/format/group.hpp>
 
 #include "control.hpp"
+#include "log.hpp"
 #include "report/timer.hpp"
 
 using namespace std;

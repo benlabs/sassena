@@ -27,6 +27,7 @@
 #include <boost/accumulators/statistics.hpp>
 #include <boost/archive/text_oarchive.hpp>
 #include <boost/archive/text_iarchive.hpp>
+#include <boost/exception/all.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/mpi.hpp>
 #include <boost/math/special_functions.hpp>
@@ -39,12 +40,15 @@
 #include "decomposition/decompose.hpp"
 #include "decomposition/decomposition_plan.hpp"
 #include "control.hpp"
+#include "log.hpp"
 #include "report/performance_analyzer.hpp"
 #include "report/progress_reporter.hpp"
 #include "report/timer.hpp"
 #include "sample/sample.hpp"
 #include "scatter_devices/scatter_device_factory.hpp"
 #include "scatter_devices/scatter_spectrum.hpp"
+
+#include "SassenaConfig.hpp"
 
 using namespace std;
 
@@ -97,6 +101,7 @@ int main(int argc,char** argv) {
 		Info::Inst()->write("1. Sassena - Elastic Scattering Calculations on Parallel Computers       ");
 		Info::Inst()->write("   to be published                                                       ");		
 		Info::Inst()->write(".........................................................................");
+        Info::Inst()->write(string("Version Information: ") + string(Sassena_VERSIONSTRING));
 		Info::Inst()->write("");
     }
     
@@ -119,11 +124,26 @@ int main(int argc,char** argv) {
 	        sample.coordinate_sets.clear_cache(); // reduce overhead
 		
 		    timer.stop("sample::setup");
-        } catch(...) {
+
+            broadcast(world,initstatus,0);            
+
+        } catch (boost::exception const& e ) {
             initstatus = false; 
+            Err::Inst()->write("Caught BOOST error, sending hangup to all nodes");
+            stringstream ss; ss << diagnostic_information(e);
+            Err::Inst()->write(string("Diagnotic information: ") + ss.str());
+            broadcast(world,initstatus,0);            
+        } catch (std::exception const& e) {
+            initstatus = false; 
+            Err::Inst()->write("Caught STD error, sending hangup to all nodes");
+            Err::Inst()->write(string("what() : ") + e.what());
+            broadcast(world,initstatus,0);                        
+        } catch (...) {
+            initstatus = false; 
+            Err::Inst()->write("Caught error: UNKNOWN sending hangup to all nodes");
+            broadcast(world,initstatus,0);            
         }
         
-        broadcast(world,initstatus,0);            
         
 		//------------------------------------------//
 		//
@@ -133,8 +153,8 @@ int main(int argc,char** argv) {
 	}
 	else {
 		world.recv(0,boost::mpi::any_tag, initstatus);			
-
 	}
+	
 	// if something went wrong during initialization, exit now.
     if (!initstatus) return 1;
 	

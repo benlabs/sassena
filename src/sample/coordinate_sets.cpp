@@ -21,8 +21,9 @@
 // other headers
 #include "sample/frame.hpp"
 #include "math/coor3d.hpp"
-#include "measures/center_of_mass.hpp"
+#include "sample/center_of_mass.hpp"
 #include "control.hpp"
+#include "log.hpp"
 
 
 using namespace std;

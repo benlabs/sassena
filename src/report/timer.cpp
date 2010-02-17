@@ -15,6 +15,7 @@
 #include <deque>
 
 #include "control.hpp"
+#include "log.hpp"
 
 using namespace std;
 

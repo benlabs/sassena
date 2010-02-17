@@ -13,9 +13,31 @@ ADD_EXECUTABLE(s_cofm
     src/main/s_cofm.cpp
 )
 
-TARGET_LINK_LIBRARIES (sassena ${LIB_DEPENDENCIES} )
-TARGET_LINK_LIBRARIES (s_dumpcontrol ${LIB_DEPENDENCIES} )
-TARGET_LINK_LIBRARIES (s_cofm ${LIB_DEPENDENCIES} )
+TARGET_LINK_LIBRARIES (sassena 
+	sass_log
+	sass_controlio
+	sass_sample
+	sass_report
+	sass_decomposition
+	sass_scatter_devices
+	${BOOST_LIBRARIES}
+)
+
+TARGET_LINK_LIBRARIES (s_dumpcontrol
+	sass_log
+	sass_controlio
+	sass_sample
+	${BOOST_LIBRARIES}
+)
+TARGET_LINK_LIBRARIES (s_cofm
+	sass_log
+	sass_controlio
+	sass_sample
+	sass_report
+	sass_decomposition	
+	${ZLIB_LIBRARIES}
+	${BOOST_LIBRARIES}
+)
 
 INSTALL(TARGETS sassena RUNTIME DESTINATION bin)
 INSTALL(TARGETS s_dumpcontrol RUNTIME DESTINATION bin)

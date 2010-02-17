@@ -17,7 +17,7 @@
 #include <boost/random/variate_generator.hpp>	
 
 // other headers
-#include "control/log.hpp"
+#include "log/log.hpp"
 #include "io/xml_interface.hpp"
 
 using namespace std;
@@ -42,7 +42,7 @@ string Params::get_filepath(string fname) {
 }
 
 void Params::read_xml(std::string filename) {
-		
+	
 	// store the configuration line by line into an internal buffer, 
 	// this is for keeping history
 	ifstream conffile(filename.c_str());
@@ -54,11 +54,12 @@ void Params::read_xml(std::string filename) {
 		
 	// START OF sample section //	
 	XMLInterface xmli(filename);
-
+    
 	Info::Inst()->write("Reading parameters...");
 	
 	// now read the parameters
 	
+	    
 	sample.structure.file   = get_filepath(xmli.get_value<std::string>("//sample/structure/file"));
 	sample.structure.format = xmli.get_value<std::string>("//sample/structure/format");
 	vector<XMLElement> selections = xmli.get("//sample/selections/selection");
@@ -453,6 +454,7 @@ void Params::read_xml(std::string filename) {
 	
 	// initialize some of the runtime parameters:
     runtime.limits.cache.coordinate_sets = 1;
+
 };
 
 string Params::guessformat(string filename) {
@@ -473,7 +475,6 @@ bool Params::check() {
 }
 
 void Params::init(std::string filename) {
-	Info::Inst()->write(string("Looking for configuration file: ") + filename);
 	string format = guessformat(filename);
 	
 	// make the directory of the main configuration file the root for all others
@@ -482,6 +483,8 @@ void Params::init(std::string filename) {
 	else 
 		config_rootpath = ( boost::filesystem::initial_path() / boost::filesystem::path(filename).parent_path() ).string();		
 
+	Info::Inst()->write(string("Looking for configuration file: ") + filename);
+	
 	read_xml(filename);
 
 	Info::Inst()->write("Checking parameters...");	

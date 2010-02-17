@@ -26,6 +26,7 @@
 #include "decomposition/decompose.hpp"
 #include <fftw3.h>
 #include "control.hpp"
+#include "log.hpp"
 #include "sample.hpp"
 
 
