@@ -227,19 +227,19 @@ void AllVectorsThreadScatterDevice::conjmultiply(std::vector<std::complex<double
 }
 
 void AllVectorsThreadScatterDevice::worker1(size_t NM,CartesianCoor3D q) {
-    size_t NMMAX = 10000;
+    size_t NMMAX = 1000;
     for(size_t mi = 0; mi < NM; mi+=1)
     {
         timer.start("sd:scatter");
         scatter(mi);	
         timer.stop("sd:scatter");        
         
-        // only allow NMMAX results to reside in the internal buffer
+       // only allow NMMAX results to reside in the internal buffer
         while (at1.size()>=NMMAX) {
             timer.start("sd:scatter::wait");        
             boost::xtime xt;
             boost::xtime_get(&xt,boost::TIME_UTC);
-            xt.nsec += 100;
+            xt.nsec += 1000;
             boost::this_thread::sleep(xt);
             timer.stop("sd:scatter::wait");        
         } 	    
@@ -261,25 +261,14 @@ void AllVectorsThreadScatterDevice::worker2() {
     size_t MYRANK = p_thisworldcomm->rank();
     size_t vector_count = 0;
     
-    while (true) {
-        if (worker1_done_flag) {
-            if (at1.size()==0) break;
-        } else if (at1.size()==0) {
-            timer.start("sd:traffic::wait");        
-            boost::xtime xt;
-            boost::xtime_get(&xt,boost::TIME_UTC);
-            xt.nsec += 1;
-            boost::this_thread::sleep(xt);
-            timer.stop("sd:traffic::wait");        
-            continue;
-        }        
+    while ( !(worker1_done_flag && at1.empty()) ) {
         
         timer.start("sd:traffic"); 
         // get a local copy of the data
-        at1_mutex.lock();
-        std::vector< std::complex<double> > at_local = at1.front();
-        at1.pop();
-        at1_mutex.unlock();
+        std::vector< std::complex<double> >* p_at_local;
+        //if (!at1.try_pop(p_at_local)) continue;
+        at1.wait_and_pop(p_at_local);
+
 
         // target node: vector_count % NN
         size_t target_node = (vector_count%NN);
@@ -290,32 +279,33 @@ void AllVectorsThreadScatterDevice::worker2() {
         
         if (MYRANK==target_node) {
             
-            std::vector<std::complex<double> > at_allframes(NF);
+            std::vector<std::complex<double> >* p_at_allframes = new std::vector<std::complex<double> >(NF);
             
             // receive all values
             size_t ntotal=0;
             for (size_t n=0;n<NN;n++) {
-                double* p_at_allframes = (double*) &(at_allframes[ntotal]);
+                double* pp_at_allframes = (double*) &((*p_at_allframes)[ntotal]);
                 if (MYRANK!=n) {
-                    p_thisworldcomm->recv(n,0,p_at_allframes,2*nframes[n]);
+                    p_thisworldcomm->recv(n,0,pp_at_allframes,2*nframes[n]);
                 } else {
                     for(size_t nn=0;nn<nframes[n];nn++) {
-                        at_allframes[ntotal+nn]=at_local[nn];                        
+                        (*p_at_allframes)[ntotal+nn]=(*p_at_local)[nn];                        
                     }
                 }
                 ntotal+=nframes[n];
             }
             
             // push them off 
-            at2_mutex.lock();
-            at2.push(at_allframes);
-            at2_mutex.unlock();                
+            at2.push(p_at_allframes);
                             
         } else {
-            double* p_at_frames = (double*) &(at_local[0]);
+            double* p_at_frames = (double*) p_at_local;
             p_thisworldcomm->send(target_node,0,p_at_frames,2*NMYF);                
         }
         timer.stop("sd:traffic"); 
+
+	    // need to free p_at_local, since we gained ownership
+        delete p_at_local;
         
 	}
 	
@@ -325,28 +315,13 @@ void AllVectorsThreadScatterDevice::worker2() {
 void AllVectorsThreadScatterDevice::worker3() {
     
     size_t NF = p_sample->coordinate_sets.size();
-    at3.resize(NF,0);
-    
-    while (true) {
-        if (worker2_done_flag) {
-            if (at2.size()==0) break;
-        } else if (at2.size()==0) {
-            timer.start("sd:correlation::wait"); 
-            
-            boost::xtime xt;
-            boost::xtime_get(&xt,boost::TIME_UTC);
-            xt.nsec += 1;
-            boost::this_thread::sleep(xt);
-            timer.stop("sd:correlation::wait"); 
 
-            continue;
-        }
+    while ( !(worker2_done_flag && at2.empty()) ) {
             
         // get a local copy of the data
-        at2_mutex.lock();
-        std::vector< std::complex<double> > at_local = at2.front();
-        at2.pop();
-        at2_mutex.unlock();
+        std::vector< std::complex<double> >* p_at_local;
+        //if (!at2.try_pop(p_at_local)) continue;
+        at2.wait_and_pop(p_at_local);
 
         timer.start("sd:correlation"); 
 
@@ -354,26 +329,28 @@ void AllVectorsThreadScatterDevice::worker3() {
 	    if (Params::Inst()->scattering.correlation.type=="time") {
 
     	    timer.start("sd:correlate");	                    
-            correlate(at_local);
+            correlate(*p_at_local);
     	    timer.stop("sd:correlate");	        
 
     	} else if (Params::Inst()->scattering.correlation.type=="infinite-time") {
 
             timer.start("sd:correlate");	                    
-            infinite_correlate(at_local);
+            infinite_correlate(*p_at_local);
             timer.stop("sd:correlate");	        
         
 		} else {
 
     	    timer.start("sd:conjmultiply");	                                
-            conjmultiply(at_local);
+            conjmultiply(*p_at_local);
     	    timer.stop("sd:conjmultiply");	                    
 		}
 
         for(size_t n=0;n<at3.size();n++) {
-            at3[n]+=at_local[n];
+            at3[n]+=(*p_at_local)[n];
         }
         timer.stop("sd:correlation"); 
+
+        delete p_at_local;
         
 	}	
 	
@@ -404,7 +381,8 @@ void AllVectorsThreadScatterDevice::execute(CartesianCoor3D q) {
     long NF = p_sample->coordinate_sets.size();
 
     m_spectrum.assign(NF,0);
-
+    at3.resize(NF,0);
+    
     worker1_done_flag = false;
     worker2_done_flag = false;
     worker3_done_flag = false;
@@ -425,12 +403,17 @@ void AllVectorsThreadScatterDevice::execute(CartesianCoor3D q) {
     
     if (NN>1) {
         boost::mpi::reduce(*p_thisworldcomm,p_at3,2*NF,p_atlocal,std::plus<double>() ,0);        
+        for(size_t j = 0; j < at_local.size(); ++j)
+        {
+            m_spectrum[j] += std::complex<double>((at_local[j].real())/NM,(at_local[j].imag())/NM);
+        }         			
+    } else {
+        for(size_t j = 0; j < at3.size(); ++j)
+        {
+            m_spectrum[j] += std::complex<double>((at3[j].real())/NM,(at3[j].imag())/NM);
+        }         			
     }
    
-    for(size_t j = 0; j < at_local.size(); ++j)
-    {
-        m_spectrum[j] += std::complex<double>((at_local[j].real())/NM,(at_local[j].imag())/NM);
-    }         			
 }
 
 vector<complex<double> >& AllVectorsThreadScatterDevice::get_spectrum() {
@@ -448,7 +431,7 @@ void AllVectorsThreadScatterDevice::scatter(size_t moffset) {
 
    size_t NMYF = myframes.size();
 
-   std::vector<complex<double> > a(NMYF,0);
+   std::vector<complex<double> >* p_a = new std::vector<complex<double> >(NMYF,0);
    
    string target = Params::Inst()->scattering.target;
    size_t NOA = p_sample->atoms.selections[target].indexes.size();
@@ -481,12 +464,10 @@ void AllVectorsThreadScatterDevice::scatter(size_t moffset) {
            Ar += sfs[j]*cos(p);
            Ai += sfs[j]*sin(p);
 	   }
-       a[fi] = complex<double>(Ar,Ai);
+       (*p_a)[fi] = complex<double>(Ar,Ai);
 	}
 	
-    at1_mutex.lock();
-    at1.push(a);
-    at1_mutex.unlock();
+    at1.push(p_a);
 }
 
 
