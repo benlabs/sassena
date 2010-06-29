@@ -18,6 +18,7 @@
 #include "scatter_devices/all_multipole_sphere.hpp"
 #include "scatter_devices/all_multipole_cylinder.hpp"
 #include "scatter_devices/all_vectors.hpp"
+#include "scatter_devices/all_vectorsthread.hpp"
 #include "scatter_devices/self_vectors.hpp"
 
 using namespace std;
@@ -32,6 +33,8 @@ ScatterDevice* ScatterDeviceFactory::create(boost::mpi::communicator& local,Samp
     else if (Params::Inst()->scattering.interference.type == "all"){
     	if (Params::Inst()->scattering.average.orientation.type == "vectors") {
     		p_ScatterDevice = new AllVectorsScatterDevice(local,sample);			
+    	} else if (Params::Inst()->scattering.average.orientation.type == "vectorsthread") {
+        		p_ScatterDevice = new AllVectorsThreadScatterDevice(local,sample);			
     	} else if (Params::Inst()->scattering.average.orientation.type == "multipole") {
     		if (Params::Inst()->scattering.average.orientation.multipole.type == "sphere") {
     			p_ScatterDevice = new AllMSScatterDevice(local,sample);			

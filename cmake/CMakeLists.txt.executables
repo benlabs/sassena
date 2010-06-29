@@ -2,7 +2,12 @@ ADD_EXECUTABLE(sassena
 	src/common.cpp
     src/main/sassena.cpp
 )
-	
+
+ADD_EXECUTABLE(s_fqt2sqw 
+	src/common.cpp
+    src/main/s_fqt2sqw.cpp
+)
+
 ADD_EXECUTABLE(s_dumpcontrol
 	src/common.cpp
     src/main/s_dumpcontrol.cpp
@@ -19,6 +24,12 @@ TARGET_LINK_LIBRARIES (sassena
 	sass_sample
 	sass_report
 	sass_decomposition
+	sass_scatter_devices
+	${BOOST_LIBRARIES}
+)
+
+TARGET_LINK_LIBRARIES (s_fqt2sqw 
+	sass_log
 	sass_scatter_devices
 	${BOOST_LIBRARIES}
 )

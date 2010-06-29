@@ -51,6 +51,7 @@ ADD_LIBRARY(sass_scatter_devices ${INTERNAL_LIBRARY_TYPE}
 	src/scatter_devices/scatter_spectrum.cpp
 	src/scatter_devices/all.cpp
 	src/scatter_devices/all_vectors.cpp
+	src/scatter_devices/all_vectorsthread.cpp	
 	src/scatter_devices/all_multipole_sphere.cpp
 	src/scatter_devices/all_multipole_cylinder.cpp
 	src/scatter_devices/self_vectors.cpp

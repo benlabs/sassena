@@ -301,7 +301,10 @@ void Params::read_xml(std::string filename) {
 			}
 		    Info::Inst()->write(string("scattering.average.orientation.type=")+scattering.average.orientation.type);
 			
-			if (scattering.average.orientation.type=="vectors") {
+			if (
+			    (scattering.average.orientation.type=="vectors") ||
+			    (scattering.average.orientation.type=="vectorsthread")
+			    ) {
         
 				if (xmli.exists("//scattering/average/orientation/vectors/type")) { // count vectors ... , or order for multipole...
 					scattering.average.orientation.vectors.type = xmli.get_value<string>("//scattering/average/orientation/vectors/type");

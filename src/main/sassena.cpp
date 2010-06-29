@@ -124,36 +124,29 @@ int main(int argc,char** argv) {
 	        sample.coordinate_sets.clear_cache(); // reduce overhead
 		
 		    timer.stop("sample::setup");
-
-            broadcast(world,initstatus,0);            
-
+		    
         } catch (boost::exception const& e ) {
             initstatus = false; 
             Err::Inst()->write("Caught BOOST error, sending hangup to all nodes");
             stringstream ss; ss << diagnostic_information(e);
             Err::Inst()->write(string("Diagnotic information: ") + ss.str());
-            broadcast(world,initstatus,0);            
         } catch (std::exception const& e) {
             initstatus = false; 
             Err::Inst()->write("Caught STD error, sending hangup to all nodes");
             Err::Inst()->write(string("what() : ") + e.what());
-            broadcast(world,initstatus,0);                        
         } catch (...) {
             initstatus = false; 
             Err::Inst()->write("Caught error: UNKNOWN sending hangup to all nodes");
-            broadcast(world,initstatus,0);            
         }
-        
         
 		//------------------------------------------//
 		//
 		// Preparation, Analysis of the system
 		//
 		//------------------------------------------//
-	}
-	else {
-		world.recv(0,boost::mpi::any_tag, initstatus);			
-	}
+    }
+    
+    broadcast(world,initstatus,0);            	
 	
 	// if something went wrong during initialization, exit now.
     if (!initstatus) return 1;
@@ -172,45 +165,26 @@ int main(int argc,char** argv) {
 		// before calculating anything we need to communicate the sample to any node
 		// this is a one-to-all communication
 
+	    Info::Inst()->write("Exchanging sample, database & params information with compute nodes... ");
+    }
+    
+	world.barrier();
 
-		Info::Inst()->write("Exchanging sample, database & params information with compute nodes... ");
+	timer.start("sample::communication");
 
-		world.barrier();
+	broadcast(world,*params,0);
 
-		timer.start("sample::communication");
+	world.barrier();
 
-		broadcast(world,*params,0);
+	broadcast(world,*database,0);
 
-		world.barrier();
+	world.barrier();
 
-		broadcast(world,*database,0);
+	broadcast(world,sample,0);
 
-		world.barrier();
-
-		broadcast(world,sample,0);
-
-		world.barrier();
+	world.barrier();
 	
-		timer.stop("sample::communication");
-		
-	}
-	else {
-		
-		world.barrier();
-	
-		world.recv(0,boost::mpi::any_tag, *params);			
-
-		world.barrier();
-	
-		world.recv(0,boost::mpi::any_tag, *database);			
-
-		world.barrier();
-	
-		world.recv(0,boost::mpi::any_tag, sample);	
-
-		world.barrier();
-		
-	}
+	timer.stop("sample::communication");
 
 
 	//------------------------------------------//

@@ -56,7 +56,9 @@ public:
 	
 	void write_average(std::string fname,std::string format);
 	void write_plain(std::string fname,std::string format);
-	
+
+	void read_plain(std::string fname,std::string format);
+		
     void transform();
 };
 

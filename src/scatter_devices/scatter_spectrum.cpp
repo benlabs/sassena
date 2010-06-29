@@ -17,6 +17,7 @@
 
 // special library headers
 #include <fftw3.h>
+#include <boost/algorithm/string.hpp>
 
 // other headers
 #include "control.hpp"
@@ -70,6 +71,33 @@ void ScatterSpectrum::transform() {
         fftw_free(wspace);
     }
 
+
+}
+
+void ScatterSpectrum::read_plain(string fname,string format) {
+   data.clear();
+
+   std::map<CartesianCoor3D,std::vector<std::complex<double> > > values;
+
+   ifstream ifile(fname.c_str());
+
+	if (format == "txt") {
+       string line;
+	    // skip empty lines and lines starting with #
+       while (getline(ifile,line)) {
+           boost::trim(line);
+           if (line=="") continue;
+           if (boost::starts_with(line,"#")) continue;
+           double qx,qy,qz,frame,Imax_overall,Imax_qvector,I0_qvector,I;
+           stringstream linestream(line);
+           linestream >> qx >> qy >> qz >> frame >> Imax_overall >> Imax_qvector >> I0_qvector >> I;
+           values[CartesianCoor3D(qx,qy,qz)].push_back(I);
+       }
+   }
+
+   for(std::map<CartesianCoor3D,std::vector<std::complex<double> > >::iterator vi=values.begin();vi!=values.end();vi++) {
+       add(vi->first,vi->second);
+   }
 
 }
 

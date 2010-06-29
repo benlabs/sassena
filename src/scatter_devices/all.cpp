@@ -402,6 +402,7 @@ void AllScatterDevice::execute(CartesianCoor3D q) {
     long NMYF = myframes.size();
 
     long NMBLOCK = (NN<NM) ? NN : NM;
+//    NMBLOCK = 1;
     
     m_spectrum.assign(NF,0);
 
