@@ -48,6 +48,7 @@ protected:
 	
 	ScatterFactors scatterfactors;
 	std::vector<size_t> myframes;
+    std::vector<CoordinateSet*> csets;
 		
 	std::vector<std::complex<double> > m_spectrum;		
 

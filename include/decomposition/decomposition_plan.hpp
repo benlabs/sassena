@@ -39,7 +39,7 @@ class DecompositionPlan {
 	size_t m_penalty;
 	size_t m_bestworldsplit;
 	
-	std::vector<CartesianCoor3D> m_qvectors;
+	std::vector<size_t> m_qindexes;
 	std::vector<size_t> m_frames;
 
 	size_t compute_penalty(size_t nq, size_t nf, size_t nn,size_t worldsplit);	
@@ -47,11 +47,11 @@ class DecompositionPlan {
 	std::vector<std::pair<double,size_t> > scan_imbalance_spectrum(size_t nq, size_t nf, size_t maxnn);
 	
 public:
-	DecompositionPlan(boost::mpi::communicator thisworld,std::vector<CartesianCoor3D>& qvectors,std::vector<size_t>& frames);
+	DecompositionPlan(boost::mpi::communicator thisworld,std::vector<size_t>& qindexes,std::vector<size_t>& frames);
 	
 	boost::mpi::communicator split();
 	std::vector<size_t> frames();
-	std::vector<CartesianCoor3D> qvectors();
+	std::vector<size_t> qindexes();
 	
 	double static_imbalance();
 	size_t penalty();

@@ -19,6 +19,7 @@
 // special library headers
 #include <boost/accumulators/accumulators.hpp>
 #include <boost/accumulators/statistics.hpp>
+#include "threadpool/threadpool.hpp"
 
 // other headers
 #include "math/coor3d.hpp"
@@ -74,9 +75,10 @@ AllVectorsThreadScatterDevice::AllVectorsThreadScatterDevice(boost::mpi::communi
 
         // warn if not enough memory for coordinate sets (cacheable system)
 		if (Params::Inst()->runtime.limits.cache.coordinate_sets<myframes.size()) {
-			Warn::Inst()->write(string("Insufficient Buffer size for coordinate sets. This is a HUGE bottleneck for performance!"));
-			Warn::Inst()->write(string("Need at least: ")+to_s(memusage_allcs)+string(" bytes"));
-			Warn::Inst()->write(string("Configuration Parameter: limits.memory.coordinate_sets"));
+			Err::Inst()->write(string("Insufficient Buffer size for coordinate sets."));
+			Err::Inst()->write(string("Need at least: ")+to_s(memusage_allcs)+string(" bytes"));
+			Err::Inst()->write(string("Configuration Parameter: limits.memory.coordinate_sets"));
+            throw;
 		}		
 	}
 	
@@ -88,6 +90,10 @@ AllVectorsThreadScatterDevice::AllVectorsThreadScatterDevice(boost::mpi::communi
 	//if (Params::Inst()->scattering.center) {
     //	p_sample->coordinate_sets.add_postalignment(target,"center");		    
 	//}
+	
+    for (size_t mf=0;mf<myframes.size();mf++) {
+        csets.push_back(p_sample->coordinate_sets.load(myframes[mf]));
+    }
 
 	
 	scatterfactors.set_sample(sample);
@@ -227,24 +233,26 @@ void AllVectorsThreadScatterDevice::conjmultiply(std::vector<std::complex<double
 }
 
 void AllVectorsThreadScatterDevice::worker1(size_t NM,CartesianCoor3D q) {
-    size_t NMMAX = 1000;
+    //size_t NMMAX = 1000;
+    
+    boost::threadpool::pool tp(2);
+    
     for(size_t mi = 0; mi < NM; mi+=1)
     {
-        timer.start("sd:scatter");
-        scatter(mi);	
-        timer.stop("sd:scatter");        
-        
-       // only allow NMMAX results to reside in the internal buffer
-        while (at1.size()>=NMMAX) {
-            timer.start("sd:scatter::wait");        
-            boost::xtime xt;
-            boost::xtime_get(&xt,boost::TIME_UTC);
-            xt.nsec += 1000;
-            boost::this_thread::sleep(xt);
-            timer.stop("sd:scatter::wait");        
-        } 	    
+//        boost::thread t(boost::bind(&AllVectorsThreadScatterDevice::scatter,this,mi) );	
+        boost::threadpool::schedule(tp,boost::bind(&AllVectorsThreadScatterDevice::scatter,this,mi));
     }
-    
+       // only allow NMMAX results to reside in the internal buffer
+//        while (at1.size()>=NMMAX) {
+//            timer.start("sd:scatter::wait");        
+//            boost::xtime xt;
+//            boost::xtime_get(&xt,boost::TIME_UTC);
+//            xt.nsec += 1000;
+//            boost::this_thread::sleep(xt);
+//            timer.stop("sd:scatter::wait");        
+//        } 	    
+//    }
+    tp.wait();
     worker1_done_flag = true;
     // this feature is dead:
 	//    if (Params::Inst()->scattering.center) {
@@ -314,7 +322,7 @@ void AllVectorsThreadScatterDevice::worker2() {
 
 void AllVectorsThreadScatterDevice::worker3() {
     
-    size_t NF = p_sample->coordinate_sets.size();
+    //size_t NF = p_sample->coordinate_sets.size();
 
     while ( !(worker2_done_flag && at2.empty()) ) {
             
@@ -437,12 +445,14 @@ void AllVectorsThreadScatterDevice::scatter(size_t moffset) {
    size_t NOA = p_sample->atoms.selections[target].indexes.size();
 
    CartesianCoor3D& q = qvectors[moffset];
-   
+
    for(size_t fi = 0; fi < NMYF; ++fi)
    {
+       boost::mutex::scoped_lock lock(scatter_mutex);
        timer.start("sd:fs:f:ld");	
-       CoordinateSet& cs = p_sample->coordinate_sets.load(myframes[fi]); 
+       CoordinateSet& cs = *csets[fi]; 
        timer.stop("sd:fs:f:ld");	
+       lock.unlock();
                
        double Ar =0; 
        double Ai = 0;
@@ -491,7 +501,7 @@ void AllVectorsThreadScatterDevice::init(CartesianCoor3D& q) {
 			CartesianCoor3D qparallel = (o*q)*o; 
 			CartesianCoor3D qperpenticular = q - qparallel; 			
 			double qperpenticular_l = qperpenticular.length();
-			double qparallel_l = qparallel.length();
+			//double qparallel_l = qparallel.length();
 
 			CartesianCoor3D e1 = o.cross_product(qperpenticular) ;
 			CartesianCoor3D e2 = qperpenticular;

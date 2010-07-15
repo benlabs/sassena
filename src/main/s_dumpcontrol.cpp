@@ -149,8 +149,6 @@ int main(int argc,char** argv) {
 		std::ofstream database_ofile(database_filename.c_str());
 		std::ofstream params_ofile(params_filename.c_str());
 
-		sample.coordinate_sets.clear_cache(); // reduce overhead
-
 		boost::archive::text_oarchive sample_oarchive(sample_ofile);
 		boost::archive::text_oarchive database_oarchive(database_ofile);
 		boost::archive::text_oarchive params_oarchive(params_ofile);

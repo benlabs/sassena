@@ -29,10 +29,10 @@
 
 using namespace std;
 
-DecompositionPlan::DecompositionPlan(boost::mpi::communicator thisworld,vector<CartesianCoor3D>& qvectors,vector<size_t>& frames) {
+DecompositionPlan::DecompositionPlan(boost::mpi::communicator thisworld,vector<size_t>& qindexes,vector<size_t>& frames) {
 	
 	size_t nn = thisworld.size();
-	size_t nq = qvectors.size();
+	size_t nq = qindexes.size();
 	size_t nf = frames.size();
 	
 	// calculate some partioning schemes, init penalty w/ qsplit==1
@@ -84,7 +84,7 @@ DecompositionPlan::DecompositionPlan(boost::mpi::communicator thisworld,vector<C
 	m_bestworldsplit = bestworldsplit;
 	
 	
-	m_qvectors = qvectors;
+	m_qindexes = qindexes;
 	m_frames = frames;
 	// only allow successful construction if load imbalance is sufficiently small
 
@@ -125,22 +125,25 @@ boost::mpi::communicator DecompositionPlan::split() {
 	return local;
 }
 
-vector<CartesianCoor3D> DecompositionPlan::qvectors() {
+vector<size_t> DecompositionPlan::qindexes() {
 
-	vector<CartesianCoor3D> result;
+	vector<size_t> result;
 
-	EvenDecompose e(m_qvectors.size(),m_bestworldsplit);
+	EvenDecompose e(m_qindexes.size(),m_bestworldsplit);
 	size_t mycolor = m_thisworldcomm.rank() / m_bestcolwidth;
 	
 	if (mycolor<e.size()) {
-		vector<size_t> qindexes = e.indexes_for(mycolor);
-		for(size_t i = 0; i < qindexes.size(); ++i)
-		{
-			result.push_back( m_qvectors[ qindexes[i] ] );
-		}			
-	}		
+	    result = e.indexes_for(mycolor);
+	}
 	
-	return result;
+	vector<size_t> indexesresult;
+	
+	for(size_t i = 0; i < result.size(); ++i)
+	{
+        indexesresult.push_back(m_qindexes[result[i]]);
+	}
+	
+	return indexesresult;
 }
 
 vector<size_t> DecompositionPlan::frames() {
@@ -148,7 +151,7 @@ vector<size_t> DecompositionPlan::frames() {
 }
 
 double DecompositionPlan::static_imbalance() {
-	return ( m_penalty/(1.0*m_frames.size()*m_qvectors.size()) ); 
+	return ( m_penalty/(1.0*m_frames.size()*m_qindexes.size()) ); 
 }
 
 size_t DecompositionPlan::penalty() {

@@ -101,18 +101,19 @@ protected:
 
     // first = q, second = frames
     concurrent_queue< std::vector< std::complex<double> >* > at1;
-    boost::mutex at1_mutex;
-
     concurrent_queue< std::vector< std::complex<double> >* > at2;
-    boost::mutex at2_mutex;
-
     std::vector< std::complex<double> > at3;
+	
+    mutable boost::mutex scatter_mutex;
+
+	
 	
 	ScatterFactors scatterfactors;
 	std::vector<size_t> myframes;
+    std::vector<CoordinateSet*> csets;
 		
 	std::vector<std::complex<double> > m_spectrum;		
-
+    
     void multiply_alignmentfactors(CartesianCoor3D q);
     
     void correlate(std::vector< std::complex<double> >& data);

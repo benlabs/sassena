@@ -31,9 +31,12 @@
 #include <boost/filesystem.hpp>
 #include <boost/mpi.hpp>
 #include <boost/math/special_functions.hpp>
+#include <boost/program_options.hpp>
 #include <boost/serialization/complex.hpp>
 #include <boost/serialization/map.hpp>
 #include <boost/serialization/vector.hpp>
+#include <boost/thread.hpp>
+
 
 // other headers
 #include "math/coor3d.hpp"
@@ -47,10 +50,15 @@
 #include "sample/sample.hpp"
 #include "scatter_devices/scatter_device_factory.hpp"
 #include "scatter_devices/scatter_spectrum.hpp"
+#include "scatter_devices/io/h5_fqt_interface.hpp"
+#include "threadpool/threadpool.hpp"
 
 #include "SassenaConfig.hpp"
 
 using namespace std;
+
+namespace po = boost::program_options;
+
 
 int main(int argc,char** argv) {
 
@@ -75,7 +83,7 @@ int main(int argc,char** argv) {
 	
 	Info::Inst()->set_prefix(to_s(world.rank())+string(".Info>>"));
 	Warn::Inst()->set_prefix(to_s(world.rank())+string(".Warn>>"));
-	 Err::Inst()->set_prefix(to_s(world.rank())+string(".Err>>"));
+	Err::Inst()->set_prefix(to_s(world.rank())+string(".Err>>"));
 	
 	Params* params = Params::Inst();
 	Database* database = Database::Inst();
@@ -98,15 +106,39 @@ int main(int argc,char** argv) {
 		Info::Inst()->write("franc@cmm.ki.si, Franci Merzel (Methodology)                             ");
 		Info::Inst()->write("For publications include the following references:                       ");
 		Info::Inst()->write(".........................................................................");
-		Info::Inst()->write("1. Sassena - Elastic Scattering Calculations on Parallel Computers       ");
+		Info::Inst()->write("1. Sassena - Scattering Calculations on Parallel Computers               ");
 		Info::Inst()->write("   to be published                                                       ");		
 		Info::Inst()->write(".........................................................................");
         Info::Inst()->write(string("Version Information: ") + string(Sassena_VERSIONSTRING));
 		Info::Inst()->write("");
     }
-    
-    
 
+    po::options_description desc("Allowed options");
+    desc.add_options()
+        ("help", "produce help message")
+        ("config", po::value<string>()->default_value("scatter.xml"),  "name of the xml configuration file")
+        ("database",po::value<string>()->default_value("db.xml"),  "name of the xml database file")   
+        ("output",po::value<string>()->default_value("fqt.h5"),"name of the data output file")
+    ;
+    
+    po::variables_map vm;
+    po::store(po::parse_command_line(argc, argv, desc), vm);
+    po::notify(vm);
+    
+    if (vm.count("help")) {
+        cout << desc << endl;
+        return 1;
+    }
+    
+    if (vm.count("config")==0) {
+        Info::Inst()->write("Require configuration file");
+        cout << desc << endl;
+    }
+    if (vm.count("database")==0) {
+        Info::Inst()->write("Require database file");
+        cout << desc << endl;
+    }
+    
     bool initstatus = true;
     
 	if (world.rank()==0) {
@@ -115,13 +147,11 @@ int main(int argc,char** argv) {
 
     		timer.start("sample::setup");
 	    
-            params->init(string(argv[1]));
+            params->init(vm["config"].as<string>());
 
-            database->init(string(argv[2]));
+            database->init(vm["database"].as<string>());
 	    
             sample.init();
-	    
-	        sample.coordinate_sets.clear_cache(); // reduce overhead
 		
 		    timer.stop("sample::setup");
 		    
@@ -193,23 +223,40 @@ int main(int argc,char** argv) {
 	//
 	//------------------------------------------//
 
-	// prepare an array for all qqqvectors here:
-	std::vector<CartesianCoor3D>& qvectors = params->scattering.qvectors;
 
-	if (world.rank()==0) {
-		Info::Inst()->write(string("Searching for decomposition plan: "));
-		Info::Inst()->write(string("nodes    = ")+ to_s(world.size()));
-		Info::Inst()->write(string("qvectors = ")+ to_s(qvectors.size()));
-		Info::Inst()->write(string("frames   = ")+ to_s(sample.coordinate_sets.size()));	
-	}
-	
+    vector<size_t> qindexes;
 	vector<size_t> frames;
 		
 	for(size_t i = 0; i < sample.coordinate_sets.size(); ++i)
 	{
 		frames.push_back(i);
 	}
-	DecompositionPlan dplan(world,qvectors,frames);
+    
+    if (world.rank()==0) {
+        qindexes = H5FQTInterface::init(vm["output"].as<string>(),params->scattering.qvectors,frames.size());
+        
+        size_t nq = qindexes.size();
+        broadcast(world,nq,0);
+
+        broadcast(world,reinterpret_cast<size_t*>(&qindexes[0]),qindexes.size(),0);
+        
+        world.barrier();        
+    } else {
+        size_t nq=0;
+        broadcast(world,nq,0);
+        qindexes.resize(nq);
+        broadcast(world,reinterpret_cast<size_t*>(&qindexes[0]),qindexes.size(),0);
+        world.barrier();        
+    }
+        
+	if (world.rank()==0) {	
+    	Info::Inst()->write(string("Searching for decomposition plan: "));
+	    Info::Inst()->write(string("nodes    = ")+ to_s(world.size()));
+	    Info::Inst()->write(string("qvectors = ")+ to_s(qindexes.size()));
+	    Info::Inst()->write(string("frames   = ")+ to_s(sample.coordinate_sets.size()));	
+    }
+    
+	DecompositionPlan dplan(world,qindexes,frames);
 	if (world.rank()==0) {	
 		Info::Inst()->write(string("Decomposition has ")+to_s(dplan.worlds())+string(" partitions"));
 		Info::Inst()->write(string("Static imbalance factor (0 is best): ")+ to_s(dplan.static_imbalance()));
@@ -217,92 +264,71 @@ int main(int argc,char** argv) {
 	
 	boost::mpi::communicator local = dplan.split();
 	
-	vector<CartesianCoor3D> myqvectors = dplan.qvectors();
+	vector<size_t> myqindexes = dplan.qindexes();
 
 	ScatterDevice* p_ScatterDevice = ScatterDeviceFactory::create(local,sample);
 
 	ScatterSpectrum scatter_spectrum;
 
-	if (world.rank()==0) { // only let the world head report...
-		Info::Inst()->write("Progress monitors head node only.");
-	}
-	ProgressReporter progress_reporter(myqvectors.size(),0); // this acts like a progress bar
-	for(size_t qi = 0; qi < myqvectors.size(); ++qi)
-	{			
+    vector<std::complex<double> > fqt;
 
+	ProgressReporter progress_reporter(myqindexes.size(),0); // this acts like a progress bar
+
+    std::vector<CartesianCoor3D> localqvectors;
+    
+    if (local.rank()==0) 
+        localqvectors = H5FQTInterface::get_qvectors(vm["output"].as<string>(),myqindexes);
+
+
+    world.barrier();
+    
+    // create communicator for local heads
+    // enables file locking
+    size_t color = 0;
+    if (local.rank()==0) color=1;
+    if (myqindexes.size()==0) color=0; // disregard the ones which don't participate in the computation
+    boost::mpi::communicator mutexcomm = world.split(color);
+	
+    std::queue<std::pair<size_t,std::vector<std::complex<double> > > > fqt_queue;
+    
+	for(size_t qi = 0; qi < myqindexes.size(); ++qi)
+	{			
 			// progress indicator
 			if (world.rank()==0) { // only let the world head report...
 				progress_reporter.set(qi);
 				progress_reporter.report(); // only reports if significant progress has been made!
 			}
 			
+
+            CartesianCoor3D qvector;
+            if (local.rank()==0) qvector = localqvectors[qi];
+            broadcast(local,reinterpret_cast<double*>(&qvector),3,0);
+
 			timer.start("scatter");
-			
-			p_ScatterDevice->execute(myqvectors[qi]);
+			p_ScatterDevice->execute(qvector);
+			timer.stop("scatter");
+            local.barrier();
 			
 			if (local.rank()==0) {
-				// results are aggregated in 0-node
-				scatter_spectrum.add( myqvectors[qi],p_ScatterDevice->get_spectrum() ) ;
+    			for(int i = 0; i < mutexcomm.size(); ++i)
+    			{
+    		        if (mutexcomm.rank()==i) {
+    		             H5FQTInterface::store(vm["output"].as<string>(),myqindexes[qi],p_ScatterDevice->get_spectrum());
+    		        }
+                    mutexcomm.barrier();
+    			}
 			}
-					
-			timer.stop("scatter");
+            
+            local.barrier();
 	}
 
 	if (world.rank()==0) {
 		Info::Inst()->write(string("Waiting for all nodes to finish calculations..."));		
 	}
-	world.barrier();	
+
+    world.barrier();
 	
-	//------------------------------------------//
-	//
-	// Output
-	//
-	//------------------------------------------//	
 	
-	// now all local.rank()==0 have aggregated the spectra
-	// we have to aggregrate it on world scope as well
-
-	size_t headindicator = 0;
-	if (local.rank()==0) headindicator = 1;
-	// do another split, based on the headindicator
-	boost::mpi::communicator headcomm = world.split(headindicator);
-	ScatterSpectrum final_scatter_spectrum;
-	if (headindicator==1) {
-		// gather results on head of heads
-		vector<ScatterSpectrum> scatspecs;
-		Info::Inst()->write(string("Aggregrating spectra, local count:")+to_s(scatter_spectrum.size()));
-
-		boost::mpi::gather(headcomm,scatter_spectrum,scatspecs,0);
-		
-		if (headcomm.rank()==0) {
-			ScatterSpectrum fss(scatspecs); // fss = final scatter spectrum
-            ScatterSpectrum fsst = fss;
-            fsst.transform();
-            
-			timer.start("result::output");
-			std::string prefix = Params::Inst()->output.prefix;
-			for(std::vector<OutputFileParameters>::iterator ofi = Params::Inst()->output.files.begin(); ofi != Params::Inst()->output.files.end(); ++ofi)
-			{
-				Info::Inst()->write(string("Writing to: ") + ofi->filename);
-				if (ofi->method=="plain") {
-					fss.write_plain(ofi->filename,ofi->format);				
-				} else if (ofi->method=="average") {
-					fss.write_average(ofi->filename,ofi->format);
-                } else if (ofi->method=="transform-plain") {
-					fsst.write_plain(ofi->filename,ofi->format);                    
-				} else {
-					Warn::Inst()->write(string("Output method not understood: ")+ofi->method);
-				}
-			}
-
-			timer.stop("result::output");
-
-		}
-	}
-
-	// wait before deleting anything...
-	world.barrier();
-
 	if (world.rank()==0) {
 		Info::Inst()->write(string("Aggregating timing information for performance analysis..."));		
 	}
@@ -310,10 +336,6 @@ int main(int argc,char** argv) {
 	PerformanceAnalyzer perfanal(world,p_ScatterDevice->timer); // collect timing information from everybody.
 	
 	delete p_ScatterDevice;
-
-	// make nodes empty, computation finished
-	sample.coordinate_sets.clear_cache();
-
 
 	//------------------------------------------//
 	//

@@ -74,24 +74,28 @@ AllScatterDevice::AllScatterDevice(boost::mpi::communicator& thisworld, Sample& 
 
         // warn if not enough memory for coordinate sets (cacheable system)
 		if (Params::Inst()->runtime.limits.cache.coordinate_sets<myframes.size()) {
-			Warn::Inst()->write(string("Insufficient Buffer size for coordinate sets. This is a HUGE bottleneck for performance!"));
-			Warn::Inst()->write(string("Need at least: ")+to_s(memusage_allcs)+string(" bytes"));
-			Warn::Inst()->write(string("Configuration Parameter: limits.memory.coordinate_sets"));
+			Err::Inst()->write(string("Insufficient Buffer size for coordinate sets."));
+			Err::Inst()->write(string("Need at least: ")+to_s(memusage_allcs)+string(" bytes"));
+			Err::Inst()->write(string("Configuration Parameter: limits.memory.coordinate_sets"));
+            throw;
 		}		
 	}
+	
 	
     p_a = new vector< vector< complex<double> > >; // initialize with no size
     p_asingle = new vector< complex<double> >; // initialize with no size
 
 	p_sample->coordinate_sets.set_selection(sample.atoms.selections[target]);
-
     // overwrite representation style in subclass !!
 	p_sample->coordinate_sets.set_representation(CARTESIAN);	
 	
 	if (Params::Inst()->scattering.center) {
     	p_sample->coordinate_sets.add_postalignment(target,"center");		    
 	}
-
+	
+    for (size_t mf=0;mf<myframes.size();mf++) {
+        csets.push_back(p_sample->coordinate_sets.load(myframes[mf]));
+    }
 	
 	scatterfactors.set_sample(sample);
 	scatterfactors.set_selection(sample.atoms.selections[target]);
@@ -99,6 +103,10 @@ AllScatterDevice::AllScatterDevice(boost::mpi::communicator& thisworld, Sample& 
 }
 
 AllScatterDevice::~AllScatterDevice() {
+    for (size_t ci=0;csets.size();ci++) {
+        delete csets[ci];
+    }
+    
     delete p_a;
     delete p_asingle;
 }
@@ -405,9 +413,9 @@ void AllScatterDevice::execute(CartesianCoor3D q) {
 //    NMBLOCK = 1;
     
     m_spectrum.assign(NF,0);
-
     for(long mi = 0; mi < NM; mi+=NMBLOCK)
     {        
+
         // compute a block of q vectors:
 	    timer.start("sd:scatterblock");
 	    scatter(mi,std::min(NMBLOCK,NM-mi));	

@@ -52,24 +52,26 @@ int main(int argc,char** argv) {
 	Warn::Inst()->set_prefix(string("Warn>>"));
 	 Err::Inst()->set_prefix(string("Err>>"));
 	
-	if (argc!=4) {
-        Err::Inst()->write("Need 2 arguments: FQT data file, energy resolution, boolean flag");
+	if (argc!=5) {
+        Err::Inst()->write("Need 4 arguments: FQT data file, SQW filename, energy resolution, boolean flag");
         throw;
 	}
 
     ScatterSpectrum ss;
     
+    cout << "Reading FQT data file" << endl;
     
     ss.read_plain(argv[1],"txt");
-    
+    ss.write_plain("test.h5","hdf5");
+    return 0;
     if (ss.size()<1) return 0;
     
-    size_t seqlen = ss[0].second.size();
+    size_t seqlen = ss.size();
     
     // check sequence length
     for(size_t si = 0; si < ss.size(); ++si)
     {
-        if (seqlen!=ss[si].second.size()) {
+        if (seqlen!=ss.amplitudes[si].size()) {
             Err::Inst()->write("Different Time Sequence Lengths. Exiting");
             return 1;
         }
@@ -77,13 +79,16 @@ int main(int argc,char** argv) {
     
     size_t NF = seqlen;
     
- //   double dE = boost::lexical_cast<double>(argv[2]);
-     double sigma_t = boost::lexical_cast<double>(argv[2]);
-//    double sigma_e = 4*dE/(3*M_PI);
-//    double sigma_t = 2/(M_PI*sigma_e);
+ //   double dE = boost::lexical_cast<double>(argv[3]);
+     double sigma_t = boost::lexical_cast<double>(argv[3]);
+ //    double sigma_e = 4*dE/(3*M_PI);
+ //    double sigma_t = 2/(M_PI*sigma_e);
+//    double sigma_e = dE/2.354820045;
+//    double sigma_t = 1.0/(1.5192669*sigma_e);
     boost::math::normal normdist(0,sigma_t);
     vector<double> rt;
 
+    cout << "Generating Gaussian" << endl;
     // expand rt on demand
     if (NF>rt.size()) {
         size_t rtsize = rt.size();
@@ -93,7 +98,9 @@ int main(int argc,char** argv) {
     }
 
 
-    bool periodic = boost::lexical_cast<bool>(argv[3]);
+    bool periodic = boost::lexical_cast<bool>(argv[4]);
+
+    cout << "Fourier Transform" << endl;
 
     if (periodic) {
 
@@ -104,8 +111,10 @@ int main(int argc,char** argv) {
     
         for(size_t si = 0; si < ss.size(); ++si)
         {
+            cout << "QVector " << si << endl;
+
             Info::Inst()->write(string("qvector ")+to_s(si));
-            vector<complex<double> >& fqt = ss[si].second;
+            vector<complex<double> >& fqt = ss.amplitudes[si];
                                     
             for(size_t i = 0; i < NF; ++i) {
                 // multiply w/ gaussian here = resolution function
@@ -137,7 +146,7 @@ int main(int argc,char** argv) {
         for(size_t si = 0; si < ss.size(); ++si)
         {
             Info::Inst()->write(string("qvector ")+to_s(si));
-            vector<complex<double> >& fqt = ss[si].second;
+            vector<complex<double> >& fqt = ss.amplitudes[si];
             
             for(size_t i = 0; i < NF; ++i) {
                 // multiply w/ gaussian here = resolution function
@@ -164,16 +173,19 @@ int main(int argc,char** argv) {
 
     }
 
+    cout << "Writing SQW: " << argv[2] << endl;
 
-
+    std::ofstream ofile(argv[2]);
     
     for(size_t si = 0; si < ss.size(); ++si) {
-        vector<complex<double> >& fqt = ss[si].second;
+        vector<complex<double> >& fqt = ss.amplitudes[si];
         for(size_t i = 0; i < fqt.size(); ++i)
         {
-            cout << fqt[i].real() << endl;
+            ofile << fqt[i].real() << endl;
         }
     }
+    cout << "done" << endl;
+    
 
 	return 0;
 }

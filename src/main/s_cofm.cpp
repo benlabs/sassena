@@ -154,9 +154,10 @@ int main(int argc,char** argv) {
         vector<CartesianCoor3D> mycofm;
         for(size_t fi = 0; fi < NMYF; ++fi)
         {
-            CoordinateSet& cs = sample.coordinate_sets.load(myframes[fi]);
-            CartesianCoor3D cofm = CenterOfMass(sample.atoms,sample.atoms.system_selection,sample.coordinate_sets.get_selection(),cs);
+            CoordinateSet* pcs = sample.coordinate_sets.load(myframes[fi]);
+            CartesianCoor3D cofm = CenterOfMass(sample.atoms,sample.atoms.system_selection,sample.coordinate_sets.get_selection(),*pcs);
             mycofm.push_back(cofm);
+            delete pcs;
         }
         
         std::list< boost::mpi::request > requests;

@@ -96,7 +96,7 @@ void AllMSScatterDevice::scatter(size_t moffset,size_t mcount) {
    for(size_t fi = 0; fi < NMYF; ++fi)
    {
        timer.start("sd:fs:f:ld");	
-       CoordinateSet& cs = p_sample->coordinate_sets.load(myframes[fi]); 
+       CoordinateSet& cs = *csets[fi]; 
        timer.stop("sd:fs:f:ld");	
 
        for(size_t mi = 0; mi < NM; ++mi)

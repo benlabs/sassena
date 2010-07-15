@@ -82,14 +82,11 @@ int main(int argc,char** argv) {
 
     sample.coordinate_sets.set_selection(sample.atoms.selections["system"]);
 
-    for(size_t i = 0; i < sample.coordinate_sets.size(); ++i) {
-        sample.coordinate_sets.load(i);
-    }
-    
     if ( boost::filesystem::exists(string(argv[3])) ) {
         Err::Inst()->write(string("Output file ")+string(argv[3])+string(" already exists. Please delete manually."));
         throw;
     }
+    
     sample.coordinate_sets.write_xyz(string(argv[3]));
     
 		

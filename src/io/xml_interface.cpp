@@ -168,7 +168,7 @@ vector<XMLElement> XMLInterface::get(std::string xpathexp) {
 	}
 	
 	xmlNodeSetPtr nodes = p_xpathObj->nodesetval; // nodes	
-	int size = (nodes) ? nodes->nodeNr : 0;
+	size_t size = (nodes) ? nodes->nodeNr : 0;
 
 	vector<XMLElement> result;	
 	for(size_t i = 0; i < size; ++i)

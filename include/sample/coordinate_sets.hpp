@@ -20,6 +20,7 @@
 #include <vector>
 
 // special library headers
+#include <boost/thread.hpp>
 
 // other headers
 #include "sample/atoms.hpp"
@@ -50,7 +51,6 @@ protected:
         ar.register_type(static_cast<OscillationMotionWalker*>(NULL));
         ar.register_type(static_cast<BrownianMotionWalker*>(NULL));
         
-		ar & setcache;
         ar & m_prealignmentvectors;
         ar & m_postalignmentvectors;
 
@@ -67,7 +67,6 @@ protected:
         ar & m_representation;
     }
     
-	std::map<size_t,CoordinateSet*> setcache;
     std::map<size_t,std::vector<CartesianCoor3D> > m_prealignmentvectors;
     std::map<size_t,std::vector<CartesianCoor3D> > m_postalignmentvectors;
 
@@ -75,25 +74,21 @@ protected:
 	std::vector< std::pair<std::string,std::string> > m_prealignments;
 	std::vector< std::pair<std::string,std::string> > m_postalignments;
 
-
     Frames frames;
 
 	Atoms* p_atoms;
 	Atomselection* p_selection;
 	
     CoordinateRepresentation m_representation;
-	void load_into_cache(size_t framenumber);
-	
+
 public:
 	CoordinateSets();
 	~CoordinateSets() ;
 	
-	CoordinateSet& load(size_t frame);	
-
+	CoordinateSet* load(size_t frame);	
+     
 	std::vector<CartesianCoor3D> get_prealignmentvectors(size_t frame);	
 	std::vector<CartesianCoor3D> get_postalignmentvectors(size_t frame);	
-	
-	void clear_cache();
 	
 	// use these to initialize the coordinate set:
 	void set_selection(Atomselection& selection);

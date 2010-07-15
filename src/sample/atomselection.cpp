@@ -32,21 +32,21 @@
 
 using namespace std;
 
-Atomselection& Atomselection::operator+=(const Atomselection& that) {
-    
-    for(size_t i = 0; i < that.indexes.size(); ++i)
-    {
-        add(that.indexes[i]);
-    }
-}
-
-Atomselection& Atomselection::operator-=(const Atomselection& that) {
-    
-    for(size_t i = 0; i < that.indexes.size(); ++i)
-    {
-        remove(that.indexes[i]);
-    }
-}
+//Atomselection& Atomselection::operator+=(const Atomselection& that) {
+//    
+//    for(size_t i = 0; i < that.indexes.size(); ++i)
+//    {
+//        add(that.indexes[i]);
+//    }
+//}
+//
+//Atomselection& Atomselection::operator-=(const Atomselection& that) {
+//    
+//    for(size_t i = 0; i < that.indexes.size(); ++i)
+//    {
+//        remove(that.indexes[i]);
+//    }
+//}
 
 void Atomselection::add(size_t index) {
 	indexes.push_back(index);

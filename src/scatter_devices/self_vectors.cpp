@@ -72,19 +72,17 @@ SelfVectorsScatterDevice::SelfVectorsScatterDevice(boost::mpi::communicator& thi
     {
         size_t activerank = framesdecomp.rank_of(fi);
 
-        // this will be scoped to the relevant q vector
-        std::list< boost::mpi::request > requests;
         // receive a block of x coordinates for a single frame in order of indexes
         vector<double> myxcoords(NMYI);
         vector<double> myycoords(NMYI);
         vector<double> myzcoords(NMYI);
-        
-        requests.push_back( p_thisworldcomm->irecv(activerank,0,&(myxcoords[0]),NMYI) );
-        requests.push_back( p_thisworldcomm->irecv(activerank,0,&(myycoords[0]),NMYI) );
-        requests.push_back( p_thisworldcomm->irecv(activerank,0,&(myzcoords[0]),NMYI) );
   
-        if ( rank == activerank ) {
-			CoordinateSet& p_cs = p_sample->coordinate_sets.load(fi);        
+        if ( rank != activerank ) {
+            p_thisworldcomm->recv(activerank,0,&(myxcoords[0]),NMYI);
+            p_thisworldcomm->recv(activerank,0,&(myycoords[0]),NMYI);
+            p_thisworldcomm->recv(activerank,0,&(myzcoords[0]),NMYI);
+        } else {
+			CoordinateSet& p_cs = *p_sample->coordinate_sets.load(fi);        
 
             size_t segoffset = 0;        
             for(size_t i = 0; i < NN; ++i)
@@ -95,14 +93,22 @@ SelfVectorsScatterDevice::SelfVectorsScatterDevice(boost::mpi::communicator& thi
                 double* p_zsegment = (double*) &(p_cs.c3[segoffset]);
                 size_t seglength = indexdecomp.indexes_for(i).size();
                 
-                requests.push_back( p_thisworldcomm->isend(i,0,p_xsegment,seglength) );
-                requests.push_back( p_thisworldcomm->isend(i,0,p_ysegment,seglength) );
-                requests.push_back( p_thisworldcomm->isend(i,0,p_zsegment,seglength) );
+                if (i==activerank) {
+                    p_thisworldcomm->isend(i,0,p_xsegment,seglength);
+                    p_thisworldcomm->recv(activerank,0,&(myxcoords[0]),NMYI);
+                    p_thisworldcomm->isend(i,0,p_ysegment,seglength);
+                    p_thisworldcomm->recv(activerank,0,&(myycoords[0]),NMYI);
+                    p_thisworldcomm->isend(i,0,p_zsegment,seglength);                    
+                    p_thisworldcomm->recv(activerank,0,&(myzcoords[0]),NMYI);
+                } else {
+                    p_thisworldcomm->send(i,0,p_xsegment,seglength);
+                    p_thisworldcomm->send(i,0,p_ysegment,seglength);
+                    p_thisworldcomm->send(i,0,p_zsegment,seglength);                    
+                }
                 segoffset += seglength;
             }
         }
-        
-        boost::mpi::wait_all(requests.begin(),requests.end());
+ 
 
         // copy coordinates to the right location:
         for(size_t i = 0; i < NMYI; ++i)
@@ -114,7 +120,6 @@ SelfVectorsScatterDevice::SelfVectorsScatterDevice(boost::mpi::communicator& thi
 
     }
     timer.stop("sd:data");
-    
     
 	p_asingle = new vector< complex<double> >; // initialize with no siz
 	

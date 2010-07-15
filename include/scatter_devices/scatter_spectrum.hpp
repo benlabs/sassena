@@ -39,20 +39,27 @@ private:
     friend class boost::serialization::access;	
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
     {
-        ar & data;
+        ar & qvectors;
+        ar & amplitudes;
     }
 	///////////////////
-	
-    std::vector<std::pair<CartesianCoor3D,std::vector<std::complex<double> > > > data;
-    
 public:
+	// 2d character: Nqvectors x 3
+    std::vector<CartesianCoor3D> qvectors;
+    
+    // 3d character: Nqvectors x Nframes x 2
+    std::vector< std::vector<std::complex<double> > > amplitudes;
+    
+
 	ScatterSpectrum() {}	
 	ScatterSpectrum(std::vector<ScatterSpectrum> scatspecs);
 	
     void add(CartesianCoor3D q, std::vector<std::complex<double> > spectrum);
-    size_t size() { return data.size(); }
+    size_t size() { return qvectors.size(); }
     
-    std::pair<CartesianCoor3D,std::vector<std::complex<double> > >& operator[](size_t index) { return data[index]; }
+    void clear();
+    
+    //std::pair<CartesianCoor3D,std::vector<std::complex<double> > >& operator[](size_t index) { return make_pair(qvectors[index],amplitudes[index]); }
 	
 	void write_average(std::string fname,std::string format);
 	void write_plain(std::string fname,std::string format);

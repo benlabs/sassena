@@ -197,10 +197,8 @@ vector<pair<string,Atomselection> > Atoms::select_ndx(std::string filename) {
     vector<pair<string,Atomselection> > result;
     
    	ifstream ndxfile(filename.c_str());
-   	int linecounter = 0;
    	string line; 
    	map<string,vector<size_t> > indexes;
-   	int bracketcounter =0;
    	string name = "";
    	
    	while (getline(ndxfile,line)) {

@@ -289,7 +289,6 @@ void DCDFrameset::init(std::string fn,size_t fno) {
 
 void DCDFrameset::scan_frame_byte_offsets() {
 	// With DCD Files frame_byte_offsets are calculatable:
-	std::ios::streamoff current_offset = init_byte_pos;
 	for(size_t i = 0; i < number_of_frames; ++i)
 	{
 		frame_byte_offsets.push_back(i*block_size_byte + init_byte_pos);
@@ -412,8 +411,6 @@ void PDBFrameset::scan_frame_byte_offsets() {
 	
 	ifstream pdbfile(filename.c_str());	
 	
-	size_t cfn=0;
-	size_t lines=0;
 	bool lastentryisater = false;
 	std::ios::streamoff filepos = pdbfile.tellg();
 	while (true) {
@@ -508,7 +505,10 @@ void XTCFrameset::init(std::string fn,size_t fno) {
 	
   	/* This function returns the number of atoms in the xtc file in *natoms */
 	int natoms = 0;
-  	int retval = read_xtc_natoms(const_cast<char*>(filename.c_str()),&natoms);
+  	if (read_xtc_natoms(const_cast<char*>(filename.c_str()),&natoms) != exdrOK) {
+		cerr << "ERROR>> " << " initializing file: " << fn << endl;
+        throw;
+  	}
 	number_of_atoms = natoms;
 
 	number_of_frames = init_frame_byte_offsets();

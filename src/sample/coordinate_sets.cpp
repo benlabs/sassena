@@ -34,12 +34,6 @@ CoordinateSets::CoordinateSets() {
 }
 
 CoordinateSets::~CoordinateSets() {
-	typedef std::map<size_t,CoordinateSet*>::iterator sci_iterator;
-	for(sci_iterator sci = setcache.begin(); sci != setcache.end(); ++sci)
-	{
-		delete sci->second;
-	}
-	
 	for(size_t i = 0; i < m_motion_walkers.size(); ++i)
 	{
 		delete m_motion_walkers[i].second;
@@ -47,7 +41,6 @@ CoordinateSets::~CoordinateSets() {
 }
 
 void CoordinateSets::init() {
-
 
     // read in frame information
     for(size_t i = 0; i < Params::Inst()->sample.frames.size(); ++i)
@@ -123,15 +116,35 @@ void CoordinateSets::init() {
     
 }
 
-void CoordinateSets::load_into_cache(size_t framenumber) {
-	CartesianCoordinateSet* pcset = NULL;
-	
-	if ( Params::Inst()->runtime.limits.cache.coordinate_sets < setcache.size() ) {
-		clear_cache();
-	}
+std::vector<CartesianCoor3D> CoordinateSets::get_prealignmentvectors(size_t framenumber) {
+    return m_prealignmentvectors[framenumber];
+}
 
+std::vector<CartesianCoor3D> CoordinateSets::get_postalignmentvectors(size_t framenumber) {
+    return m_postalignmentvectors[framenumber];    
+}
+
+void CoordinateSets::add_postalignment(std::string selection,std::string type) {
+    m_postalignments.push_back(make_pair(selection,type));
+}
+
+
+void CoordinateSets::set_representation(CoordinateRepresentation representation) {
+    m_representation = representation;
+}
+
+CoordinateRepresentation CoordinateSets::get_representation() {
+    return m_representation;
+}
+
+void CoordinateSets::set_atoms(Atoms& atoms) {
+    p_atoms = &atoms;
+}
+
+CoordinateSet* CoordinateSets::load(size_t framenumber) {
+	
 	Frame frame = frames.load(framenumber);
-	pcset = new CartesianCoordinateSet(frame,p_atoms->system_selection);
+	CartesianCoordinateSet cset(frame,p_atoms->system_selection);
 	
     if ( frame.x.size() != p_atoms->system_selection.indexes.size() ) {
         Err::Inst()->write(string("Wrong number of atoms, frame:")+to_s(framenumber));
@@ -145,8 +158,8 @@ void CoordinateSets::load_into_cache(size_t framenumber) {
 		string type = m_prealignments[i].second;
         if (type=="center") {
 			p_atoms->assert_selection(sel);
-            CartesianCoor3D origin = CenterOfMass(*p_atoms,p_atoms->selections[sel],p_atoms->system_selection,*pcset);
-            pcset->translate(-1.0*origin);
+            CartesianCoor3D origin = CenterOfMass(*p_atoms,p_atoms->selections[sel],p_atoms->system_selection,cset);
+            cset.translate(-1.0*origin);
             m_prealignmentvectors[framenumber].push_back(-1.0*origin);
         }
     }
@@ -158,7 +171,7 @@ void CoordinateSets::load_into_cache(size_t framenumber) {
 		MotionWalker* p_mw = m_motion_walkers[i].second;
 
 		p_atoms->assert_selection(sel);
-		pcset->translate(p_mw->translation(framenumber),p_atoms->system_selection, p_atoms->selections[sel]);						
+		cset.translate(p_mw->translation(framenumber),p_atoms->system_selection, p_atoms->selections[sel]);						
 	}		
 
     // align here
@@ -169,104 +182,45 @@ void CoordinateSets::load_into_cache(size_t framenumber) {
 		string type = m_postalignments[i].second;
         if (type=="center") {
 			p_atoms->assert_selection(sel);        
-            CartesianCoor3D origin = CenterOfMass(*p_atoms,p_atoms->selections[sel],p_atoms->system_selection,*pcset);
-            pcset->translate(-1.0*origin);            
+            CartesianCoor3D origin = CenterOfMass(*p_atoms,p_atoms->selections[sel],p_atoms->system_selection,cset);
+            cset.translate(-1.0*origin);            
             m_postalignmentvectors[framenumber].push_back(-1.0*origin);
         }
     }    
     
     // reduce the coordinate set to the target selection
-	CartesianCoordinateSet* pcset_reduced = new CartesianCoordinateSet(*pcset,p_atoms->system_selection,*p_selection);
-    delete pcset;
+	CartesianCoordinateSet* pcset_reduced = new CartesianCoordinateSet(cset,p_atoms->system_selection,*p_selection);
     
     // convert to the current representation
 	if (m_representation==CARTESIAN) {
- 	    setcache[framenumber] = pcset_reduced;
+        return pcset_reduced;
 	} else if (m_representation==SPHERICAL) {
-	    setcache[framenumber] = new SphericalCoordinateSet(*pcset_reduced); 	    
-        delete pcset_reduced;
+	    return (new SphericalCoordinateSet(*pcset_reduced) ); 	    
 	} else if (m_representation==CYLINDRICAL) {
-	    setcache[framenumber] = new CylindricalCoordinateSet(*pcset_reduced); 	    
-        delete pcset_reduced;
+	    return (new CylindricalCoordinateSet(*pcset_reduced) ); 	    
 	} else {
-        Err::Inst()->write("CoordinateSets::load_into_cache: representation not understood");
+        Err::Inst()->write("CoordinateSets::load: representation not understood");
         throw;
 	}
-}
 
-std::vector<CartesianCoor3D> CoordinateSets::get_prealignmentvectors(size_t framenumber) {
-    return m_prealignmentvectors[framenumber];
-}
-
-std::vector<CartesianCoor3D> CoordinateSets::get_postalignmentvectors(size_t framenumber) {
-    return m_postalignmentvectors[framenumber];    
-}
-
-void CoordinateSets::add_postalignment(std::string selection,std::string type) {
-    m_postalignments.push_back(make_pair(selection,type));
-    // this method invalidates cache
-    clear_cache();
-}
-
-
-void CoordinateSets::set_representation(CoordinateRepresentation representation) {
-    // a change of representation invalides the cache:
-    if (m_representation!=representation) {
-        clear_cache();        
-    }
-    
-    m_representation = representation;
-}
-
-CoordinateRepresentation CoordinateSets::get_representation() {
-    return m_representation;
-}
-
-void CoordinateSets::set_atoms(Atoms& atoms) {
-    p_atoms = &atoms;
-}
-
-CoordinateSet& CoordinateSets::load(size_t framenumber) {
-	CoordinateSet* pcset = NULL;
-	// this is the cache:
-	if (setcache.find(framenumber)==setcache.end()) {	
-		load_into_cache(framenumber);
-	}
-
-	pcset = setcache[framenumber];
-	
-	return *pcset;
 }
 
 void CoordinateSets::write_xyz(std::string filename) {
     ofstream ofile(filename.c_str());
-	for(size_t i = 0; i < setcache.size(); ++i) {
-        CoordinateSet* pcset = setcache[i];
+	for(size_t i = 0; i < size(); ++i) {
+        CoordinateSet* pcset = load(i);
         ofile << pcset->size() << endl;
         ofile << "generated by s_coordump" << endl;
         for(size_t j = 0; j < pcset->size(); ++j)
         {
             ofile << j << " " << pcset->c1[j] << " " << pcset->c2[j] << " " << pcset->c3[j] << endl;
         }
+        delete pcset;
 	}
     ofile.close();
 }
 
-void CoordinateSets::clear_cache() {
-	typedef std::map<size_t,CoordinateSet*>::iterator sci_iterator;
-	for(sci_iterator sci = setcache.begin(); sci != setcache.end(); ++sci)
-	{
-		delete sci->second;
-	}	
-	setcache.clear();
-    m_prealignmentvectors.clear();
-    m_postalignmentvectors.clear();
-}
-
 void CoordinateSets::set_selection(Atomselection& selection) {
-    if (p_selection!=&selection) {
-    	clear_cache();        
-    }
 	p_selection = &selection;
 }
 
