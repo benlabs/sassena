@@ -32,7 +32,6 @@
 
 using namespace std;
 
-
 SelfVectorsScatterDevice::SelfVectorsScatterDevice(boost::mpi::communicator& thisworld, Sample& sample){
 
 	p_thisworldcomm = &thisworld;
@@ -107,6 +106,7 @@ SelfVectorsScatterDevice::SelfVectorsScatterDevice(boost::mpi::communicator& thi
                 }
                 segoffset += seglength;
             }
+            delete p_cs;
         }
  
 

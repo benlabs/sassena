@@ -263,23 +263,11 @@ int main(int argc,char** argv) {
 	}
 	
 	boost::mpi::communicator local = dplan.split();
-	
 	vector<size_t> myqindexes = dplan.qindexes();
-
-	ScatterDevice* p_ScatterDevice = ScatterDeviceFactory::create(local,sample);
-
-	ScatterSpectrum scatter_spectrum;
-
-    vector<std::complex<double> > fqt;
-
-	ProgressReporter progress_reporter(myqindexes.size(),0); // this acts like a progress bar
-
     std::vector<CartesianCoor3D> localqvectors;
-    
     if (local.rank()==0) 
         localqvectors = H5FQTInterface::get_qvectors(vm["output"].as<string>(),myqindexes);
-
-
+    
     world.barrier();
     
     // create communicator for local heads
@@ -288,9 +276,14 @@ int main(int argc,char** argv) {
     if (local.rank()==0) color=1;
     if (myqindexes.size()==0) color=0; // disregard the ones which don't participate in the computation
     boost::mpi::communicator mutexcomm = world.split(color);
-	
-    std::queue<std::pair<size_t,std::vector<std::complex<double> > > > fqt_queue;
-    
+
+    ScatterDevice* p_ScatterDevice =NULL;
+    if (myqindexes.size()!=0) p_ScatterDevice = ScatterDeviceFactory::create(local,sample);
+	 
+	ScatterSpectrum scatter_spectrum;
+    vector<std::complex<double> > fqt;
+	ProgressReporter progress_reporter(myqindexes.size(),0); // this acts like a progress bar
+	    
 	for(size_t qi = 0; qi < myqindexes.size(); ++qi)
 	{			
 			// progress indicator
@@ -325,17 +318,29 @@ int main(int argc,char** argv) {
 	if (world.rank()==0) {
 		Info::Inst()->write(string("Waiting for all nodes to finish calculations..."));		
 	}
-
     world.barrier();
 	
 	
 	if (world.rank()==0) {
 		Info::Inst()->write(string("Aggregating timing information for performance analysis..."));		
 	}
-
-	PerformanceAnalyzer perfanal(world,p_ScatterDevice->timer); // collect timing information from everybody.
 	
-	delete p_ScatterDevice;
+	timer.stop("total");
+	
+	if (myqindexes.size()!=0) {
+	    PerformanceAnalyzer perfanal(world,p_ScatterDevice->timer); // collect timing information from everybody.
+	    delete p_ScatterDevice;
+	    if (world.rank()==0) {
+    		perfanal.report();
+    		perfanal.report_relative(timer.sum("total")*world.size());
+    	}
+    } else {
+        Info::Inst()->write(string("Nothing had to be computed."));
+    	Info::Inst()->write(string("Total runtime (s): ")+to_s(timer.sum("total")));
+    	Info::Inst()->write("Successfully finished... Have a nice day!");        
+    }
+
+
 
 	//------------------------------------------//
 	//
@@ -343,15 +348,8 @@ int main(int argc,char** argv) {
 	//
 	//------------------------------------------//	
 	
-	timer.stop("total");
 		
-	if (world.rank()==0) {
-		perfanal.report();
-		perfanal.report_relative(timer.sum("total")*world.size());
-		
-		Info::Inst()->write(string("Total runtime (s): ")+to_s(timer.sum("total")));
-		Info::Inst()->write("Successfully finished... Have a nice day!");
-	}
+
 
 	return 0;
 }
