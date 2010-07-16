@@ -81,15 +81,15 @@ SelfVectorsScatterDevice::SelfVectorsScatterDevice(boost::mpi::communicator& thi
             p_thisworldcomm->recv(activerank,0,&(myycoords[0]),NMYI);
             p_thisworldcomm->recv(activerank,0,&(myzcoords[0]),NMYI);
         } else {
-			CoordinateSet& p_cs = *p_sample->coordinate_sets.load(fi);        
+			CoordinateSet* p_cs = p_sample->coordinate_sets.load(fi);        
 
             size_t segoffset = 0;        
             for(size_t i = 0; i < NN; ++i)
             {
                 // send a portion of coordinates TO a node
-                double* p_xsegment = (double*) &(p_cs.c1[segoffset]);
-                double* p_ysegment = (double*) &(p_cs.c2[segoffset]);
-                double* p_zsegment = (double*) &(p_cs.c3[segoffset]);
+                double* p_xsegment = (double*) &(p_cs->c1[segoffset]);
+                double* p_ysegment = (double*) &(p_cs->c2[segoffset]);
+                double* p_zsegment = (double*) &(p_cs->c3[segoffset]);
                 size_t seglength = indexdecomp.indexes_for(i).size();
                 
                 if (i==activerank) {
