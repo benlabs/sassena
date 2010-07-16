@@ -107,6 +107,20 @@ std::vector<size_t> init_reuse(const std::string filename,const std::vector<Cart
     
     hsize_t okstatus_field[1];
     ds_okstatus.getSpace().getSimpleExtentDims(okstatus_field);
+
+    hsize_t fqt_field[3];
+    ds_fqt.getSpace().getSimpleExtentDims(fqt_field);
+    
+    if (fqt_field[1]!=nf) {
+        // this in an "incompatible" data file
+        // mv old one to a backup
+        int n=0;
+        while (boost::filesystem::exists(filename+".backup-"+boost::lexical_cast<string>(n))) n++;
+        boost::filesystem::rename(filename,filename+".backup"+boost::lexical_cast<string>(n));
+        h5file.close();
+        // escape by returning init_new
+        return init_new(filename,qvectors,nf);
+    }
     
     std::vector<CartesianCoor3D> h5qvectors(qvector_field[0]);
     ds_qv.read(reinterpret_cast<double*>(&h5qvectors[0]), H5::PredType::NATIVE_DOUBLE);
