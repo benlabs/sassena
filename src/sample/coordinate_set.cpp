@@ -92,7 +92,7 @@ CartesianCoordinateSet::CartesianCoordinateSet(Frame& frame,Atomselection& selec
 	z.resize(m_size);
 
     if (m_size>frame.x.size()) {
-        Err::Inst()->("Atom Index out of bounds for frame! Does the structure file match the frames?");
+        Err::Inst()->write("Atom Index out of bounds for frame! Does the structure file match the frames?");
         throw;
     }
     
