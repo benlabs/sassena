@@ -91,6 +91,11 @@ CartesianCoordinateSet::CartesianCoordinateSet(Frame& frame,Atomselection& selec
 	y.resize(m_size);
 	z.resize(m_size);
 
+    if (m_size>frame.x.size()) {
+        Err::Inst()->("Atom Index out of bounds for frame! Does the structure file match the frames?");
+        throw;
+    }
+    
 	for(size_t i = 0; i < m_size; ++i)
 	{
 		size_t thisindex = selection.indexes[i];
