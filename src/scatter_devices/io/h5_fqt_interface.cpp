@@ -19,6 +19,7 @@
 
 // special library headers
 #include <boost/filesystem.hpp>
+#include <boost/lexical_cast.hpp>
 
 // other headers
 #include "log.hpp"

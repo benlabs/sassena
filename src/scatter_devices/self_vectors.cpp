@@ -62,64 +62,128 @@ SelfVectorsScatterDevice::SelfVectorsScatterDevice(boost::mpi::communicator& thi
 		throw;
 	}
 
+
     m_x.assign(NMYI,vector<double>(NF));
     m_y.assign(NMYI,vector<double>(NF));
     m_z.assign(NMYI,vector<double>(NF));
+
+
     
+    // first do a global communication to distribute the atoms
+    size_t seglength = indexdecomp.indexes_for(rank).size();
+    size_t segoffset = indexdecomp.indexes_for(rank)[0];
+
+    vector<size_t> slengths(NN);
+    vector<size_t> soffsets(NN);
+
+    boost::mpi::all_gather(*p_thisworldcomm,seglength,&(slengths[0]));
+    boost::mpi::all_gather(*p_thisworldcomm,segoffset,&(soffsets[0]));
+    // now slengths and soffsets index atom stripes
+
+
+    // load all frames first
+
     timer.start("sd:data");
-    for(size_t fi = 0; fi < NF; ++fi)
+    vector<vector<double> > localdatax(NN);
+    vector<vector<double> > localdatay(NN);
+    vector<vector<double> > localdataz(NN);
+    for(size_t i = 0; i < NN; ++i)
     {
-        size_t activerank = framesdecomp.rank_of(fi);
+        localdatax[i].resize(slengths[i]*NMYF);
+        localdatay[i].resize(slengths[i]*NMYF);
+        localdataz[i].resize(slengths[i]*NMYF);
+    }
 
-        // receive a block of x coordinates for a single frame in order of indexes
-        vector<double> myxcoords(NMYI);
-        vector<double> myycoords(NMYI);
-        vector<double> myzcoords(NMYI);
-  
-        if ( rank != activerank ) {
-            p_thisworldcomm->recv(activerank,0,&(myxcoords[0]),NMYI);
-            p_thisworldcomm->recv(activerank,0,&(myycoords[0]),NMYI);
-            p_thisworldcomm->recv(activerank,0,&(myzcoords[0]),NMYI);
-        } else {
-			CoordinateSet* p_cs = p_sample->coordinate_sets.load(fi);        
+    for(size_t fi = 0; fi < NMYF; ++fi)
+    {
+        CoordinateSet* p_cset = p_sample->coordinate_sets.load(myframes[fi]);
+	    for(size_t i = 0; i < NN; ++i)
+	    {
+            memcpy(&localdatax[i][fi*slengths[i]],&(p_cset->c1[soffsets[i]]),sizeof(double)*slengths[i]);
+            memcpy(&localdatay[i][fi*slengths[i]],&(p_cset->c2[soffsets[i]]),sizeof(double)*slengths[i]);
+            memcpy(&localdataz[i][fi*slengths[i]],&(p_cset->c3[soffsets[i]]),sizeof(double)*slengths[i]);	    	       
+	    }
+        delete p_cset;
+    }
 
-            size_t segoffset = 0;        
-            for(size_t i = 0; i < NN; ++i)
+    timer.stop("sd:data");    
+
+    timer.start("sd:data:trans");
+    
+    // first do a global communication to distribute the atoms
+    size_t flength = framesdecomp.indexes_for(rank).size();
+    size_t foffset = framesdecomp.indexes_for(rank)[0];
+
+    vector<size_t> flengths(NN);
+    vector<size_t> foffsets(NN);
+
+    boost::mpi::all_gather(*p_thisworldcomm,flength,&(flengths[0]));
+    boost::mpi::all_gather(*p_thisworldcomm,foffset,&(foffsets[0]));
+    // now slengths and soffsets index atom stripes
+
+    // next do a global communication to distribute the datasizes
+    
+    // now exchange data.
+    for(size_t nodeiter = 0; nodeiter < NN; ++nodeiter)
+    {
+        size_t thisnode = rank;
+        size_t sendnode = (thisnode+nodeiter)%NN;
+        size_t recvnode = ((thisnode+NN)-nodeiter)%NN;
+
+        if (nodeiter==0) {
+            
+            for(size_t i = 0; i < flengths[thisnode]; ++i)
             {
-                // send a portion of coordinates TO a node
-                double* p_xsegment = (double*) &(p_cs->c1[segoffset]);
-                double* p_ysegment = (double*) &(p_cs->c2[segoffset]);
-                double* p_zsegment = (double*) &(p_cs->c3[segoffset]);
-                size_t seglength = indexdecomp.indexes_for(i).size();
-                
-                if (i==activerank) {
-                    p_thisworldcomm->isend(i,0,p_xsegment,seglength);
-                    p_thisworldcomm->recv(activerank,0,&(myxcoords[0]),NMYI);
-                    p_thisworldcomm->isend(i,0,p_ysegment,seglength);
-                    p_thisworldcomm->recv(activerank,0,&(myycoords[0]),NMYI);
-                    p_thisworldcomm->isend(i,0,p_zsegment,seglength);                    
-                    p_thisworldcomm->recv(activerank,0,&(myzcoords[0]),NMYI);
-                } else {
-                    p_thisworldcomm->send(i,0,p_xsegment,seglength);
-                    p_thisworldcomm->send(i,0,p_ysegment,seglength);
-                    p_thisworldcomm->send(i,0,p_zsegment,seglength);                    
+                size_t abs_framepos = foffsets[recvnode]+i;
+                size_t rel_framepos_offset = i*slengths[thisnode];
+                for(size_t j = 0; j < slengths[thisnode]; ++j)
+                {
+                    size_t rel_framepos = rel_framepos_offset + j;
+                    m_x[j][abs_framepos]=localdatax[thisnode][rel_framepos];
+                    m_y[j][abs_framepos]=localdatay[thisnode][rel_framepos];
+                    m_z[j][abs_framepos]=localdataz[thisnode][rel_framepos];
                 }
-                segoffset += seglength;
             }
-            delete p_cs;
-        }
- 
+            
+        } else {
+            std::list< boost::mpi::request > requests;
+            
+            vector<double> recvxcoords(flengths[recvnode]*slengths[thisnode]);
+            vector<double> recvycoords(flengths[recvnode]*slengths[thisnode]);
+            vector<double> recvzcoords(flengths[recvnode]*slengths[thisnode]);
 
-        // copy coordinates to the right location:
-        for(size_t i = 0; i < NMYI; ++i)
-        {
-            m_x[i][fi]=myxcoords[i];
-            m_y[i][fi]=myycoords[i];
-            m_z[i][fi]=myzcoords[i];
+            // non-blocking recv
+            requests.push_back(p_thisworldcomm->irecv(recvnode,0,&(recvxcoords[0]),flengths[recvnode]*slengths[thisnode]));
+            requests.push_back(p_thisworldcomm->irecv(recvnode,0,&(recvycoords[0]),flengths[recvnode]*slengths[thisnode]));
+            requests.push_back(p_thisworldcomm->irecv(recvnode,0,&(recvzcoords[0]),flengths[recvnode]*slengths[thisnode]));
+           
+            // blocking send
+            double* p_xsegment = (double*) &(localdatax[sendnode][0]);
+            double* p_ysegment = (double*) &(localdatay[sendnode][0]);
+            double* p_zsegment = (double*) &(localdataz[sendnode][0]);
+            
+            p_thisworldcomm->send(sendnode,0,p_xsegment,flengths[thisnode]*slengths[sendnode]);
+            p_thisworldcomm->send(sendnode,0,p_ysegment,flengths[thisnode]*slengths[sendnode]);
+            p_thisworldcomm->send(sendnode,0,p_zsegment,flengths[thisnode]*slengths[sendnode]);
+            
+            boost::mpi::wait_all(requests.begin(),requests.end());
+
+            for(size_t i = 0; i < flengths[recvnode]; ++i)
+            {
+                size_t abs_framepos = foffsets[recvnode]+i;
+                size_t rel_framepos_offset = i*slengths[thisnode];
+                for(size_t j = 0; j < slengths[thisnode]; ++j)
+                {
+                    size_t rel_framepos = rel_framepos_offset + j;
+                    m_x[j][abs_framepos]=recvxcoords[rel_framepos];
+                    m_y[j][abs_framepos]=recvycoords[rel_framepos];
+                    m_z[j][abs_framepos]=recvzcoords[rel_framepos];
+                }
+            }
         }
 
     }
-    timer.stop("sd:data");
+    timer.stop("sd:data:trans");
     
 	p_asingle = new vector< complex<double> >; // initialize with no siz
 	
@@ -128,6 +192,104 @@ SelfVectorsScatterDevice::SelfVectorsScatterDevice(boost::mpi::communicator& thi
 	scatterfactors.set_background(true);
 	
 }
+
+//SelfVectorsScatterDevice::SelfVectorsScatterDevice(boost::mpi::communicator& thisworld, Sample& sample){
+//
+//	p_thisworldcomm = &thisworld;
+//	p_sample = &sample; // keep a reference to the sample
+//
+//	string target = Params::Inst()->scattering.target;
+//
+//	p_sample->coordinate_sets.set_representation(CARTESIAN);	
+//	p_sample->coordinate_sets.set_selection(sample.atoms.selections[target]);
+//
+//
+//	size_t rank = thisworld.rank();
+//	size_t NN = thisworld.size(); // Number of Nodes
+//
+//	size_t NA = sample.atoms.selections[target].indexes.size(); // Number of Atoms
+//	size_t NF = sample.coordinate_sets.size();
+//
+//	EvenDecompose framesdecomp(NF,NN);
+//    vector<size_t> myframes = framesdecomp.indexes_for(rank);
+//    size_t NMYF = myframes.size();
+//
+//	EvenDecompose indexdecomp(NA,NN);
+//    m_indexes = indexdecomp.indexes_for(rank);
+//    size_t NMYI = m_indexes.size();
+//    
+//	if (NN>NA) {
+//		Err::Inst()->write("Not enough atoms for decomposition");
+//		throw;
+//	}
+//
+//    m_x.assign(NMYI,vector<double>(NF));
+//    m_y.assign(NMYI,vector<double>(NF));
+//    m_z.assign(NMYI,vector<double>(NF));
+//    
+//    timer.start("sd:data");
+//    for(size_t fi = 0; fi < NF; ++fi)
+//    {
+//        size_t activerank = framesdecomp.rank_of(fi);
+//
+//        // receive a block of x coordinates for a single frame in order of indexes
+//        vector<double> myxcoords(NMYI);
+//        vector<double> myycoords(NMYI);
+//        vector<double> myzcoords(NMYI);
+//  
+//        if ( rank != activerank ) {
+//            p_thisworldcomm->recv(activerank,0,&(myxcoords[0]),NMYI);
+//            p_thisworldcomm->recv(activerank,0,&(myycoords[0]),NMYI);
+//            p_thisworldcomm->recv(activerank,0,&(myzcoords[0]),NMYI);
+//        } else {
+//			CoordinateSet* p_cs = p_sample->coordinate_sets.load(fi);        
+//
+//            size_t segoffset = 0;        
+//            for(size_t i = 0; i < NN; ++i)
+//            {
+//                // send a portion of coordinates TO a node
+//                double* p_xsegment = (double*) &(p_cs->c1[segoffset]);
+//                double* p_ysegment = (double*) &(p_cs->c2[segoffset]);
+//                double* p_zsegment = (double*) &(p_cs->c3[segoffset]);
+//                size_t seglength = indexdecomp.indexes_for(i).size();
+//                
+//                if (i==activerank) {
+//                    p_thisworldcomm->isend(i,0,p_xsegment,seglength);
+//                    p_thisworldcomm->recv(activerank,0,&(myxcoords[0]),NMYI);
+//                    p_thisworldcomm->isend(i,0,p_ysegment,seglength);
+//                    p_thisworldcomm->recv(activerank,0,&(myycoords[0]),NMYI);
+//                    p_thisworldcomm->isend(i,0,p_zsegment,seglength);                    
+//                    p_thisworldcomm->recv(activerank,0,&(myzcoords[0]),NMYI);
+//                } else {
+//                    p_thisworldcomm->send(i,0,p_xsegment,seglength);
+//                    p_thisworldcomm->send(i,0,p_ysegment,seglength);
+//                    p_thisworldcomm->send(i,0,p_zsegment,seglength);                    
+//                }
+//                segoffset += seglength;
+//            }
+//            delete p_cs;
+//        }
+// 
+//
+//        // copy coordinates to the right location:
+//        for(size_t i = 0; i < NMYI; ++i)
+//        {
+//            m_x[i][fi]=myxcoords[i];
+//            m_y[i][fi]=myycoords[i];
+//            m_z[i][fi]=myzcoords[i];
+//        }
+//
+//    }
+//    timer.stop("sd:data");
+//    
+//	p_asingle = new vector< complex<double> >; // initialize with no siz
+//	
+//	scatterfactors.set_sample(sample);
+//	scatterfactors.set_selection(sample.atoms.selections[target]);
+//	scatterfactors.set_background(true);
+//	
+//}
+
 
 void SelfVectorsScatterDevice::scatter(size_t ai, size_t mi) {
 
