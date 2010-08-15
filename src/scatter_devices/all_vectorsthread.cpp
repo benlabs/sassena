@@ -25,6 +25,7 @@
 #include "math/coor3d.hpp"
 #include "math/smath.hpp"
 #include "decomposition/decompose.hpp"
+#include "scatter_devices/io/h5_fqt_interface.hpp"
 #include <fftw3.h>
 #include "control.hpp"
 #include "log.hpp"
@@ -32,18 +33,30 @@
 
 using namespace std;
 
-AllVectorsThreadScatterDevice::AllVectorsThreadScatterDevice(boost::mpi::communicator& thisworld, Sample& sample) {
+AllVectorsThreadScatterDevice::AllVectorsThreadScatterDevice(
+		boost::mpi::communicator scatter_comm,
+		boost::mpi::communicator fqt_comm,
+		Sample& sample,
+		vector<pair<size_t,CartesianCoor3D> > QIV,
+		string fqt_filename)
+{
+	m_qvectorindexpairs= QIV;
+	m_current_qvector =0;
+	m_fqt_filename = fqt_filename;
 
-	p_thisworldcomm = &thisworld;
+	m_scattercomm = scatter_comm;
+	m_fqtcomm = fqt_comm;
+    m_writeflag = false;
+
 	p_sample = &sample; // keep a reference to the sample
 
 	string target = Params::Inst()->scattering.target;
 
-	size_t NN = thisworld.size(); // Number of Nodes
+	size_t NN = m_fqtcomm.size(); // Number of Nodes
 	size_t NA = sample.atoms.selections[target].indexes.size(); // Number of Atoms
 	size_t NF = sample.coordinate_sets.size();
 
-	size_t rank = thisworld.rank();
+	size_t rank = m_fqtcomm.rank();
 
 	EvenDecompose edecomp(NF,NN);
 	
@@ -51,7 +64,7 @@ AllVectorsThreadScatterDevice::AllVectorsThreadScatterDevice(boost::mpi::communi
     // blocking factor:
     // max(nn,nq)
 
-	if (thisworld.rank()==0) {	
+	if (m_fqtcomm.rank()==0) {
 
         size_t memusage_scatmat = 2*sizeof(double)*myframes.size()*1;
                 
@@ -109,7 +122,7 @@ AllVectorsThreadScatterDevice::AllVectorsThreadScatterDevice(boost::mpi::communi
     }
     size_t NMBLOCK = (NN<NM) ? NN : NM;
     
-	if (thisworld.rank()==0) {	
+	if (m_fqtcomm.rank()==0) {
 
         size_t memusage_scatmat = 2*sizeof(double)*NMBLOCK*NMYF;
 
@@ -236,7 +249,6 @@ void AllVectorsThreadScatterDevice::worker1(size_t NM,CartesianCoor3D q) {
     //size_t NMMAX = 1000;
     
     boost::threadpool::pool tp(2);
-    
     for(size_t mi = 0; mi < NM; mi+=1)
     {
 //        boost::thread t(boost::bind(&AllVectorsThreadScatterDevice::scatter,this,mi) );	
@@ -253,7 +265,7 @@ void AllVectorsThreadScatterDevice::worker1(size_t NM,CartesianCoor3D q) {
 //        } 	    
 //    }
     tp.wait();
-    worker1_done_flag = true;
+
     // this feature is dead:
 	//    if (Params::Inst()->scattering.center) {
     //        multiply_alignmentfactors(q);
@@ -262,20 +274,21 @@ void AllVectorsThreadScatterDevice::worker1(size_t NM,CartesianCoor3D q) {
 
 void AllVectorsThreadScatterDevice::worker2() {
     
-    size_t NN = p_thisworldcomm->size();
+    size_t NN = m_fqtcomm.size();
     size_t NF = p_sample->coordinate_sets.size();
     size_t NMYF = myframes.size();
     
-    size_t MYRANK = p_thisworldcomm->rank();
+    size_t MYRANK = m_fqtcomm.rank();
     size_t vector_count = 0;
     
-    while ( !(worker1_done_flag && at1.empty()) ) {
+    while ( true ) {
         
         timer.start("sd:traffic"); 
         // get a local copy of the data
         std::vector< std::complex<double> >* p_at_local;
         //if (!at1.try_pop(p_at_local)) continue;
         at1.wait_and_pop(p_at_local);
+        boost::this_thread::disable_interruption di;
 
 
         // target node: vector_count % NN
@@ -283,7 +296,7 @@ void AllVectorsThreadScatterDevice::worker2() {
         vector_count++;	
 
         vector<size_t> nframes(NN);
-        boost::mpi::all_gather(*p_thisworldcomm,NMYF,&(nframes[0]));
+        boost::mpi::all_gather(m_fqtcomm,NMYF,&(nframes[0]));
         
         if (MYRANK==target_node) {
             
@@ -294,7 +307,7 @@ void AllVectorsThreadScatterDevice::worker2() {
             for (size_t n=0;n<NN;n++) {
                 double* pp_at_allframes = (double*) &((*p_at_allframes)[ntotal]);
                 if (MYRANK!=n) {
-                    p_thisworldcomm->recv(n,0,pp_at_allframes,2*nframes[n]);
+                	m_fqtcomm.recv(n,0,pp_at_allframes,2*nframes[n]);
                 } else {
                     for(size_t nn=0;nn<nframes[n];nn++) {
                         (*p_at_allframes)[ntotal+nn]=(*p_at_local)[nn];                        
@@ -308,29 +321,26 @@ void AllVectorsThreadScatterDevice::worker2() {
                             
         } else {
             double* p_at_frames = (double*) p_at_local;
-            p_thisworldcomm->send(target_node,0,p_at_frames,2*NMYF);                
+            m_fqtcomm.send(target_node,0,p_at_frames,2*NMYF);
         }
         timer.stop("sd:traffic"); 
 
 	    // need to free p_at_local, since we gained ownership
         delete p_at_local;
-        
 	}
-	
-    worker2_done_flag=true;
+      
 }
 
 void AllVectorsThreadScatterDevice::worker3() {
     
     //size_t NF = p_sample->coordinate_sets.size();
-
-    while ( !(worker2_done_flag && at2.empty()) ) {
-            
+    while ( true ) {
         // get a local copy of the data
-        std::vector< std::complex<double> >* p_at_local;
+        std::vector< std::complex<double> >* p_at_local=NULL;
         //if (!at2.try_pop(p_at_local)) continue;
-        at2.wait_and_pop(p_at_local);
-
+        at2.wait_and_pop(p_at_local);            
+        boost::this_thread::disable_interruption di;
+        
         timer.start("sd:correlation"); 
 
 		// correlate or sum up
@@ -359,13 +369,43 @@ void AllVectorsThreadScatterDevice::worker3() {
         timer.stop("sd:correlation"); 
 
         delete p_at_local;
-        
 	}	
-	
-    worker3_done_flag=true;
 }
 
-void AllVectorsThreadScatterDevice::execute(CartesianCoor3D q) {
+double AllVectorsThreadScatterDevice::progress() {
+	size_t total = m_qvectorindexpairs.size();
+	size_t current = m_current_qvector;
+	double progress = 0.0;
+	if (total==current) {
+		progress = 1.0;
+	} else if (current!=0) {
+		progress = ((current*1.0)/total);
+	}
+	return progress;
+}
+void AllVectorsThreadScatterDevice::next() {
+	if (m_current_qvector>=m_qvectorindexpairs.size()) return;
+	m_current_qvector+=1;
+}
+
+void AllVectorsThreadScatterDevice::write() {
+ // do a scatter_comm operation to negotiate write outs
+ for(int i = 0; i < m_scattercomm.size(); ++i)
+ {
+     if (m_scattercomm.rank()==i) {
+    	if ((m_fqtcomm.rank()==0) && m_writeflag) {
+             H5FQTInterface::store(m_fqt_filename,m_qvectorindexpairs[m_current_qvector].first,m_spectrum);
+             m_writeflag = false;
+    	}
+    }
+    m_scattercomm.barrier();
+ }
+}
+
+void AllVectorsThreadScatterDevice::compute() {
+
+	if (m_current_qvector>=m_qvectorindexpairs.size()) return;
+	CartesianCoor3D q=m_qvectorindexpairs[m_current_qvector].second;
 
     init(q);
 
@@ -384,25 +424,25 @@ void AllVectorsThreadScatterDevice::execute(CartesianCoor3D q) {
 
     
 	// blocking factor: max(nn,nq)
-    long NN = p_thisworldcomm->size();
+    long NN = m_fqtcomm.size();
     long NM = get_numberofmoments();
     long NF = p_sample->coordinate_sets.size();
 
     m_spectrum.assign(NF,0);
     at3.resize(NF,0);
     
-    worker1_done_flag = false;
-    worker2_done_flag = false;
-    worker3_done_flag = false;
-
     boost::thread t1(boost::bind(&AllVectorsThreadScatterDevice::worker1, this, NM,q));
-    
     boost::thread t2(boost::bind(&AllVectorsThreadScatterDevice::worker2, this));
     boost::thread t3(boost::bind(&AllVectorsThreadScatterDevice::worker3, this));
 	    
-	// wait for t4 to finish
-    t3.join();
-
+	// wait for t1 to finish
+    t1.join();
+    at1.wait_for_empty();
+    at2.wait_for_empty();
+    
+    t2.interrupt();
+    t3.interrupt();
+        
     vector<complex<double> > at_local(NF,0);
     
     double* p_at3 = (double*) &(at3[0]);
@@ -410,7 +450,7 @@ void AllVectorsThreadScatterDevice::execute(CartesianCoor3D q) {
     
     
     if (NN>1) {
-        boost::mpi::reduce(*p_thisworldcomm,p_at3,2*NF,p_atlocal,std::plus<double>() ,0);        
+        boost::mpi::reduce(m_fqtcomm,p_at3,2*NF,p_atlocal,std::plus<double>() ,0);
         for(size_t j = 0; j < at_local.size(); ++j)
         {
             m_spectrum[j] += std::complex<double>((at_local[j].real())/NM,(at_local[j].imag())/NM);
@@ -421,11 +461,8 @@ void AllVectorsThreadScatterDevice::execute(CartesianCoor3D q) {
             m_spectrum[j] += std::complex<double>((at3[j].real())/NM,(at3[j].imag())/NM);
         }         			
     }
-   
-}
 
-vector<complex<double> >& AllVectorsThreadScatterDevice::get_spectrum() {
-	return m_spectrum;
+    m_writeflag=true;
 }
 
 

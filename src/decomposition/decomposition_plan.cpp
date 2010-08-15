@@ -29,12 +29,12 @@
 
 using namespace std;
 
-DecompositionPlan::DecompositionPlan(boost::mpi::communicator thisworld,vector<size_t>& qindexes,vector<size_t>& frames) {
-	
-	size_t nn = thisworld.size();
-	size_t nq = qindexes.size();
-	size_t nf = frames.size();
-	
+DecompositionPlan::DecompositionPlan(size_t nn,size_t nq,size_t nf) {
+    
+    m_nn = nn;
+    m_nq = nq;
+    m_nf = nf;
+    
 	// calculate some partioning schemes, init penalty w/ qsplit==1
 	size_t bestworldsplit = 1;
 	size_t bestcolwidth = nn;
@@ -83,13 +83,9 @@ DecompositionPlan::DecompositionPlan(boost::mpi::communicator thisworld,vector<s
 	m_penalty = penalty;
 	m_bestworldsplit = bestworldsplit;
 	
-	
-	m_qindexes = qindexes;
-	m_frames = frames;
 	// only allow successful construction if load imbalance is sufficiently small
 
 	if (static_imbalance() > Params::Inst()->limits.decomposition.static_imbalance) {
-		if (thisworld.rank()==0) {
 			Err::Inst()->write(string("Total static load balance too high. Try a different number of nodes."));
 
 			Info::Inst()->write(string("Static imbalance limit: ")+to_s(Params::Inst()->limits.decomposition.static_imbalance));
@@ -110,48 +106,23 @@ DecompositionPlan::DecompositionPlan(boost::mpi::communicator thisworld,vector<s
 				if (liscounter>10) break;
 			}
 			Info::Inst()->write(string("Best numbers: ")+lss.str());
-			
-		}
+
 
 		throw;
 	}		
 }
 
-boost::mpi::communicator DecompositionPlan::split() {
+std::vector<size_t> DecompositionPlan::colors() {
 		
-	size_t mycolor = m_thisworldcomm.rank() / m_bestcolwidth;
-		
-	boost::mpi::communicator local = m_thisworldcomm.split(mycolor);
-	return local;
-}
-
-vector<size_t> DecompositionPlan::qindexes() {
-
-	vector<size_t> result;
-
-	EvenDecompose e(m_qindexes.size(),m_bestworldsplit);
-	size_t mycolor = m_thisworldcomm.rank() / m_bestcolwidth;
-	
-	if (mycolor<e.size()) {
-	    result = e.indexes_for(mycolor);
+	std::vector<size_t> colors;
+	for(size_t i=0;i<m_nn;i++) {
+		colors.push_back( i / m_bestcolwidth);
 	}
-	
-	vector<size_t> indexesresult;
-	
-	for(size_t i = 0; i < result.size(); ++i)
-	{
-        indexesresult.push_back(m_qindexes[result[i]]);
-	}
-	
-	return indexesresult;
-}
-
-vector<size_t> DecompositionPlan::frames() {
-	throw; // not implemented yet.
+	return colors;
 }
 
 double DecompositionPlan::static_imbalance() {
-	return ( m_penalty/(1.0*m_frames.size()*m_qindexes.size()) ); 
+	return ( m_penalty/(1.0*m_nf*m_nq) );
 }
 
 size_t DecompositionPlan::penalty() {
@@ -200,8 +171,13 @@ size_t DecompositionPlan::compute_penalty(size_t nq, size_t nf, size_t nn,size_t
 		return penalty;
 }
 
-size_t DecompositionPlan::worlds() { 
+size_t DecompositionPlan::partitions() {
 	return m_bestworldsplit;
 }
+
+size_t DecompositionPlan::partitionsize() {
+	return m_nn / m_bestworldsplit;
+}
+
 
 // end of file

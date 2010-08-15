@@ -24,6 +24,7 @@
 #include "math/coor3d.hpp"
 #include "math/smath.hpp"
 #include "decomposition/decompose.hpp"
+#include "scatter_devices/io/h5_fqt_interface.hpp"
 #include <fftw3.h>
 #include "control.hpp"
 #include "log.hpp"
@@ -32,9 +33,161 @@
 
 using namespace std;
 
-SelfVectorsScatterDevice::SelfVectorsScatterDevice(boost::mpi::communicator& thisworld, Sample& sample){
 
-	p_thisworldcomm = &thisworld;
+void SelfVectorsScatterDevice::compute() {
+
+	if (m_current_qvector>=m_qvectorindexpairs.size()) return;
+
+	CartesianCoor3D q=m_qvectorindexpairs[m_current_qvector].second;
+    init(q);
+
+	timer.start("sd:sf:update");
+	scatterfactors.update(q); // scatter factors only dependent on length of q, hence we can do it once before the loop
+	timer.stop("sd:sf:update");
+
+	// blocking factor: max(nn,nq)
+    long NN = m_fqtcomm.size();
+    long NM = get_numberofmoments();
+    long NF = p_sample->coordinate_sets.size();
+
+	m_spectrum.assign(NF,0);
+
+    timer.start("sd:compute");
+    // correlate or sum up
+    if (Params::Inst()->scattering.correlation.type=="time") {
+
+        for (long ai = 0; ai < m_indexes.size(); ai++) {
+            for(long mi = 0; mi < NM; mi++)
+            {
+                // compute a block of q vectors:
+    	        timer.start("sd:scatterblock");
+    	        scatter(ai,mi);	// fills p_asingle
+    	        timer.stop("sd:scatterblock");
+
+    	        // operate on (*p_asingle)
+    	        if (Params::Inst()->scattering.center) {
+                    multiply_alignmentfactors(mi);
+    	        }
+
+    	        timer.start("sd:correlate");
+                correlate();
+    	        timer.stop("sd:correlate");
+
+                vector<complex<double> >& spectrum = (*p_asingle);
+        	    for(size_t fi = 0; fi < NF; ++fi)
+        	    {
+        	    	m_spectrum[fi] += spectrum[fi];
+        	    }
+        	}
+        }
+    } else if (Params::Inst()->scattering.correlation.type=="infinite-time") {
+
+        for (long ai = 0; ai < m_indexes.size(); ai++) {
+            for(long mi = 0; mi < NM; mi++)
+            {
+                // compute a block of q vectors:
+    	        timer.start("sd:scatterblock");
+    	        scatter(ai,mi);	// fills p_asingle
+    	        timer.stop("sd:scatterblock");
+
+    	        // operate on (*p_asingle)
+    	        if (Params::Inst()->scattering.center) {
+                    multiply_alignmentfactors(mi);
+    	        }
+
+    	        timer.start("sd:correlate");
+                infinite_correlate();
+    	        timer.stop("sd:correlate");
+
+                vector<complex<double> >& spectrum = (*p_asingle);
+        	    for(size_t fi = 0; fi < NF; ++fi)
+        	    {
+        	    	m_spectrum[fi] += spectrum[fi];
+        	    }
+        	}
+    	}
+    } else {
+        // if not time correlated, the conjmultiply negates phase information
+        // this simplifies formulas
+
+//        p_asingle->assign(NF,0);
+
+        for (long ai = 0; ai < m_indexes.size(); ai++) {
+        	double s = scatterfactors.get(m_indexes[ai]);
+            for(size_t fi = 0; fi < NF; ++fi)
+            {
+                m_spectrum[fi] += NM*s*s;
+            }
+        }
+
+    }
+    timer.stop("sd:compute");
+
+
+	// these functions operate on m_spectrum:
+
+    timer.start("sd:norm");
+    norm();
+    timer.stop("sd:norm");
+
+	// finally assemble results on the head node:
+    timer.start("sd:gather_sum");
+    gather_sum(); // head node has everything in a (vector< complex<double> >)
+    timer.stop("sd:gather_sum");
+
+    m_writeflag = true;
+}
+
+void SelfVectorsScatterDevice::write() {
+ // do a scatter_comm operation to negotiate write outs
+ for(int i = 0; i < m_scattercomm.size(); ++i)
+ {
+     if (m_scattercomm.rank()==i) {
+    	if ((m_fqtcomm.rank()==0) && m_writeflag) {
+             H5FQTInterface::store(m_fqt_filename,m_qvectorindexpairs[m_current_qvector].first,m_spectrum);
+             m_writeflag = false;
+    	}
+    }
+    m_scattercomm.barrier();
+ }
+}
+
+void SelfVectorsScatterDevice::next() {
+	if (m_current_qvector>=m_qvectorindexpairs.size()) return;
+
+	m_current_qvector+=1;
+}
+
+
+
+double SelfVectorsScatterDevice::progress() {
+	size_t total = m_qvectorindexpairs.size();
+	size_t current = m_current_qvector;
+	double progress = 0.0;
+	if (total==current) {
+		progress = 1.0;
+	} else if (current!=0) {
+		progress = ((current*1.0)/total);
+	}
+
+	return progress;
+}
+
+SelfVectorsScatterDevice::SelfVectorsScatterDevice(
+		boost::mpi::communicator scatter_comm,
+		boost::mpi::communicator fqt_comm,
+		Sample& sample,
+		std::vector<std::pair<size_t,CartesianCoor3D> > QIV,
+		string fqt_filename)
+{
+	m_qvectorindexpairs= QIV;
+	m_current_qvector =0;
+	m_fqt_filename = fqt_filename;
+
+	m_scattercomm = scatter_comm;
+	m_fqtcomm = fqt_comm;
+    m_writeflag = false;
+
 	p_sample = &sample; // keep a reference to the sample
 
 	string target = Params::Inst()->scattering.target;
@@ -43,8 +196,20 @@ SelfVectorsScatterDevice::SelfVectorsScatterDevice(boost::mpi::communicator& thi
 	p_sample->coordinate_sets.set_selection(sample.atoms.selections[target]);
 
 
-	size_t rank = thisworld.rank();
-	size_t NN = thisworld.size(); // Number of Nodes
+    // if no qvectors are to be calculated , DO not waste any time on transposing and/or loading the data..
+    if (QIV.size()==0) {
+        return;
+    }
+
+	p_asingle = new vector< complex<double> >; // initialize with no siz
+	
+	scatterfactors.set_sample(sample);
+	scatterfactors.set_selection(sample.atoms.selections[target]);
+	scatterfactors.set_background(true);
+
+
+	size_t rank = m_fqtcomm.rank();
+	size_t NN = m_fqtcomm.size(); // Number of Nodes
 
 	size_t NA = sample.atoms.selections[target].indexes.size(); // Number of Atoms
 	size_t NF = sample.coordinate_sets.size();
@@ -76,10 +241,9 @@ SelfVectorsScatterDevice::SelfVectorsScatterDevice(boost::mpi::communicator& thi
     vector<size_t> slengths(NN);
     vector<size_t> soffsets(NN);
 
-    boost::mpi::all_gather(*p_thisworldcomm,seglength,&(slengths[0]));
-    boost::mpi::all_gather(*p_thisworldcomm,segoffset,&(soffsets[0]));
+    boost::mpi::all_gather(m_fqtcomm,seglength,&(slengths[0]));
+    boost::mpi::all_gather(m_fqtcomm,segoffset,&(soffsets[0]));
     // now slengths and soffsets index atom stripes
-
 
     // load all frames first
 
@@ -117,8 +281,8 @@ SelfVectorsScatterDevice::SelfVectorsScatterDevice(boost::mpi::communicator& thi
     vector<size_t> flengths(NN);
     vector<size_t> foffsets(NN);
 
-    boost::mpi::all_gather(*p_thisworldcomm,flength,&(flengths[0]));
-    boost::mpi::all_gather(*p_thisworldcomm,foffset,&(foffsets[0]));
+    boost::mpi::all_gather(m_fqtcomm,flength,&(flengths[0]));
+    boost::mpi::all_gather(m_fqtcomm,foffset,&(foffsets[0]));
     // now slengths and soffsets index atom stripes
 
     // next do a global communication to distribute the datasizes
@@ -153,18 +317,18 @@ SelfVectorsScatterDevice::SelfVectorsScatterDevice(boost::mpi::communicator& thi
             vector<double> recvzcoords(flengths[recvnode]*slengths[thisnode]);
 
             // non-blocking recv
-            requests.push_back(p_thisworldcomm->irecv(recvnode,0,&(recvxcoords[0]),flengths[recvnode]*slengths[thisnode]));
-            requests.push_back(p_thisworldcomm->irecv(recvnode,0,&(recvycoords[0]),flengths[recvnode]*slengths[thisnode]));
-            requests.push_back(p_thisworldcomm->irecv(recvnode,0,&(recvzcoords[0]),flengths[recvnode]*slengths[thisnode]));
+            requests.push_back(m_fqtcomm.irecv(recvnode,0,&(recvxcoords[0]),flengths[recvnode]*slengths[thisnode]));
+            requests.push_back(m_fqtcomm.irecv(recvnode,0,&(recvycoords[0]),flengths[recvnode]*slengths[thisnode]));
+            requests.push_back(m_fqtcomm.irecv(recvnode,0,&(recvzcoords[0]),flengths[recvnode]*slengths[thisnode]));
            
             // blocking send
             double* p_xsegment = (double*) &(localdatax[sendnode][0]);
             double* p_ysegment = (double*) &(localdatay[sendnode][0]);
             double* p_zsegment = (double*) &(localdataz[sendnode][0]);
             
-            p_thisworldcomm->send(sendnode,0,p_xsegment,flengths[thisnode]*slengths[sendnode]);
-            p_thisworldcomm->send(sendnode,0,p_ysegment,flengths[thisnode]*slengths[sendnode]);
-            p_thisworldcomm->send(sendnode,0,p_zsegment,flengths[thisnode]*slengths[sendnode]);
+            m_fqtcomm.send(sendnode,0,p_xsegment,flengths[thisnode]*slengths[sendnode]);
+            m_fqtcomm.send(sendnode,0,p_ysegment,flengths[thisnode]*slengths[sendnode]);
+            m_fqtcomm.send(sendnode,0,p_zsegment,flengths[thisnode]*slengths[sendnode]);
             
             boost::mpi::wait_all(requests.begin(),requests.end());
 
@@ -184,112 +348,7 @@ SelfVectorsScatterDevice::SelfVectorsScatterDevice(boost::mpi::communicator& thi
 
     }
     timer.stop("sd:data:trans");
-    
-	p_asingle = new vector< complex<double> >; // initialize with no siz
-	
-	scatterfactors.set_sample(sample);
-	scatterfactors.set_selection(sample.atoms.selections[target]);
-	scatterfactors.set_background(true);
-	
 }
-
-//SelfVectorsScatterDevice::SelfVectorsScatterDevice(boost::mpi::communicator& thisworld, Sample& sample){
-//
-//	p_thisworldcomm = &thisworld;
-//	p_sample = &sample; // keep a reference to the sample
-//
-//	string target = Params::Inst()->scattering.target;
-//
-//	p_sample->coordinate_sets.set_representation(CARTESIAN);	
-//	p_sample->coordinate_sets.set_selection(sample.atoms.selections[target]);
-//
-//
-//	size_t rank = thisworld.rank();
-//	size_t NN = thisworld.size(); // Number of Nodes
-//
-//	size_t NA = sample.atoms.selections[target].indexes.size(); // Number of Atoms
-//	size_t NF = sample.coordinate_sets.size();
-//
-//	EvenDecompose framesdecomp(NF,NN);
-//    vector<size_t> myframes = framesdecomp.indexes_for(rank);
-//    size_t NMYF = myframes.size();
-//
-//	EvenDecompose indexdecomp(NA,NN);
-//    m_indexes = indexdecomp.indexes_for(rank);
-//    size_t NMYI = m_indexes.size();
-//    
-//	if (NN>NA) {
-//		Err::Inst()->write("Not enough atoms for decomposition");
-//		throw;
-//	}
-//
-//    m_x.assign(NMYI,vector<double>(NF));
-//    m_y.assign(NMYI,vector<double>(NF));
-//    m_z.assign(NMYI,vector<double>(NF));
-//    
-//    timer.start("sd:data");
-//    for(size_t fi = 0; fi < NF; ++fi)
-//    {
-//        size_t activerank = framesdecomp.rank_of(fi);
-//
-//        // receive a block of x coordinates for a single frame in order of indexes
-//        vector<double> myxcoords(NMYI);
-//        vector<double> myycoords(NMYI);
-//        vector<double> myzcoords(NMYI);
-//  
-//        if ( rank != activerank ) {
-//            p_thisworldcomm->recv(activerank,0,&(myxcoords[0]),NMYI);
-//            p_thisworldcomm->recv(activerank,0,&(myycoords[0]),NMYI);
-//            p_thisworldcomm->recv(activerank,0,&(myzcoords[0]),NMYI);
-//        } else {
-//			CoordinateSet* p_cs = p_sample->coordinate_sets.load(fi);        
-//
-//            size_t segoffset = 0;        
-//            for(size_t i = 0; i < NN; ++i)
-//            {
-//                // send a portion of coordinates TO a node
-//                double* p_xsegment = (double*) &(p_cs->c1[segoffset]);
-//                double* p_ysegment = (double*) &(p_cs->c2[segoffset]);
-//                double* p_zsegment = (double*) &(p_cs->c3[segoffset]);
-//                size_t seglength = indexdecomp.indexes_for(i).size();
-//                
-//                if (i==activerank) {
-//                    p_thisworldcomm->isend(i,0,p_xsegment,seglength);
-//                    p_thisworldcomm->recv(activerank,0,&(myxcoords[0]),NMYI);
-//                    p_thisworldcomm->isend(i,0,p_ysegment,seglength);
-//                    p_thisworldcomm->recv(activerank,0,&(myycoords[0]),NMYI);
-//                    p_thisworldcomm->isend(i,0,p_zsegment,seglength);                    
-//                    p_thisworldcomm->recv(activerank,0,&(myzcoords[0]),NMYI);
-//                } else {
-//                    p_thisworldcomm->send(i,0,p_xsegment,seglength);
-//                    p_thisworldcomm->send(i,0,p_ysegment,seglength);
-//                    p_thisworldcomm->send(i,0,p_zsegment,seglength);                    
-//                }
-//                segoffset += seglength;
-//            }
-//            delete p_cs;
-//        }
-// 
-//
-//        // copy coordinates to the right location:
-//        for(size_t i = 0; i < NMYI; ++i)
-//        {
-//            m_x[i][fi]=myxcoords[i];
-//            m_y[i][fi]=myycoords[i];
-//            m_z[i][fi]=myzcoords[i];
-//        }
-//
-//    }
-//    timer.stop("sd:data");
-//    
-//	p_asingle = new vector< complex<double> >; // initialize with no siz
-//	
-//	scatterfactors.set_sample(sample);
-//	scatterfactors.set_selection(sample.atoms.selections[target]);
-//	scatterfactors.set_background(true);
-//	
-//}
-
 
 void SelfVectorsScatterDevice::scatter(size_t ai, size_t mi) {
 
@@ -433,114 +492,13 @@ void SelfVectorsScatterDevice::infinite_correlate() {
     }
 }
 
-void SelfVectorsScatterDevice::execute(CartesianCoor3D q) {
-	
-    init(q);
-
-	timer.start("sd:sf:update");
-	scatterfactors.update(q); // scatter factors only dependent on length of q, hence we can do it once before the loop
-	timer.stop("sd:sf:update");
-	
-	// blocking factor: max(nn,nq)
-    long NN = p_thisworldcomm->size();
-    long NM = get_numberofmoments();
-    long NF = p_sample->coordinate_sets.size();
-    
-	m_spectrum.assign(NF,0);
-
-    timer.start("sd:compute");
-    // correlate or sum up
-    if (Params::Inst()->scattering.correlation.type=="time") {
-
-        for (long ai = 0; ai < m_indexes.size(); ai++) {
-            for(long mi = 0; mi < NM; mi++)
-            {        
-                // compute a block of q vectors:
-    	        timer.start("sd:scatterblock");
-    	        scatter(ai,mi);	// fills p_asingle
-    	        timer.stop("sd:scatterblock");            
-
-    	        // operate on (*p_asingle)
-    	        if (Params::Inst()->scattering.center) {
-                    multiply_alignmentfactors(mi);
-    	        }		
-
-    	        timer.start("sd:correlate");	                    
-                correlate();
-    	        timer.stop("sd:correlate");	        
-
-                vector<complex<double> >& spectrum = (*p_asingle);
-        	    for(size_t fi = 0; fi < NF; ++fi)
-        	    {
-        	    	m_spectrum[fi] += spectrum[fi];
-        	    }	
-        	}
-        }			
-    } else if (Params::Inst()->scattering.correlation.type=="infinite-time") {
-    
-        for (long ai = 0; ai < m_indexes.size(); ai++) {
-            for(long mi = 0; mi < NM; mi++)
-            {        
-                // compute a block of q vectors:
-    	        timer.start("sd:scatterblock");
-    	        scatter(ai,mi);	// fills p_asingle
-    	        timer.stop("sd:scatterblock");            
-    
-    	        // operate on (*p_asingle)
-    	        if (Params::Inst()->scattering.center) {
-                    multiply_alignmentfactors(mi);
-    	        }		
-    
-    	        timer.start("sd:correlate");	                    
-                infinite_correlate();
-    	        timer.stop("sd:correlate");	        
-    
-                vector<complex<double> >& spectrum = (*p_asingle);
-        	    for(size_t fi = 0; fi < NF; ++fi)
-        	    {
-        	    	m_spectrum[fi] += spectrum[fi];
-        	    }	
-        	}			
-    	}  	
-    } else {
-        // if not time correlated, the conjmultiply negates phase information
-        // this simplifies formulas
- 
-//        p_asingle->assign(NF,0);
- 
-        for (long ai = 0; ai < m_indexes.size(); ai++) {
-        	double s = scatterfactors.get(m_indexes[ai]);
-            for(size_t fi = 0; fi < NF; ++fi)
-            {
-                m_spectrum[fi] += NM*s*s;
-            }
-        }
-    	
-    }
-    timer.stop("sd:compute");    
-    	
-	
-	// these functions operate on m_spectrum:
-	
-    timer.start("sd:norm");	                                		
-    norm();
-    timer.stop("sd:norm");	                    
-
-	// finally assemble results on the head node:
-    timer.start("sd:gather_sum");	                    
-    gather_sum(); // head node has everything in a (vector< complex<double> >)
-    timer.stop("sd:gather_sum");	        
-
-}
-
-
 void SelfVectorsScatterDevice::gather_sum() {
-    size_t NN = p_thisworldcomm->size();
+    size_t NN = m_fqtcomm.size();
     size_t NF = p_sample->coordinate_sets.size();
         
     if (NF<1) return;
     
-    if (p_thisworldcomm->rank()==0) {
+    if (m_fqtcomm.rank()==0) {
         vector< complex<double> > received_a(NF);
         double* p_a_double = (double*) &(received_a.at(0));   
         vector< complex<double> >& a = m_spectrum;
@@ -548,7 +506,7 @@ void SelfVectorsScatterDevice::gather_sum() {
         // only receive from other nodes
         for(size_t i = 1; i < NN; ++i)
         {
-            p_thisworldcomm->recv(i,0,p_a_double,2*NF);
+        	m_fqtcomm.recv(i,0,p_a_double,2*NF);
 
             for(size_t i = 0; i < NF; ++i)
             {
@@ -558,15 +516,10 @@ void SelfVectorsScatterDevice::gather_sum() {
 
     } else {
         double* p_a_double = (double*) &(m_spectrum[0]);   
-        p_thisworldcomm->send(0,0,p_a_double,2*NF);
+        m_fqtcomm.send(0,0,p_a_double,2*NF);
         m_spectrum.clear();
     }
 
-}
-
-
-vector<complex<double> >& SelfVectorsScatterDevice::get_spectrum() {
-	return m_spectrum;
 }
 
 

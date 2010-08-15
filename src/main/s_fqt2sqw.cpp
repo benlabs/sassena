@@ -35,11 +35,57 @@
 #include <boost/serialization/vector.hpp>
 #include <boost/math/distributions/normal.hpp>
 #include <fftw3.h>
+#include <H5Cpp.h>
+
 // other headers
 #include "log.hpp"
 #include "scatter_devices/scatter_spectrum.hpp"
 
 using namespace std;
+
+void init_output(std::string filename, vector<size_t> qindexes,vector<CartesianCoor3D> qvectors) {
+    
+    H5::H5File sqwfile(filename,H5F_ACC_TRUNC);
+    hsize_t dims1[2],maxdims1[2],cdims1[2];
+    dims1[0]=qindexes.size();
+    dims1[1]=3;
+    maxdims1[0]=H5S_UNLIMITED;
+    maxdims1[1]=3;
+    H5::DSetCreatPropList qvector_cparms;
+    cdims1[0]=1;
+    cdims1[1]=1;
+    qvector_cparms.setChunk(2,cdims1);
+    qvector_cparms.setFillValue( H5::PredType::NATIVE_DOUBLE, &fill_val_double);
+    sqwfile.createDataSet( "qvectors", H5::DataType(H5::PredType::NATIVE_DOUBLE), H5::DataSpace(2,dims1,maxdims1),qvector_cparms );
+
+    hsize_t dims2[3],maxdims2[3],cdims2[3];
+    dims2[0]=qvectors.size();
+    dims2[1]=nf;
+    dims2[2]=2;
+    maxdims2[0]=H5S_UNLIMITED;
+    maxdims2[1]=nf;
+    maxdims2[2]=2;
+    H5::DSetCreatPropList sqw_cparms;
+    cdims2[0]=1;
+    cdims2[1]=1;
+    cdims2[2]=1;
+    sqw_cparms.setChunk(3,cdims2);
+    sqw_cparms.setFillValue( H5::PredType::NATIVE_DOUBLE, &fill_val_double);
+    sqwfile.createDataSet( "sqw", H5::DataType(H5::PredType::NATIVE_DOUBLE), H5::DataSpace(3,dims2,maxdims2),sqw_cparms );
+
+    hsize_t foffset1[2];  // Start of hyperslab
+    foffset1[0]=0;
+    foffset1[1]=0;
+    fspace = ds_qv.getSpace();
+    fspace.selectHyperslab(H5S_SELECT_SET,dims1,foffset1);
+    mspace = H5::DataSpace(2,dims1);
+    ds_qv.write(reinterpret_cast<double*>(const_cast<CartesianCoor3D*>(&qvectors[0])), H5::PredType::NATIVE_DOUBLE,mspace,fspace);
+    sqwfile.close();
+}
+
+void store_output(size_t qindex,vector<complex<double> >& sqw) {
+    
+}
 
 int main(int argc,char** argv) {
 
@@ -52,14 +98,66 @@ int main(int argc,char** argv) {
 	Warn::Inst()->set_prefix(string("Warn>>"));
 	 Err::Inst()->set_prefix(string("Err>>"));
 	
-	if (argc!=5) {
-        Err::Inst()->write("Need 4 arguments: FQT data file, SQW filename, energy resolution, boolean flag");
-        throw;
-	}
+     po::options_description desc("Allowed options");
+     desc.add_options()
+         ("help", "produce help message")
+         ("input", po::value<string>()->default_value("fqt.h5"),  "name of the data input file")
+         ("output",po::value<string>()->default_value("sqw.h5"),"name of the data output file")
+     ;
 
-    ScatterSpectrum ss;
-    
-    cout << "Reading FQT data file" << endl;
+     po::variables_map vm;
+     po::store(po::parse_command_line(argc, argv, desc), vm);
+     po::notify(vm);
+
+     if (vm.count("help")) {
+         cout << desc << endl;
+         return 1;
+     }
+
+     if (vm.count("input")==0) {
+         Info::Inst()->write("Require input file");
+         cout << desc << endl;
+     }
+     
+     H5::H5File h5file;
+
+     h5file.openFile(vm["input"].as<string>(),H5F_ACC_RDONLY);
+
+     H5::DataSet ds_qv = h5file.openDataSet("qvectors");
+     H5::DataSet ds_okstatus = h5file.openDataSet("okstatus");
+     H5::DataSet ds_fqt = h5file.openDataSet("fqt");
+
+     hsize_t qvector_field[2];
+     ds_qv.getSpace().getSimpleExtentDims(qvector_field);
+
+     std::vector<CartesianCoor3D> h5qvectors(qvector_field[0]);
+     ds_qv.read(reinterpret_cast<double*>(&h5qvectors[0]), H5::PredType::NATIVE_DOUBLE);
+
+     hsize_t okstatus_field[1];
+     ds_okstatus.getSpace().getSimpleExtentDims(okstatus_field);
+     
+     std::vector<int> okstatus(okstatus_field[0]);
+     ds_okstatus.read(reinterpret_cast<int*>(&okstatus[0]), H5::PredType::NATIVE_INT);
+     
+     hsize_t fqt_field[3];
+     ds_fqt.getSpace().getSimpleExtentDims(fqt_field);
+     
+     
+     vector<size_t> qindexes;
+     for(size_t i = 0; i < okstatus.size(); ++i)
+     {
+         if (okstatus[i]==1) {
+             qindexes.push_back(i);
+         }
+     }
+
+     init_output(vm["output"].as<string>(),qindexes,h5qvectors);
+
+     for(size_t i = 0; i < qindexes.size(); ++i)
+     {
+        
+     }
+     
     
     ss.read_plain(argv[1],"txt");
     ss.write_plain("test.h5","hdf5");

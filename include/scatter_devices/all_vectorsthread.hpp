@@ -53,7 +53,8 @@
          boost::mutex::scoped_lock lock(the_mutex);
          the_queue.push(data);
          lock.unlock();
-         the_condition_variable.notify_one();
+         
+         the_condition_variable.notify_one();         
      }
 
      bool empty() const
@@ -83,7 +84,7 @@
      void wait_and_pop(Data& popped_value)
      {
          boost::mutex::scoped_lock lock(the_mutex);
-         while(the_queue.empty())
+         while (the_queue.empty())
          {
              the_condition_variable.wait(lock);
          }
@@ -92,12 +93,21 @@
          the_queue.pop();
      }
 
+     void wait_for_empty() {
+         while (!the_queue.empty()) boost::this_thread::sleep(boost::posix_time::milliseconds(25));
+     }
  };
  
 class AllVectorsThreadScatterDevice : public ScatterDevice {
 protected:
-	boost::mpi::communicator* p_thisworldcomm;
+	boost::mpi::communicator m_scattercomm;
+	boost::mpi::communicator m_fqtcomm;
 	Sample* p_sample;
+
+	std::vector<std::pair<size_t,CartesianCoor3D> > m_qvectorindexpairs;
+	size_t m_current_qvector;
+	bool m_writeflag;
+	std::string m_fqt_filename;
 
     // first = q, second = frames
     concurrent_queue< std::vector< std::complex<double> >* > at1;
@@ -105,8 +115,6 @@ protected:
     std::vector< std::complex<double> > at3;
 	
     mutable boost::mutex scatter_mutex;
-
-	
 	
 	ScatterFactors scatterfactors;
 	std::vector<size_t> myframes;
@@ -131,16 +139,25 @@ protected:
     void worker2();
     void worker3();
     
-    bool worker1_done_flag;
-    bool worker2_done_flag;
-    bool worker3_done_flag;
+    size_t worker1counter;
+    size_t worker2counter;
+    size_t worker3counter;
+    size_t worker3maxcounter;
 	
 public: 
-	AllVectorsThreadScatterDevice(boost::mpi::communicator& thisworld, Sample& sample);
-	~AllVectorsThreadScatterDevice();
-	
-	void execute(CartesianCoor3D q); 
-	std::vector<std::complex<double> >& get_spectrum(); // returns F(q,tau)
+    AllVectorsThreadScatterDevice(
+			boost::mpi::communicator scatter_comm,
+			boost::mpi::communicator fqt_comm,
+			Sample& sample,
+			std::vector<std::pair<size_t,CartesianCoor3D> > QVI,
+			std::string fqt_filename
+	);
+    virtual ~AllVectorsThreadScatterDevice();
+
+	void compute();
+	void next();
+	void write();
+	double progress();
 };
 
 

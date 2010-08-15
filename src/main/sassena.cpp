@@ -50,7 +50,6 @@
 #include "sample/sample.hpp"
 #include "scatter_devices/scatter_device_factory.hpp"
 #include "scatter_devices/scatter_spectrum.hpp"
-#include "scatter_devices/io/h5_fqt_interface.hpp"
 #include "threadpool/threadpool.hpp"
 
 #include "SassenaConfig.hpp"
@@ -60,14 +59,68 @@ using namespace std;
 namespace po = boost::program_options;
 
 
+//void monitor_thread(boost::mpi::communicator progress_comm,ScatterDevice* pScatterDevice) {
+//    ProgressReporter progress_reporter(progress_comm.size(),0); // this acts like a progress bar
+//    double maxprogress = progress_comm.size()*1.0;
+//    double totalprogress=0;
+//    while (totalprogress!=maxprogress) {
+//    	double progress = pScatterDevice->progress();
+//    	boost::mpi::all_reduce(progress_comm,progress,totalprogress,std::plus<double>());
+//    // progress indicator
+//		if (progress_comm.rank()==0) { // only let the world head report...
+//			progress_reporter.set(totalprogress);
+//			progress_reporter.report(); // only reports if significant progress has been made!
+//		}
+//        cerr << "monitor" << endl;
+//		sleep(2);
+//	}
+//}
+
+void scatter_thread(boost::mpi::communicator world_comm,ScatterDevice* pScatterDevice) {
+	int done = 0;
+	int alldone = 0;
+    ProgressReporter progress_reporter(world_comm.size(),0); // this acts like a progress bar
+	
+    double totalprogress=0;
+    if (world_comm.rank()==0) {	
+		Info::Inst()->write("Starting scattering calculation");
+	}
+	while(alldone!=world_comm.size()) {
+	    if (world_comm.rank()==0) {	
+    		Info::Inst()->write("Computing q vector");
+    	}
+		pScatterDevice->compute();
+	    if (world_comm.rank()==0) {	
+    		Info::Inst()->write("Writing data");
+    	}
+
+		pScatterDevice->write();
+		if (world_comm.rank()==0) {	
+    		Info::Inst()->write("Testing progress");
+    	}
+		pScatterDevice->next();
+		
+    	double progress = pScatterDevice->progress();
+        boost::mpi::all_reduce(world_comm,progress,totalprogress,std::plus<double>());
+        // progress indicator
+    	if (world_comm.rank()==0) { // only let the world head report...
+    		progress_reporter.set(totalprogress);
+    		progress_reporter.report(); // only reports if significant progress has been made!
+    	}
+
+		// test total progress
+		if (pScatterDevice->progress()==1) done=1;
+		boost::mpi::all_reduce(world_comm,done,alldone,std::plus<double>());
+	}
+}
+
 int main(int argc,char** argv) {
 
 	//------------------------------------------//
 	//
 	// MPI Initialization
 	//
-	//------------------------------------------//	
-	
+	//------------------------------------------//
   	boost::mpi::environment env(argc, argv);
   	boost::mpi::communicator world;
 
@@ -223,97 +276,33 @@ int main(int argc,char** argv) {
 	//
 	//------------------------------------------//
 
+//    boost::mpi::communicator progress_comm = boost::mpi::communicator(world,world.group());
+    boost::mpi::communicator mutex_comm = boost::mpi::communicator(world,world.group());
 
-    vector<size_t> qindexes;
-	vector<size_t> frames;
-		
-	for(size_t i = 0; i < sample.coordinate_sets.size(); ++i)
-	{
-		frames.push_back(i);
-	}
-    
-    if (world.rank()==0) {
-        qindexes = H5FQTInterface::init(vm["output"].as<string>(),params->scattering.qvectors,frames.size());
-        
-        size_t nq = qindexes.size();
-        broadcast(world,nq,0);
+    boost::mpi::communicator scatter_comm = boost::mpi::communicator(world,world.group());
 
-        broadcast(world,reinterpret_cast<size_t*>(&qindexes[0]),qindexes.size(),0);
-        
-        world.barrier();        
-    } else {
-        size_t nq=0;
-        broadcast(world,nq,0);
-        qindexes.resize(nq);
-        broadcast(world,reinterpret_cast<size_t*>(&qindexes[0]),qindexes.size(),0);
-        world.barrier();        
-    }
-        
-	if (world.rank()==0) {	
-    	Info::Inst()->write(string("Searching for decomposition plan: "));
-	    Info::Inst()->write(string("nodes    = ")+ to_s(world.size()));
-	    Info::Inst()->write(string("qvectors = ")+ to_s(qindexes.size()));
-	    Info::Inst()->write(string("frames   = ")+ to_s(sample.coordinate_sets.size()));	
-    }
-    
-	DecompositionPlan dplan(world,qindexes,frames);
-	if (world.rank()==0) {	
-		Info::Inst()->write(string("Decomposition has ")+to_s(dplan.worlds())+string(" partitions"));
-		Info::Inst()->write(string("Static imbalance factor (0 is best): ")+ to_s(dplan.static_imbalance()));
-	}
-	
-	boost::mpi::communicator local = dplan.split();
-	vector<size_t> myqindexes = dplan.qindexes();
-    std::vector<CartesianCoor3D> localqvectors;
-    if (local.rank()==0) 
-        localqvectors = H5FQTInterface::get_qvectors(vm["output"].as<string>(),myqindexes);
-    
-    world.barrier();
-    
-    // create communicator for local heads
-    // enables file locking
-    size_t color = 0;
-    if (local.rank()==0) color=1;
-    if (myqindexes.size()==0) color=0; // disregard the ones which don't participate in the computation
-    boost::mpi::communicator mutexcomm = world.split(color);
+	world.barrier();
 
+    if (world.rank()==0)
+	    Info::Inst()->write("Setting up parallel environment...");		    
     ScatterDevice* p_ScatterDevice =NULL;
-    if (myqindexes.size()!=0) p_ScatterDevice = ScatterDeviceFactory::create(local,sample);
-	 
-	ScatterSpectrum scatter_spectrum;
-    vector<std::complex<double> > fqt;
-	ProgressReporter progress_reporter(myqindexes.size(),0); // this acts like a progress bar
-	    
-	for(size_t qi = 0; qi < myqindexes.size(); ++qi)
-	{			
-			// progress indicator
-			if (world.rank()==0) { // only let the world head report...
-				progress_reporter.set(qi);
-				progress_reporter.report(); // only reports if significant progress has been made!
-			}
-			
+    p_ScatterDevice = ScatterDeviceFactory::create(
+    		scatter_comm,
+    		sample,
+    		params->scattering.qvectors,
+    		vm["output"].as<string>());
 
-            CartesianCoor3D qvector;
-            if (local.rank()==0) qvector = localqvectors[qi];
-            broadcast(local,reinterpret_cast<double*>(&qvector),3,0);
+	world.barrier();
 
-			timer.start("scatter");
-			p_ScatterDevice->execute(qvector);
-			timer.stop("scatter");
-            local.barrier();
-			
-			if (local.rank()==0) {
-    			for(int i = 0; i < mutexcomm.size(); ++i)
-    			{
-    		        if (mutexcomm.rank()==i) {
-    		             H5FQTInterface::store(vm["output"].as<string>(),myqindexes[qi],p_ScatterDevice->get_spectrum());
-    		        }
-                    mutexcomm.barrier();
-    			}
-			}
-            
-            local.barrier();
-	}
+    // start computation tasks
+    if (world.rank()==0)
+		Info::Inst()->write("Starting computation...");		    
+//    boost::thread pthread(boost::bind(&monitor_thread,progress_comm,p_ScatterDevice));
+    boost::thread sthread(boost::bind(&scatter_thread,mutex_comm,p_ScatterDevice));
+
+    // do a wait on the threads here
+//    pthread.join();
+    sthread.join();
 
 	if (world.rank()==0) {
 		Info::Inst()->write(string("Waiting for all nodes to finish calculations..."));		
@@ -327,18 +316,15 @@ int main(int argc,char** argv) {
 	
 	timer.stop("total");
 	
-	if (myqindexes.size()!=0) {
-	    PerformanceAnalyzer perfanal(world,p_ScatterDevice->timer); // collect timing information from everybody.
-	    delete p_ScatterDevice;
-	    if (world.rank()==0) {
-    		perfanal.report();
-    		perfanal.report_relative(timer.sum("total")*world.size());
-    	}
-    } else {
-        Info::Inst()->write(string("Nothing had to be computed."));
+    PerformanceAnalyzer perfanal(world,p_ScatterDevice->timer); // collect timing information from everybody.
+    delete p_ScatterDevice;
+    if (world.rank()==0) {
+		perfanal.report();
+		perfanal.report_relative(timer.sum("total")*world.size());
     	Info::Inst()->write(string("Total runtime (s): ")+to_s(timer.sum("total")));
-    	Info::Inst()->write("Successfully finished... Have a nice day!");        
-    }
+    	Info::Inst()->write("Successfully finished... Have a nice day!");
+	}
+
 
 
 
@@ -347,11 +333,9 @@ int main(int argc,char** argv) {
 	// Finished
 	//
 	//------------------------------------------//	
-	
-		
-
 
 	return 0;
 }
+
 
 // end of file

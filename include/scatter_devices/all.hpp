@@ -39,8 +39,16 @@
 
 class AllScatterDevice : public ScatterDevice {
 protected:
-	boost::mpi::communicator* p_thisworldcomm;
+	boost::mpi::communicator m_scattercomm;
+	boost::mpi::communicator m_fqtcomm;
 	Sample* p_sample;
+
+
+	std::vector<std::pair<size_t,CartesianCoor3D> > m_qvectorindexpairs;
+	size_t m_current_qvector;
+	bool m_writeflag;
+	std::string m_fqt_filename;
+
 
     // first = q, second = frames
 	std::vector< std::vector< std::complex<double> > >* p_a; 
@@ -51,6 +59,7 @@ protected:
     std::vector<CoordinateSet*> csets;
 		
 	std::vector<std::complex<double> > m_spectrum;		
+	std::vector<CartesianCoor3D> qvectors;
 
 	// have to be implemented by concrete classes:
     virtual void init(CartesianCoor3D& q) = 0;
@@ -71,11 +80,19 @@ protected:
     void gather_cat();
 	
 public: 
-	AllScatterDevice(boost::mpi::communicator& thisworld, Sample& sample);
-	~AllScatterDevice();
+    AllScatterDevice(
+			boost::mpi::communicator scatter_comm,
+			boost::mpi::communicator fqt_comm,
+			Sample& sample,
+			std::vector<std::pair<size_t,CartesianCoor3D> > QVI,
+			std::string fqt_filename
+	);
+    virtual ~AllScatterDevice();
 	
-	void execute(CartesianCoor3D q); 
-	std::vector<std::complex<double> >& get_spectrum(); // returns F(q,tau)
+	void compute();
+	void next();
+	void write();
+	double progress();
 };
 
 

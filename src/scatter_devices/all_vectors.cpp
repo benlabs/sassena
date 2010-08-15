@@ -32,14 +32,18 @@
 using namespace std;
 
 
-AllVectorsScatterDevice::AllVectorsScatterDevice(boost::mpi::communicator& thisworld, Sample& sample)
-: AllScatterDevice(thisworld,sample) 
+AllVectorsScatterDevice::AllVectorsScatterDevice(	boost::mpi::communicator scatter_comm,
+		boost::mpi::communicator fqt_comm,
+		Sample& sample,
+		vector<pair<size_t,CartesianCoor3D> > QIV,
+		string fqt_filename)
+: AllScatterDevice(scatter_comm,fqt_comm,sample,QIV,fqt_filename)
 {
 	p_sample->coordinate_sets.set_representation(CARTESIAN);
 	
 	string target = Params::Inst()->scattering.target;
 	
-	size_t NN = thisworld.size(); // Number of Nodes
+	size_t NN = fqt_comm.size(); // Number of Nodes
 	size_t NA = sample.atoms.selections[target].indexes.size(); // Number of Atoms
 	size_t NF = sample.coordinate_sets.size();
     size_t NMYF = myframes.size();
@@ -50,7 +54,7 @@ AllVectorsScatterDevice::AllVectorsScatterDevice(boost::mpi::communicator& thisw
     }
     size_t NMBLOCK = (NN<NM) ? NN : NM;
     
-	if (thisworld.rank()==0) {	
+	if (fqt_comm.rank()==0) {
 
         size_t memusage_scatmat = 2*sizeof(double)*NMBLOCK*NMYF;
 

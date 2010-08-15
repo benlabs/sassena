@@ -24,7 +24,12 @@
 
 class ScatterDeviceFactory {
 public: 
-    static ScatterDevice* create(boost::mpi::communicator& local,Sample& sample);
+    static ScatterDevice* create(
+    		boost::mpi::communicator& scatter_comm,
+    		Sample& sample,
+    		std::vector<CartesianCoor3D>& qvectors,
+    		std::string fqt_filename
+    		);
     	
 };
 

@@ -36,10 +36,15 @@ class ScatterDevice {
 public: 
 	Timer timer;	
 	
-	virtual void execute(CartesianCoor3D q) = 0;
-	virtual std::vector<std::complex<double> >& get_spectrum() = 0;
-	
+    virtual void compute() = 0;
+	virtual void next() = 0;
+	virtual void write()  = 0;
+
+	virtual double progress() = 0;
 };
+
+
+
 
 
 #endif

@@ -38,7 +38,8 @@
 
 class SelfVectorsScatterDevice : public ScatterDevice {
 private:
-	boost::mpi::communicator* p_thisworldcomm;
+	boost::mpi::communicator m_scattercomm;
+	boost::mpi::communicator m_fqtcomm;
 
 	Sample* p_sample;
 	
@@ -46,12 +47,16 @@ private:
 	
 	ScatterFactors scatterfactors;	
 	
-    std::vector<CartesianCoor3D> qvectors;
+	std::vector<std::pair<size_t,CartesianCoor3D> > m_qvectorindexpairs;
+	size_t m_current_qvector;
+	bool m_writeflag;
+	std::string m_fqt_filename;
 	
 	std::vector<std::complex<double> > m_spectrum;
 
     std::map<size_t,std::vector<CartesianCoor3D> > m_all_postalignmentvectors;
     
+	std::vector<CartesianCoor3D> qvectors;
     
     std::vector<size_t> m_indexes;
     std::vector<std::vector<double> > m_x;
@@ -71,11 +76,18 @@ private:
     void gather_sum();
 		
 public: 
-	SelfVectorsScatterDevice(boost::mpi::communicator& thisworld, Sample& sample);
+	SelfVectorsScatterDevice(
+			boost::mpi::communicator scatter_comm,
+			boost::mpi::communicator fqt_comm,
+			Sample& sample,
+			std::vector<std::pair<size_t,CartesianCoor3D> > QIV,
+			std::string fqt_filename
+	);
 
-	void execute(CartesianCoor3D q); 
-	std::vector<std::complex<double> >& get_spectrum(); // returns F(q,tau)
-	
+	void compute();
+	void next();
+	void write();
+	double progress();
 };
 
 #endif

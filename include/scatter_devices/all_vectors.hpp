@@ -47,7 +47,13 @@ private:
     void norm();	
 
 public:
-	AllVectorsScatterDevice(boost::mpi::communicator& thisworld, Sample& sample);
+	AllVectorsScatterDevice(
+			boost::mpi::communicator scatter_comm,
+			boost::mpi::communicator fqt_comm,
+			Sample& sample,
+			std::vector<std::pair<size_t,CartesianCoor3D> > QVI,
+			std::string fqt_filename
+	);
 
 };
 

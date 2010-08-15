@@ -33,29 +33,28 @@
 
 class DecompositionPlan {
 
-	boost::mpi::communicator m_thisworldcomm;
-	
 	size_t m_bestcolwidth;
 	size_t m_penalty;
 	size_t m_bestworldsplit;
 	
-	std::vector<size_t> m_qindexes;
-	std::vector<size_t> m_frames;
+	size_t m_nn;
+	size_t m_nq;
+	size_t m_nf;
 
 	size_t compute_penalty(size_t nq, size_t nf, size_t nn,size_t worldsplit);	
 	
 	std::vector<std::pair<double,size_t> > scan_imbalance_spectrum(size_t nq, size_t nf, size_t maxnn);
 	
 public:
-	DecompositionPlan(boost::mpi::communicator thisworld,std::vector<size_t>& qindexes,std::vector<size_t>& frames);
+	DecompositionPlan(size_t nn,size_t nq,size_t nf);
 	
-	boost::mpi::communicator split();
-	std::vector<size_t> frames();
-	std::vector<size_t> qindexes();
-	
+	std::vector<size_t> colors();
+
 	double static_imbalance();
 	size_t penalty();
-	size_t worlds();
+	size_t partitions();
+	size_t partitionsize();
+
 };
 
 

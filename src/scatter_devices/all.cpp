@@ -24,6 +24,7 @@
 #include "math/coor3d.hpp"
 #include "math/smath.hpp"
 #include "decomposition/decompose.hpp"
+#include "scatter_devices/io/h5_fqt_interface.hpp"
 #include <fftw3.h>
 #include "control.hpp"
 #include "log.hpp"
@@ -31,18 +32,29 @@
 
 using namespace std;
 
-AllScatterDevice::AllScatterDevice(boost::mpi::communicator& thisworld, Sample& sample) {
+AllScatterDevice::AllScatterDevice(	boost::mpi::communicator scatter_comm,
+		boost::mpi::communicator fqt_comm,
+		Sample& sample,
+		vector<pair<size_t,CartesianCoor3D> > QIV,
+		string fqt_filename)
+{
+	m_qvectorindexpairs= QIV;
+	m_current_qvector =0;
+	m_fqt_filename = fqt_filename;
 
-	p_thisworldcomm = &thisworld;
+	m_scattercomm = scatter_comm;
+	m_fqtcomm = fqt_comm;
+    m_writeflag = false;
+
 	p_sample = &sample; // keep a reference to the sample
 
 	string target = Params::Inst()->scattering.target;
 
-	size_t NN = thisworld.size(); // Number of Nodes
+	size_t NN = m_fqtcomm.size(); // Number of Nodes
 	size_t NA = sample.atoms.selections[target].indexes.size(); // Number of Atoms
 	size_t NF = sample.coordinate_sets.size();
 
-	size_t rank = thisworld.rank();
+	size_t rank = m_fqtcomm.rank();
 
 	EvenDecompose edecomp(NF,NN);
 	
@@ -50,7 +62,7 @@ AllScatterDevice::AllScatterDevice(boost::mpi::communicator& thisworld, Sample& 
     // blocking factor:
     // max(nn,nq)
 
-	if (thisworld.rank()==0) {	
+	if (m_fqtcomm.rank()==0) {
 
         size_t memusage_scatmat = 2*sizeof(double)*myframes.size()*1;
                 
@@ -146,10 +158,10 @@ void AllScatterDevice::exchange() {
     if (blocknq<1) return;
     
     size_t NMYF = myframes.size();
-    size_t NN = p_thisworldcomm->size();
+    size_t NN = m_fqtcomm.size();
     // first gather number of frames per process:
     vector<size_t> nframes(NN);
-    boost::mpi::all_gather(*p_thisworldcomm,NMYF,&(nframes[0]));
+    boost::mpi::all_gather(m_fqtcomm,NMYF,&(nframes[0]));
 
     // this vector is indexed by the process
     std::vector< std::vector< std::complex<double> > > newa(NN);
@@ -163,18 +175,18 @@ void AllScatterDevice::exchange() {
 
     // exchange real part 
     // pre-post receives
-    if (p_thisworldcomm->rank()<blocknq) {
+    if (m_fqtcomm.rank()<blocknq) {
         for(size_t i = 0; i < NN; ++i)
         {
             double* p_newa_frames = (double*) &(newa[i][0]);
-            requests.push_back( p_thisworldcomm->irecv(i,0,p_newa_frames,2*nframes[i]) );
+            requests.push_back( m_fqtcomm.irecv(i,0,p_newa_frames,2*nframes[i]) );
         }        
     }
 
     for(size_t i = 0; i < blocknq; ++i)
     {
         double* p_a_frames = (double*) &((*p_a)[i][0]);        
-        requests.push_back( p_thisworldcomm->isend(i,0,p_a_frames,2* (*p_a)[i].size() ) );
+        requests.push_back( m_fqtcomm.isend(i,0,p_a_frames,2* (*p_a)[i].size() ) );
     }
 
     boost::mpi::wait_all(requests.begin(),requests.end());
@@ -329,12 +341,12 @@ void AllScatterDevice::sum() {
 }
 
 void AllScatterDevice::gather_sum() {
-    size_t NN = p_thisworldcomm->size();
+    size_t NN = m_fqtcomm.size();
     size_t NF = p_sample->coordinate_sets.size();
         
     if (NF<1) return;
     
-    if (p_thisworldcomm->rank()==0) {
+    if (m_fqtcomm.rank()==0) {
         vector< complex<double> > received_a(NF);
         double* p_a_double = (double*) &(received_a.at(0));   
         vector< complex<double> >& a = (*p_asingle);
@@ -342,7 +354,7 @@ void AllScatterDevice::gather_sum() {
         // only receive from other nodes
         for(size_t i = 1; i < NN; ++i)
         {
-            p_thisworldcomm->recv(i,0,p_a_double,2*NF);
+            m_fqtcomm.recv(i,0,p_a_double,2*NF);
 
             for(size_t i = 0; i < NF; ++i)
             {
@@ -352,14 +364,14 @@ void AllScatterDevice::gather_sum() {
 
     } else {
         double* p_a_double = (double*) &((*p_asingle)[0]);   
-        p_thisworldcomm->send(0,0,p_a_double,2*NF);
+        m_fqtcomm.send(0,0,p_a_double,2*NF);
         p_asingle->clear();
     }
 
 }
 
 void AllScatterDevice::gather_cat() {
-    size_t NN = p_thisworldcomm->size();
+    size_t NN = m_fqtcomm.size();
     size_t NF = p_sample->coordinate_sets.size();
             
     if (NF<1) return;
@@ -368,9 +380,9 @@ void AllScatterDevice::gather_cat() {
     size_t NMYF = myframes.size();
     // first gather number of frames per process:
     vector<size_t> nframes(NN);
-    boost::mpi::all_gather(*p_thisworldcomm,NMYF,&(nframes[0]));
+    boost::mpi::all_gather(m_fqtcomm,NMYF,&(nframes[0]));
     
-    if (p_thisworldcomm->rank()==0) {
+    if (m_fqtcomm.rank()==0) {
         vector< complex<double> >& a = (*p_asingle);
         
         // only receive from other nodes
@@ -378,7 +390,7 @@ void AllScatterDevice::gather_cat() {
         {
             vector< complex<double> > received_a(nframes[i]);
             double* p_a_double = (double*) &(received_a[0]);   
-            p_thisworldcomm->recv(i,0,p_a_double,2*nframes[i]);
+            m_fqtcomm.recv(i,0,p_a_double,2*nframes[i]);
             
             size_t thisNF = nframes[i];
             for(size_t j = 0; j < thisNF; ++j)
@@ -389,13 +401,20 @@ void AllScatterDevice::gather_cat() {
 
     } else {
         double* p_a_double = (double*) &(p_asingle->at(0));   
-        p_thisworldcomm->send(0,0,p_a_double,2*NMYF);
+        m_fqtcomm.send(0,0,p_a_double,2*NMYF);
         p_asingle->clear();
     }
-    
 }
 
-void AllScatterDevice::execute(CartesianCoor3D q) {
+void AllScatterDevice::next() {
+	if (m_current_qvector>=m_qvectorindexpairs.size()) return;
+	m_current_qvector+=1;
+}
+
+void AllScatterDevice::compute() {
+
+	if (m_current_qvector>=m_qvectorindexpairs.size()) return;
+	CartesianCoor3D q=m_qvectorindexpairs[m_current_qvector].second;
 
     init(q);
 
@@ -404,7 +423,7 @@ void AllScatterDevice::execute(CartesianCoor3D q) {
 	timer.stop("sd:sf:update");
 	
 	// blocking factor: max(nn,nq)
-    long NN = p_thisworldcomm->size();
+    long NN = m_fqtcomm.size();
     long NM = get_numberofmoments();
     long NF = p_sample->coordinate_sets.size();
     long NMYF = myframes.size();
@@ -482,8 +501,33 @@ void AllScatterDevice::execute(CartesianCoor3D q) {
     	}	
     						
 	}
+
+    m_writeflag=true;
 }
 
-vector<complex<double> >& AllScatterDevice::get_spectrum() {
-	return m_spectrum;
+void AllScatterDevice::write() {
+ // do a scatter_comm operation to negotiate write outs
+ for(int i = 0; i < m_scattercomm.size(); ++i)
+ {
+     if (m_scattercomm.rank()==i) {
+    	if ((m_fqtcomm.rank()==0) && m_writeflag) {
+             H5FQTInterface::store(m_fqt_filename,m_qvectorindexpairs[m_current_qvector].first,m_spectrum);
+             m_writeflag = false;
+    	}
+    }
+    m_scattercomm.barrier();
+ }
+}
+
+
+double AllScatterDevice::progress() {
+	size_t total = m_qvectorindexpairs.size();
+	size_t current = m_current_qvector;
+	double progress = 0.0;
+	if (total==current) {
+		progress = 1.0;
+	} else if (current!=0) {
+		progress = ((current*1.0)/total);
+	}
+	return progress;
 }
