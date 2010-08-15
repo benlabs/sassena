@@ -26,7 +26,7 @@
 #include <boost/serialization/map.hpp>
 #include <boost/serialization/string.hpp>
 #include <boost/serialization/vector.hpp>
-#include <H5Cpp.h>
+#include <hdf5.h>
 
 
 // other headers

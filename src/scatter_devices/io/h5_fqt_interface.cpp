@@ -32,9 +32,8 @@ namespace H5FQTInterface {
 
 std::vector<size_t> init_new(const string filename,const std::vector<CartesianCoor3D>& qvectors,size_t nf)
 {     
-    H5::H5File h5file( filename,H5F_ACC_TRUNC);   
+    hid_t h5file = H5Fcreate( filename.c_str(),H5F_ACC_TRUNC,H5P_DEFAULT, H5P_DEFAULT);   
 
-    H5::DataSpace fspace,mspace;
     int fill_val_int = 0;
     double fill_val_double = 0;
     
@@ -43,12 +42,19 @@ std::vector<size_t> init_new(const string filename,const std::vector<CartesianCo
     dims1[1]=3;
     maxdims1[0]=H5S_UNLIMITED;
     maxdims1[1]=3;
-    H5::DSetCreatPropList qvector_cparms;
     cdims1[0]=1;
     cdims1[1]=1;
-    qvector_cparms.setChunk(2,cdims1);
-    qvector_cparms.setFillValue( H5::PredType::NATIVE_DOUBLE, &fill_val_double);
-    H5::DataSet ds_qv = h5file.createDataSet( "qvectors", H5::DataType(H5::PredType::NATIVE_DOUBLE), H5::DataSpace(2,dims1,maxdims1),qvector_cparms );
+    hid_t qvector_lcpl = H5Pcreate(H5P_LINK_CREATE);
+    hid_t qvector_dcpl = H5Pcreate(H5P_DATASET_CREATE);
+    hid_t qvector_dapl = H5Pcreate(H5P_DATASET_ACCESS);
+    H5Pset_chunk( qvector_dcpl, 2, cdims1);
+    H5Pset_fill_value( qvector_dcpl, H5T_NATIVE_DOUBLE, &fill_val_double);
+    hid_t dspace_qv = H5Screate_simple(2, dims1, maxdims1); 
+    hid_t ds_qv = H5Dcreate(h5file, "qvectors", H5T_NATIVE_DOUBLE, dspace_qv, qvector_lcpl,qvector_dcpl,qvector_dapl);
+    H5Pclose(qvector_lcpl);
+    H5Pclose(qvector_dcpl);
+    H5Pclose(qvector_dapl);
+    H5Sclose(dspace_qv);
 
     hsize_t dims2[3],maxdims2[3],cdims2[3];
     dims2[0]=qvectors.size();
@@ -57,35 +63,56 @@ std::vector<size_t> init_new(const string filename,const std::vector<CartesianCo
     maxdims2[0]=H5S_UNLIMITED;
     maxdims2[1]=nf;
     maxdims2[2]=2;
-    H5::DSetCreatPropList fqt_cparms;
     cdims2[0]=1;
     cdims2[1]=1;
     cdims2[2]=1;
-    fqt_cparms.setChunk(3,cdims2);
-    fqt_cparms.setFillValue( H5::PredType::NATIVE_DOUBLE, &fill_val_double);
-    h5file.createDataSet( "fqt", H5::DataType(H5::PredType::NATIVE_DOUBLE), H5::DataSpace(3,dims2,maxdims2),fqt_cparms );
+    hid_t fqt_lcpl = H5Pcreate(H5P_LINK_CREATE);
+    hid_t fqt_dcpl = H5Pcreate(H5P_DATASET_CREATE);
+    hid_t fqt_dapl = H5Pcreate(H5P_DATASET_ACCESS);
+    H5Pset_chunk( fqt_dcpl, 3, cdims2);
+    H5Pset_fill_value( fqt_dcpl, H5T_NATIVE_DOUBLE, &fill_val_double);
+    hid_t dspace_fqt = H5Screate_simple(3, dims2, maxdims2); 
+    hid_t ds_fqt = H5Dcreate(h5file, "fqt", H5T_NATIVE_DOUBLE, dspace_fqt, fqt_lcpl,fqt_dcpl,fqt_dcpl);
+    H5Pclose(fqt_lcpl);
+    H5Pclose(fqt_dcpl);
+    H5Pclose(fqt_dapl);
+    H5Sclose(dspace_fqt);
+    H5Dclose(ds_fqt);
     
     hsize_t dims3[1],maxdims3[1],cdims3[1];
     dims3[0]=qvectors.size();
     maxdims3[0]=H5S_UNLIMITED;
-    H5::DSetCreatPropList checkpoint_cparms;
     cdims3[0]=1;
-    checkpoint_cparms.setChunk(1,cdims3);
-    checkpoint_cparms.setFillValue( H5::PredType::NATIVE_INT, &fill_val_int);
-    h5file.createDataSet( "checkpoint", H5::DataType(H5::PredType::NATIVE_INT), H5::DataSpace(1,dims3,maxdims3),checkpoint_cparms);
+    hid_t cp_lcpl = H5Pcreate(H5P_LINK_CREATE);
+    hid_t cp_dcpl = H5Pcreate(H5P_DATASET_CREATE);
+    hid_t cp_dapl = H5Pcreate(H5P_DATASET_ACCESS);
+    H5Pset_chunk( cp_dcpl, 1, cdims3);
+    H5Pset_fill_value( cp_dcpl, H5T_NATIVE_INT, &fill_val_int);
+    hid_t dspace_checkpoint = H5Screate_simple(1, dims3, maxdims3); 
+    hid_t ds_checkpoint = H5Dcreate(h5file, "checkpoint", H5T_NATIVE_INT, dspace_checkpoint, cp_lcpl,cp_dcpl,cp_dapl);
+    H5Pclose(cp_lcpl);
+    H5Pclose(cp_dcpl);
+    H5Pclose(cp_dapl);
+    H5Sclose(dspace_checkpoint);
+    H5Dclose(ds_checkpoint);
  
     std::vector<size_t> qindexes;   
     for(size_t i = 0; i < qvectors.size(); ++i) qindexes.push_back(i);
 
     // (over)write qvectors values for index positions
-    hsize_t foffset1[2];  // Start of hyperslab
+    hsize_t foffset1[2];
     foffset1[0]=0;
     foffset1[1]=0;
-    fspace = ds_qv.getSpace();
-    fspace.selectHyperslab(H5S_SELECT_SET,dims1,foffset1);
-    mspace = H5::DataSpace(2,dims1);
-    ds_qv.write(reinterpret_cast<double*>(const_cast<CartesianCoor3D*>(&qvectors[0])), H5::PredType::NATIVE_DOUBLE,mspace,fspace);
-    h5file.close();
+    hsize_t stride1[2];
+    stride1[0]=1;
+    stride1[1]=1;
+    hid_t fspace = H5Dget_space(ds_qv);
+    H5Sselect_hyperslab(fspace,H5S_SELECT_SET,foffset1,stride1,dims1,NULL);
+    H5Dwrite(ds_qv,H5T_NATIVE_DOUBLE,H5S_ALL,fspace,H5P_DEFAULT,reinterpret_cast<double*>(const_cast<CartesianCoor3D*>(&qvectors[0])));
+    
+    H5Sclose(fspace);
+    H5Dclose(ds_qv);
+    H5Fclose(h5file);
     
     return qindexes;
 }
@@ -96,21 +123,25 @@ std::vector<size_t> init_reuse(const std::string filename,const std::vector<Cart
     //////////////////////////////
     // read info from data file
     //////////////////////////////
-    H5::H5File h5file;
-    h5file.openFile( filename,H5F_ACC_RDWR);
+    hid_t h5file = H5Fopen( filename.c_str(),H5F_ACC_RDWR,H5P_DEFAULT);
+    hid_t ds_qv = H5Dopen(h5file,"qvectors",H5P_DEFAULT);
+    hid_t ds_fqt = H5Dopen(h5file,"fqt",H5P_DEFAULT);
+    hid_t ds_checkpoint = H5Dopen(h5file,"checkpoint",H5P_DEFAULT);
     
-    H5::DataSet ds_qv = h5file.openDataSet("qvectors");
-    H5::DataSet ds_fqt = h5file.openDataSet("fqt");
-    H5::DataSet ds_checkpoint = h5file.openDataSet("checkpoint");
+    hid_t dspace_qv = H5Dget_space(ds_qv);
+    hid_t dspace_fqt = H5Dget_space(ds_fqt);
+    hid_t dspace_checkpoint = H5Dget_space(ds_checkpoint);
     
     hsize_t qvector_field[2];
-    ds_qv.getSpace().getSimpleExtentDims(qvector_field);
-    
     hsize_t checkpoint_field[1];
-    ds_checkpoint.getSpace().getSimpleExtentDims(checkpoint_field);
-
     hsize_t fqt_field[3];
-    ds_fqt.getSpace().getSimpleExtentDims(fqt_field);
+    hsize_t qvector_field_max[2];
+    hsize_t checkpoint_field_max[1];
+    hsize_t fqt_field_max[3];
+    
+    H5Sget_simple_extent_dims(dspace_qv,qvector_field,qvector_field_max);
+    H5Sget_simple_extent_dims(dspace_fqt,fqt_field,fqt_field_max);
+    H5Sget_simple_extent_dims(dspace_checkpoint,checkpoint_field,checkpoint_field_max);
     
     if (fqt_field[1]!=nf) {
         // this in an "incompatible" data file
@@ -118,17 +149,17 @@ std::vector<size_t> init_reuse(const std::string filename,const std::vector<Cart
         int n=0;
         while (boost::filesystem::exists(filename+".backup-"+boost::lexical_cast<string>(n))) n++;
         boost::filesystem::rename(filename,filename+".backup"+boost::lexical_cast<string>(n));
-        h5file.close();
+        H5Fclose(h5file);
         // escape by returning init_new
         return init_new(filename,qvectors,nf);
     }
     
     std::vector<CartesianCoor3D> h5qvectors(qvector_field[0]);
-    ds_qv.read(reinterpret_cast<double*>(&h5qvectors[0]), H5::PredType::NATIVE_DOUBLE);
+    H5Dread(ds_qv,H5T_NATIVE_DOUBLE,H5S_ALL,H5S_ALL,H5P_DEFAULT,reinterpret_cast<double*>(&h5qvectors[0]));
     
     std::vector<int> checkpoint(checkpoint_field[0]);
-    ds_checkpoint.read(reinterpret_cast<int*>(&checkpoint[0]), H5::PredType::NATIVE_INT);
-    
+    H5Dread(ds_checkpoint,H5T_NATIVE_INT,H5S_ALL,H5S_ALL,H5P_DEFAULT,reinterpret_cast<int*>(&checkpoint[0]));
+
     //////////////////////////////
     // detect faulty entries
     // re-use those entries which have an ok of 0
@@ -190,15 +221,13 @@ std::vector<size_t> init_reuse(const std::string filename,const std::vector<Cart
             qindexes.push_back(qvector_field[0]+i);
         }
         qvector_field[0]+=extendsize;
-        ds_qv.extend(qvector_field);
+        H5Dset_extent(ds_qv,qvector_field);
         
         checkpoint_field[0]+=extendsize;
-        ds_checkpoint.extend(checkpoint_field);
-    
-        hsize_t fqt_field[3];
-        ds_fqt.getSpace().getSimpleExtentDims(fqt_field);                
+        H5Dset_extent(ds_checkpoint,checkpoint_field);
+        
         fqt_field[0]+=extendsize;
-        ds_fqt.extend(fqt_field);
+        H5Dset_extent(ds_fqt,fqt_field);
     }
     
     //////////////////////////////
@@ -211,19 +240,23 @@ std::vector<size_t> init_reuse(const std::string filename,const std::vector<Cart
         // (over)write qvectors values for index positions
         hsize_t start[3];  // Start of hyperslab
         hsize_t count[3];  // Block count
+        hsize_t stride[3];  // Block count
+        
         start[0]=qindexes[i];start[1]=0;
         count[0]=1;count[1]=3;
-        H5::DataSpace dspace_qv = ds_qv.getSpace();
-        dspace_qv.selectHyperslab(H5S_SELECT_SET,count,start);
-        hsize_t dims[2],maxdims[2];
-        dims[0]=1;dims[1]=3;
-        maxdims[0]=H5S_UNLIMITED;maxdims[1]=3;
-        
-        H5::DataSpace mspace_qv(2,dims,maxdims);
-        ds_qv.write(reinterpret_cast<double*>(&finalqvectors[i]), H5::PredType::NATIVE_DOUBLE,mspace_qv,dspace_qv);
-        
+        H5Sselect_hyperslab(dspace_qv,H5S_SELECT_SET,start,stride,count,NULL);
+        H5Dwrite(ds_qv,H5T_NATIVE_DOUBLE,H5S_ALL,dspace_qv,H5P_DEFAULT,reinterpret_cast<double*>(&finalqvectors[i]));
     }
-    h5file.close();
+
+    H5Sclose(dspace_qv);
+    H5Sclose(dspace_fqt);
+    H5Sclose(ds_checkpoint);
+
+    H5Dclose(ds_qv);
+    H5Dclose(ds_fqt);
+    H5Dclose(ds_checkpoint);
+    
+    H5Fclose(h5file);
     
     return qindexes;
 }
@@ -231,90 +264,105 @@ std::vector<size_t> init_reuse(const std::string filename,const std::vector<Cart
 
 std::vector<size_t> init(const string filename, const std::vector<CartesianCoor3D>& qvectors,size_t nf) {
 if (boost::filesystem::exists(filename)) {
- if (H5::H5File::isHdf5(filename)) {
-     return init_reuse(filename,qvectors,nf);
-  } else {
-      Err::Inst()->write(filename + string(" does not to be a HDF5 data file. aborting..."));
-      throw;
-  }
- } else {
-     return init_new(filename,qvectors,nf);
- }
+    htri_t h5trialcode = H5Fis_hdf5(filename.c_str());  
+    if (h5trialcode>0) {
+        return init_reuse(filename,qvectors,nf);
+     } else if (h5trialcode==0) {
+         Err::Inst()->write(filename + string(" does not to be a HDF5 data file. aborting..."));
+         throw;
+     } else {
+         Err::Inst()->write("Error when testing for HDF5 character of data file. aborting...");
+         throw;         
+     }
+    } else {
+        return init_new(filename,qvectors,nf);
+    }
 }
 std::vector<CartesianCoor3D> get_qvectors(const std::string filename,const std::vector<size_t>& qindexes) 
 {    
     std::vector<CartesianCoor3D> qvectors;
-    H5::H5File h5file;
-
-    h5file.openFile( filename,H5F_ACC_RDONLY);
+    hid_t h5file = H5Fopen( filename.c_str(),H5F_ACC_RDONLY,H5P_DEFAULT);
     
-    H5::DataSet ds_qv = h5file.openDataSet("qvectors");
-    H5::DataSet ds_checkpoint = h5file.openDataSet("checkpoint");
-
+    hid_t ds_qv = H5Dopen(h5file,"qvectors",H5P_DEFAULT);
+    hid_t ds_checkpoint = H5Dopen(h5file,"checkpoint",H5P_DEFAULT);
+    
+    hid_t dspace_qv = H5Dget_space(ds_qv);
+    hid_t dspace_checkpoint = H5Dget_space(ds_checkpoint);
+    
     hsize_t qvector_field[2];
-    ds_qv.getSpace().getSimpleExtentDims(qvector_field);
+    hsize_t qvector_field_max[2];
+    H5Sget_simple_extent_dims(dspace_qv,qvector_field,qvector_field_max);
 
     hsize_t checkpoint_field[1];
-    ds_checkpoint.getSpace().getSimpleExtentDims(checkpoint_field);
-
+    hsize_t checkpoint_field_max[1];
+    H5Sget_simple_extent_dims(dspace_checkpoint,checkpoint_field,checkpoint_field_max);
+    
     std::vector<CartesianCoor3D> h5qvectors(qvector_field[0]);
-    ds_qv.read(reinterpret_cast<double*>(&h5qvectors[0]), H5::PredType::NATIVE_DOUBLE);
+    H5Dread(ds_qv,H5T_NATIVE_DOUBLE,H5S_ALL,H5S_ALL,H5P_DEFAULT,reinterpret_cast<double*>(&h5qvectors[0]));
     
     for(size_t i = 0; i < qindexes.size(); ++i)
     {
         qvectors.push_back(h5qvectors[qindexes[i]]);
     }
+
+    H5Sclose(dspace_qv);
+    H5Sclose(ds_checkpoint);
+
+    H5Dclose(ds_qv);
+    H5Dclose(ds_checkpoint);
     
-    h5file.close();
+    H5Fclose(h5file);
+
     return qvectors;
 }
 
 void store(const std::string filename,const  size_t qindex, const std::vector<complex<double> >& fqt)
 {
-    H5::H5File h5file;
-    
-    h5file.openFile(filename,H5F_ACC_RDWR);
+    hid_t h5file = H5Fopen(filename.c_str(),H5F_ACC_RDWR,H5P_DEFAULT);
 
     // write fqt data to hdf5file
-    H5::DataSet ds_fqt = h5file.openDataSet("fqt");
+    hid_t ds_fqt = H5Dopen(h5file,"fqt",H5P_DEFAULT);
+    hid_t ds_checkpoint = H5Dopen(h5file,"checkpoint",H5P_DEFAULT);
 
+    hid_t dspace_fqt = H5Dget_space(ds_fqt);
+    hid_t dspace_checkpoint = H5Dget_space(ds_checkpoint);
+    
     hsize_t fqt_start[3];  // Start of hyperslab
     hsize_t fqt_count[3];  // Block count
+    hsize_t fqt_stride[3];  // Block count
     fqt_start[0]=qindex;
     fqt_start[1]=0;
     fqt_start[2]=0;
     fqt_count[0]=1;
     fqt_count[1]=fqt.size();
     fqt_count[2]=2;
+    fqt_stride[0]=1;
+    fqt_stride[1]=1;
+    fqt_stride[2]=1;
 
-    H5::DataSpace dspace_fqt = ds_fqt.getSpace();
-    dspace_fqt.selectHyperslab(H5S_SELECT_SET,fqt_count,fqt_start);
+    H5Sselect_hyperslab(dspace_fqt,H5S_SELECT_SET,fqt_start,fqt_stride,fqt_count,NULL);
+    H5Dwrite(ds_fqt,H5T_NATIVE_DOUBLE,H5S_ALL,dspace_fqt,H5P_DEFAULT,reinterpret_cast<double*>(const_cast<double*>(&fqt[0].real())));
 
-    hsize_t dims1[3],maxdims1[3];
-    dims1[0]=1;
-    dims1[1]=fqt.size();
-    dims1[2]=2;
-    maxdims1[0]=H5S_UNLIMITED;
-    maxdims1[1]=H5S_UNLIMITED;
-    maxdims1[2]=2;
-    
-    H5::DataSpace mspace_fqt = H5::DataSpace(3,dims1,maxdims1);
-    
-    ds_fqt.write(reinterpret_cast<double*>(const_cast<double*>(&fqt[0].real())), H5::PredType::NATIVE_DOUBLE,mspace_fqt,dspace_fqt);
-    
-    H5::DataSet ds_checkpoint = h5file.openDataSet("checkpoint");
-    H5::DataSpace dspace_checkpoint = ds_checkpoint.getSpace();
-
-    hsize_t ok_mdims[1] = {1};
     int ok =1 ;	    		                
                     
-    hsize_t ok_foffset[1];  // Block count
-    ok_foffset[0]=qindex;
-    dspace_checkpoint.selectHyperslab(H5S_SELECT_SET,ok_mdims,ok_foffset);
+    hsize_t cp_start[1];  // Block count
+    hsize_t cp_count[1];  // Block count
+    hsize_t cp_stride[1];  // Block count
+    cp_start[0]=qindex;
+    cp_count[0]=1;
+    cp_stride[0]=1;
+  
+    H5Sselect_hyperslab(dspace_checkpoint,H5S_SELECT_SET,cp_start,cp_stride,cp_count,NULL);
+    H5Dwrite(ds_checkpoint,H5T_NATIVE_INT,H5S_ALL,dspace_checkpoint,H5P_DEFAULT,&ok);
+    
+    H5Sclose(dspace_fqt);
+    H5Sclose(ds_checkpoint);
 
-    ds_checkpoint.write(&ok, H5::PredType::NATIVE_INT,H5::DataSpace (1,ok_mdims),dspace_checkpoint);
+    H5Dclose(ds_fqt);
+    H5Dclose(ds_checkpoint);
 
-    h5file.close();
+    H5Fclose(h5file);
+    
 }
 
 }
