@@ -55,6 +55,7 @@ std::vector<size_t> init_new(const string filename,const std::vector<CartesianCo
     H5Pclose(qvector_dcpl);
     H5Pclose(qvector_dapl);
     H5Sclose(dspace_qv);
+    H5Dclose(ds_qv);
 
     hsize_t dims2[3],maxdims2[3],cdims2[3];
     dims2[0]=qvectors.size();
@@ -106,12 +107,13 @@ std::vector<size_t> init_new(const string filename,const std::vector<CartesianCo
     hsize_t stride1[2];
     stride1[0]=1;
     stride1[1]=1;
+    hid_t ds_qv2 = H5Dopen(h5file,"qvectors",H5P_DEFAULT);
     hid_t fspace = H5Dget_space(ds_qv);
     H5Sselect_hyperslab(fspace,H5S_SELECT_SET,foffset1,stride1,dims1,NULL);
     H5Dwrite(ds_qv,H5T_NATIVE_DOUBLE,H5S_ALL,fspace,H5P_DEFAULT,reinterpret_cast<double*>(const_cast<CartesianCoor3D*>(&qvectors[0])));
     
     H5Sclose(fspace);
-    H5Dclose(ds_qv);
+    H5Dclose(ds_qv2);    
     H5Fclose(h5file);
     
     return qindexes;
@@ -250,7 +252,7 @@ std::vector<size_t> init_reuse(const std::string filename,const std::vector<Cart
 
     H5Sclose(dspace_qv);
     H5Sclose(dspace_fqt);
-    H5Sclose(ds_checkpoint);
+    H5Sclose(dspace_checkpoint);
 
     H5Dclose(ds_qv);
     H5Dclose(ds_fqt);
@@ -306,7 +308,7 @@ std::vector<CartesianCoor3D> get_qvectors(const std::string filename,const std::
     }
 
     H5Sclose(dspace_qv);
-    H5Sclose(ds_checkpoint);
+    H5Sclose(dspace_checkpoint);
 
     H5Dclose(ds_qv);
     H5Dclose(ds_checkpoint);
@@ -356,7 +358,7 @@ void store(const std::string filename,const  size_t qindex, const std::vector<co
     H5Dwrite(ds_checkpoint,H5T_NATIVE_INT,H5S_ALL,dspace_checkpoint,H5P_DEFAULT,&ok);
     
     H5Sclose(dspace_fqt);
-    H5Sclose(ds_checkpoint);
+    H5Sclose(dspace_checkpoint);
 
     H5Dclose(ds_fqt);
     H5Dclose(ds_checkpoint);
