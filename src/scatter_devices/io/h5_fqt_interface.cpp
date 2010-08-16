@@ -50,6 +50,7 @@ std::vector<size_t> init_new(const string filename,const std::vector<CartesianCo
     H5Pset_chunk( qvector_dcpl, 2, cdims1);
     H5Pset_fill_value( qvector_dcpl, H5T_NATIVE_DOUBLE, &fill_val_double);
     H5Pset_alloc_time(qvector_dcpl,H5D_ALLOC_TIME_EARLY);
+    H5Pset_alloc_time(qvector_dapl,H5D_ALLOC_TIME_EARLY);    
     hid_t dspace_qv = H5Screate_simple(2, dims1, maxdims1); 
     hid_t ds_qv = H5Dcreate(h5file, "qvectors", H5T_NATIVE_DOUBLE, dspace_qv, qvector_lcpl,qvector_dcpl,qvector_dapl);
     H5Pclose(qvector_lcpl);
@@ -74,6 +75,7 @@ std::vector<size_t> init_new(const string filename,const std::vector<CartesianCo
     H5Pset_chunk( fqt_dcpl, 3, cdims2);
     H5Pset_fill_value( fqt_dcpl, H5T_NATIVE_DOUBLE, &fill_val_double);
     H5Pset_alloc_time(fqt_dcpl,H5D_ALLOC_TIME_EARLY);
+    H5Pset_alloc_time(fqt_dapl,H5D_ALLOC_TIME_EARLY);
     hid_t dspace_fqt = H5Screate_simple(3, dims2, maxdims2); 
     hid_t ds_fqt = H5Dcreate(h5file, "fqt", H5T_NATIVE_DOUBLE, dspace_fqt, fqt_lcpl,fqt_dcpl,fqt_dapl);
     H5Pclose(fqt_lcpl);
@@ -92,6 +94,7 @@ std::vector<size_t> init_new(const string filename,const std::vector<CartesianCo
     H5Pset_chunk( cp_dcpl, 1, cdims3);
     H5Pset_fill_value( cp_dcpl, H5T_NATIVE_INT, &fill_val_int);
     H5Pset_alloc_time(cp_dcpl,H5D_ALLOC_TIME_EARLY);
+    H5Pset_alloc_time(cp_dapl,H5D_ALLOC_TIME_EARLY);
     hid_t dspace_checkpoint = H5Screate_simple(1, dims3, maxdims3); 
     hid_t ds_checkpoint = H5Dcreate(h5file, "checkpoint", H5T_NATIVE_INT, dspace_checkpoint, cp_lcpl,cp_dcpl,cp_dapl);
     H5Pclose(cp_lcpl);
