@@ -42,8 +42,8 @@ std::vector<size_t> init_new(const string filename,const std::vector<CartesianCo
     dims1[1]=3;
     maxdims1[0]=H5S_UNLIMITED;
     maxdims1[1]=3;
-    cdims1[0]=1;
-    cdims1[1]=1;
+    cdims1[0]=10000;
+    cdims1[1]=3;
     hid_t qvector_lcpl = H5Pcreate(H5P_LINK_CREATE);
     hid_t qvector_dcpl = H5Pcreate(H5P_DATASET_CREATE);
     hid_t qvector_dapl = H5Pcreate(H5P_DATASET_ACCESS);
@@ -66,8 +66,8 @@ std::vector<size_t> init_new(const string filename,const std::vector<CartesianCo
     maxdims2[1]=nf;
     maxdims2[2]=2;
     cdims2[0]=1;
-    cdims2[1]=1;
-    cdims2[2]=1;
+    cdims2[1]= (nf<10000) ? nf : 10000;
+    cdims2[2]=2;
     hid_t fqt_lcpl = H5Pcreate(H5P_LINK_CREATE);
     hid_t fqt_dcpl = H5Pcreate(H5P_DATASET_CREATE);
     hid_t fqt_dapl = H5Pcreate(H5P_DATASET_ACCESS);
@@ -85,7 +85,7 @@ std::vector<size_t> init_new(const string filename,const std::vector<CartesianCo
     hsize_t dims3[1],maxdims3[1],cdims3[1];
     dims3[0]=qvectors.size();
     maxdims3[0]=H5S_UNLIMITED;
-    cdims3[0]=1;
+    cdims3[0]=10000;
     hid_t cp_lcpl = H5Pcreate(H5P_LINK_CREATE);
     hid_t cp_dcpl = H5Pcreate(H5P_DATASET_CREATE);
     hid_t cp_dapl = H5Pcreate(H5P_DATASET_ACCESS);
