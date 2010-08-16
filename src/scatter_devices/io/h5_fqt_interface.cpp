@@ -255,7 +255,7 @@ std::vector<size_t> init_reuse(const std::string filename,const std::vector<Cart
         start[0]=qindexes[i];start[1]=0;
         count[0]=1;count[1]=3;
         H5Sselect_hyperslab(dspace_qv2,H5S_SELECT_SET,start,NULL,count,NULL);
-        H5Dwrite(ds_qv,H5T_NATIVE_DOUBLE,H5S_ALL,dspace_qv2,H5P_DEFAULT,&finalqvectors[i]);
+        H5Dwrite(ds_qv,H5T_NATIVE_DOUBLE,H5S_ALL,dspace_qv2,H5P_DEFAULT,reinterpret_cast<double*>(const_cast<CartesianCoor3D*>(&finalqvectors[0])));
     }
 
     H5Sclose(dspace_qv2);
