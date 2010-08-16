@@ -347,7 +347,7 @@ void store(const std::string filename,const  size_t qindex, const std::vector<co
     fqt_block[2]=1;
 
     H5Sselect_hyperslab(dspace_fqt,H5S_SELECT_SET,fqt_start,fqt_stride,fqt_count,fqt_block);
-    H5Dwrite(ds_fqt,H5T_NATIVE_DOUBLE,H5S_ALL,dspace_fqt,H5P_DEFAULT,reinterpret_cast<double*>(&fqt[0].real()));
+    H5Dwrite(ds_fqt,H5T_NATIVE_DOUBLE,H5S_ALL,dspace_fqt,H5P_DEFAULT,&fqt[0].real());
 
     int ok =1 ;	    		                
                     
