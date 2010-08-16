@@ -332,6 +332,7 @@ void store(const std::string filename,const  size_t qindex, const std::vector<co
     hsize_t fqt_start[3];  // Start of hyperslab
     hsize_t fqt_count[3];  // Block count
     hsize_t fqt_stride[3];  // Block count
+    hsize_t fqt_block[3];  // Block count
     fqt_start[0]=qindex;
     fqt_start[1]=0;
     fqt_start[2]=0;
@@ -341,9 +342,12 @@ void store(const std::string filename,const  size_t qindex, const std::vector<co
     fqt_stride[0]=1;
     fqt_stride[1]=1;
     fqt_stride[2]=1;
+    fqt_block[0]=1;
+    fqt_block[1]=1;
+    fqt_block[2]=1;
 
-    H5Sselect_hyperslab(dspace_fqt,H5S_SELECT_SET,fqt_start,fqt_stride,fqt_count,NULL);
-    H5Dwrite(ds_fqt,H5T_NATIVE_DOUBLE,H5S_ALL,dspace_fqt,H5P_DEFAULT,reinterpret_cast<double*>(const_cast<double*>(&fqt[0].real())));
+    H5Sselect_hyperslab(dspace_fqt,H5S_SELECT_SET,fqt_start,fqt_stride,fqt_count,fqt_block);
+    H5Dwrite(ds_fqt,H5T_NATIVE_DOUBLE,H5S_ALL,dspace_fqt,H5P_DEFAULT,reinterpret_cast<double*>(&fqt[0].real()));
 
     int ok =1 ;	    		                
                     
