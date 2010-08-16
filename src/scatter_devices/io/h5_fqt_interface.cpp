@@ -73,7 +73,7 @@ std::vector<size_t> init_new(const string filename,const std::vector<CartesianCo
     H5Pset_chunk( fqt_dcpl, 3, cdims2);
     H5Pset_fill_value( fqt_dcpl, H5T_NATIVE_DOUBLE, &fill_val_double);
     hid_t dspace_fqt = H5Screate_simple(3, dims2, maxdims2); 
-    hid_t ds_fqt = H5Dcreate(h5file, "fqt", H5T_NATIVE_DOUBLE, dspace_fqt, fqt_lcpl,fqt_dcpl,fqt_dcpl);
+    hid_t ds_fqt = H5Dcreate(h5file, "fqt", H5T_NATIVE_DOUBLE, dspace_fqt, fqt_lcpl,fqt_dcpl,fqt_dapl);
     H5Pclose(fqt_lcpl);
     H5Pclose(fqt_dcpl);
     H5Pclose(fqt_dapl);
