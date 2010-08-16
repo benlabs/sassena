@@ -50,7 +50,6 @@ std::vector<size_t> init_new(const string filename,const std::vector<CartesianCo
     H5Pset_chunk( qvector_dcpl, 2, cdims1);
     H5Pset_fill_value( qvector_dcpl, H5T_NATIVE_DOUBLE, &fill_val_double);
     H5Pset_alloc_time(qvector_dcpl,H5D_ALLOC_TIME_EARLY);
-    H5Pset_alloc_time(qvector_dapl,H5D_ALLOC_TIME_EARLY);    
     hid_t dspace_qv = H5Screate_simple(2, dims1, maxdims1); 
     hid_t ds_qv = H5Dcreate(h5file, "qvectors", H5T_NATIVE_DOUBLE, dspace_qv, qvector_lcpl,qvector_dcpl,qvector_dapl);
     H5Pclose(qvector_lcpl);
@@ -75,7 +74,6 @@ std::vector<size_t> init_new(const string filename,const std::vector<CartesianCo
     H5Pset_chunk( fqt_dcpl, 3, cdims2);
     H5Pset_fill_value( fqt_dcpl, H5T_NATIVE_DOUBLE, &fill_val_double);
     H5Pset_alloc_time(fqt_dcpl,H5D_ALLOC_TIME_EARLY);
-    H5Pset_alloc_time(fqt_dapl,H5D_ALLOC_TIME_EARLY);
     hid_t dspace_fqt = H5Screate_simple(3, dims2, maxdims2); 
     hid_t ds_fqt = H5Dcreate(h5file, "fqt", H5T_NATIVE_DOUBLE, dspace_fqt, fqt_lcpl,fqt_dcpl,fqt_dapl);
     H5Pclose(fqt_lcpl);
@@ -94,7 +92,6 @@ std::vector<size_t> init_new(const string filename,const std::vector<CartesianCo
     H5Pset_chunk( cp_dcpl, 1, cdims3);
     H5Pset_fill_value( cp_dcpl, H5T_NATIVE_INT, &fill_val_int);
     H5Pset_alloc_time(cp_dcpl,H5D_ALLOC_TIME_EARLY);
-    H5Pset_alloc_time(cp_dapl,H5D_ALLOC_TIME_EARLY);
     hid_t dspace_checkpoint = H5Screate_simple(1, dims3, maxdims3); 
     hid_t ds_checkpoint = H5Dcreate(h5file, "checkpoint", H5T_NATIVE_INT, dspace_checkpoint, cp_lcpl,cp_dcpl,cp_dapl);
     H5Pclose(cp_lcpl);
@@ -248,11 +245,10 @@ std::vector<size_t> init_reuse(const std::string filename,const std::vector<Cart
         // (over)write qvectors values for index positions
         hsize_t start[3];  // Start of hyperslab
         hsize_t count[3];  // Block count
-        hsize_t stride[3];  // Block count
         
         start[0]=qindexes[i];start[1]=0;
         count[0]=1;count[1]=3;
-        H5Sselect_hyperslab(dspace_qv,H5S_SELECT_SET,start,stride,count,NULL);
+        H5Sselect_hyperslab(dspace_qv,H5S_SELECT_SET,start,NULL,count,NULL);
         H5Dwrite(ds_qv,H5T_NATIVE_DOUBLE,H5S_ALL,dspace_qv,H5P_DEFAULT,reinterpret_cast<double*>(&finalqvectors[i]));
     }
 
@@ -337,22 +333,14 @@ void store(const std::string filename,const  size_t qindex, const std::vector<co
     
     hsize_t fqt_start[3];  // Start of hyperslab
     hsize_t fqt_count[3];  // Block count
-    hsize_t fqt_stride[3];  // Block count
-    hsize_t fqt_block[3];  // Block count
     fqt_start[0]=qindex;
     fqt_start[1]=0;
     fqt_start[2]=0;
     fqt_count[0]=1;
     fqt_count[1]=fqt.size();
     fqt_count[2]=2;
-    fqt_stride[0]=1;
-    fqt_stride[1]=1;
-    fqt_stride[2]=1;
-    fqt_block[0]=1;
-    fqt_block[1]=1;
-    fqt_block[2]=1;
 
-    H5Sselect_hyperslab(dspace_fqt,H5S_SELECT_SET,fqt_start,fqt_stride,fqt_count,fqt_block);
+    H5Sselect_hyperslab(dspace_fqt,H5S_SELECT_SET,fqt_start,NULL,fqt_count,NULL);
     H5Dwrite(ds_fqt,H5T_NATIVE_DOUBLE,H5S_ALL,dspace_fqt,H5P_DEFAULT,&fqt[0].real());
 
     int ok =1 ;	    		                
