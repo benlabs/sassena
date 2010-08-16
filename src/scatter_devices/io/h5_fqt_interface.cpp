@@ -148,6 +148,11 @@ std::vector<size_t> init_reuse(const std::string filename,const std::vector<Cart
     H5Sget_simple_extent_dims(dspace_fqt,fqt_field,fqt_field_max);
     H5Sget_simple_extent_dims(dspace_checkpoint,checkpoint_field,checkpoint_field_max);
     
+    H5Sclose(dspace_qv);
+    H5Sclose(dspace_fqt);
+    H5Sclose(dspace_checkpoint);
+
+    
     if (fqt_field[1]!=nf) {
         // this in an "incompatible" data file
         // mv old one to a backup
@@ -233,12 +238,13 @@ std::vector<size_t> init_reuse(const std::string filename,const std::vector<Cart
         
         fqt_field[0]+=extendsize;
         H5Dset_extent(ds_fqt,fqt_field);
-    }
+    }    
     
     //////////////////////////////
     // qindexes contain the indexes for the qvector storage points
     // finalqvectors contain all qvector values which need to be calculated
     //////////////////////////////
+    hid_t dspace_qv2 = H5Dget_space(ds_qv);
     
     for(size_t i = 0; i < qindexes.size(); ++i)
     {
@@ -248,13 +254,11 @@ std::vector<size_t> init_reuse(const std::string filename,const std::vector<Cart
         
         start[0]=qindexes[i];start[1]=0;
         count[0]=1;count[1]=3;
-        H5Sselect_hyperslab(dspace_qv,H5S_SELECT_SET,start,NULL,count,NULL);
-        H5Dwrite(ds_qv,H5T_NATIVE_DOUBLE,H5S_ALL,dspace_qv,H5P_DEFAULT,reinterpret_cast<double*>(&finalqvectors[i]));
+        H5Sselect_hyperslab(dspace_qv2,H5S_SELECT_SET,start,NULL,count,NULL);
+        H5Dwrite(ds_qv,H5T_NATIVE_DOUBLE,H5S_ALL,dspace_qv2,H5P_DEFAULT,&finalqvectors[i]);
     }
 
-    H5Sclose(dspace_qv);
-    H5Sclose(dspace_fqt);
-    H5Sclose(dspace_checkpoint);
+    H5Sclose(dspace_qv2);
 
     H5Dclose(ds_qv);
     H5Dclose(ds_fqt);
@@ -347,12 +351,10 @@ void store(const std::string filename,const  size_t qindex, const std::vector<co
                     
     hsize_t cp_start[1];  // Block count
     hsize_t cp_count[1];  // Block count
-    hsize_t cp_stride[1];  // Block count
     cp_start[0]=qindex;
     cp_count[0]=1;
-    cp_stride[0]=1;
   
-    H5Sselect_hyperslab(dspace_checkpoint,H5S_SELECT_SET,cp_start,cp_stride,cp_count,NULL);
+    H5Sselect_hyperslab(dspace_checkpoint,H5S_SELECT_SET,cp_start,NULL,cp_count,NULL);
     H5Dwrite(ds_checkpoint,H5T_NATIVE_INT,H5S_ALL,dspace_checkpoint,H5P_DEFAULT,&ok);
     
     H5Sclose(dspace_fqt);
