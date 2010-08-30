@@ -95,6 +95,21 @@ void scatter_thread(boost::mpi::communicator world_comm,ScatterDevice* pScatterD
         return;
 	}
 	
+	if (Params::Inst()->scattering.average.orientation.vectors.size()>0) {
+        if (world_comm.rank()==0) {		
+    		Info::Inst()->write("Qvectors orientations used for averaging: ");
+            for (int i=0;i<Params::Inst()->scattering.average.orientation.vectors.size();i++) {
+                string qvector = "";
+                qvector += boost::lexical_cast<string>(Params::Inst()->scattering.average.orientation.vectors[i].x);
+                qvector += " ";
+                qvector += boost::lexical_cast<string>(Params::Inst()->scattering.average.orientation.vectors[i].y);
+                qvector += " ";
+                qvector += boost::lexical_cast<string>(Params::Inst()->scattering.average.orientation.vectors[i].z);
+    		    Info::Inst()->write(qvector);                                
+            }
+    	}	    
+	}
+	
     if (world_comm.rank()==0) {		
 		Info::Inst()->write("Starting scattering calculation");
 	}

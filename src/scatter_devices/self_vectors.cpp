@@ -106,7 +106,7 @@ void SelfVectorsScatterDevice::compute() {
         	    }
         	}
     	}
-    } else {
+	} else { // this corresponds to "static", i.e. instant correlation = conjmultiply, only elastic part of the function
         // if not time correlated, the conjmultiply negates phase information
         // this simplifies formulas
 
