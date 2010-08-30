@@ -383,8 +383,6 @@ void SelfVectorsScatterDevice::scatter(size_t ai, size_t mi) {
 }
 
 void SelfVectorsScatterDevice::multiply_alignmentfactors(size_t mi) {
-
-    CartesianCoor3D& q = qvectors[mi];
     
     for(size_t j = 0; j < p_asingle->size(); ++j)
     {

@@ -53,7 +53,7 @@ ScatterDevice* ScatterDeviceFactory::create(
         broadcast(scatter_comm,reinterpret_cast<size_t*>(&qindexes[0]),qindexes.size(),0);
         scatter_comm.barrier();
     }
-    
+    // qindexes contain absolute index positions which have to be used when writing to the data file
     
 
     // let the first node read the qvector values from file
@@ -108,7 +108,7 @@ ScatterDevice* ScatterDeviceFactory::create(
 	if (mypartition<partitions) {
 		vector<size_t> qii = qindex_decomposition.indexes_for(mypartition);
 		for(size_t j=0;j<qii.size();j++) {
-			thispartition_QIV.push_back(make_pair(qindexes[j],finalqvectors[j]));
+			thispartition_QIV.push_back(make_pair(qindexes[qii[j]],finalqvectors[qii[j]]));
 		}
 	}
 

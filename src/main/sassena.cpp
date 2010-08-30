@@ -81,26 +81,30 @@ void scatter_thread(boost::mpi::communicator world_comm,ScatterDevice* pScatterD
 	int alldone = 0;
     ProgressReporter progress_reporter(world_comm.size(),0); // this acts like a progress bar
 	
-    double totalprogress=0;
-    if (world_comm.rank()==0) {	
+    double totalprogress =0;
+    double progress=0;
+    // pre-computing progress. don't enter loop if there is no work to do...
+	if (pScatterDevice->progress()==1) done=1;
+	boost::mpi::all_reduce(world_comm,done,alldone,std::plus<double>());
+	
+
+	if (alldone==world_comm.size()) {
+        if (world_comm.rank()==0) {		
+		    Info::Inst()->write("No q vectors left to compute");
+	    }
+        return;
+	}
+	
+    if (world_comm.rank()==0) {		
 		Info::Inst()->write("Starting scattering calculation");
 	}
+	
 	while(alldone!=world_comm.size()) {
-	    if (world_comm.rank()==0) {	
-    		Info::Inst()->write("Computing q vector");
-    	}
 		pScatterDevice->compute();
-	    if (world_comm.rank()==0) {	
-    		Info::Inst()->write("Writing data");
-    	}
-
 		pScatterDevice->write();
-		if (world_comm.rank()==0) {	
-    		Info::Inst()->write("Testing progress");
-    	}
 		pScatterDevice->next();
 		
-    	double progress = pScatterDevice->progress();
+    	progress = pScatterDevice->progress();
         boost::mpi::all_reduce(world_comm,progress,totalprogress,std::plus<double>());
         // progress indicator
     	if (world_comm.rank()==0) { // only let the world head report...

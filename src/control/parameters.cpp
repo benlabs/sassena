@@ -583,10 +583,24 @@ void ScatteringVectorsParameters::create_from_scans() {
 	vector< vector<CartesianCoor3D> > qvectors(scans.size());
 	for(size_t i = 0; i < scans.size(); ++i)
 	{
-		for (int j=0;j<scans[i].points;j++) {		
+        if (scans[i].points==0) continue;
+        if (scans[i].points==1) {
+            double scal = (scans[i].from+scans[i].to)/2;
+			qvectors[i].push_back(scal*scans[i].basevector);            
+            continue;
+        }
+        if (scans[i].points==2) {
+            qvectors[i].push_back(scans[i].from*scans[i].basevector);            
+    		qvectors[i].push_back(scans[i].to*scans[i].basevector);            
+            continue;
+        }
+        // else
+        qvectors[i].push_back(scans[i].from*scans[i].basevector);            
+        for (int j=1;j<(scans[i].points-1);j++) {		
 			double scal = scans[i].from + powf((j*1.0/(scans[i].points-1)),scans[i].exponent)*(scans[i].to-scans[i].from);
 			qvectors[i].push_back(scal*scans[i].basevector);
 		}		
+		qvectors[i].push_back(scans[i].to*scans[i].basevector);            
 	}
 
 	// trivial case: only one scan!
