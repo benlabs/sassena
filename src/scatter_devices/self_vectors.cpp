@@ -106,20 +106,48 @@ void SelfVectorsScatterDevice::compute() {
         	    }
         	}
     	}
-	} else { // this corresponds to "static", i.e. instant correlation = conjmultiply, only elastic part of the function
-        // if not time correlated, the conjmultiply negates phase information
-        // this simplifies formulas
-
-//        p_asingle->assign(NF,0);
+    } else if (Params::Inst()->scattering.correlation.type=="average-time") {
 
         for (long ai = 0; ai < m_indexes.size(); ai++) {
-        	double s = scatterfactors.get(m_indexes[ai]);
-            for(size_t fi = 0; fi < NF; ++fi)
+            for(long mi = 0; mi < NM; mi++)
             {
-                m_spectrum[fi] += NM*s*s;
-            }
-        }
+                // compute a block of q vectors:
+    	        timer.start("sd:scatterblock");
+    	        scatter(ai,mi);	// fills p_asingle
+    	        timer.stop("sd:scatterblock");
 
+    	        // operate on (*p_asingle)
+    	        if (Params::Inst()->scattering.center) {
+                    multiply_alignmentfactors(mi);
+    	        }
+
+    	        timer.start("sd:correlate");
+                average_correlate();
+    	        timer.stop("sd:correlate");
+
+                vector<complex<double> >& spectrum = (*p_asingle);
+        	    for(size_t fi = 0; fi < NF; ++fi)
+        	    {
+        	    	m_spectrum[fi] += spectrum[fi];
+        	    }
+        	}
+    	}
+    } else if (Params::Inst()->scattering.correlation.type=="instant-time") { // this corresponds to "static", i.e. instant correlation = conjmultiply, only elastic part of the function
+                    // if not time correlated, the conjmultiply negates phase information
+                    // this simplifies formulas
+
+            //        p_asingle->assign(NF,0);
+
+                    for (long ai = 0; ai < m_indexes.size(); ai++) {
+                    	double s = scatterfactors.get(m_indexes[ai]);
+                        for(size_t fi = 0; fi < NF; ++fi)
+                        {
+                            m_spectrum[fi] += NM*s*s;
+                        }
+                    }
+    } else {
+		Err::Inst()->write("Correlation type not understood.");        
+        throw;
     }
     timer.stop("sd:compute");
 
@@ -467,6 +495,27 @@ void SelfVectorsScatterDevice::correlate() {
     p_asingle = p_correlated_a;
 }
 
+
+void SelfVectorsScatterDevice::average_correlate() {
+    if (p_asingle->size()<1) return;
+    
+    size_t NF = p_sample->coordinate_sets.size();
+          
+    std::vector< std::complex<double> >& complete_a = (*p_asingle);
+    
+    complex<double> asum = 0;
+    for(size_t tau = 0; tau < NF; ++tau)
+    {
+   		 asum += complete_a[tau];
+    }
+
+    asum /= NF;
+    
+    for(size_t tau = 0; tau < NF; ++tau)
+    {
+        complete_a[tau] = asum;
+    }
+}
 
 void SelfVectorsScatterDevice::infinite_correlate() {
     if (p_asingle->size()<1) return;

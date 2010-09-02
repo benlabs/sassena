@@ -69,6 +69,7 @@ private:
     void init(CartesianCoor3D& q);
 	void correlate();
     void infinite_correlate();
+    void average_correlate();    
     void norm();
     size_t get_numberofmoments();
     

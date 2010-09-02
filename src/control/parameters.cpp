@@ -265,7 +265,7 @@ void Params::read_xml(std::string filename) {
 		}
 	}
 	
-    scattering.correlation.type="none";
+    scattering.correlation.type="instant-time";
     scattering.correlation.method="direct";
     
 	if (xmli.exists("//scattering/correlation")) {
