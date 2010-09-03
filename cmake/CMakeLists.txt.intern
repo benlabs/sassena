@@ -48,7 +48,6 @@ ADD_LIBRARY(sass_report ${INTERNAL_LIBRARY_TYPE}
 ADD_LIBRARY(sass_scatter_devices ${INTERNAL_LIBRARY_TYPE}
 	src/scatter_devices/scatter_factors.cpp
 	src/scatter_devices/scatter_device_factory.cpp
-	src/scatter_devices/scatter_spectrum.cpp
 	src/scatter_devices/all.cpp
 	src/scatter_devices/all_vectors.cpp
 	src/scatter_devices/all_vectorsthread.cpp	

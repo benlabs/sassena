@@ -271,7 +271,7 @@ public:
 	std::string algorithm;
 	std::string file;
 	CartesianCoor3D axis;
-	long resolution;
+	size_t resolution;
 	long seed;
 	
 	void create();

@@ -46,9 +46,9 @@ void SelfVectorsScatterDevice::compute() {
 	timer.stop("sd:sf:update");
 
 	// blocking factor: max(nn,nq)
-    long NN = m_fqtcomm.size();
-    long NM = get_numberofmoments();
-    long NF = p_sample->coordinate_sets.size();
+    //size_t NN = m_fqtcomm.size();
+    size_t NM = get_numberofmoments();
+    size_t NF = p_sample->coordinate_sets.size();
 
 	m_spectrum.assign(NF,0);
 
@@ -56,8 +56,8 @@ void SelfVectorsScatterDevice::compute() {
     // correlate or sum up
     if (Params::Inst()->scattering.correlation.type=="time") {
 
-        for (long ai = 0; ai < m_indexes.size(); ai++) {
-            for(long mi = 0; mi < NM; mi++)
+        for (size_t ai = 0; ai < m_indexes.size(); ai++) {
+            for(size_t mi = 0; mi < NM; mi++)
             {
                 // compute a block of q vectors:
     	        timer.start("sd:scatterblock");
@@ -82,8 +82,8 @@ void SelfVectorsScatterDevice::compute() {
         }
     } else if (Params::Inst()->scattering.correlation.type=="infinite-time") {
 
-        for (long ai = 0; ai < m_indexes.size(); ai++) {
-            for(long mi = 0; mi < NM; mi++)
+        for (size_t ai = 0; ai < m_indexes.size(); ai++) {
+            for(size_t mi = 0; mi < NM; mi++)
             {
                 // compute a block of q vectors:
     	        timer.start("sd:scatterblock");
@@ -108,8 +108,8 @@ void SelfVectorsScatterDevice::compute() {
     	}
     } else if (Params::Inst()->scattering.correlation.type=="average-time") {
 
-        for (long ai = 0; ai < m_indexes.size(); ai++) {
-            for(long mi = 0; mi < NM; mi++)
+        for (size_t ai = 0; ai < m_indexes.size(); ai++) {
+            for(size_t mi = 0; mi < NM; mi++)
             {
                 // compute a block of q vectors:
     	        timer.start("sd:scatterblock");
@@ -138,7 +138,7 @@ void SelfVectorsScatterDevice::compute() {
 
             //        p_asingle->assign(NF,0);
 
-                    for (long ai = 0; ai < m_indexes.size(); ai++) {
+                    for (size_t ai = 0; ai < m_indexes.size(); ai++) {
                     	double s = scatterfactors.get(m_indexes[ai]);
                         for(size_t fi = 0; fi < NF; ++fi)
                         {
@@ -591,7 +591,7 @@ void SelfVectorsScatterDevice::init(CartesianCoor3D& q) {
 			CartesianCoor3D qparallel = (o*q)*o; 
 			CartesianCoor3D qperpenticular = q - qparallel; 			
 			double qperpenticular_l = qperpenticular.length();
-			double qparallel_l = qparallel.length();
+			//double qparallel_l = qparallel.length();
 
 			CartesianCoor3D e1 = o.cross_product(qperpenticular) ;
 			CartesianCoor3D e2 = qperpenticular;

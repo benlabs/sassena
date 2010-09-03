@@ -558,7 +558,7 @@ void XTCFrameset::read_frame(size_t internalframenumber,Frame& cf) {
 	matrix box; 	
 
 	fseek( fp, frame_byte_offsets[internalframenumber] , SEEK_SET );
-	int retval = read_xtc(p_xdrfile,number_of_atoms,&step,&t,box,coords,&prec);
+	read_xtc(p_xdrfile,number_of_atoms,&step,&t,box,coords,&prec);
 		
 	vector<CartesianCoor3D> uc(3); 
 
@@ -580,7 +580,6 @@ void XTCFrameset::read_frame(size_t internalframenumber,Frame& cf) {
 	free(coords);
 	
 	xdrfile_close(p_xdrfile);
-	return;
 }
 
 
@@ -602,7 +601,7 @@ void TRRFrameset::init(std::string fn,size_t fno) {
 	
   	/* This function returns the number of atoms in the xtc file in *natoms */
 	int natoms = 0;
-  	int retval = read_trr_natoms(const_cast<char*>(filename.c_str()),&natoms);
+  	read_trr_natoms(const_cast<char*>(filename.c_str()),&natoms);
 	number_of_atoms = natoms;
 
 	number_of_frames = init_frame_byte_offsets();
@@ -652,7 +651,7 @@ void TRRFrameset::read_frame(size_t internalframenumber,Frame& cf) {
 	matrix box; 	
 
 	fseek( fp, frame_byte_offsets[internalframenumber] , SEEK_SET );
-	int retval = read_trr(p_xdrfile,number_of_atoms,&step,&t,&lambda,box,coords,NULL,NULL);
+	read_trr(p_xdrfile,number_of_atoms,&step,&t,&lambda,box,coords,NULL,NULL);
 		
 	vector<CartesianCoor3D> uc(3); 
 
@@ -674,7 +673,6 @@ void TRRFrameset::read_frame(size_t internalframenumber,Frame& cf) {
 	free(coords);
 	
 	xdrfile_close(p_xdrfile);
-	return;
 }
 
 // end of file

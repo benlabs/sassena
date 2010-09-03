@@ -104,7 +104,7 @@ protected:
     }
 	CartesianCoor3D m_translate;
 	double m_frequency;
-    long m_sampling;
+    size_t m_sampling;
 
 	OscillationMotionWalker() {}
 public:
@@ -132,7 +132,7 @@ protected:
 	
 	double m_displace;
 	long m_seed;
-    long m_sampling;
+    size_t m_sampling;
     	
 	CartesianCoor3D m_direction;
     boost::variate_generator<boost::mt19937, boost::uniform_on_sphere<double> >* p_myspheredistribution;
@@ -168,7 +168,7 @@ protected:
     
 	double m_displace;
 	long m_seed;
-    long m_sampling;
+    size_t m_sampling;
 	
 	CartesianCoor3D m_direction;
     boost::variate_generator<boost::mt19937, boost::normal_distribution<double> >* p_mynormaldistribution;

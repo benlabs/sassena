@@ -78,8 +78,8 @@ void BrownianMotionWalker::generate(size_t timepos) {
         vector<double> sphereran = (*p_myspheredistribution)();
 	    for(size_t i = 0; i < (m_sampling-1); ++i)
         {
-            double discard_normran = (*p_mynormaldistribution)();
-            vector<double> discard_sphereran = (*p_myspheredistribution)();
+            (*p_mynormaldistribution)();
+            (*p_myspheredistribution)();
         }
 	    
         double displacement = m_displace * normran; 

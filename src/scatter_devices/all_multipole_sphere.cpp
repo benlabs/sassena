@@ -45,8 +45,8 @@ AllMSScatterDevice::AllMSScatterDevice(	boost::mpi::communicator scatter_comm,
 	string target = Params::Inst()->scattering.target;
 	
 	size_t NN = fqt_comm.size(); // Number of Nodes
-	size_t NA = sample.atoms.selections[target].indexes.size(); // Number of Atoms
-	size_t NF = sample.coordinate_sets.size();
+	//size_t NA = sample.atoms.selections[target].indexes.size(); // Number of Atoms
+	//size_t NF = sample.coordinate_sets.size();
     size_t NMYF = myframes.size();
 	
 	// init resolution 

@@ -98,7 +98,7 @@ void scatter_thread(boost::mpi::communicator world_comm,ScatterDevice* pScatterD
 	if (Params::Inst()->scattering.average.orientation.vectors.size()>0) {
         if (world_comm.rank()==0) {		
     		Info::Inst()->write("Qvectors orientations used for averaging: ");
-            for (int i=0;i<Params::Inst()->scattering.average.orientation.vectors.size();i++) {
+            for (size_t i=0;i<Params::Inst()->scattering.average.orientation.vectors.size();i++) {
                 string qvector = "";
                 qvector += boost::lexical_cast<string>(Params::Inst()->scattering.average.orientation.vectors[i].x);
                 qvector += " ";

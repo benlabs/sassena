@@ -304,6 +304,9 @@ double DatabaseVolumesParameters::get(size_t ID) {
 	}
 
 	// don't need a quicklookup for volume calculations, b/c pretty fast
+	// function-type not mapped
+    Err::Inst()->write(string("Size-type not implemented: type=")+boost::lexical_cast<string>(ft));
+    throw;
 }
 
 
@@ -340,6 +343,9 @@ double DatabaseExlusionParameters::get(size_t ID,double effvolume,double q) {
 	}
 
 	// don't need a quicklookup for volume calculations, b/c pretty fast
+	// function-type not mapped
+    Err::Inst()->write(string("ExclusionParameter-type not implemented: type=")+boost::lexical_cast<string>(ft));
+    throw;
 }
 
 
@@ -414,4 +420,8 @@ double DatabaseSFactorsParameters::get(size_t ID,double q) {
 		add_quicklookup(ID,q,den);
 		return den;
 	}
+	
+	// function-type not mapped
+    Err::Inst()->write(string("ScatterFactor-type not implemented: type=")+boost::lexical_cast<string>(ft));
+    throw;
 }

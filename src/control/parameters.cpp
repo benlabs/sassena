@@ -66,8 +66,11 @@ void Params::read_xml(std::string filename) {
 	for(size_t i = 0; i < selections.size(); ++i)
 	{
 		xmli.set_current(selections[i]);
-		string sname, fn, ff, sn;
-		double sv;
+		double sv = 1.0;
+        string sn = "beta";
+        string ff = "pdb";
+        string fn = "selection";
+        string sname = string("selection_")+boost::lexical_cast<string>(i);
 		if (xmli.exists("./name")) {
 			sname = xmli.get_value<string>("./name") ;
 		}
@@ -596,7 +599,7 @@ void ScatteringVectorsParameters::create_from_scans() {
         }
         // else
         qvectors[i].push_back(scans[i].from*scans[i].basevector);            
-        for (int j=1;j<(scans[i].points-1);j++) {		
+        for (size_t j=1;j<(scans[i].points-1);j++) {		
 			double scal = scans[i].from + powf((j*1.0/(scans[i].points-1)),scans[i].exponent)*(scans[i].to-scans[i].from);
 			qvectors[i].push_back(scal*scans[i].basevector);
 		}		

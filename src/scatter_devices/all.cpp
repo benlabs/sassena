@@ -159,6 +159,7 @@ void AllScatterDevice::exchange() {
     
     size_t NMYF = myframes.size();
     size_t NN = m_fqtcomm.size();
+    size_t FQT_RANK = m_fqtcomm.rank();
     // first gather number of frames per process:
     vector<size_t> nframes(NN);
     boost::mpi::all_gather(m_fqtcomm,NMYF,&(nframes[0]));
@@ -175,7 +176,7 @@ void AllScatterDevice::exchange() {
 
     // exchange real part 
     // pre-post receives
-    if (m_fqtcomm.rank()<blocknq) {
+    if (FQT_RANK<blocknq) {
         for(size_t i = 0; i < NN; ++i)
         {
             double* p_newa_frames = (double*) &(newa[i][0]);
@@ -426,7 +427,7 @@ void AllScatterDevice::compute() {
     long NN = m_fqtcomm.size();
     long NM = get_numberofmoments();
     long NF = p_sample->coordinate_sets.size();
-    long NMYF = myframes.size();
+    //long NMYF = myframes.size();
 
     long NMBLOCK = (NN<NM) ? NN : NM;
 //    NMBLOCK = 1;

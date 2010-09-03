@@ -54,7 +54,7 @@ void ProgressReporter::report() {
 size_t ProgressReporter::compute_nextreport() {
 	
 	// setup a delay pattern for the report: 1,2,3,5,10,20,30,40,50,60,70,80,90,100
-	double fraction = (m_current-m_minimum)*100.0 / (m_maximum-m_minimum);
+	// double fraction = (m_current-m_minimum)*100.0 / (m_maximum-m_minimum);
 
 	double delaysa[] = {0.01,0.1,1,2,3,5,10,20,30,40,50,60,70,80,90,100};
 	vector<double> delays(delaysa,delaysa+13);

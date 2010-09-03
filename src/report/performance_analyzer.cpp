@@ -98,13 +98,14 @@ PerformanceAnalyzer::PerformanceAnalyzer(boost::mpi::communicator thisworld, Tim
 		boost::mpi::gather(thisworld ,my_min      , all_min      ,0);
 		boost::mpi::gather(thisworld ,my_max      , all_max      ,0);
 
+        size_t NN = thisworld.size();
 		if (thisworld.rank()==0) {
 			double weightedmean=0;
 			double weightedvariance=0;
 			double totalmin = 1e80;
 			double totalmax = -1;
 
-			for(size_t i = 0; i < thisworld.size(); ++i)
+			for(size_t i = 0; i < NN; ++i)
 			{
 				if ( all_keyflags[i] == 1 ) {
 					pm.sum     += all_sum[i];

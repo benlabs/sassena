@@ -2313,8 +2313,8 @@ static int
 xdr_string (XDR *xdrs, char **cpp, unsigned int maxsize)
 {
 	char *sp = *cpp;	/* sp is the actual string pointer */
-	unsigned int size;
-	unsigned int nodesize;
+	unsigned int size = 0;
+	unsigned int nodesize = 0;
 
 	/*
 	 * first deal with the length since xdr strings are counted-strings

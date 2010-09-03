@@ -46,8 +46,8 @@ AllMCScatterDevice::AllMCScatterDevice(	boost::mpi::communicator scatter_comm,
 	
 	
 	size_t NN = fqt_comm.size(); // Number of Nodes
-	size_t NA = sample.atoms.selections[target].indexes.size(); // Number of Atoms
-	size_t NF = sample.coordinate_sets.size();
+	//size_t NA = sample.atoms.selections[target].indexes.size(); // Number of Atoms
+	//size_t NF = sample.coordinate_sets.size();
     size_t NMYF = myframes.size();
 	
 	// init moments / resolution
@@ -102,7 +102,7 @@ void AllMCScatterDevice::scatter(size_t moffset,size_t mcount) {
    CartesianCoor3D qperpenticular = q - qparallel; // define this as phi=0 
    double qr = qperpenticular.length();
    double qz = qparallel.length();
-   double ql = q.length();
+   //double ql = q.length();
    
    // frames = outer loop b/c of function call
    // moments = 2nd outer loop b/c of l lookup
@@ -132,12 +132,12 @@ void AllMCScatterDevice::scatter(size_t moffset,size_t mcount) {
            if (func==0) {
     	       for(size_t j = 0; j < NOA; ++j) {
     	           double r   = cs.c1[j];
-    	 	       double phi = cs.c2[j];
+    	 	       //double phi = cs.c2[j];
     		       double z   = cs.c3[j];
 
     		       double esf = sfs[j];
 
-        	       double psiphi = phi; // review this!
+        	       //double psiphi = phi; // review this!
 
         	       double parallel_sign = 1.0;
         	       if ((z!=0) && (qz!=0)) {

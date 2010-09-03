@@ -44,8 +44,8 @@ AllVectorsScatterDevice::AllVectorsScatterDevice(	boost::mpi::communicator scatt
 	string target = Params::Inst()->scattering.target;
 	
 	size_t NN = fqt_comm.size(); // Number of Nodes
-	size_t NA = sample.atoms.selections[target].indexes.size(); // Number of Atoms
-	size_t NF = sample.coordinate_sets.size();
+	//size_t NA = sample.atoms.selections[target].indexes.size(); // Number of Atoms
+	//size_t NF = sample.coordinate_sets.size();
     size_t NMYF = myframes.size();
 	
     size_t NM = 1;
@@ -143,7 +143,7 @@ void AllVectorsScatterDevice::init(CartesianCoor3D& q) {
 			CartesianCoor3D qparallel = (o*q)*o; 
 			CartesianCoor3D qperpenticular = q - qparallel; 			
 			double qperpenticular_l = qperpenticular.length();
-			double qparallel_l = qparallel.length();
+			//double qparallel_l = qparallel.length();
 
 			CartesianCoor3D e1 = o.cross_product(qperpenticular) ;
 			CartesianCoor3D e2 = qperpenticular;

@@ -185,13 +185,13 @@ void CartesianCoordinateSet::rotate(CartesianCoor3D axis1,CartesianCoor3D axis2)
         s = sin(ang1);
         r_00 = powf(rot1.x,2) + (1-powf(rot1.x,2))*c;
         r_01 = rot1.x*rot1.y*(1-c) - rot1.z*s;
-        r_01 = rot1.x*rot1.z*(1-c) + rot1.y*s;
+        r_02 = rot1.x*rot1.z*(1-c) + rot1.y*s;
         r_10 = rot1.x*rot1.y*(1-c) + rot1.z*s;
         r_11 = powf(rot1.y,2) + (1-powf(rot1.y,2))*c;
-        r_11 = rot1.y*rot1.z*(1-c) - rot1.x*s;
+        r_12 = rot1.y*rot1.z*(1-c) - rot1.x*s;
         r_20 = rot1.x*rot1.z*(1-c) - rot1.y*s;
         r_21 = rot1.y*rot1.z*(1-c) + rot1.x*s;
-        r_21 = powf(rot1.z,2) + (1-powf(rot1.z,2))*c;
+        r_22 = powf(rot1.z,2) + (1-powf(rot1.z,2))*c;
 	    
         xo = x[i];
         yo = y[i];
@@ -237,7 +237,6 @@ CylindricalCoordinateSet::CylindricalCoordinateSet(CartesianCoordinateSet& cs) {
     m_size = cs.size();
     for(size_t i = 0; i < m_size; ++i)
     {
-        double x, y, z;
         CartesianCoor3D cac(cs.c1[i],cs.c2[i],cs.c3[i]);
         CylinderCoor3D cyc(cac);
                 
@@ -257,7 +256,6 @@ SphericalCoordinateSet::SphericalCoordinateSet(CartesianCoordinateSet& cs) {
     m_size = cs.size();
     for(size_t i = 0; i < m_size; ++i)
     {
-        double x, y, z;
         CartesianCoor3D cac(cs.c1[i],cs.c2[i],cs.c3[i]);
         SphericalCoor3D csc(cac);
                 
