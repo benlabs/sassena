@@ -388,18 +388,10 @@ int main(int argc,char** argv) {
 
 
 
-        // setup monitoring service
-    //    boost::asio::io_service io_service;
-    //    boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::tcp::tcp::v4(),11111);
-    //    boost::asio::ip::tcp::acceptor acceptor(io_service,endpoint);
-//    stringstream port_strstr; port_strstr <<  acceptor.local_endpoint().port();
-        string host_str = boost::asio::ip::host_name();
-    //    boost::mpi::broadcast(scatter_comm,port_str,0);
-    //    boost::mpi::broadcast(scatter_comm,host_str,0);
-
+    // setup monitoring service
+    string host_str = boost::asio::ip::host_name();
+    string port_str = "0";
     
-    
-    string port_str = "11111";
     boost::thread* p_pthread = NULL;
     if (world.rank()==0) {
         // create a lock

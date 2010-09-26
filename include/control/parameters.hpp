@@ -462,6 +462,7 @@ private:
 		ar & average;
 		ar & background;
         ar & center;
+        ar & data;
     }
 	/////////////////// 
 
