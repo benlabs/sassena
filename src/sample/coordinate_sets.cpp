@@ -43,9 +43,9 @@ CoordinateSets::~CoordinateSets() {
 void CoordinateSets::init() {
 
     // read in frame information
-    for(size_t i = 0; i < Params::Inst()->sample.frames.size(); ++i)
+    for(size_t i = 0; i < Params::Inst()->sample.framesets.size(); ++i)
     {
-    	SampleFramesetParameters& f = Params::Inst()->sample.frames[i];
+    	SampleFramesetParameters& f = Params::Inst()->sample.framesets[i];
     	Info::Inst()->write(string("Reading frames from: ")+f.filename);
     	if (f.clones!=1) {
     	    Info::Inst()->write(string("Cloning frameset ")+to_s(f.clones)+string(" times"));

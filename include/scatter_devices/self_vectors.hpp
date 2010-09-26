@@ -88,7 +88,8 @@ public:
 	void compute();
 	void next();
 	void write();
-	double progress();
+	size_t status();
+    double progress();
 };
 
 #endif

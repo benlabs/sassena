@@ -132,7 +132,8 @@ void SelfVectorsScatterDevice::compute() {
         	    }
         	}
     	}
-    } else if (Params::Inst()->scattering.correlation.type=="instant-time") { // this corresponds to "static", i.e. instant correlation = conjmultiply, only elastic part of the function
+    } else if (Params::Inst()->scattering.correlation.type=="instant-time") { 
+        // this corresponds to "static", i.e. instant correlation = conjmultiply, only elastic part of the function
                     // if not time correlated, the conjmultiply negates phase information
                     // this simplifies formulas
 
@@ -182,23 +183,21 @@ void SelfVectorsScatterDevice::write() {
 
 void SelfVectorsScatterDevice::next() {
 	if (m_current_qvector>=m_qvectorindexpairs.size()) return;
-
-	m_current_qvector+=1;
+	m_current_qvector+=1;    
+	
+    ofstream monitorfile("progress.data",ios::binary);
+    monitorfile.seekp(m_scattercomm.rank()*sizeof(float));
+    float progress = m_current_qvector*1.0/m_qvectorindexpairs.size();
+    monitorfile.write((char*) &progress,sizeof(float)); // initialize everything to 0
+    monitorfile.close();
 }
 
-
+size_t SelfVectorsScatterDevice::status() {
+    return m_current_qvector/m_qvectorindexpairs.size();
+}
 
 double SelfVectorsScatterDevice::progress() {
-	size_t total = m_qvectorindexpairs.size();
-	size_t current = m_current_qvector;
-	double progress = 0.0;
-	if (total==current) {
-		progress = 1.0;
-	} else if (current!=0) {
-		progress = ((current*1.0)/total);
-	}
-
-	return progress;
+    return m_current_qvector*1.0/m_qvectorindexpairs.size();    
 }
 
 SelfVectorsScatterDevice::SelfVectorsScatterDevice(
@@ -235,32 +234,29 @@ SelfVectorsScatterDevice::SelfVectorsScatterDevice(
 	scatterfactors.set_selection(sample.atoms.selections[target]);
 	scatterfactors.set_background(true);
 
-
 	size_t rank = m_fqtcomm.rank();
 	size_t NN = m_fqtcomm.size(); // Number of Nodes
 
 	size_t NA = sample.atoms.selections[target].indexes.size(); // Number of Atoms
 	size_t NF = sample.coordinate_sets.size();
 
+	//////////////////////////////////////////////////
+	// Assignment of frames to load
+	//////////////////////////////////////////////////
 	EvenDecompose framesdecomp(NF,NN);
     vector<size_t> myframes = framesdecomp.indexes_for(rank);
     size_t NMYF = myframes.size();
 
+	//////////////////////////////////////////////////
+	// Assignment of atoms to compute
+	//////////////////////////////////////////////////
 	EvenDecompose indexdecomp(NA,NN);
     m_indexes = indexdecomp.indexes_for(rank);
     size_t NMYI = m_indexes.size();
     
-	if (NN>NA) {
-		Err::Inst()->write("Not enough atoms for decomposition");
-		throw;
-	}
-
-
     m_x.assign(NMYI,vector<double>(NF));
     m_y.assign(NMYI,vector<double>(NF));
     m_z.assign(NMYI,vector<double>(NF));
-
-
     
     // first do a global communication to distribute the atoms
     size_t seglength = indexdecomp.indexes_for(rank).size();
@@ -297,14 +293,13 @@ SelfVectorsScatterDevice::SelfVectorsScatterDevice(
 	    }
         delete p_cset;
     }
-
-    timer.stop("sd:data");    
-
-    timer.start("sd:data:trans");
     
+    
+    // BREAK
     // first do a global communication to distribute the atoms
     size_t flength = framesdecomp.indexes_for(rank).size();
-    size_t foffset = framesdecomp.indexes_for(rank)[0];
+    size_t foffset = 0;
+    if (flength>0) foffset = framesdecomp.indexes_for(rank)[0];
 
     vector<size_t> flengths(NN);
     vector<size_t> foffsets(NN);
@@ -313,8 +308,7 @@ SelfVectorsScatterDevice::SelfVectorsScatterDevice(
     boost::mpi::all_gather(m_fqtcomm,foffset,&(foffsets[0]));
     // now slengths and soffsets index atom stripes
 
-    // next do a global communication to distribute the datasizes
-    
+    // next do a global communication to distribute the datasizes    
     // now exchange data.
     for(size_t nodeiter = 0; nodeiter < NN; ++nodeiter)
     {
@@ -376,6 +370,7 @@ SelfVectorsScatterDevice::SelfVectorsScatterDevice(
 
     }
     timer.stop("sd:data:trans");
+    
 }
 
 void SelfVectorsScatterDevice::scatter(size_t ai, size_t mi) {

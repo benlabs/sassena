@@ -32,8 +32,8 @@
 
 using namespace std;
 
-AllScatterDevice::AllScatterDevice(	boost::mpi::communicator scatter_comm,
-		boost::mpi::communicator fqt_comm,
+AllScatterDevice::AllScatterDevice(	boost::mpi::communicator all_comm,
+		boost::mpi::communicator partition_comm,
 		Sample& sample,
 		vector<pair<size_t,CartesianCoor3D> > QIV,
 		string fqt_filename)
@@ -42,8 +42,8 @@ AllScatterDevice::AllScatterDevice(	boost::mpi::communicator scatter_comm,
 	m_current_qvector =0;
 	m_fqt_filename = fqt_filename;
 
-	m_scattercomm = scatter_comm;
-	m_fqtcomm = fqt_comm;
+	m_scattercomm = all_comm;
+	m_fqtcomm = partition_comm;
     m_writeflag = false;
 
 	p_sample = &sample; // keep a reference to the sample
@@ -55,44 +55,16 @@ AllScatterDevice::AllScatterDevice(	boost::mpi::communicator scatter_comm,
 	size_t NF = sample.coordinate_sets.size();
 
 	size_t rank = m_fqtcomm.rank();
-
-	EvenDecompose edecomp(NF,NN);
 	
+	//////////////////////////////////////////////////
+	// Assignment of frames to compute
+	//////////////////////////////////////////////////
+	EvenDecompose edecomp(NF,NN);
 	myframes = edecomp.indexes_for(rank);
+	
+	
     // blocking factor:
     // max(nn,nq)
-
-	if (m_fqtcomm.rank()==0) {
-
-        size_t memusage_scatmat = 2*sizeof(double)*myframes.size()*1;
-                
-        size_t memusage_per_cs = 3*sizeof(double)*NA;
-        size_t memusage_allcs = memusage_per_cs*myframes.size();
-        
-        
-        Info::Inst()->write(string("Memory Requirements per node: "));
-		Info::Inst()->write(string("Scattering Matrix: ")+to_s(memusage_scatmat)+string(" bytes"));
-
-
-        // fault if not enough memory for scattering matrix
-        if (memusage_scatmat>Params::Inst()->limits.memory.scattering_matrix) {
-			Err::Inst()->write(string("Insufficient Buffer size for scattering matrix."));            
-			Err::Inst()->write(string("Size required:")+to_s(memusage_scatmat)+string(" bytes"));            
-			Err::Inst()->write(string("Configuration Parameter: limits.memory.scattering_matrix"));
-            throw;
-        }
-
-		Info::Inst()->write(string("Coordinate Sets: ")+to_s(myframes.size()*memusage_per_cs)+string(" bytes"));		
-
-        // warn if not enough memory for coordinate sets (cacheable system)
-		if (Params::Inst()->runtime.limits.cache.coordinate_sets<myframes.size()) {
-			Err::Inst()->write(string("Insufficient Buffer size for coordinate sets."));
-			Err::Inst()->write(string("Need at least: ")+to_s(memusage_allcs)+string(" bytes"));
-			Err::Inst()->write(string("Configuration Parameter: limits.memory.coordinate_sets"));
-            throw;
-		}		
-	}
-	
 	
     p_a = new vector< vector< complex<double> > >; // initialize with no size
     p_asingle = new vector< complex<double> >; // initialize with no size
@@ -321,6 +293,28 @@ void AllScatterDevice::conjmultiply() {
     }
 }
 
+
+void AllScatterDevice::average_correlate() {
+    if (p_asingle->size()<1) return;
+    
+    size_t NF = p_sample->coordinate_sets.size();
+          
+    std::vector< std::complex<double> >& complete_a = (*p_asingle);
+    
+    complex<double> asum = 0;
+    for(size_t tau = 0; tau < NF; ++tau)
+    {
+   		 asum += complete_a[tau];
+    }
+
+    asum /= NF;
+
+    for(size_t tau = 0; tau < NF; ++tau)
+    {
+        complete_a[tau] = asum;
+    }
+}
+
 void AllScatterDevice::sum() {
     
     size_t NMYF = myframes.size();
@@ -407,10 +401,26 @@ void AllScatterDevice::gather_cat() {
     }
 }
 
+
 void AllScatterDevice::next() {
 	if (m_current_qvector>=m_qvectorindexpairs.size()) return;
-	m_current_qvector+=1;
+	m_current_qvector+=1;    
+	
+    ofstream monitorfile("progress.data",ios::binary);
+    monitorfile.seekp(m_scattercomm.rank()*sizeof(float));
+    float progress = m_current_qvector*1.0/m_qvectorindexpairs.size();
+    monitorfile.write((char*) &progress,sizeof(float)); // initialize everything to 0
+    monitorfile.close();
 }
+
+double AllScatterDevice::progress() {
+    return m_current_qvector*1.0/m_qvectorindexpairs.size();    
+}
+
+size_t AllScatterDevice::status() {
+    return m_current_qvector/m_qvectorindexpairs.size();
+}
+
 
 void AllScatterDevice::compute() {
 
@@ -518,17 +528,4 @@ void AllScatterDevice::write() {
     }
     m_scattercomm.barrier();
  }
-}
-
-
-double AllScatterDevice::progress() {
-	size_t total = m_qvectorindexpairs.size();
-	size_t current = m_current_qvector;
-	double progress = 0.0;
-	if (total==current) {
-		progress = 1.0;
-	} else if (current!=0) {
-		progress = ((current*1.0)/total);
-	}
-	return progress;
 }

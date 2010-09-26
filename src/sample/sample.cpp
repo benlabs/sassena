@@ -81,14 +81,6 @@ void Sample::init() {
     size_t memusage_per_cs = 3*sizeof(double)*atoms.size();
     Params::Inst()->runtime.limits.cache.coordinate_sets = long(Params::Inst()->limits.memory.coordinate_sets/memusage_per_cs);
     Info::Inst()->write(string("Number of cacheable coordinate sets per node: ")+to_s(Params::Inst()->runtime.limits.cache.coordinate_sets));
-    
-    // fault if not enough memory for one coordinate set
-    if (memusage_per_cs>Params::Inst()->limits.memory.coordinate_sets) {
-		Err::Inst()->write(string("Insufficient Buffer size for coordinate set."));            
-		Err::Inst()->write(string("Size required:")+to_s(memusage_per_cs)+string(" bytes"));            
-		Err::Inst()->write(string("Configuration Parameter: limits.memory.coordinate_sets"));
-        throw;
-    }
 }
 
 // end of file

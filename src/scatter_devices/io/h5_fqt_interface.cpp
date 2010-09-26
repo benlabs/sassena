@@ -66,7 +66,7 @@ std::vector<size_t> init_new(const string filename,const std::vector<CartesianCo
     maxdims2[1]=nf;
     maxdims2[2]=2;
     cdims2[0]=1;
-    cdims2[1]= (nf<10000) ? nf : 10000;
+    cdims2[1]= ((nf>0) && (nf<10000)) ? nf : 10000;
     cdims2[2]=2;
     hid_t fqt_lcpl = H5Pcreate(H5P_LINK_CREATE);
     hid_t fqt_dcpl = H5Pcreate(H5P_DATASET_CREATE);
@@ -108,7 +108,7 @@ std::vector<size_t> init_new(const string filename,const std::vector<CartesianCo
     foffset1[0]=0;
     foffset1[1]=0;
     hid_t ds_qv2 = H5Dopen(h5file,"qvectors",H5P_DEFAULT);
-    hid_t fspace = H5Dget_space(ds_qv);
+    hid_t fspace = H5Dget_space(ds_qv2);
     H5Sselect_hyperslab(fspace,H5S_SELECT_SET,foffset1,NULL,dims1,NULL);
     H5Dwrite(ds_qv2,H5T_NATIVE_DOUBLE,H5S_ALL,fspace,H5P_DEFAULT,reinterpret_cast<double*>(const_cast<CartesianCoor3D*>(&qvectors[0])));
     
@@ -300,6 +300,13 @@ std::vector<size_t> init_reuse(const std::string filename,const std::vector<Cart
 
 
 std::vector<size_t> init(const string filename, const std::vector<CartesianCoor3D>& qvectors,size_t nf) {
+
+if (nf<1) {
+    Err::Inst()->write("Number of frames must not be negative or zero!");    
+    throw;
+}
+    
+    
 if (boost::filesystem::exists(filename)) {
     htri_t h5trialcode = H5Fis_hdf5(filename.c_str());  
     if (h5trialcode>0) {

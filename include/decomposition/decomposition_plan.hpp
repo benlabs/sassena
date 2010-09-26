@@ -31,23 +31,49 @@
 // other headers
 #include "math/coor3d.hpp"
 
+
+ class DecompositionParameters {
+     // initial
+
+     size_t m_NN;
+     size_t m_NQ;
+     size_t m_NAF;
+     size_t m_NP;    
+
+     size_t m_penalty;
+     size_t m_NAFcycles;
+     size_t m_NQcycles;
+     size_t m_NNpP;
+     
+     size_t m_elbytesize;
+     size_t m_nbytesize;
+  public:
+     DecompositionParameters(size_t nn,size_t nq,size_t naf,size_t np,size_t elbytesize);
+
+     size_t penalty();
+     double penalty_percent();
+     size_t PID(size_t rank); // maps a parition ID to a node rank
+
+     size_t get_NN() { return m_NN; }     
+     size_t get_NQ() { return m_NQ; }     
+     size_t get_NAF() { return m_NAF; }     
+     size_t get_NP() { return m_NP; }     
+
+     size_t get_NQcycles() { return m_NQcycles; }     
+     size_t get_NAFcycles() { return m_NAFcycles; }     
+
+     size_t get_NNpP() { return m_NNpP; }     
+     size_t nbytesize() { return m_nbytesize; }
+ };
+ 
 class DecompositionPlan {
 
-	size_t m_bestcolwidth;
-	size_t m_penalty;
-	size_t m_bestworldsplit;
-	
-	size_t m_nn;
-	size_t m_nq;
-	size_t m_nf;
-
-	size_t compute_penalty(size_t nq, size_t nf, size_t nn,size_t worldsplit);	
-	
-	std::vector<std::pair<double,size_t> > scan_imbalance_spectrum(size_t nq, size_t nf, size_t maxnn);
+    DecompositionParameters* p_dp_best;
 	
 public:
-	DecompositionPlan(size_t nn,size_t nq,size_t nf);
-	
+	DecompositionPlan(size_t nn,size_t nq,size_t naf,size_t elbytesize,size_t nmaxbytesize);
+    ~DecompositionPlan();
+    
 	std::vector<size_t> colors();
 
 	double static_imbalance();
@@ -55,6 +81,7 @@ public:
 	size_t partitions();
 	size_t partitionsize();
 
+    size_t nbytesize();
 };
 
 

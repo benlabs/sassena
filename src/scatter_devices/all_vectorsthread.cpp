@@ -19,6 +19,7 @@
 // special library headers
 #include <boost/accumulators/accumulators.hpp>
 #include <boost/accumulators/statistics.hpp>
+#include <boost/lexical_cast.hpp>
 #include "threadpool/threadpool.hpp"
 
 // other headers
@@ -248,7 +249,7 @@ void AllVectorsThreadScatterDevice::conjmultiply(std::vector<std::complex<double
 void AllVectorsThreadScatterDevice::worker1(size_t NM,CartesianCoor3D q) {
     //size_t NMMAX = 1000;
     
-    boost::threadpool::pool tp(2);
+    boost::threadpool::pool tp(Params::Inst()->limits.computation.threads);
     for(size_t mi = 0; mi < NM; mi+=1)
     {
 //        boost::thread t(boost::bind(&AllVectorsThreadScatterDevice::scatter,this,mi) );	
@@ -266,11 +267,16 @@ void AllVectorsThreadScatterDevice::worker1(size_t NM,CartesianCoor3D q) {
 //    }
     tp.wait();
 
+    // push a sentinal value on the queue:
+    std::pair<size_t,std::vector<complex<double> >* > sentinal(NM,NULL);
+    at1.push(sentinal);
+
     // this feature is dead:
 	//    if (Params::Inst()->scattering.center) {
     //        multiply_alignmentfactors(q);
 	//    }
 }
+
 
 void AllVectorsThreadScatterDevice::worker2() {
     
@@ -279,56 +285,93 @@ void AllVectorsThreadScatterDevice::worker2() {
     size_t NMYF = myframes.size();
     
     size_t MYRANK = m_fqtcomm.rank();
-    size_t vector_count = 0;
+    
+    // local data holders:
+    std::map<size_t,size_t> qindex_recv_count;
+    std::map<size_t,std::vector<std::complex<double> >* > recv_queue;
+    vector<size_t> nframes(NN);
+    boost::mpi::all_gather(m_fqtcomm,NMYF,&(nframes[0]));
+    vector<size_t> nframe_offsets(NN);
+    size_t nframe_integral=0;
+    for (size_t i=0;i<NN;i++) {
+        nframe_offsets[i]=nframe_integral;
+        nframe_integral+=nframes[i];        
+    }
     
     while ( true ) {
         
         timer.start("sd:traffic"); 
         // get a local copy of the data
-        std::vector< std::complex<double> >* p_at_local;
+        std::pair<size_t,std::vector< std::complex<double> >* > at_local_pair(0,NULL);
+        std::vector< std::complex<double>  >* p_at_local = NULL;
         //if (!at1.try_pop(p_at_local)) continue;
-        at1.wait_and_pop(p_at_local);
-        boost::this_thread::disable_interruption di;
-
+        at1.wait_and_pop(at_local_pair);        
+        
+        size_t qindex = at_local_pair.first;
+        p_at_local = at_local_pair.second;
+        
+        // test for sentinal value:
+        if (p_at_local==NULL) {
+            // push a sentinal value for the next worker
+            at2.push(NULL);
+            break;
+        }
 
         // target node: vector_count % NN
-        size_t target_node = (vector_count%NN);
-        vector_count++;	
+        size_t target_node = (qindex%NN);
 
-        vector<size_t> nframes(NN);
-        boost::mpi::all_gather(m_fqtcomm,NMYF,&(nframes[0]));
+        std::vector<size_t> allqindexes(NN);
+        boost::mpi::all_gather(m_fqtcomm,qindex,&(allqindexes[0]));
         
-        if (MYRANK==target_node) {
+        std::list<boost::mpi::request> requests;
+        double* p_at_frames = (double*) &((*p_at_local)[0]);
+        requests.push_back(m_fqtcomm.isend(target_node,0,p_at_frames,2*NMYF));
+ 
+        // loop through all qindexes and post a recv for each qindex which matches Myrank as a target
+        for (size_t i=0;i<NN;i++) {
+            size_t this_qindex = allqindexes[i];
             
-            std::vector<std::complex<double> >* p_at_allframes = new std::vector<std::complex<double> >(NF);
-            
-            // receive all values
-            size_t ntotal=0;
-            for (size_t n=0;n<NN;n++) {
-                double* pp_at_allframes = (double*) &((*p_at_allframes)[ntotal]);
-                if (MYRANK!=n) {
-                	m_fqtcomm.recv(n,0,pp_at_allframes,2*nframes[n]);
+            size_t this_target_node = (this_qindex%NN);
+            if (MYRANK==this_target_node) {
+                std::vector<std::complex<double> >* p_at_allframes = NULL;
+                
+                // reserve data on local queue if qindex is new
+                if (recv_queue.find(this_qindex)==recv_queue.end()) {
+                    p_at_allframes = new std::vector<std::complex<double> >(NF);
+                    recv_queue[this_qindex]=p_at_allframes; // push the pointer
                 } else {
-                    for(size_t nn=0;nn<nframes[n];nn++) {
-                        (*p_at_allframes)[ntotal+nn]=(*p_at_local)[nn];                        
-                    }
+                    p_at_allframes = recv_queue[this_qindex];
                 }
-                ntotal+=nframes[n];
+                
+                // select the region the data is recv
+                double* pp_at_allframes = (double*) &((*p_at_allframes)[nframe_offsets[i]]);
+                // post a blocking recv                
+                m_fqtcomm.recv(i,0,pp_at_allframes,2*nframes[i]);                
+                
+                qindex_recv_count[this_qindex]++;
             }
-            
-            // push them off 
-            at2.push(p_at_allframes);
-                            
-        } else {
-            double* p_at_frames = (double*) p_at_local;
-            m_fqtcomm.send(target_node,0,p_at_frames,2*NMYF);
         }
-        timer.stop("sd:traffic"); 
-
+        
+        
+        boost::mpi::wait_all(requests.begin(),requests.end());
 	    // need to free p_at_local, since we gained ownership
         delete p_at_local;
+        
+        std::queue<size_t> qindex_finished;
+        // now scan for completely recv data
+        for (std::map<size_t,size_t>::iterator qiter=qindex_recv_count.begin();qiter!=qindex_recv_count.end();qiter++) {
+            if (qiter->second==NN) {
+                at2.push(recv_queue[qiter->first]);
+                qindex_finished.push(qiter->first);
+            }            
+        }
+        while (!qindex_finished.empty()) {
+            size_t qindex = qindex_finished.front();
+            recv_queue.erase(qindex);
+            qindex_recv_count.erase(qindex);            
+            qindex_finished.pop();
+        }
 	}
-      
 }
 
 void AllVectorsThreadScatterDevice::worker3() {
@@ -338,8 +381,11 @@ void AllVectorsThreadScatterDevice::worker3() {
         // get a local copy of the data
         std::vector< std::complex<double> >* p_at_local=NULL;
         //if (!at2.try_pop(p_at_local)) continue;
-        at2.wait_and_pop(p_at_local);            
-        boost::this_thread::disable_interruption di;
+        at2.wait_and_pop(p_at_local); 
+              
+        if (p_at_local==NULL) {
+             break;
+        }
         
         timer.start("sd:correlation"); 
 
@@ -362,7 +408,7 @@ void AllVectorsThreadScatterDevice::worker3() {
             conjmultiply(*p_at_local);
     	    timer.stop("sd:conjmultiply");	                    
 		}
-
+		
         for(size_t n=0;n<at3.size();n++) {
             at3[n]+=(*p_at_local)[n];
         }
@@ -372,20 +418,24 @@ void AllVectorsThreadScatterDevice::worker3() {
 	}	
 }
 
-double AllVectorsThreadScatterDevice::progress() {
-	size_t total = m_qvectorindexpairs.size();
-	size_t current = m_current_qvector;
-	double progress = 0.0;
-	if (total==current) {
-		progress = 1.0;
-	} else if (current!=0) {
-		progress = ((current*1.0)/total);
-	}
-	return progress;
-}
+
 void AllVectorsThreadScatterDevice::next() {
 	if (m_current_qvector>=m_qvectorindexpairs.size()) return;
-	m_current_qvector+=1;
+	m_current_qvector+=1;    
+	
+    ofstream monitorfile("progress.data",ios::binary);
+    monitorfile.seekp(m_scattercomm.rank()*sizeof(float));
+        float progress = m_current_qvector*1.0/m_qvectorindexpairs.size();
+    monitorfile.write((char*) &progress,sizeof(float)); // initialize everything to 0
+    monitorfile.close();
+}
+
+double AllVectorsThreadScatterDevice::progress() {
+    return m_current_qvector*1.0/m_qvectorindexpairs.size();    
+}
+
+size_t AllVectorsThreadScatterDevice::status() {
+    return m_current_qvector/m_qvectorindexpairs.size();
 }
 
 void AllVectorsThreadScatterDevice::write() {
@@ -401,6 +451,7 @@ void AllVectorsThreadScatterDevice::write() {
     m_scattercomm.barrier();
  }
 }
+
 
 void AllVectorsThreadScatterDevice::compute() {
 
@@ -424,39 +475,36 @@ void AllVectorsThreadScatterDevice::compute() {
 
     
 	// blocking factor: max(nn,nq)
-    long NN = m_fqtcomm.size();
-    long NM = get_numberofmoments();
-    long NF = p_sample->coordinate_sets.size();
+    size_t NN = m_fqtcomm.size();
+    size_t NM = get_numberofmoments();
+    size_t NF = p_sample->coordinate_sets.size();
 
-    m_spectrum.assign(NF,0);
+    m_spectrum.clear();
+    at3.clear();
+    m_spectrum.resize(NF,0);
     at3.resize(NF,0);
     
     boost::thread t1(boost::bind(&AllVectorsThreadScatterDevice::worker1, this, NM,q));
-    boost::thread t2(boost::bind(&AllVectorsThreadScatterDevice::worker2, this));
+    boost::thread t2(boost::bind(&AllVectorsThreadScatterDevice::worker2, this));    
     boost::thread t3(boost::bind(&AllVectorsThreadScatterDevice::worker3, this));
-	    
-	// wait for t1 to finish
-    t1.join();
-    at1.wait_for_empty();
-    at2.wait_for_empty();
-    
-    t2.interrupt();
-    t3.interrupt();
-        
+
+    // t3 is the last to go
+    t3.join();
+
     vector<complex<double> > at_local(NF,0);
     
     double* p_at3 = (double*) &(at3[0]);
     double* p_atlocal = (double*) &(at_local[0]);
     
-    
     if (NN>1) {
-        boost::mpi::reduce(m_fqtcomm,p_at3,2*NF,p_atlocal,std::plus<double>() ,0);
-        for(size_t j = 0; j < at_local.size(); ++j)
+        boost::mpi::reduce(m_fqtcomm,p_at3,2*NF,p_atlocal,std::plus<double>(),0);
+        for(size_t j = 0; j < NF; ++j)
         {
             m_spectrum[j] += std::complex<double>((at_local[j].real())/NM,(at_local[j].imag())/NM);
         }         			
-    } else {
-        for(size_t j = 0; j < at3.size(); ++j)
+    } 
+    else {
+        for(size_t j = 0; j < NF; ++j)
         {
             m_spectrum[j] += std::complex<double>((at3[j].real())/NM,(at3[j].imag())/NM);
         }         			
@@ -512,9 +560,10 @@ void AllVectorsThreadScatterDevice::scatter(size_t moffset) {
            Ai += sfs[j]*sin(p);
 	   }
        (*p_a)[fi] = complex<double>(Ar,Ai);
+       //(*p_a)[fi] = complex<double>(2,3);
 	}
-	
-    at1.push(p_a);
+    
+    at1.push(make_pair(moffset,p_a));
 }
 
 

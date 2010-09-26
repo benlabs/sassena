@@ -120,7 +120,7 @@ public:
 };
 
 
-class SampleFramesParameters : public std::vector<SampleFramesetParameters > {
+class SampleFramesetsParameters : public std::vector<SampleFramesetParameters > {
 private:
 	/////////////////// MPI related
 	// make this class serializable to 
@@ -128,7 +128,7 @@ private:
     friend class boost::serialization::access;	
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
     {
-		ar & boost::serialization::base_object<std::vector<SampleFramesetParameters>, SampleFramesParameters>(*this);
+		ar & boost::serialization::base_object<std::vector<SampleFramesetParameters>, SampleFramesetsParameters>(*this);
     }
 	/////////////////// 
 
@@ -194,7 +194,7 @@ private:
     {
 		ar & structure;
 		ar & groups;
-		ar & frames;
+		ar & framesets;
 		ar & motions;
         ar & alignments;
     }
@@ -203,7 +203,7 @@ private:
 public:	
 	SampleStructureParameters structure;
 	std::map<std::string,SampleGroupParameters> groups;
-	SampleFramesParameters frames;
+	SampleFramesetsParameters framesets;
 	std::vector<SampleMotionParameters> motions;
     std::vector<SampleAlignmentParameters> alignments;
 };
@@ -431,6 +431,21 @@ public:
 	void create_from_scans();
 };
 
+class ScatteringDataParameters {
+private:
+	/////////////////// MPI related
+	// make this class serializable to 
+	// allow sample to be transmitted via MPI
+    friend class boost::serialization::access;	
+	template<class Archive> void serialize(Archive & ar, const unsigned int version)
+    {
+		ar & file;
+    }
+	/////////////////// 
+
+public:
+	std::string file;
+};
 
 class ScatteringParameters {
 private:
@@ -461,6 +476,8 @@ public:
 	
 	ScatteringAverageParameters average;
 	ScatteringBackgroundParameters background;	
+
+	ScatteringDataParameters data;	
 };
 
 class OutputFileParameters {
@@ -509,6 +526,23 @@ public:
 };
 
 
+
+class LimitsComputationParameters {
+private:
+	/////////////////// MPI related
+	// make this class serializable to 
+	// allow sample to be transmitted via MPI
+    friend class boost::serialization::access;	
+	template<class Archive> void serialize(Archive & ar, const unsigned int version)
+    {
+		ar & threads;
+    }
+	/////////////////// 
+
+public:
+    size_t threads;
+};
+
 class LimitsMemoryParameters {
 private:
 	/////////////////// MPI related
@@ -519,12 +553,14 @@ private:
     {
 		ar & scattering_matrix;
         ar & coordinate_sets;
+        ar & data;
     }
 	/////////////////// 
 
 public:
     size_t scattering_matrix;
     size_t coordinate_sets;
+    size_t data;
 };
 
 class LimitsDecompositionPartitionsParameters {
@@ -535,16 +571,14 @@ private:
     friend class boost::serialization::access;	
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
     {
-        ar & max;
         ar & automatic;        
-        ar & count;
+        ar & size;
     }
 	/////////////////// 
 
 public:
-    size_t max;
     bool automatic;
-    size_t count;
+    size_t size;
     
 };
 
@@ -556,13 +590,13 @@ private:
     friend class boost::serialization::access;	
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
     {
-		ar & static_imbalance;
+		ar & utilization;
         ar & partitions;        
     }
 	/////////////////// 
 
 public:
-    double static_imbalance;
+    double utilization;
     LimitsDecompositionPartitionsParameters partitions;
 };
 
@@ -577,11 +611,13 @@ private:
     {
 		ar & memory;
         ar & decomposition;
+        ar & computation;
     }
 	/////////////////// 
 
 public:
     LimitsMemoryParameters memory;
+    LimitsComputationParameters computation;    
     LimitsDecompositionParameters decomposition;
 };
 

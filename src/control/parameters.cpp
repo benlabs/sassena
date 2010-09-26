@@ -115,12 +115,12 @@ void Params::read_xml(std::string filename) {
 	bool def_last_set=false; 
 	size_t def_stride = 1;
     size_t def_clones = 1;
-	if (xmli.exists("//sample/frames/first"))   def_first  = xmli.get_value<size_t>("//sample/frames/first");
-	if (xmli.exists("//sample/frames/last"))  { def_last   = xmli.get_value<size_t>("//sample/frames/last"); def_last_set = true; }
-	if (xmli.exists("//sample/frames/stride"))  def_stride = xmli.get_value<size_t>("//sample/frames/stride");
-	if (xmli.exists("//sample/frames/clones"))  def_clones = xmli.get_value<size_t>("//sample/frames/clones");
+	if (xmli.exists("//sample/framesets/first"))   def_first  = xmli.get_value<size_t>("//sample/framesets/first");
+	if (xmli.exists("//sample/framesets/last"))  { def_last   = xmli.get_value<size_t>("//sample/framesets/last"); def_last_set = true; }
+	if (xmli.exists("//sample/framesets/stride"))  def_stride = xmli.get_value<size_t>("//sample/framesets/stride");
+	if (xmli.exists("//sample/framesets/clones"))  def_clones = xmli.get_value<size_t>("//sample/framesets/clones");
 	
-	vector<XMLElement> framesets = xmli.get("//sample/frames/frameset");
+	vector<XMLElement> framesets = xmli.get("//sample/framesets/frameset");
 	for(size_t i = 0; i < framesets.size(); ++i)
 	{
 		xmli.set_current(framesets[i]);
@@ -134,7 +134,7 @@ void Params::read_xml(std::string filename) {
 		if (xmli.exists("./stride"))  fset.stride = xmli.get_value<size_t>("./stride");
 		if (xmli.exists("./clones"))  fset.clones = xmli.get_value<size_t>("./clones");
 		
-		sample.frames.push_back(fset);
+		sample.framesets.push_back(fset);
 		Info::Inst()->write(string("Added frames from ")+fset.filename+string(" using format: ")+fset.type);
 		Info::Inst()->write(string("Options: first=")+to_s(fset.first)+string(", last=")+to_s(fset.last)+string(", lastset=")+to_s(fset.last_set)+string(", stride=")+to_s(fset.stride));		
 	}
@@ -374,70 +374,53 @@ void Params::read_xml(std::string filename) {
 		scattering.target = xmli.get_value<string>("//scattering/target");
 	}
 	Info::Inst()->write(string("scattering.target=")+scattering.target);
+
+    scattering.data.file = "fqt.h5";
+	if (xmli.exists("//scattering/data")) {
+	    if (xmli.exists("//scattering/data/file")) {
+    		scattering.data.file = xmli.get_value<string>("//scattering/data/file");	        
+	    } 
+	}
+	Info::Inst()->write(string("scattering.data.file=")+scattering.data.file);	
 	
 	// END OF scattering section //
-	// START OF output section //
-	
-	if (!xmli.exists("//output")) {
-		Err::Inst()->write("You have to specify an output section");
-		throw;
-	}
-	
-	if (xmli.exists("//output/prefix")) {
-		output.prefix = xmli.get_value<string>("//output/prefix");
-	}
-	
-	vector<XMLElement> outputfiles = xmli.get("//output/file");
-	
-	for(size_t i = 0; i < outputfiles.size(); ++i)
-	{
-		xmli.set_current(outputfiles[i]);
-		OutputFileParameters ofp;
-		ofp.name = xmli.get_value<string>("./name");
-		ofp.method = xmli.get_value<string>("./method");
-		ofp.format = xmli.get_value<string>("./format");
-		ofp.filename = get_filepath(output.prefix + ofp.name + string(".") + ofp.format  );
-		output.files.push_back(ofp);
-	}
-	
-	if (output.files.size()==0) {
-		Err::Inst()->write("Aborting. No output files defined.");
-		throw;
-	}
 
-	// END OF output section //
 	// START OF limits section //
 
     // assign default memory limits:
     limits.memory.scattering_matrix = 100*1024*1024; // 100MB
+    limits.memory.data = 500*1024*1024; // 500MB
     limits.memory.coordinate_sets = 500*1024*1024; // 500MB
-    limits.decomposition.static_imbalance = 0.05; // 5% max
+    limits.computation.threads = 1;
+    limits.decomposition.utilization = 0.95; // 5% max loss
     limits.decomposition.partitions.automatic = true; // pick number of independent partitions based on some heuristics
-    limits.decomposition.partitions.max = 1000000; // virtually dont limit the maximum number of partitions
-    limits.decomposition.partitions.count = 1; // not used if automatic = true, if false -> this determines the split factor
+    limits.decomposition.partitions.size = 1; // not used if automatic = true, if false -> this determines the partition size
 
 	if (xmli.exists("//limits")) {        
     	if (xmli.exists("//limits/memory")) {
         	if (xmli.exists("//limits/memory/scattering_matrix")) {
     	        limits.memory.scattering_matrix = xmli.get_value<size_t>("//limits/memory/scattering_matrix");
 	        }
-        	if (xmli.exists("//limits/memory/coordinate_sets")) {	        
-			    limits.memory.coordinate_sets = xmli.get_value<size_t>("//limits/memory/coordinate_sets");
+        	if (xmli.exists("//limits/memory/data")) {	        
+			    limits.memory.data = xmli.get_value<size_t>("//limits/memory/data");
     	    }
 	    }
+    	if (xmli.exists("//limits/computation")) {
+        	if (xmli.exists("//limits/computation/threads")) {
+    	        limits.computation.threads = xmli.get_value<size_t>("//limits/computation/threads");
+	        }
+	    }
+	    
     	if (xmli.exists("//limits/decomposition")) {
-        	if (xmli.exists("//limits/decomposition/static_imbalance")) {
-			    limits.decomposition.static_imbalance = xmli.get_value<double>("//limits/decomposition/static_imbalance");
+        	if (xmli.exists("//limits/decomposition/utilization")) {
+			    limits.decomposition.utilization = xmli.get_value<double>("//limits/decomposition/utilization");
             }    	    
         	if (xmli.exists("//limits/decomposition/partitions")) {
             	if (xmli.exists("//limits/decomposition/partitions/automatic")) {
     			    limits.decomposition.partitions.automatic = xmli.get_value<bool>("//limits/decomposition/partitions/automatic");
                 }
-            	if (xmli.exists("//limits/decomposition/partitions/max")) {
-    			    limits.decomposition.partitions.max = xmli.get_value<size_t>("//limits/decomposition/partitions/max");
-                }
-            	if (xmli.exists("//limits/decomposition/partitions/count")) {
-    			    limits.decomposition.partitions.count = xmli.get_value<size_t>("//limits/decomposition/partitions/count");                    
+            	if (xmli.exists("//limits/decomposition/partitions/size")) {
+    			    limits.decomposition.partitions.size = xmli.get_value<size_t>("//limits/decomposition/partitions/size");                    
                 }
             }
         }		

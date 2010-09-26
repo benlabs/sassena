@@ -73,6 +73,7 @@ protected:
     void exchange();
     void correlate();
     void infinite_correlate();
+    void average_correlate();
     void gather_sum();
     
     void conjmultiply();
@@ -92,7 +93,9 @@ public:
 	void compute();
 	void next();
 	void write();
-	double progress();
+	size_t status();
+    double progress();
+	
 };
 
 

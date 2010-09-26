@@ -110,7 +110,7 @@ protected:
 	std::string m_fqt_filename;
 
     // first = q, second = frames
-    concurrent_queue< std::vector< std::complex<double> >* > at1;
+    concurrent_queue< std::pair<size_t,std::vector< std::complex<double> >* > > at1;
     concurrent_queue< std::vector< std::complex<double> >* > at2;
     std::vector< std::complex<double> > at3;
 	
@@ -157,7 +157,8 @@ public:
 	void compute();
 	void next();
 	void write();
-	double progress();
+	size_t status();
+    double progress();
 };
 
 

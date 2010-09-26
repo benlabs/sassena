@@ -39,8 +39,11 @@ public:
     virtual void compute() = 0;
 	virtual void next() = 0;
 	virtual void write()  = 0;
+	
+    virtual size_t status() = 0;
+    
+    virtual double progress() = 0;
 
-	virtual double progress() = 0;
 };
 
 

@@ -29,20 +29,20 @@ class ProgressReporter {
 
 	Timer m_timer;
 	
-	size_t m_maximum;
-	size_t m_minimum;
-	size_t m_current;
+	double m_maximum;
+	double m_minimum;
+	double m_current;
 	
-	size_t m_nextreport;
+	double m_nextreport;
 	
 	std::string m_timerlabel;
 
-	size_t compute_nextreport();
+	double compute_nextreport();
 
 public:
-	ProgressReporter(size_t maximum,size_t minimum);
+	ProgressReporter(double minimum,double maximum);
 	
-	void set(size_t current);
+	void set(double current);
 	void report();
 
 };
