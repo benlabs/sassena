@@ -162,7 +162,8 @@ void filemutex_server_thread() {
     // setup monitoring service
     boost::asio::io_service io_service;
     boost::asio::ip::tcp::socket socket( io_service );
-    boost::asio::ip::tcp::acceptor acceptor(io_service,fileserver_endpoint);
+    boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::tcp::v4(),0);
+    boost::asio::ip::tcp::acceptor acceptor(io_service,endpoint);
 
     // write port into the reference variable
     fileserver_endpoint = acceptor.local_endpoint();
@@ -456,7 +457,7 @@ int main(int argc,char** argv) {
     boost::asio::ip::tcp::resolver resolver(io_service);
     boost::asio::ip::tcp::resolver::query query(boost::asio::ip::tcp::v4(),fileserver_host_str,fileserver_port_str);
     boost::asio::ip::tcp::resolver::iterator it = resolver.resolve(query);
-    
+        
     ScatterDevice* p_ScatterDevice =NULL;
     p_ScatterDevice = ScatterDeviceFactory::create(
     		scatter_comm,

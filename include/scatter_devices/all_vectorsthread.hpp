@@ -147,14 +147,11 @@ protected:
     size_t get_numberofmoments();	
 	void scatter(size_t moffset);
     
-    void worker1(size_t mi, CartesianCoor3D q);
+    void worker1(size_t NM);
     void worker2();
     void worker3();
     
-    size_t worker1counter;
-    size_t worker2counter;
-    size_t worker3counter;
-    size_t worker3maxcounter;
+    void subworker1(size_t mfrom,size_t mto);
 	
 public: 
     AllVectorsThreadScatterDevice(

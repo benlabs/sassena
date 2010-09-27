@@ -245,32 +245,51 @@ void AllVectorsThreadScatterDevice::conjmultiply(std::vector<std::complex<double
     }
 }
 
-void AllVectorsThreadScatterDevice::worker1(size_t NM,CartesianCoor3D q) {
-    std::queue<boost::thread*> threads;
-    
-    for(size_t mi = 0; mi < NM; ) // mi is incremented in place
-    {
-        if (threads.size()>Params::Inst()->limits.computation.threads) {
+void AllVectorsThreadScatterDevice::worker1(size_t NM) {
+       std::queue<boost::thread*> threads;
+       
+       size_t numthreads = Params::Inst()->limits.computation.threads;
+       size_t NMblock = 1;
+       if (NM>numthreads) NMblock = NM/numthreads;
+
+                
+        for(size_t mi = 0; mi < NM; ) // mi is incremented in place
+        {
+            if (threads.size()>Params::Inst()->limits.computation.threads) {
+                boost::thread* p_thread = threads.front();
+                threads.pop();
+                p_thread->join();
+                delete p_thread;
+            } else {
+                size_t mfrom = mi;
+                size_t mto = mi+NMblock;
+                if (mto>NM) mto=NM;
+                threads.push( new boost::thread(boost::bind(&AllVectorsThreadScatterDevice::subworker1,this,mfrom,mto) ));	  
+                mi=mto;          
+            }
+        }
+        
+        // wait for remaining threads
+        while(threads.size()>0) {
             boost::thread* p_thread = threads.front();
             threads.pop();
             p_thread->join();
             delete p_thread;
-        } else {
-            threads.push( new boost::thread(boost::bind(&AllVectorsThreadScatterDevice::scatter,this,mi++) ));	            
         }
-    }
+        
+        // push a sentinal value on the queue:
+        std::pair<size_t,std::vector<complex<double> >* > sentinal(NM,NULL);
+        at1.push(sentinal);
+    
+    
 
-    // wait for remaining threads
-    while(threads.size()>0) {
-        boost::thread* p_thread = threads.front();
-        threads.pop();
-        p_thread->join();
-        delete p_thread;
-    }
+}
 
-    // push a sentinal value on the queue:
-    std::pair<size_t,std::vector<complex<double> >* > sentinal(NM,NULL);
-    at1.push(sentinal);
+void AllVectorsThreadScatterDevice::subworker1(size_t mfrom,size_t mto) {    
+    for(size_t mi = mfrom; mi < mto; mi++ ) // mi is incremented in place
+    {
+        scatter(mi);
+    }
 }
 
 
@@ -412,6 +431,7 @@ void AllVectorsThreadScatterDevice::worker3() {
 
         delete p_at_local;
 	}	
+	
 }
 
 
@@ -484,12 +504,31 @@ void AllVectorsThreadScatterDevice::compute() {
     m_spectrum.resize(NF,0);
     at3.resize(NF,0);
     
-    boost::thread t1(boost::bind(&AllVectorsThreadScatterDevice::worker1, this, NM,q));
-    boost::thread t2(boost::bind(&AllVectorsThreadScatterDevice::worker2, this));    
-    boost::thread t3(boost::bind(&AllVectorsThreadScatterDevice::worker3, this));
+    if (Params::Inst()->limits.computation.threads>1) {
+        // pre-launch follow up threads
+        boost::thread t1(boost::bind(&AllVectorsThreadScatterDevice::worker1, this,NM));            
+        boost::thread t2(boost::bind(&AllVectorsThreadScatterDevice::worker2, this));    
 
-    // t3 is the last to go
-    t3.join();
+        //directly join worker3:
+        worker3();
+        
+    } else {
+        // use a blocking factor here
+        std::pair<size_t,std::vector<complex<double> >* > a1_sentinal(NM,NULL);
+        size_t NMblock = 10;
+        for(size_t mi=0;mi<NM;) {
+            size_t mfrom = mi;
+            size_t mto = mi+NMblock;
+            if (mto>NM) mto=NM;
+            subworker1(mfrom,mto); // avoid worker1 tasking
+            mi=mto;
+            at1.push(a1_sentinal);
+            worker2();
+            at2.push(NULL);
+            worker3();
+        }
+    }
+    
 
     vector<complex<double> > at_local(NF,0);
     
