@@ -29,6 +29,7 @@ using namespace std;
 ScatterDevice* ScatterDeviceFactory::create(
 		boost::mpi::communicator& all_comm,
 		Sample& sample,
+        boost::asio::ip::tcp::endpoint fileserver_endpoint,
 		std::vector<CartesianCoor3D>& qvectors)
 {
     
@@ -170,7 +171,7 @@ ScatterDevice* ScatterDeviceFactory::create(
     			partition_comm,
     			sample,
     			thispartition_QIV,
-    			Params::Inst()->scattering.data.file);
+		        fileserver_endpoint);
     }
     else if (Params::Inst()->scattering.interference.type == "all"){
     	if (Params::Inst()->scattering.average.orientation.type == "vectors") {
@@ -179,14 +180,14 @@ ScatterDevice* ScatterDeviceFactory::create(
         			partition_comm,
         			sample,
         			thispartition_QIV,
-        			Params::Inst()->scattering.data.file);
+        			fileserver_endpoint);
     	} else if (Params::Inst()->scattering.average.orientation.type == "vectorsthread") {
         	p_ScatterDevice = new AllVectorsThreadScatterDevice(
         			all_comm,
         			partition_comm,
         			sample,
         			thispartition_QIV,
-        			Params::Inst()->scattering.data.file);
+        			fileserver_endpoint);
     	} else if (Params::Inst()->scattering.average.orientation.type == "multipole") {
     		if (Params::Inst()->scattering.average.orientation.multipole.type == "sphere") {
             	p_ScatterDevice = new AllMSScatterDevice(
@@ -194,14 +195,14 @@ ScatterDevice* ScatterDeviceFactory::create(
             			partition_comm,
             			sample,
             			thispartition_QIV,
-            			Params::Inst()->scattering.data.file);
+            			fileserver_endpoint);
     		} else if (Params::Inst()->scattering.average.orientation.multipole.type == "cylinder") {
             	p_ScatterDevice = new AllMCScatterDevice(
             			all_comm,
             			partition_comm,
             			sample,
             			thispartition_QIV,
-            			Params::Inst()->scattering.data.file);
+            			fileserver_endpoint);
     		} else {
     			Err::Inst()->write(string("scattering.average.orientation.multipole.type not understood: ")+Params::Inst()->scattering.average.orientation.multipole.type);
     			throw;
@@ -212,7 +213,7 @@ ScatterDevice* ScatterDeviceFactory::create(
         			partition_comm,
         			sample,
         			thispartition_QIV,
-        			Params::Inst()->scattering.data.file);
+        			fileserver_endpoint);
     	}
     }    
 

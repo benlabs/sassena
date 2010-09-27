@@ -24,6 +24,7 @@
 #include <queue>
 
 // special library headers
+#include <boost/asio.hpp>
 #include <boost/accumulators/accumulators.hpp>
 #include <boost/accumulators/statistics.hpp>
 #include <boost/numeric/ublas/matrix.hpp>
@@ -47,14 +48,23 @@
      std::queue<Data> the_queue;
      mutable boost::mutex the_mutex;
      boost::condition_variable the_condition_variable;
+     size_t max_size;
  public:
+     void set_maxsize(size_t size) {
+         max_size = size;
+     }
+     size_t get_maxsize(size_t size) {
+         return max_size;
+     }
+     
      void push(Data const& data)
      {
          boost::mutex::scoped_lock lock(the_mutex);
          the_queue.push(data);
          lock.unlock();
          
-         the_condition_variable.notify_one();         
+         // notify everyone who tries to push
+         the_condition_variable.notify_all();         
      }
 
      bool empty() const
@@ -78,6 +88,7 @@
 
          popped_value=the_queue.front();
          the_queue.pop();
+         
          return true;
      }
 
@@ -108,6 +119,7 @@ protected:
 	size_t m_current_qvector;
 	bool m_writeflag;
 	std::string m_fqt_filename;
+    boost::asio::ip::tcp::endpoint m_fileserver_endpoint;
 
     // first = q, second = frames
     concurrent_queue< std::pair<size_t,std::vector< std::complex<double> >* > > at1;
@@ -150,7 +162,7 @@ public:
 			boost::mpi::communicator fqt_comm,
 			Sample& sample,
 			std::vector<std::pair<size_t,CartesianCoor3D> > QVI,
-			std::string fqt_filename
+			boost::asio::ip::tcp::endpoint filemutex_server
 	);
     virtual ~AllVectorsThreadScatterDevice();
 

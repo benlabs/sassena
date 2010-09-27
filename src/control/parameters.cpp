@@ -432,6 +432,7 @@ void Params::read_xml(std::string filename) {
 	
 	debug.timer = false; // this adds a log message when a timer is started/stopped
 	debug.barriers = false; // this de-/activates collective barriers before each collective operation, this way all nodes are synchronized before the communication takes place. This is an important step towards analysis of timing.
+    debug.monitor.progress = true;
 	if (xmli.exists("//debug")) {
 		if (xmli.exists("//debug/timer")) {
 			debug.timer = xmli.get_value<bool>("//debug/timer");
@@ -439,6 +440,12 @@ void Params::read_xml(std::string filename) {
 		if (xmli.exists("//debug/barriers")) {
 			debug.barriers = xmli.get_value<bool>("//debug/barriers");
 		}
+		if (xmli.exists("//debug/monitor")) {
+    		if (xmli.exists("//debug/monitor/progress")) {
+		    	debug.monitor.progress = xmli.get_value<bool>("//debug/monitor/progress");
+	    	}
+		}
+		
 	}
 	
 	// initialize some of the runtime parameters:

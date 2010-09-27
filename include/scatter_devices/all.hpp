@@ -23,6 +23,7 @@
 #include <vector>
 
 // special library headers
+#include <boost/asio.hpp>
 #include <boost/accumulators/accumulators.hpp>
 #include <boost/accumulators/statistics.hpp>
 #include <boost/numeric/ublas/matrix.hpp>
@@ -47,8 +48,7 @@ protected:
 	std::vector<std::pair<size_t,CartesianCoor3D> > m_qvectorindexpairs;
 	size_t m_current_qvector;
 	bool m_writeflag;
-	std::string m_fqt_filename;
-
+    boost::asio::ip::tcp::endpoint m_fileserver_endpoint;
 
     // first = q, second = frames
 	std::vector< std::vector< std::complex<double> > >* p_a; 
@@ -86,7 +86,7 @@ public:
 			boost::mpi::communicator fqt_comm,
 			Sample& sample,
 			std::vector<std::pair<size_t,CartesianCoor3D> > QVI,
-			std::string fqt_filename
+			boost::asio::ip::tcp::endpoint filemutex_server
 	);
     virtual ~AllScatterDevice();
 	

@@ -23,6 +23,7 @@
 #include <vector>
 
 // special library headers
+#include <boost/asio.hpp>
 #include <boost/accumulators/accumulators.hpp>
 #include <boost/accumulators/statistics.hpp>
 #include <boost/numeric/ublas/matrix.hpp>
@@ -51,7 +52,8 @@ private:
 	size_t m_current_qvector;
 	bool m_writeflag;
 	std::string m_fqt_filename;
-	
+	boost::asio::ip::tcp::endpoint m_fileserver_endpoint;
+    
 	std::vector<std::complex<double> > m_spectrum;
 
     std::map<size_t,std::vector<CartesianCoor3D> > m_all_postalignmentvectors;
@@ -82,7 +84,7 @@ public:
 			boost::mpi::communicator fqt_comm,
 			Sample& sample,
 			std::vector<std::pair<size_t,CartesianCoor3D> > QIV,
-			std::string fqt_filename
+			boost::asio::ip::tcp::endpoint filemutex_server
 	);
 
 	void compute();

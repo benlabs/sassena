@@ -36,16 +36,15 @@ AllScatterDevice::AllScatterDevice(	boost::mpi::communicator all_comm,
 		boost::mpi::communicator partition_comm,
 		Sample& sample,
 		vector<pair<size_t,CartesianCoor3D> > QIV,
-		string fqt_filename)
+		boost::asio::ip::tcp::endpoint fileserver_endpoint)
 {
 	m_qvectorindexpairs= QIV;
 	m_current_qvector =0;
-	m_fqt_filename = fqt_filename;
 
 	m_scattercomm = all_comm;
 	m_fqtcomm = partition_comm;
     m_writeflag = false;
-
+    m_fileserver_endpoint = fileserver_endpoint;
 	p_sample = &sample; // keep a reference to the sample
 
 	string target = Params::Inst()->scattering.target;
@@ -405,12 +404,6 @@ void AllScatterDevice::gather_cat() {
 void AllScatterDevice::next() {
 	if (m_current_qvector>=m_qvectorindexpairs.size()) return;
 	m_current_qvector+=1;    
-	
-    ofstream monitorfile("progress.data",ios::binary);
-    monitorfile.seekp(m_scattercomm.rank()*sizeof(float));
-    float progress = m_current_qvector*1.0/m_qvectorindexpairs.size();
-    monitorfile.write((char*) &progress,sizeof(float)); // initialize everything to 0
-    monitorfile.close();
 }
 
 double AllScatterDevice::progress() {
@@ -517,15 +510,21 @@ void AllScatterDevice::compute() {
 }
 
 void AllScatterDevice::write() {
- // do a scatter_comm operation to negotiate write outs
- for(int i = 0; i < m_scattercomm.size(); ++i)
- {
-     if (m_scattercomm.rank()==i) {
-    	if ((m_fqtcomm.rank()==0) && m_writeflag) {
-             H5FQTInterface::store(m_fqt_filename,m_qvectorindexpairs[m_current_qvector].first,m_spectrum);
-             m_writeflag = false;
-    	}
-    }
-    m_scattercomm.barrier();
+
+ if ((m_fqtcomm.rank()==0)) {
+     boost::asio::io_service io_service;
+     boost::asio::ip::tcp::socket socket( io_service );
+
+     socket.connect(m_fileserver_endpoint);
+     size_t qindex = m_qvectorindexpairs[m_current_qvector].first; 
+     size_t size = 2*m_spectrum.size();
+     socket.write_some(boost::asio::buffer(&qindex,sizeof(size_t))); 
+     socket.write_some(boost::asio::buffer(&size,sizeof(size_t))); 
+     
+     double* p_data = (double*) &(m_spectrum[0]);
+     socket.write_some(boost::asio::buffer(p_data,sizeof(size))); 
+     
+     socket.close();
  }
+
 }

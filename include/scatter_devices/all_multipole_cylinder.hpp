@@ -53,7 +53,7 @@ public:
 			boost::mpi::communicator fqt_comm,
 			Sample& sample,
 			std::vector<std::pair<size_t,CartesianCoor3D> > QVI,
-			std::string fqt_filename
+			boost::asio::ip::tcp::endpoint filemutex_server
 	);
 };
 

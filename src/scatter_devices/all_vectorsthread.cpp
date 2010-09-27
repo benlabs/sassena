@@ -20,7 +20,6 @@
 #include <boost/accumulators/accumulators.hpp>
 #include <boost/accumulators/statistics.hpp>
 #include <boost/lexical_cast.hpp>
-#include "threadpool/threadpool.hpp"
 
 // other headers
 #include "math/coor3d.hpp"
@@ -39,16 +38,16 @@ AllVectorsThreadScatterDevice::AllVectorsThreadScatterDevice(
 		boost::mpi::communicator fqt_comm,
 		Sample& sample,
 		vector<pair<size_t,CartesianCoor3D> > QIV,
-		string fqt_filename)
+		boost::asio::ip::tcp::endpoint fileserver_endpoint)
 {
 	m_qvectorindexpairs= QIV;
 	m_current_qvector =0;
-	m_fqt_filename = fqt_filename;
 
 	m_scattercomm = scatter_comm;
 	m_fqtcomm = fqt_comm;
     m_writeflag = false;
-
+    m_fileserver_endpoint = fileserver_endpoint;
+    
 	p_sample = &sample; // keep a reference to the sample
 
 	string target = Params::Inst()->scattering.target;
@@ -247,34 +246,31 @@ void AllVectorsThreadScatterDevice::conjmultiply(std::vector<std::complex<double
 }
 
 void AllVectorsThreadScatterDevice::worker1(size_t NM,CartesianCoor3D q) {
-    //size_t NMMAX = 1000;
+    std::queue<boost::thread*> threads;
     
-    boost::threadpool::pool tp(Params::Inst()->limits.computation.threads);
-    for(size_t mi = 0; mi < NM; mi+=1)
+    for(size_t mi = 0; mi < NM; ) // mi is incremented in place
     {
-//        boost::thread t(boost::bind(&AllVectorsThreadScatterDevice::scatter,this,mi) );	
-        boost::threadpool::schedule(tp,boost::bind(&AllVectorsThreadScatterDevice::scatter,this,mi));
+        if (threads.size()>Params::Inst()->limits.computation.threads) {
+            boost::thread* p_thread = threads.front();
+            threads.pop();
+            p_thread->join();
+            delete p_thread;
+        } else {
+            threads.push( new boost::thread(boost::bind(&AllVectorsThreadScatterDevice::scatter,this,mi++) ));	            
+        }
     }
-       // only allow NMMAX results to reside in the internal buffer
-//        while (at1.size()>=NMMAX) {
-//            timer.start("sd:scatter::wait");        
-//            boost::xtime xt;
-//            boost::xtime_get(&xt,boost::TIME_UTC);
-//            xt.nsec += 1000;
-//            boost::this_thread::sleep(xt);
-//            timer.stop("sd:scatter::wait");        
-//        } 	    
-//    }
-    tp.wait();
+
+    // wait for remaining threads
+    while(threads.size()>0) {
+        boost::thread* p_thread = threads.front();
+        threads.pop();
+        p_thread->join();
+        delete p_thread;
+    }
 
     // push a sentinal value on the queue:
     std::pair<size_t,std::vector<complex<double> >* > sentinal(NM,NULL);
     at1.push(sentinal);
-
-    // this feature is dead:
-	//    if (Params::Inst()->scattering.center) {
-    //        multiply_alignmentfactors(q);
-	//    }
 }
 
 
@@ -422,12 +418,6 @@ void AllVectorsThreadScatterDevice::worker3() {
 void AllVectorsThreadScatterDevice::next() {
 	if (m_current_qvector>=m_qvectorindexpairs.size()) return;
 	m_current_qvector+=1;    
-	
-    ofstream monitorfile("progress.data",ios::binary);
-    monitorfile.seekp(m_scattercomm.rank()*sizeof(float));
-        float progress = m_current_qvector*1.0/m_qvectorindexpairs.size();
-    monitorfile.write((char*) &progress,sizeof(float)); // initialize everything to 0
-    monitorfile.close();
 }
 
 double AllVectorsThreadScatterDevice::progress() {
@@ -439,17 +429,22 @@ size_t AllVectorsThreadScatterDevice::status() {
 }
 
 void AllVectorsThreadScatterDevice::write() {
- // do a scatter_comm operation to negotiate write outs
- for(int i = 0; i < m_scattercomm.size(); ++i)
- {
-     if (m_scattercomm.rank()==i) {
-    	if ((m_fqtcomm.rank()==0) && m_writeflag) {
-             H5FQTInterface::store(m_fqt_filename,m_qvectorindexpairs[m_current_qvector].first,m_spectrum);
-             m_writeflag = false;
-    	}
+    if ((m_fqtcomm.rank()==0)) {
+        boost::asio::io_service io_service;
+        boost::asio::ip::tcp::socket socket( io_service );
+
+        socket.connect(m_fileserver_endpoint);
+        size_t qindex = m_qvectorindexpairs[m_current_qvector].first; 
+        size_t size = 2*m_spectrum.size();
+        socket.write_some(boost::asio::buffer(&qindex,sizeof(size_t))); 
+        socket.write_some(boost::asio::buffer(&size,sizeof(size_t))); 
+
+        double* p_data = (double*) &(m_spectrum[0]);
+        socket.write_some(boost::asio::buffer(p_data,sizeof(size))); 
+
+        socket.close();
     }
-    m_scattercomm.barrier();
- }
+
 }
 
 
@@ -472,7 +467,12 @@ void AllVectorsThreadScatterDevice::compute() {
     // start worker1
     // start worker2
     // start worker3
-
+    at1.set_maxsize(10);
+    at2.set_maxsize(10);
+    
+//    Info::Inst()->write(string("Bat1.size=")+boost::lexical_cast<string>(at1.size()));
+//    Info::Inst()->write(string("Bat2.size=")+boost::lexical_cast<string>(at2.size()));
+//    Info::Inst()->write(string("Bat3.size=")+boost::lexical_cast<string>(at3.size()));
     
 	// blocking factor: max(nn,nq)
     size_t NN = m_fqtcomm.size();
@@ -510,7 +510,6 @@ void AllVectorsThreadScatterDevice::compute() {
         }         			
     }
 
-    m_writeflag=true;
 }
 
 

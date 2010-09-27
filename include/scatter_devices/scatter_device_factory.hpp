@@ -15,7 +15,7 @@
 // common header
 #include "common.hpp"
 
-
+#include <boost/asio.hpp>
 #include <boost/mpi.hpp>
 
 // other headers
@@ -27,6 +27,7 @@ public:
     static ScatterDevice* create(
     		boost::mpi::communicator& scatter_comm,
     		Sample& sample,
+    		boost::asio::ip::tcp::endpoint filemutex_server,
     		std::vector<CartesianCoor3D>& qvectors);
     	
 };

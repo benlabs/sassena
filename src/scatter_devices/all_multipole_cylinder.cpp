@@ -37,8 +37,8 @@ AllMCScatterDevice::AllMCScatterDevice(	boost::mpi::communicator scatter_comm,
 		boost::mpi::communicator fqt_comm,
 		Sample& sample,
 		vector<pair<size_t,CartesianCoor3D> > QIV,
-		string fqt_filename)
-: AllScatterDevice(scatter_comm,fqt_comm,sample,QIV,fqt_filename)
+		boost::asio::ip::tcp::endpoint fileserver_endpoint)
+: AllScatterDevice(scatter_comm,fqt_comm,sample,QIV,fileserver_endpoint)
 {
 	p_sample->coordinate_sets.set_representation(SPHERICAL);
 	

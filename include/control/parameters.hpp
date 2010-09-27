@@ -676,6 +676,22 @@ public:
     RuntimeLimitsParameters limits;
 };
 
+class DebugMonitorParameters {
+   private:
+   	/////////////////// MPI related
+   	// make this class serializable to 
+   	// allow sample to be transmitted via MPI
+       friend class boost::serialization::access;	
+   	template<class Archive> void serialize(Archive & ar, const unsigned int version)
+       {
+   		ar & progress;
+       }
+   	/////////////////// 
+
+   public:
+   	bool progress; 
+};
+
 class DebugParameters {
 private:
 	/////////////////// MPI related
@@ -686,12 +702,14 @@ private:
     {
 		ar & timer;
 		ar & barriers;
+        ar & monitor;
     }
 	/////////////////// 
 
 public:
 	bool timer;
 	bool barriers;
+    DebugMonitorParameters monitor;
 };
 
 
