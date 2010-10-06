@@ -17,6 +17,7 @@
 #include <sstream>
 
 // special library headers
+#include <boost/lexical_cast.hpp>
 
 // other headers
 #include "control.hpp"
@@ -36,7 +37,7 @@ void Sample::init() {
     // create the sample via structure file	
     Info::Inst()->write(string("Reading structure from file: ")+params->sample.structure.file);
     add_atoms(params->sample.structure.file,params->sample.structure.format);
-    Info::Inst()->write(string("Done. Atoms read: ")+to_s(atoms.size()));
+    Info::Inst()->write(string("Done. Atoms read: ")+boost::lexical_cast<string>(atoms.size()));
     
     // add selections / groups
     for(map<string,SampleGroupParameters>::iterator sgpi = params->sample.groups.begin();sgpi!=params->sample.groups.end();sgpi++)
@@ -73,14 +74,9 @@ void Sample::init() {
 
     Params::Inst()->runtime.limits.cache.coordinate_sets = 1;    	
     coordinate_sets.init();
-    Info::Inst()->write(string("Total number of coordinate sets found: ")+to_s(coordinate_sets.size()));
+    Info::Inst()->write(string("Total number of coordinate sets found: ")+boost::lexical_cast<string>(coordinate_sets.size()));
 	coordinate_sets.set_atoms(atoms);
 	coordinate_sets.set_selection(atoms.selections["system"]);
-	
-	// adjust the coordinate sets cache to the size we need	
-    size_t memusage_per_cs = 3*sizeof(double)*atoms.size();
-    Params::Inst()->runtime.limits.cache.coordinate_sets = long(Params::Inst()->limits.memory.coordinate_sets/memusage_per_cs);
-    Info::Inst()->write(string("Number of cacheable coordinate sets per node: ")+to_s(Params::Inst()->runtime.limits.cache.coordinate_sets));
 }
 
 // end of file

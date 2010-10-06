@@ -24,11 +24,11 @@
 
 #include "scatter_devices/scatter_device.hpp"
 
-#include "scatter_devices/all_exact.hpp"
+//#include "scatter_devices/all_exact.hpp"
 
-#include "scatter_devices/all_multipole_sphere.hpp"
-#include "scatter_devices/all_multipole_cylinder.hpp"
-#include "scatter_devices/all_vectors.hpp"
+//#include "scatter_devices/all_multipole_sphere.hpp"
+//#include "scatter_devices/all_multipole_cylinder.hpp"
+//#include "scatter_devices/all_vectors.hpp"
 
 #include "scatter_devices/self_vectors.hpp"
 

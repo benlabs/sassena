@@ -41,7 +41,8 @@ CenterOfMass::CenterOfMass(Atoms& atoms,Atomselection& cofm_selection,Atomselect
 		m_center = CartesianCoor3D(0,0,0);	    
 	} else {
 
-    	double xt,yt,zt,m,mi;
+        coor_t xt,yt,zt;
+        double m,mi;
     	xt = yt = zt = 0.0;
     	m = 0.0;
 
@@ -85,7 +86,8 @@ CenterOfMass::CenterOfMass(Atoms& atoms,Frame& frame,Atomselection& selection) {
         return;
 	}
 
-	double xt,yt,zt,m,mi;
+    coor_t xt,yt,zt;
+    double m,mi;
 	xt = yt = zt = 0.0;
 	m = 0.0;
 

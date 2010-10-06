@@ -17,19 +17,20 @@
 #include "log.hpp"
 #include "decomposition/decompose.hpp"
 #include "decomposition/decomposition_plan.hpp"
-#include "scatter_devices/all_multipole_sphere.hpp"
-#include "scatter_devices/all_multipole_cylinder.hpp"
-#include "scatter_devices/all_vectors.hpp"
+//#include "scatter_devices/all_multipole_sphere.hpp"
+//#include "scatter_devices/all_multipole_cylinder.hpp"
+//#include "scatter_devices/all_vectors.hpp"
 #include "scatter_devices/all_vectorsthread.hpp"
-#include "scatter_devices/self_vectors.hpp"
-#include "scatter_devices/io/h5_fqt_interface.hpp"
-
+//#include "scatter_devices/self_vectors.hpp"
+#include "scatter_devices/self_vectorsthread.hpp"
 using namespace std;
 
 ScatterDevice* ScatterDeviceFactory::create(
 		boost::mpi::communicator& all_comm,
 		Sample& sample,
-        boost::asio::ip::tcp::endpoint fileserver_endpoint,
+        boost::asio::ip::tcp::endpoint fileservice_endpoint,
+        boost::asio::ip::tcp::endpoint monitorservice_endpoint,        
+		std::vector<size_t>& qindexes,
 		std::vector<CartesianCoor3D>& qvectors)
 {
     
@@ -39,6 +40,7 @@ ScatterDevice* ScatterDeviceFactory::create(
     size_t NF = sample.coordinate_sets.size();
     string target = Params::Inst()->scattering.target;
     size_t NA = sample.atoms.selections[target].indexes.size();
+    size_t NQ = qindexes.size();
 
     // check sample for data
     if (NF<1) {
@@ -51,35 +53,12 @@ ScatterDevice* ScatterDeviceFactory::create(
         throw;
     }
 
-    // initialize associated data file and use checkpoints
-    vector<size_t> qindexes;
-    if (all_comm.rank()==0) {
-        qindexes = H5FQTInterface::init(Params::Inst()->scattering.data.file,qvectors,sample.coordinate_sets.size());
-
-        size_t nq = qindexes.size();
-        broadcast(all_comm,nq,0);
-
-        broadcast(all_comm,reinterpret_cast<size_t*>(&qindexes[0]),qindexes.size(),0);
-
-        all_comm.barrier();
-    } else {
-        size_t nq=0;
-        broadcast(all_comm,nq,0);
-        qindexes.resize(nq);
-        broadcast(all_comm,reinterpret_cast<size_t*>(&qindexes[0]),qindexes.size(),0);
-        all_comm.barrier();
-    }
-    // qindexes contain absolute index positions which have to be used when writing to the data file
-    size_t NQ = qindexes.size();
-
     if (NQ<1) {
         Err::Inst()->write("No qvectors left to compute. Aborting");
         throw;
     }
 
-    // let the first node read the qvector values from file
-    std::vector<size_t> colors(all_comm.size());
-    vector<CartesianCoor3D> finalqvectors;
+    std::vector<size_t> colors(all_comm.size());    
     size_t partitions;
         
     ////////////////////////////////////////////////////////////
@@ -91,14 +70,14 @@ ScatterDevice* ScatterDeviceFactory::create(
         // each operating on a distinct set of qvectors.
         
     	Info::Inst()->write(string("Searching for decomposition plan: "));
-	    Info::Inst()->write(string("nodes    = ")+ to_s(all_comm.size()));
-	    Info::Inst()->write(string("qvectors = ")+ to_s(NQ));
-	    Info::Inst()->write(string("frames   = ")+ to_s(NF));
-	    Info::Inst()->write(string("atoms   = ")+ to_s(NA));
+	    Info::Inst()->write(string("nodes    = ")+ boost::lexical_cast<string>(all_comm.size()));
+	    Info::Inst()->write(string("qvectors = ")+ boost::lexical_cast<string>(NQ));
+	    Info::Inst()->write(string("frames   = ")+ boost::lexical_cast<string>(NF));
+	    Info::Inst()->write(string("atoms   = ")+ boost::lexical_cast<string>(NA));
 
-        if (Params::Inst()->scattering.interference.type == "self") {
+        if (Params::Inst()->scattering.type == "self") {
     	    Info::Inst()->write(string("Self interference scattering detected. Applying atom decomposition."));            
-        } else if (Params::Inst()->scattering.interference.type == "all") {
+        } else if (Params::Inst()->scattering.type == "all") {
     	    Info::Inst()->write(string("All interference scattering detected. Applying frame decomposition."));            
         } else {
     	    Err::Inst()->write(string("Scattering Interference type not understood. Must be 'self' or 'all'."));            
@@ -107,24 +86,23 @@ ScatterDevice* ScatterDeviceFactory::create(
 
         // for coherent scattering:
         size_t NAF = NA;
-        if (Params::Inst()->scattering.interference.type == "self") {
+        if (Params::Inst()->scattering.type == "self") {
             NAF = NA;
-        } else if (Params::Inst()->scattering.interference.type == "all") {
+        } else if (Params::Inst()->scattering.type == "all") {
             NAF = NF;
         }
 
         size_t ELBYTESIZE = 24;
         size_t NMAXBYTESIZE = Params::Inst()->limits.memory.data;
-        if (Params::Inst()->scattering.interference.type == "self") {
+        if (Params::Inst()->scattering.type == "self") {
             ELBYTESIZE=24; // 3 times double: xyz
-        } else if (Params::Inst()->scattering.interference.type == "all") {
+        } else if (Params::Inst()->scattering.type == "all") {
             ELBYTESIZE=NA*24; // 3 times double times number of atoms = frame
         }
         
 		DecompositionPlan dplan(NN,NQ,NAF,ELBYTESIZE,NMAXBYTESIZE);
 		colors = dplan.colors();        
 
-        finalqvectors = H5FQTInterface::get_qvectors(Params::Inst()->scattering.data.file,qindexes);
         partitions = dplan.partitions();
     }
 
@@ -135,16 +113,9 @@ ScatterDevice* ScatterDeviceFactory::create(
     
     boost::mpi::communicator partition_comm = all_comm.split(colors[all_comm.rank()]);
 
-    size_t nfinalqvectors= finalqvectors.size();
-	//broadcast qindexes,qvectors
-    broadcast(all_comm,nfinalqvectors,0);
+    // exchange absolute values for q vectors
+    vector<CartesianCoor3D> finalqvectors = qvectors;
 
-    if (all_comm.rank()!=0) {
-    	finalqvectors.resize(nfinalqvectors);
-    	qindexes.resize(nfinalqvectors);
-    }
-	broadcast(all_comm,&(finalqvectors[0].x),nfinalqvectors*3,0);
-	broadcast(all_comm,&(qindexes[0]),nfinalqvectors,0);
     EvenDecompose qindex_decomposition(qindexes.size(),partitions);
 	vector<pair<size_t,CartesianCoor3D> > thispartition_QIV;
 
@@ -158,62 +129,71 @@ ScatterDevice* ScatterDeviceFactory::create(
 			thispartition_QIV.push_back(make_pair(qindexes[qii[j]],finalqvectors[qii[j]]));
 		}
 	}
-
-    ////////////////////////////////////////////////////////////
+	
+	// compute assignments
+    std::vector<size_t> assignment;
+	if (Params::Inst()->scattering.type == "self") {
+        assignment = EvenDecompose(NA,partition_comm.size()).indexes_for(partition_comm.rank());
+    } else if (Params::Inst()->scattering.type == "all") {
+        assignment = EvenDecompose(NF,partition_comm.size()).indexes_for(partition_comm.rank());
+    }
+	
+	/////////////////////////////////////////////////////////////
     // Creating of scattering devices
     ////////////////////////////////////////////////////////////
 
     // all_comm for inter-partition communication, parition_comm for intra-partition communication
 
-    if (Params::Inst()->scattering.interference.type == "self") {
-    	p_ScatterDevice = new SelfVectorsScatterDevice(
+    if (Params::Inst()->scattering.type == "self") {
+    	p_ScatterDevice = new SelfVectorsThreadScatterDevice(
     			all_comm,
     			partition_comm,
     			sample,
     			thispartition_QIV,
-		        fileserver_endpoint);
+                assignment,
+		        fileservice_endpoint,
+		        monitorservice_endpoint);
     }
-    else if (Params::Inst()->scattering.interference.type == "all"){
+    else if (Params::Inst()->scattering.type == "all"){
     	if (Params::Inst()->scattering.average.orientation.type == "vectors") {
-        	p_ScatterDevice = new AllVectorsScatterDevice(
-        			all_comm,
-        			partition_comm,
-        			sample,
-        			thispartition_QIV,
-        			fileserver_endpoint);
-    	} else if (Params::Inst()->scattering.average.orientation.type == "vectorsthread") {
         	p_ScatterDevice = new AllVectorsThreadScatterDevice(
         			all_comm,
         			partition_comm,
         			sample,
         			thispartition_QIV,
-        			fileserver_endpoint);
-    	} else if (Params::Inst()->scattering.average.orientation.type == "multipole") {
-    		if (Params::Inst()->scattering.average.orientation.multipole.type == "sphere") {
-            	p_ScatterDevice = new AllMSScatterDevice(
-            			all_comm,
-            			partition_comm,
-            			sample,
-            			thispartition_QIV,
-            			fileserver_endpoint);
-    		} else if (Params::Inst()->scattering.average.orientation.multipole.type == "cylinder") {
-            	p_ScatterDevice = new AllMCScatterDevice(
-            			all_comm,
-            			partition_comm,
-            			sample,
-            			thispartition_QIV,
-            			fileserver_endpoint);
-    		} else {
-    			Err::Inst()->write(string("scattering.average.orientation.multipole.type not understood: ")+Params::Inst()->scattering.average.orientation.multipole.type);
-    			throw;
-    		}
+	                assignment,
+        			fileservice_endpoint,
+        			monitorservice_endpoint);
+//    	} else if (Params::Inst()->scattering.average.orientation.type == "multipole") {
+//    		if (Params::Inst()->scattering.average.orientation.multipole.type == "sphere") {
+//            	p_ScatterDevice = new AllMSScatterDevice(
+//            			all_comm,
+//            			partition_comm,
+//            			sample,
+//            			thispartition_QIV,
+//            			fileservice_endpoint,
+//            			monitorservice_endpoint);
+//    		} else if (Params::Inst()->scattering.average.orientation.multipole.type == "cylinder") {
+//            	p_ScatterDevice = new AllMCScatterDevice(
+//            			all_comm,
+//            			partition_comm,
+//            			sample,
+//            			thispartition_QIV,
+//            			fileservice_endpoint,
+//            			monitorservice_endpoint);
+//    		} else {
+//    			Err::Inst()->write(string("scattering.average.orientation.multipole.type not understood: ")+Params::Inst()->scattering.average.orientation.multipole.type);
+//    			throw;
+//    		}
     	} else if (Params::Inst()->scattering.average.orientation.type == "none") {
-        	p_ScatterDevice = new AllVectorsScatterDevice(
+        	p_ScatterDevice = new AllVectorsThreadScatterDevice(
         			all_comm,
         			partition_comm,
         			sample,
         			thispartition_QIV,
-        			fileserver_endpoint);
+        			assignment,
+        			fileservice_endpoint,
+        			monitorservice_endpoint);
     	}
     }    
 

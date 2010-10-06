@@ -46,25 +46,16 @@
 #include "control.hpp"
 #include "log.hpp"
 #include "report/performance_analyzer.hpp"
-#include "report/progress_reporter.hpp"
 #include "report/timer.hpp"
 #include "sample/sample.hpp"
 #include "scatter_devices/scatter_device_factory.hpp"
-#include "scatter_devices/io/h5_fqt_interface.hpp"
-
-#include "scatter_devices/scatter_spectrum.hpp"
+#include "services.hpp"
 
 #include "SassenaConfig.hpp"
 
 using namespace std;
 
 namespace po = boost::program_options;
-bool init_flag = false;
-bool fileserverinit_flag = false;
-
-boost::asio::ip::tcp::endpoint server_endpoint;
-boost::asio::ip::tcp::endpoint fileserver_endpoint;
-
 
 void print_title() {
     
@@ -157,141 +148,6 @@ void detect_parameters() {
     }
 }
 
-
-void filemutex_server_thread() {
-    // setup monitoring service
-    boost::asio::io_service io_service;
-    boost::asio::ip::tcp::socket socket( io_service );
-    boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::tcp::v4(),0);
-    boost::asio::ip::tcp::acceptor acceptor(io_service,endpoint);
-
-    // write port into the reference variable
-    fileserver_endpoint = acceptor.local_endpoint();
-    // notify successful initialization
-    fileserverinit_flag = true;
-    
-    stringstream ep_strstr; ep_strstr << fileserver_endpoint; 
-    Info::Inst()->write(string("S: File service setup at ")+ep_strstr.str());
-    
-    while (true) {
-        acceptor.accept(socket);
-        
-        size_t qindex; 
-        size_t size;
-        socket.read_some(boost::asio::buffer(&qindex,sizeof(size_t))); 
-        socket.read_some(boost::asio::buffer(&size,sizeof(size_t))); 
-        
-        std::vector<complex<double> > data(size/2);
-        double* p_data = (double*) &(data[0]);
-        socket.read_some(boost::asio::buffer(p_data,sizeof(size))); 
-        
-		H5FQTInterface::store(Params::Inst()->scattering.data.file,qindex,data);
-        		
-        socket.close();
-    }
-}
-
-void monitor_server_thread(size_t NN) {
-    // setup monitoring service
-    boost::asio::io_service io_service;
-    boost::asio::ip::tcp::socket socket( io_service );
-    boost::asio::ip::tcp::acceptor acceptor(io_service,server_endpoint);
-
-    // write port into the reference variable
-    server_endpoint = acceptor.local_endpoint();
-    // notify successful initialization
-    init_flag = true;
-    
-    stringstream ep_strstr; ep_strstr << server_endpoint; 
-    Info::Inst()->write(string("S: Monitoring service setup at ")+ep_strstr.str());
-
-    vector<double> progresses(NN);
-    
-    ProgressReporter progress_reporter(0,NN); // this acts like a progress bar
-    double maxprogress = NN*1.0;
-    double totalprogress=0;
-    
-    while (totalprogress!=maxprogress) {
-        acceptor.accept(socket);
-        
-        size_t rank; 
-        double progress;
-
-        socket.read_some(boost::asio::buffer(&rank,sizeof(size_t)));
-        socket.read_some(boost::asio::buffer(&progress,sizeof(double)));
-
-        progresses[rank]=progress;
-        
-        double sum=0;
-        for(size_t i=0;i<NN;i++) {
-            sum+= progresses[i];
-        }
-        totalprogress = sum;
-        progress_reporter.set(totalprogress);
-		progress_reporter.report(); // only reports if significant progress has been made!
-		
-        socket.close();
-    }
-}
-
-void monitor_client_thread(boost::mpi::communicator scatter_comm,ScatterDevice* pScatterDevice,string host_str,string port_str) {
-    // setup monitoring service
-    boost::asio::io_service io_service;
-    boost::asio::ip::tcp::socket socket( io_service );
-    
-    boost::asio::ip::tcp::resolver resolver(io_service);
-    boost::asio::ip::tcp::resolver::query query(boost::asio::ip::tcp::v4(),host_str,port_str);
-    boost::asio::ip::tcp::resolver::iterator it = resolver.resolve( query );
-
-    boost::asio::ip::tcp::endpoint endpoint(*it);
-
-    size_t rank = scatter_comm.rank();
-    double progress = 0.0;
-    while (progress!=1.0) {
-
-        if (progress!=pScatterDevice->progress()) {
-            progress = pScatterDevice->progress();
-            stringstream ep_strstr2; 
-            ep_strstr2 << endpoint; 
-            
-            socket.connect(*it);
-            socket.write_some(boost::asio::buffer(&rank,sizeof(size_t)));
-            socket.write_some(boost::asio::buffer(&progress,sizeof(double)));
-            socket.close();
-        }
-		
-		sleep(2);        
-    }
-}
-
-void scatter_thread(boost::mpi::communicator scatter_comm,ScatterDevice* pScatterDevice) {
-	
-	if (Params::Inst()->scattering.average.orientation.vectors.size()>0) {
-        if (scatter_comm.rank()==0) {		
-    		Info::Inst()->write("Qvectors orientations used for averaging: ");
-            for (size_t i=0;i<Params::Inst()->scattering.average.orientation.vectors.size();i++) {
-                string qvector = "";
-                qvector += boost::lexical_cast<string>(Params::Inst()->scattering.average.orientation.vectors[i].x);
-                qvector += " ";
-                qvector += boost::lexical_cast<string>(Params::Inst()->scattering.average.orientation.vectors[i].y);
-                qvector += " ";
-                qvector += boost::lexical_cast<string>(Params::Inst()->scattering.average.orientation.vectors[i].z);
-    		    Info::Inst()->write(qvector);                                
-            }
-    	}	    
-	}
-	
-    if (scatter_comm.rank()==0) {		
-		Info::Inst()->write("Starting scattering calculation");
-	}
-	
-    while(pScatterDevice->status()==0) {
-		pScatterDevice->compute();
-		pScatterDevice->write();
-        pScatterDevice->next();		
-	}
-}
-
 int main(int argc,char** argv) {
 
 	//------------------------------------------//
@@ -311,9 +167,9 @@ int main(int argc,char** argv) {
 	Err::Inst();
 	Warn::Inst();
 	
-	Info::Inst()->set_prefix(to_s(world.rank())+string(".Info>>"));
-	Warn::Inst()->set_prefix(to_s(world.rank())+string(".Warn>>"));
-	Err::Inst()->set_prefix(to_s(world.rank())+string(".Err>>"));
+	Info::Inst()->set_prefix(boost::lexical_cast<string>(world.rank())+string(".Info>>"));
+	Warn::Inst()->set_prefix(boost::lexical_cast<string>(world.rank())+string(".Warn>>"));
+	Err::Inst()->set_prefix(boost::lexical_cast<string>(world.rank())+string(".Err>>"));
 	
 	Params* params = Params::Inst();
 	Database* database = Database::Inst();
@@ -371,7 +227,7 @@ int main(int argc,char** argv) {
     
     if (world.rank()==0) read_parameters(vm);
     
-	if (world.rank()==0) Info::Inst()->write(string("Set background scattering length density set to ")+to_s(Params::Inst()->scattering.background.factor));
+	if (world.rank()==0) Info::Inst()->write(string("Set background scattering length density set to ")+boost::lexical_cast<string>(Params::Inst()->scattering.background.factor));
 		
 	//------------------------------------------//
 	//
@@ -413,125 +269,107 @@ int main(int argc,char** argv) {
 
 	world.barrier();
 
+    if (world.rank()==0) Info::Inst()->write("Setting up services...");	
+    
+    boost::asio::io_service io_service;
+    
+    // setup hdf5writer service and broadcast service to clients
+    HDF5WriterService* p_hdf5writer = NULL;    
+    MonitorService* p_monitorservice = NULL;    
+
+    // prepare services
+    if (scatter_comm.rank()==0) {
+        if (world.rank()==0) Info::Inst()->write("Initializing data file service...");	
+        p_hdf5writer = new HDF5WriterService(io_service, Params::Inst()->scattering.data.file,Params::Inst()->scattering.qvectors,sample.coordinate_sets.size());
+        if (world.rank()==0) Info::Inst()->write("Initializing monitor service...");	
+        p_monitorservice = new MonitorService(io_service, 0, scatter_comm.size());        
+    }
+    
+    // start services
+    if (scatter_comm.rank()==0) {
+        p_hdf5writer->run();
+        p_monitorservice->run();
+    }
+    if (world.rank()==0) Info::Inst()->write("Services setup and running...");	
+
+    // communicate some global parameters
+    vector<size_t> qindexes;
+    vector<CartesianCoor3D> qvectors;
+    if (scatter_comm.rank()==0) {
+        qindexes = p_hdf5writer->get_qindexes();
+        qvectors = p_hdf5writer->get_qvectors();
+    }
+    size_t nq=qindexes.size();
+    broadcast(scatter_comm,nq,0);
+    if (scatter_comm.rank()!=0) {
+        qindexes.resize(nq);
+        qvectors.resize(nq);
+    }
+    size_t* p_qindexes = &(qindexes[0]);
+    broadcast(scatter_comm,p_qindexes,nq,0);
+    coor_t* p_qvectors = &(qvectors[0].x);
+    broadcast(scatter_comm,p_qvectors,3*nq,0);
+    
+    // communicate services to all nodes
+    std::string host_str,fileservice_port_str,monitorservice_port_str;
+    if (scatter_comm.rank()==0) {
+        host_str = boost::asio::ip::host_name();
+        fileservice_port_str = boost::lexical_cast<string>(p_hdf5writer->get_endpoint().port());
+        monitorservice_port_str = boost::lexical_cast<string>(p_monitorservice->get_endpoint().port());
+    }    
+    if (world.rank()==0) Info::Inst()->write("Broadcasting service information");	
+
+    broadcast(scatter_comm,host_str,0);
+    broadcast(scatter_comm,fileservice_port_str,0);
+    broadcast(scatter_comm,monitorservice_port_str,0);
+    if (world.rank()==0) {
+        Info::Inst()->write(string("Server host name    : ")+host_str);	
+        Info::Inst()->write(string("FileService Port    : ")+fileservice_port_str);	
+        Info::Inst()->write(string("MonitorService Port : ")+monitorservice_port_str);	
+    }
+
+
+    boost::asio::ip::tcp::resolver resolver(io_service);
+    //fileserver
+    boost::asio::ip::tcp::resolver::query query(boost::asio::ip::tcp::v4(),host_str,fileservice_port_str,boost::asio::ip::resolver_query_base::numeric_service);
+    boost::asio::ip::tcp::resolver::iterator it = resolver.resolve(query);
+    boost::asio::ip::tcp::endpoint fileservice_endpoint(*it);
+    //monitor
+    boost::asio::ip::tcp::resolver::query query2(boost::asio::ip::tcp::v4(),host_str,monitorservice_port_str,boost::asio::ip::resolver_query_base::numeric_service);
+    it = resolver.resolve(query2);
+    boost::asio::ip::tcp::endpoint monitorservice_endpoint(*it);
+    
     if (world.rank()==0) Info::Inst()->write("Setting up parallel environment...");	
     
-    boost::thread* p_fileserver_pthread = NULL;	    
-    
-    
-    // setup monitoring service
-    string fileserver_host_str = boost::asio::ip::host_name();
-    string fileserver_port_str = "0";
-    if (world.rank()==0) {
-        
-        // create a lock
-        boost::mutex init_mutex;
-        boost::condition_variable init_condition;
-    
-        Info::Inst()->write(string("Setting up file mutex service..."));
-        boost::mutex::scoped_lock init_lock( init_mutex );
-        boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::tcp::v4(),0);
-            
-        p_fileserver_pthread = new boost::thread(boost::bind(&filemutex_server_thread));        
-        stringstream ep_strstr; 
-
-        while (fileserverinit_flag!=true) {
-            if (fileserverinit_flag) init_lock.unlock();
-            stringstream ep_strstr2; 
-            ep_strstr2 << fileserver_endpoint; 
-            Info::Inst()->write(string("W: Monitoring service setup at ")+ep_strstr2.str());
-            Info::Inst()->write(string("W: Init flag= ")+boost::lexical_cast<string>(fileserverinit_flag));
-
-            init_condition.timed_wait(init_lock,boost::posix_time::microseconds(1000000));            
-        }
-        ep_strstr << fileserver_endpoint;
-        
-        Info::Inst()->write(string("File mutex service setup at ")+ep_strstr.str());
-    }	 
-    fileserver_port_str = boost::lexical_cast<string>(fileserver_endpoint.port());
-
-    boost::mpi::broadcast(world,fileserver_host_str,0);    
-    boost::mpi::broadcast(world,fileserver_port_str,0);    
-    	    
-    	    
-    boost::asio::io_service io_service;
-    boost::asio::ip::tcp::resolver resolver(io_service);
-    boost::asio::ip::tcp::resolver::query query(boost::asio::ip::tcp::v4(),fileserver_host_str,fileserver_port_str);
-    boost::asio::ip::tcp::resolver::iterator it = resolver.resolve(query);
-        
+    // now create scattering device w/ reference to file server
     ScatterDevice* p_ScatterDevice =NULL;
     p_ScatterDevice = ScatterDeviceFactory::create(
     		scatter_comm,
     		sample,
-    	    *it,
-    		params->scattering.qvectors );
+    	    fileservice_endpoint,
+            monitorservice_endpoint,
+            qindexes,
+            qvectors);
 
-	world.barrier();
+	world.barrier();	
 
-    boost::thread* p_server_pthread = NULL;
-    boost::thread* p_client_pthread = NULL;    
-    if (Params::Inst()->debug.monitor.progress) {
-        
-        // setup monitoring service
-        string host_str = boost::asio::ip::host_name();
-        string port_str = "0";
-        
-        if (world.rank()==0) {
-            // create a lock
-            boost::mutex init_mutex;
-            boost::condition_variable init_condition;
-    
-            Info::Inst()->write(string("Setting up monitoring service..."));
-            boost::mutex::scoped_lock init_lock( init_mutex );
-            boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::tcp::v4(),0);
-            
-            p_server_pthread = new boost::thread(boost::bind(&monitor_server_thread,scatter_comm.size()));        
-            stringstream ep_strstr; 
-    
-            while (init_flag!=true) {
-                if (init_flag) init_lock.unlock();
-                stringstream ep_strstr2; 
-                ep_strstr2 << server_endpoint; 
-                Info::Inst()->write(string("W: Monitoring service setup at ")+ep_strstr2.str());
-                Info::Inst()->write(string("W: Init flag= ")+boost::lexical_cast<string>(init_flag));
-    
-                init_condition.timed_wait(init_lock,boost::posix_time::microseconds(1000000));            
-            }
-            ep_strstr << server_endpoint;
-            
-            Info::Inst()->write(string("Monitoring service setup at ")+ep_strstr.str());
-        }
-    
-        port_str = boost::lexical_cast<string>(server_endpoint.port());
-        if (world.rank()==0) Info::Inst()->write(string("Broadcasting ")+host_str + string(":") + port_str + string(" to clients"));
-    
-        boost::mpi::broadcast(world,host_str,0);    
-        boost::mpi::broadcast(world,port_str,0);
-    
-        p_client_pthread = new boost::thread(boost::bind(&monitor_client_thread,scatter_comm,p_ScatterDevice,host_str,port_str));    
-    
-    } else {
-        if (world.rank()==0) Info::Inst()->write("Progress monitoring disabled (debug.monitor.progress)");
-    }
-    
     // start computation tasks
-    if (world.rank()==0) Info::Inst()->write("Starting computation...");
+    if (world.rank()==0) Info::Inst()->write("Starting scattering...");
 
-    boost::thread sthread(boost::bind(&scatter_thread,scatter_comm,p_ScatterDevice));
-    // do a wait on the threads here
-    sthread.join();
+    if (world.rank()==0) p_monitorservice->timer_reset();
+    p_ScatterDevice->run();
 
-    if (world.rank()==0) Info::Inst()->write("Computation finished...");
+    world.barrier();
     
-    if (Params::Inst()->debug.monitor.progress) {
-        if (p_client_pthread!=NULL) {
-            p_client_pthread->timed_join(boost::posix_time::seconds(1));
-            delete p_client_pthread;
-        }
-        if (p_server_pthread!=NULL) {
-            p_server_pthread->timed_join(boost::posix_time::seconds(1));
-            delete p_server_pthread;
-        }   
+    if (world.rank()==0) Info::Inst()->write("Scattering finished...");
+    
+    // shutdown services
+    if (scatter_comm.rank()==0) {
+        p_monitorservice->hangup();
+        p_hdf5writer->hangup();
     }
+    
+    world.barrier();
 
     if (world.rank()==0) print_analysis();
     
@@ -546,7 +384,7 @@ int main(int argc,char** argv) {
     if (world.rank()==0) {
 		perfanal.report();
 		perfanal.report_relative(timer.sum("total")*world.size());
-    	Info::Inst()->write(string("Total runtime (s): ")+to_s(timer.sum("total")));
+    	Info::Inst()->write(string("Total runtime (s): ")+boost::lexical_cast<string>(timer.sum("total")));
     	Info::Inst()->write("Successfully finished... Have a nice day!");
 	}
 

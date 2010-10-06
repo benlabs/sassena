@@ -26,32 +26,17 @@
 
 // other headers
 
-inline std::string to_s(double value) {
-	std::stringstream ss;
-	ss << value;
-	return ss.str();
-}
+// define here
+#define PRECISION_TYPE_SINGLE
 
-inline std::string to_s(long value) {
-	std::stringstream ss;
-	ss << value;
-	return ss.str();	
-}
+// triggers here
 
-inline std::string to_s(size_t value) {
-	std::stringstream ss;
-	ss << value;
-	return ss.str();	
-}
-inline std::string to_s(int value) {
-	std::stringstream ss;
-	ss << value;
-	return ss.str();	
-}
+#ifdef PRECISION_TYPE_DOUBLE
+typedef double coor_t;
+#else PRECISION_TYPE_SINGLE
+typedef float coor_t;
+#endif 
 
-std::vector<double> flatten(std::vector<std::complex<double> >& cvalues);
-
-std::vector<std::complex<double> > compress(std::vector<double>& rvalues);
 
 #endif
 

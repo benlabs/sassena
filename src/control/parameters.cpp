@@ -136,7 +136,10 @@ void Params::read_xml(std::string filename) {
 		
 		sample.framesets.push_back(fset);
 		Info::Inst()->write(string("Added frames from ")+fset.filename+string(" using format: ")+fset.type);
-		Info::Inst()->write(string("Options: first=")+to_s(fset.first)+string(", last=")+to_s(fset.last)+string(", lastset=")+to_s(fset.last_set)+string(", stride=")+to_s(fset.stride));		
+		Info::Inst()->write(string("Options: first=")+boost::lexical_cast<string>(fset.first)
+		    +string(", last=")+boost::lexical_cast<string>(fset.last)
+		    +string(", lastset=")+boost::lexical_cast<string>(fset.last_set)
+		    +string(", stride=")+boost::lexical_cast<string>(fset.stride));		
 	}
 		
 	if (xmli.exists("//sample/motions")) {
@@ -166,7 +169,9 @@ void Params::read_xml(std::string filename) {
 			} 
 
 			sample.motions.push_back(motion);
-			Info::Inst()->write(string("Adding additional motion to sample: type=")+motion.type+string(", displacement=")+to_s(motion.displace)+string(", selection=")+motion.selection);
+			Info::Inst()->write(string("Adding additional motion to sample: type=")+motion.type
+			+string(", displacement=")+boost::lexical_cast<string>(motion.displace)
+			+string(", selection=")+motion.selection);
 		}
 	}	
 		
@@ -198,14 +203,14 @@ void Params::read_xml(std::string filename) {
     scattering.center = false;
 	if (xmli.exists("//scattering/center")) {
         scattering.center = xmli.get_value<bool>("//scattering/center");	    
-	    Info::Inst()->write(string("scattering.center=")+to_s(scattering.center));		    
+	    Info::Inst()->write(string("scattering.center=")+boost::lexical_cast<string>(scattering.center));		    
 	} 
 	scattering.background.factor = 0.0;
     	
 	if (xmli.exists("//scattering/background")) {
 		if (xmli.exists("//scattering/background/factor")) {
 		    scattering.background.factor = xmli.get_value<double>("//scattering/background/factor");
-		    Info::Inst()->write(string("scattering.background.factor=")+to_s(scattering.background.factor));		    		    
+		    Info::Inst()->write(string("scattering.background.factor=")+boost::lexical_cast<string>(scattering.background.factor));		    		    
 	    }
 
         if (xmli.exists("//scattering/background/kappas")) {
@@ -221,7 +226,7 @@ void Params::read_xml(std::string filename) {
     	    	if (xmli.exists("./value"))  kappa.value   = xmli.get_value<double>("./value");			
 
     	    	scattering.background.kappas.push_back(kappa);
-    	    	Info::Inst()->write(string("Rescaling volumes: selection=")+kappa.selection+string(", value=")+to_s(kappa.value));
+    	    	Info::Inst()->write(string("Rescaling volumes: selection=")+kappa.selection+string(", value=")+boost::lexical_cast<string>(kappa.value));
     	    }
         }
 	}	
@@ -268,17 +273,17 @@ void Params::read_xml(std::string filename) {
 		}
 	}
 	
-    scattering.correlation.type="instant-time";
-    scattering.correlation.method="direct";
+    scattering.dsp.type="autocorrelate";
+    scattering.dsp.method="fftw";
     
-	if (xmli.exists("//scattering/correlation")) {
-		if (xmli.exists("//scattering/correlation/type")) {
-			scattering.correlation.type = xmli.get_value<string>("//scattering/correlation/type");
-		    Info::Inst()->write(string("scattering.correlation.type=")+scattering.correlation.type);
+	if (xmli.exists("//scattering/dsp")) {
+		if (xmli.exists("//scattering/dsp/type")) {
+			scattering.dsp.type = xmli.get_value<string>("//scattering/dsp/type");
+		    Info::Inst()->write(string("scattering.dsp.type=")+scattering.dsp.type);
 		}
-		if (xmli.exists("//scattering/correlation/method")) {
-			scattering.correlation.method = xmli.get_value<string>("//scattering/correlation/method");
-		    Info::Inst()->write(string("scattering.correlation.method=")+scattering.correlation.method);
+		if (xmli.exists("//scattering/dsp/method")) {
+			scattering.dsp.method = xmli.get_value<string>("//scattering/dsp/method");
+		    Info::Inst()->write(string("scattering.dsp.method=")+scattering.dsp.method);
 		}
 	}
 
@@ -319,11 +324,11 @@ void Params::read_xml(std::string filename) {
 				}
 				if (xmli.exists("//scattering/average/orientation/vectors/resolution")) { // count vectors ... , or order for multipole...
 					scattering.average.orientation.vectors.resolution = xmli.get_value<long>("//scattering/average/orientation/vectors/resolution");
-                    Info::Inst()->write(string("scattering.average.orientation.vectors.resolution=")+to_s(scattering.average.orientation.vectors.resolution));				    
+                    Info::Inst()->write(string("scattering.average.orientation.vectors.resolution=")+boost::lexical_cast<string>(scattering.average.orientation.vectors.resolution));				    
 				}
 				if (xmli.exists("//scattering/average/orientation/vectors/seed")) { // count vectors ... , or order for multipole...
 					scattering.average.orientation.vectors.seed = xmli.get_value<long>("//scattering/average/orientation/vectors/seed");
-                    Info::Inst()->write(string("scattering.average.orientation.vectors.seed=")+to_s(scattering.average.orientation.vectors.seed));
+                    Info::Inst()->write(string("scattering.average.orientation.vectors.seed=")+boost::lexical_cast<string>(scattering.average.orientation.vectors.seed));
 				}	
 				if (xmli.exists("//scattering/average/orientation/vectors/file")) { // count vectors ... , or order for multipole...
 					scattering.average.orientation.vectors.file = get_filepath(xmli.get_value<string>("//scattering/average/orientation/vectors/file"));
@@ -343,7 +348,7 @@ void Params::read_xml(std::string filename) {
 				}
 				if (xmli.exists("//scattering/average/orientation/multipole/resolution")) { // count vectors ... , or order for multipole...
 					scattering.average.orientation.multipole.resolution = xmli.get_value<long>("//scattering/average/orientation/multipole/resolution");
-                    Info::Inst()->write(string("scattering.average.orientation.multipole.resolution=")+to_s(scattering.average.orientation.multipole.resolution));				    
+                    Info::Inst()->write(string("scattering.average.orientation.multipole.resolution=")+boost::lexical_cast<string>(scattering.average.orientation.multipole.resolution));				    
 				}
 				if (xmli.exists("//scattering/average/orientation/multipole/axis")) { // count vectors ... , or order for multipole...
 					scattering.average.orientation.multipole.axis.x = xmli.get_value<double>("//scattering/average/orientation/multipole/axis/x");
@@ -358,15 +363,12 @@ void Params::read_xml(std::string filename) {
 		}
 	}
 	
-    scattering.interference.type="all";
+    scattering.type="all";
 	
-	if (xmli.exists("//scattering/interference")) {
-		if (xmli.exists("//scattering/interference/type")) {
-			scattering.interference.type = xmli.get_value<string>("//scattering/interference/type");
-		}
+	if (xmli.exists("//scattering/type")) {
+		scattering.type = xmli.get_value<string>("//scattering/type");
 	}
-	Info::Inst()->write(string("scattering.interference.type=")+scattering.interference.type);
-
+	Info::Inst()->write(string("scattering.type=")+scattering.type);
 	
     scattering.target = "system";
 		
@@ -388,29 +390,86 @@ void Params::read_xml(std::string filename) {
 	// START OF limits section //
 
     // assign default memory limits:
+    limits.data.servers = 1;
+    limits.data.alloc_early = false;
+
+    limits.memory.at1_buffer = 2*1024*1024; // 2MB    
+    limits.memory.data_stager = 100*1024*1024; // 100MB
+    
     limits.memory.scattering_matrix = 100*1024*1024; // 100MB
     limits.memory.data = 500*1024*1024; // 500MB
     limits.memory.coordinate_sets = 500*1024*1024; // 500MB
+
+    limits.memory.iowrite_server = 100*1024*1024; // 100MB
+    limits.memory.iowrite_client = 10*1024*1024; // 10MB
+
+    limits.times.iowrite_client = 600; // 600 seconds
+    limits.times.iowrite_client = 600; // 600 seconds
+    limits.times.at1_buffer = 25; // 25 ms
+
     limits.computation.threads = 1;
+    limits.computation.worker1_threads = 1;
+    limits.computation.worker3_threads = 1;
+    
     limits.decomposition.utilization = 0.95; // 5% max loss
     limits.decomposition.partitions.automatic = true; // pick number of independent partitions based on some heuristics
     limits.decomposition.partitions.size = 1; // not used if automatic = true, if false -> this determines the partition size
 
-	if (xmli.exists("//limits")) {        
+	if (xmli.exists("//limits")) {   
+	    if (xmli.exists("//limits/data")) {
+        	if (xmli.exists("//limits/data/servers")) {
+    	        limits.data.servers = xmli.get_value<size_t>("//limits/data/servers");
+	        }
+        	if (xmli.exists("//limits/data/alloc_early")) {
+    	        limits.data.alloc_early = xmli.get_value<bool>("//limits/data/alloc_early");
+	        }
+	        
+	    }
+	         
     	if (xmli.exists("//limits/memory")) {
         	if (xmli.exists("//limits/memory/scattering_matrix")) {
     	        limits.memory.scattering_matrix = xmli.get_value<size_t>("//limits/memory/scattering_matrix");
 	        }
+        	if (xmli.exists("//limits/memory/at1_buffer")) {
+    	        limits.memory.at1_buffer = xmli.get_value<size_t>("//limits/memory/at1_buffer");
+	        }
+        	if (xmli.exists("//limits/memory/data_stager")) {
+    	        limits.memory.data_stager = xmli.get_value<size_t>("//limits/memory/data_stager");
+	        }
         	if (xmli.exists("//limits/memory/data")) {	        
 			    limits.memory.data = xmli.get_value<size_t>("//limits/memory/data");
     	    }
+    	    if (xmli.exists("//limits/memory/iowrite_server")) {
+    	        limits.memory.iowrite_server = xmli.get_value<size_t>("//limits/memory/iowrite_server");
+	        }
+	        if (xmli.exists("//limits/memory/iowrite_client")) {
+    	        limits.memory.iowrite_client = xmli.get_value<size_t>("//limits/memory/iowrite_client");
+	        }
 	    }
     	if (xmli.exists("//limits/computation")) {
         	if (xmli.exists("//limits/computation/threads")) {
-    	        limits.computation.threads = xmli.get_value<size_t>("//limits/computation/threads");
+    	        limits.computation.threads = xmli.get_value<bool>("//limits/computation/threads");
+	        }
+        	if (xmli.exists("//limits/computation/worker1_threads")) {
+    	        limits.computation.worker1_threads = xmli.get_value<size_t>("//limits/computation/worker1_threads");
+	        }
+        	if (xmli.exists("//limits/computation/worker3_threads")) {
+    	        limits.computation.worker3_threads = xmli.get_value<size_t>("//limits/computation/worker3_threads");
+	        }
+
+	    }
+	    if (xmli.exists("//limits/times")) {
+	        if (xmli.exists("//limits/times/iowrite_server")) {
+    	        limits.times.iowrite_server = xmli.get_value<size_t>("//limits/times/iowrite_server");
+	        }
+	        if (xmli.exists("//limits/times/iowrite_client")) {
+    	        limits.times.iowrite_client = xmli.get_value<size_t>("//limits/times/iowrite_client");
+	        }
+	        if (xmli.exists("//limits/times/at1_buffer")) {
+    	        limits.times.at1_buffer = xmli.get_value<size_t>("//limits/times/at1_buffer");
 	        }
 	    }
-	    
+    	
     	if (xmli.exists("//limits/decomposition")) {
         	if (xmli.exists("//limits/decomposition/utilization")) {
 			    limits.decomposition.utilization = xmli.get_value<double>("//limits/decomposition/utilization");
@@ -429,10 +488,11 @@ void Params::read_xml(std::string filename) {
 	// END OF limits section //
 	// START OF debug section //
 
-	
 	debug.timer = false; // this adds a log message when a timer is started/stopped
 	debug.barriers = false; // this de-/activates collective barriers before each collective operation, this way all nodes are synchronized before the communication takes place. This is an important step towards analysis of timing.
     debug.monitor.progress = true;
+    debug.iowrite = true;
+    debug.print.orientations = false;
 	if (xmli.exists("//debug")) {
 		if (xmli.exists("//debug/timer")) {
 			debug.timer = xmli.get_value<bool>("//debug/timer");
@@ -443,6 +503,15 @@ void Params::read_xml(std::string filename) {
 		if (xmli.exists("//debug/monitor")) {
     		if (xmli.exists("//debug/monitor/progress")) {
 		    	debug.monitor.progress = xmli.get_value<bool>("//debug/monitor/progress");
+	    	}
+		}
+		if (xmli.exists("//debug/iowrite")) {
+			debug.iowrite = xmli.get_value<bool>("//debug/iowrite");
+		}
+		
+		if (xmli.exists("//debug/print")) {
+		    if (xmli.exists("//debug/print/orientations")) {
+		    	debug.print.orientations = xmli.get_value<bool>("//debug/print/orientations");
 	    	}
 		}
 		

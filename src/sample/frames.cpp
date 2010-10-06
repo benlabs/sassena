@@ -16,6 +16,7 @@
 #include <fstream>
 
 // special library headers
+#include <boost/lexical_cast.hpp>
 #include <boost/filesystem.hpp>
 #include "io/xdrfile/xdrfile.h"
 #include "io/xdrfile/xdrfile_xtc.h"
@@ -192,7 +193,7 @@ void Frameset::trim_frame_byte_offsets() {
 	}
 	
 	if (frame_byte_offsets.size()!=lfo.size()) {
-		Info::Inst()->write(string("Applied Range(first,last,stride) reduced number of frames from ")+to_s(frame_byte_offsets.size())+string(" to ")+to_s(lfo.size()));
+		Info::Inst()->write(string("Applied Range(first,last,stride) reduced number of frames from ")+boost::lexical_cast<string>(frame_byte_offsets.size())+string(" to ")+boost::lexical_cast<string>(lfo.size()));
 	}
 	
 	frame_byte_offsets = lfo;

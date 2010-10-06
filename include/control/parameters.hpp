@@ -352,7 +352,7 @@ public:
 	ScatteringAverageOrientationParameters orientation;
 };
 
-class ScatteringCorrelationParameters {
+class ScatteringDspParameters {
 private:
 	/////////////////// MPI related
 	// make this class serializable to 
@@ -368,22 +368,6 @@ private:
 public:	
 	std::string type;
 	std::string method;
-};
-
-class ScatteringInterferenceParameters {
-private:
-	/////////////////// MPI related
-	// make this class serializable to 
-	// allow sample to be transmitted via MPI
-    friend class boost::serialization::access;	
-	template<class Archive> void serialize(Archive & ar, const unsigned int version)
-    {
-		ar & type;
-    }
-	/////////////////// 
-
-public:	
-	std::string type;
 };
 
 class ScatteringVectorsScanParameters {
@@ -455,8 +439,8 @@ private:
     friend class boost::serialization::access;	
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
     {
-		ar & interference;
-		ar & correlation;
+        ar & type;
+		ar & dsp;
 		ar & target;
 		ar & qvectors;
 		ar & average;
@@ -469,8 +453,8 @@ private:
 public:
     bool center;
 	
-	ScatteringInterferenceParameters interference;
-	ScatteringCorrelationParameters correlation;
+	std::string type;
+	ScatteringDspParameters dsp;
 	std::string target;
 
 	ScatteringVectorsParameters qvectors;
@@ -537,11 +521,16 @@ private:
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
     {
 		ar & threads;
+		ar & worker1_threads;
+		ar & worker3_threads;
+		
     }
 	/////////////////// 
 
 public:
-    size_t threads;
+    bool threads;
+    size_t worker1_threads;
+    size_t worker3_threads;
 };
 
 class LimitsMemoryParameters {
@@ -555,6 +544,10 @@ private:
 		ar & scattering_matrix;
         ar & coordinate_sets;
         ar & data;
+        ar & iowrite_client;
+        ar & iowrite_server;
+        ar & at1_buffer;     
+        ar & data_stager;   
     }
 	/////////////////// 
 
@@ -562,6 +555,30 @@ public:
     size_t scattering_matrix;
     size_t coordinate_sets;
     size_t data;
+    size_t iowrite_client;
+    size_t iowrite_server;    
+    size_t at1_buffer;
+    size_t data_stager;
+};
+
+class LimitsTimesParameters {
+private:
+	/////////////////// MPI related
+	// make this class serializable to 
+	// allow sample to be transmitted via MPI
+    friend class boost::serialization::access;	
+	template<class Archive> void serialize(Archive & ar, const unsigned int version)
+    {
+        ar & iowrite_client;
+        ar & iowrite_server;        
+        ar & at1_buffer;
+    }
+	/////////////////// 
+
+public:
+    size_t iowrite_client;
+    size_t iowrite_server;    
+    size_t at1_buffer;
 };
 
 class LimitsDecompositionPartitionsParameters {
@@ -601,6 +618,24 @@ public:
     LimitsDecompositionPartitionsParameters partitions;
 };
 
+class LimitsDataParameters {
+private:
+	/////////////////// MPI related
+	// make this class serializable to 
+	// allow sample to be transmitted via MPI
+    friend class boost::serialization::access;	
+	template<class Archive> void serialize(Archive & ar, const unsigned int version)
+    {
+		ar & servers;
+        ar & alloc_early;      
+    }
+	/////////////////// 
+
+public:
+    size_t servers;
+    bool alloc_early;
+};
+
 
 class LimitsParameters {
 private:
@@ -610,14 +645,18 @@ private:
     friend class boost::serialization::access;	
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
     {
+        ar & data;
 		ar & memory;
+        ar & times;
         ar & decomposition;
         ar & computation;
     }
 	/////////////////// 
 
 public:
+    LimitsDataParameters data;    
     LimitsMemoryParameters memory;
+    LimitsTimesParameters times;
     LimitsComputationParameters computation;    
     LimitsDecompositionParameters decomposition;
 };
@@ -692,6 +731,22 @@ class DebugMonitorParameters {
    	bool progress; 
 };
 
+class DebugPrintParameters {
+private:
+	/////////////////// MPI related
+	// make this class serializable to 
+	// allow sample to be transmitted via MPI
+    friend class boost::serialization::access;	
+	template<class Archive> void serialize(Archive & ar, const unsigned int version)
+    {
+        ar & orientations;
+    }
+	/////////////////// 
+
+public:
+	bool orientations;
+};
+
 class DebugParameters {
 private:
 	/////////////////// MPI related
@@ -703,12 +758,16 @@ private:
 		ar & timer;
 		ar & barriers;
         ar & monitor;
+        ar & iowrite;
+        ar & print;
     }
 	/////////////////// 
 
 public:
 	bool timer;
 	bool barriers;
+    bool iowrite;
+    DebugPrintParameters print;
     DebugMonitorParameters monitor;
 };
 

@@ -58,7 +58,7 @@ CartesianCoor3D::CartesianCoor3D(SphericalCoor3D cc) {
 	z = cc.r*cos(cc.theta);
 }
 
-double CartesianCoor3D::length() { 
+coor_t CartesianCoor3D::length() { 
 	return sqrt(pow(x,2)+pow(y,2)+pow(z,2));
 }
 
@@ -81,7 +81,7 @@ CartesianCoor3D CartesianCoor3D::operator+(const CartesianCoor3D& that) {
 	return CartesianCoor3D(x+that.x,y+that.y,z+that.z);
 }
 
-double CartesianCoor3D::operator*(const CartesianCoor3D& that) {
+coor_t CartesianCoor3D::operator*(const CartesianCoor3D& that) {
 	return (x*that.x+y*that.y+z*that.z);
 }
 
@@ -89,15 +89,15 @@ CartesianCoor3D CartesianCoor3D::cross_product(const CartesianCoor3D& that) {
 	return CartesianCoor3D(y*that.z-z*that.y,z*that.x-x*that.z,x*that.y-y*that.x);
 }
 
-CartesianCoor3D operator*(const double lambda, const CartesianCoor3D& that) {
+CartesianCoor3D operator*(const coor_t lambda, const CartesianCoor3D& that) {
 	return CartesianCoor3D(lambda*that.x,lambda*that.y,lambda*that.z);
 }
 
-CartesianCoor3D operator*(const CartesianCoor3D& that,const double lambda) {
+CartesianCoor3D operator*(const CartesianCoor3D& that,const coor_t lambda) {
 	return CartesianCoor3D(lambda*that.x,lambda*that.y,lambda*that.z);
 }
 
-CartesianCoor3D operator/(const CartesianCoor3D& that, const double lambda) {
+CartesianCoor3D operator/(const CartesianCoor3D& that, const coor_t lambda) {
 	return CartesianCoor3D(that.x/lambda,that.y/lambda,that.z/lambda);
 }
 
@@ -106,7 +106,7 @@ CartesianCoor3D operator/(const CartesianCoor3D& that, const double lambda) {
 
 /* CYLINDER COOR3D CLASS */
 //conversion constructor cartesian -> cylinder
-CylinderCoor3D::CylinderCoor3D(double v1,double v2,double v3) {
+CylinderCoor3D::CylinderCoor3D(coor_t v1,coor_t v2,coor_t v3) {
 
 	if (v1<0) throw; // that's illegal
 
@@ -235,7 +235,7 @@ SphericalCoor3D SphericalCoor3D::operator-(const SphericalCoor3D& that) {
 
 // transformations
 
-CartesianCoor3D rotate(CartesianCoor3D c,string axis,double rad) {
+CartesianCoor3D rotate(CartesianCoor3D c,string axis,coor_t rad) {
 	CartesianCoor3D r;
 	if (axis=="x") {
 		double m[3][3];

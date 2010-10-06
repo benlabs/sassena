@@ -52,9 +52,9 @@ public:
     CoordinateSet();
 	CoordinateSet(CoordinateSet& cs,Atomselection& cs_selection, Atomselection& sub_selection); 
 	
-	std::vector<double> c1; // x-coordinates
-	std::vector<double> c2; // y-coordinates
-	std::vector<double> c3; // z-coordinates
+	std::vector<coor_t> c1; // x-coordinates
+	std::vector<coor_t> c2; // y-coordinates
+	std::vector<coor_t> c3; // z-coordinates
 		
 	size_t size() { return m_size; }
 	

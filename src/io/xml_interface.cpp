@@ -130,17 +130,17 @@ XMLInterface::~XMLInterface() {
 }
 
 
-inline std::string to_s(const xmlChar* value) {
-	std::stringstream ss;
-	ss << value;
-	return ss.str();	
-}
-
-inline std::string to_s(const xmlNs* value) {
-	std::stringstream ss;
-	ss << value;
-	return ss.str();	
-}
+//inline std::string to_s(const xmlChar* value) {
+//	std::stringstream ss;
+//	ss << value;
+//	return ss.str();	
+//}
+//
+//inline std::string to_s(const xmlNs* value) {
+//	std::stringstream ss;
+//	ss << value;
+//	return ss.str();	
+//}
 
 
 vector<XMLElement> XMLInterface::get(const char* xpathexp) {

@@ -82,9 +82,9 @@ CartesianCoordinateSet::CartesianCoordinateSet(CartesianCoordinateSet& cs,Atomse
 CartesianCoordinateSet::CartesianCoordinateSet(Frame& frame,Atomselection& selection) {
     m_representation = CARTESIAN;
     
-    vector<double>& x = c1;
-    vector<double>& y = c2;
-    vector<double>& z = c3;
+    vector<coor_t>& x = c1;
+    vector<coor_t>& y = c2;
+    vector<coor_t>& z = c3;
 
 	m_size = selection.indexes.size();
 	x.resize(m_size);
@@ -159,9 +159,9 @@ void CartesianCoordinateSet::rotate(CartesianCoor3D axis1,CartesianCoor3D axis2)
     // the axis indicates the direction of the new x-axis!
     // we have to rotate the whole system, so that the old x-axis points towards the new one
 
-    vector<double>& x = c1;
-    vector<double>& y = c2;
-    vector<double>& z = c3;
+    vector<coor_t>& x = c1;
+    vector<coor_t>& y = c2;
+    vector<coor_t>& z = c3;
     
 
     CartesianCoor3D al1 = CartesianCoor3D(1,0,0);

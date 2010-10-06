@@ -3,26 +3,8 @@ ADD_EXECUTABLE(sassena
     src/main/sassena.cpp
 )
 
-ADD_EXECUTABLE(s_fqt2sqw 
-	src/common.cpp
-    src/main/s_fqt2sqw.cpp
-)
-
-ADD_EXECUTABLE(s_dumpcontrol
-	src/common.cpp
-    src/main/s_dumpcontrol.cpp
-)
-	
-ADD_EXECUTABLE(s_cofm
-	src/common.cpp
-    src/main/s_cofm.cpp
-)
-
 IF(STATIC)
 SET_TARGET_PROPERTIES(sassena PROPERTIES LINK_SEARCH_END_STATIC 1)
-SET_TARGET_PROPERTIES(s_fqt2sqw PROPERTIES LINK_SEARCH_END_STATIC 1)
-SET_TARGET_PROPERTIES(s_dumpcontrol PROPERTIES LINK_SEARCH_END_STATIC 1)
-SET_TARGET_PROPERTIES(s_cofm PROPERTIES LINK_SEARCH_END_STATIC 1)
 ENDIF(STATIC)
 
 TARGET_LINK_LIBRARIES (sassena 
@@ -35,28 +17,5 @@ TARGET_LINK_LIBRARIES (sassena
 	${BOOST_LIBRARIES}
 )
 
-TARGET_LINK_LIBRARIES (s_fqt2sqw 
-	sass_log
-	sass_scatter_devices
-	${BOOST_LIBRARIES}
-)
-
-TARGET_LINK_LIBRARIES (s_dumpcontrol
-	sass_log
-	sass_controlio
-	sass_sample
-	${BOOST_LIBRARIES}
-)
-TARGET_LINK_LIBRARIES (s_cofm
-	sass_log
-	sass_controlio
-	sass_sample
-	sass_report
-	sass_decomposition	
-	${ZLIB_LIBRARIES}
-	${BOOST_LIBRARIES}
-)
 
 INSTALL(TARGETS sassena RUNTIME DESTINATION bin)
-INSTALL(TARGETS s_dumpcontrol RUNTIME DESTINATION bin)
-INSTALL(TARGETS s_cofm RUNTIME DESTINATION bin)

@@ -30,7 +30,6 @@ class SphericalCoor3D;
 typedef std::pair< CartesianCoor3D,CartesianCoor3D> cartrect;
 
 //helper funcions:
-inline double sign(double a,double b) { return (b<0.0) ? -a : a; }
 inline float sign(float a,float b) { return (b<0.0) ? -a : a; }
 
 class CartesianCoor3D {
@@ -46,15 +45,15 @@ protected:
     }
 	///////////////////
 public:
-	double x,y,z;
+	coor_t x,y,z;
 	
 	CartesianCoor3D() : x(0), y(0), z(0) {}	
-	CartesianCoor3D(double v1,double v2,double v3) : x(v1), y(v2), z(v3) {}
+	CartesianCoor3D(coor_t v1,coor_t v2,coor_t v3) : x(v1), y(v2), z(v3) {}
 	// conversion constructors:
 	CartesianCoor3D(const CylinderCoor3D cc);
 	CartesianCoor3D(const SphericalCoor3D cc);
 	
-	double length();
+	coor_t length();
 	
 	friend std::ostream& operator<<(std::ostream& os, const CartesianCoor3D& cc);
 	
@@ -62,7 +61,7 @@ public:
 	CartesianCoor3D operator-(const CartesianCoor3D& that);
 	CartesianCoor3D operator+(const CartesianCoor3D& that);	
 	CartesianCoor3D cross_product(const CartesianCoor3D& that);
-	double operator*(const CartesianCoor3D& that);
+	coor_t operator*(const CartesianCoor3D& that);
 	
 	// for use in maps only!
 	bool operator<(const CartesianCoor3D& that) const;
@@ -70,19 +69,19 @@ public:
 	~CartesianCoor3D() {}
 };
 
-CartesianCoor3D operator*(const double lambda, const CartesianCoor3D& that);
-CartesianCoor3D operator*(const CartesianCoor3D& that,const double lambda);
-CartesianCoor3D operator/(const CartesianCoor3D& that,const double lambda);
+CartesianCoor3D operator*(const coor_t lambda, const CartesianCoor3D& that);
+CartesianCoor3D operator*(const CartesianCoor3D& that,const coor_t lambda);
+CartesianCoor3D operator/(const CartesianCoor3D& that,const coor_t lambda);
 
 // cylinder coords have a range:
 // 0 <= r
 // 0 <= phi < 2 M_PI
 class CylinderCoor3D {
 public:
-	double r,phi,z;
+	coor_t r,phi,z;
 	
 	CylinderCoor3D() : r(0), phi(0), z(0) {}	
-	CylinderCoor3D(double v1,double v2,double v3);
+	CylinderCoor3D(coor_t v1,coor_t v2,coor_t v3);
 	// conversion constructors:
 	CylinderCoor3D(const CartesianCoor3D cc);
 	CylinderCoor3D(const SphericalCoor3D cc);	
@@ -98,10 +97,10 @@ public:
 
 class SphericalCoor3D {
 public:	
-	double r,phi,theta;
+	coor_t r,phi,theta;
 	
 	SphericalCoor3D() : r(0), phi(0), theta(0) {}	
-	SphericalCoor3D(double v1,double v2,double v3) : r(v1), phi(v2), theta(v3) {}
+	SphericalCoor3D(coor_t v1,coor_t v2,coor_t v3) : r(v1), phi(v2), theta(v3) {}
 	// conversion constructors:
 	SphericalCoor3D(const CartesianCoor3D cc);
 	SphericalCoor3D(const CylinderCoor3D cc);
@@ -114,7 +113,7 @@ public:
 	~SphericalCoor3D() {}
 };
 
-CartesianCoor3D rotate(CartesianCoor3D,std::string axis,double rad);
+CartesianCoor3D rotate(CartesianCoor3D,std::string axis,coor_t rad);
 
 #endif
 

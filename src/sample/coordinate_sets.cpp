@@ -18,6 +18,9 @@
 #include <string>
 #include <vector>
 
+// special library headers
+#include <boost/lexical_cast.hpp>
+
 // other headers
 #include "sample/frame.hpp"
 #include "math/coor3d.hpp"
@@ -48,14 +51,14 @@ void CoordinateSets::init() {
     	SampleFramesetParameters& f = Params::Inst()->sample.framesets[i];
     	Info::Inst()->write(string("Reading frames from: ")+f.filename);
     	if (f.clones!=1) {
-    	    Info::Inst()->write(string("Cloning frameset ")+to_s(f.clones)+string(" times"));
+    	    Info::Inst()->write(string("Cloning frameset ")+boost::lexical_cast<string>(f.clones)+string(" times"));
     	}
         size_t nof = 0;
         for(size_t ci = 0; ci < f.clones; ++ci)
         {
     	    nof += frames.add_frameset(f.filename,f.type,f.first,f.last,f.last_set,f.stride);			
     	}
-    	Info::Inst()->write(string("Found ")+to_s(nof)+string(" frames"));			
+    	Info::Inst()->write(string("Found ")+boost::lexical_cast<string>(nof)+string(" frames"));			
     }
     
 	// construct a helper for the motions:
@@ -147,7 +150,7 @@ CoordinateSet* CoordinateSets::load(size_t framenumber) {
 	CartesianCoordinateSet cset(frame,p_atoms->system_selection);
 	
     if ( frame.x.size() != p_atoms->system_selection.indexes.size() ) {
-        Err::Inst()->write(string("Wrong number of atoms, frame:")+to_s(framenumber));
+        Err::Inst()->write(string("Wrong number of atoms, frame:")+boost::lexical_cast<string>(framenumber));
     }
 
     // align here

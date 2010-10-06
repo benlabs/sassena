@@ -19,6 +19,7 @@
 // special library headers
 #include <boost/accumulators/accumulators.hpp>
 #include <boost/accumulators/statistics.hpp>
+#include <boost/lexical_cast.hpp>
 
 // other headers
 #include "math/coor3d.hpp"
@@ -112,21 +113,21 @@ DecompositionPlan::DecompositionPlan(size_t nn,size_t nq,size_t naf,size_t elbyt
     }
     
     Info::Inst()->write("Final decomposition parameters:");
-    Info::Inst()->write(string("NN                : ")+to_s(p_dp_best->get_NN()));
-    Info::Inst()->write(string("NQ                : ")+to_s(p_dp_best->get_NQ()));
-    Info::Inst()->write(string("NAF               : ")+to_s(p_dp_best->get_NAF()));
-    Info::Inst()->write(string("NP                : ")+to_s(p_dp_best->get_NP()));
-    Info::Inst()->write(string("NNpP              : ")+to_s(p_dp_best->get_NNpP()));
-    Info::Inst()->write(string("NAFcycles         : ")+to_s(p_dp_best->get_NAFcycles()));
-    Info::Inst()->write(string("NQcycles          : ")+to_s(p_dp_best->get_NQcycles()));
+    Info::Inst()->write(string("NN                : ")+boost::lexical_cast<string>(p_dp_best->get_NN()));
+    Info::Inst()->write(string("NQ                : ")+boost::lexical_cast<string>(p_dp_best->get_NQ()));
+    Info::Inst()->write(string("NAF               : ")+boost::lexical_cast<string>(p_dp_best->get_NAF()));
+    Info::Inst()->write(string("NP                : ")+boost::lexical_cast<string>(p_dp_best->get_NP()));
+    Info::Inst()->write(string("NNpP              : ")+boost::lexical_cast<string>(p_dp_best->get_NNpP()));
+    Info::Inst()->write(string("NAFcycles         : ")+boost::lexical_cast<string>(p_dp_best->get_NAFcycles()));
+    Info::Inst()->write(string("NQcycles          : ")+boost::lexical_cast<string>(p_dp_best->get_NQcycles()));
     size_t used =  (p_dp_best->get_NQ()*p_dp_best->get_NAF());
     size_t wasted = p_dp_best->penalty();
     double utilization = (used)*1.0/(used+wasted);
-    Info::Inst()->write(string("CompEl (WASTE/USE): ")+to_s(wasted)+string("/")+to_s(used));
-    Info::Inst()->write(string("utilization(1=best)    : ")+to_s(utilization));
+    Info::Inst()->write(string("CompEl (WASTE/USE): ")+boost::lexical_cast<string>(wasted)+string("/")+boost::lexical_cast<string>(used));
+    Info::Inst()->write(string("utilization(1=best)    : ")+boost::lexical_cast<string>(utilization));
 
     if (utilization < Params::Inst()->limits.decomposition.utilization) {
-		Err::Inst()->write(string("Utilization too low. Aborting. Change the number of nodes or the threshold value (")+to_s(Params::Inst()->limits.decomposition.utilization)+string(")"));
+		Err::Inst()->write(string("Utilization too low. Aborting. Change the number of nodes or the threshold value (")+boost::lexical_cast<string>(Params::Inst()->limits.decomposition.utilization)+string(")"));
         delete p_dp_best;
         p_dp_best = NULL;
 		throw;

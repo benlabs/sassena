@@ -27,7 +27,9 @@ public:
     static ScatterDevice* create(
     		boost::mpi::communicator& scatter_comm,
     		Sample& sample,
-    		boost::asio::ip::tcp::endpoint filemutex_server,
+    		boost::asio::ip::tcp::endpoint fileservice_endpoint,
+    		boost::asio::ip::tcp::endpoint monitorservice_endpoint,
+    		std::vector<size_t>& qindexes,
     		std::vector<CartesianCoor3D>& qvectors);
     	
 };
