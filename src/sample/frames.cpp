@@ -39,12 +39,14 @@ void Frames::test_framenumber(size_t framenumber) {
 	}
 }
 
-size_t Frames::add_frameset(const std::string filename,const std::string filetype,size_t first, size_t last, bool last_set, size_t stride) {
+size_t Frames::add_frameset(const std::string filename,const std::string filetype,size_t first, size_t last, bool last_set, size_t stride,const std::string index_filename) {
 	
 	// Detect frame type
 	if (filetype=="dcd") {
 		// create an empty frameset and then initialize w/ filename
-		Frameset* fsp = new DCDFrameset(filename, first,  last,  last_set,  stride, number_of_frames);
+		Frameset* fsp = new DCDFrameset(filename, number_of_frames);
+        fsp->generate_index();
+        fsp->trim_index(first,  last,  last_set,  stride);
 		framesets.push_back(fsp);
 		// increase frame counter
 		number_of_frames += fsp->number_of_frames;
@@ -58,12 +60,19 @@ size_t Frames::add_frameset(const std::string filename,const std::string filetyp
 		while (listfile >> line) {
 			// skip empty lines or lines prepended w/ a '#' !
 			if ((line.size() >0) && (line.substr(0,1) == "#")) continue;
-			total_number_of_frames += add_frameset(line.c_str(), "dcd", first,  last,  last_set,  stride);
+			total_number_of_frames += add_frameset(line.c_str(), "dcd", first,  last,  last_set,  stride,index_filename);
 		}
 		return total_number_of_frames;
 	}
 	else if (filetype=="pdb") {
-		Frameset* fsp = new PDBFrameset(filename, first,  last,  last_set,  stride,number_of_frames);
+		Frameset* fsp = new PDBFrameset(filename,number_of_frames);
+		if (!boost::filesystem::exists(index_filename)) {
+            Err::Inst()->write(string("Frameset ")+filename+string(" requires an Index file. "));
+            Err::Inst()->write(string("No Frameset Index found at given location: ")+index_filename);
+            throw;
+		}
+	    fsp->load_index(index_filename);
+        fsp->trim_index(first,  last,  last_set,  stride);
 		framesets.push_back(fsp);
 		// increase frame counter
 		number_of_frames += fsp->number_of_frames;
@@ -77,13 +86,21 @@ size_t Frames::add_frameset(const std::string filename,const std::string filetyp
 		while (listfile >> line) {
 			// skip empty lines or lines prepended w/ a '#' !
 			if ((line.size() >0) && (line.substr(0,1) == "#")) continue;			
-			total_number_of_frames += add_frameset(line.c_str(), "pdb",first,  last,  last_set,  stride);
+			total_number_of_frames += add_frameset(line.c_str(), "pdb",first,  last,  last_set,  stride,index_filename);
 		}
 		return total_number_of_frames;		
 	}
 	else if (filetype=="xtc") {
 		// create an empty frameset and then initialize w/ filename
-		Frameset* fsp = new XTCFrameset(filename, first,  last,  last_set,  stride,number_of_frames);
+		Frameset* fsp = new XTCFrameset(filename, number_of_frames);
+		if (!boost::filesystem::exists(index_filename)) {
+            Err::Inst()->write(string("Frameset ")+filename+string(" requires an Index file. "));
+            Err::Inst()->write(string("No Frameset Index found at given location: ")+index_filename);
+            throw;
+		}
+		
+		fsp->load_index(index_filename);
+		fsp->trim_index(first,  last,  last_set,  stride);
 		framesets.push_back(fsp);
 		// increase frame counter
 		number_of_frames += fsp->number_of_frames;
@@ -91,7 +108,15 @@ size_t Frames::add_frameset(const std::string filename,const std::string filetyp
 	}	
 	else if (filetype=="trr") {
 		// create an empty frameset and then initialize w/ filename
-		Frameset* fsp = new TRRFrameset(filename, first,  last,  last_set,  stride,number_of_frames);
+		Frameset* fsp = new TRRFrameset(filename, number_of_frames);
+		if (!boost::filesystem::exists(index_filename)) {
+            Err::Inst()->write(string("Frameset ")+filename+string(" requires an Index file. "));
+            Err::Inst()->write(string("No Frameset Index found at given location: ")+index_filename);
+            throw;
+		}
+		
+		fsp->load_index(index_filename);  
+		fsp->trim_index(first,  last,  last_set,  stride);
 		framesets.push_back(fsp);
 		// increase frame counter
 		number_of_frames += fsp->number_of_frames;
@@ -137,70 +162,53 @@ Frame Frames::load(size_t framenumber) {
     return cf;
 }
 
-size_t Frameset::init_frame_byte_offsets() {
-
-	// test if a cache file exists
-	// by default: cache-file name = filename.frame_byte_offsets
-	using namespace boost::filesystem;
-	
-	path fpath(filename);
-	string cache_filename = (path(Params::Inst()->runtime.config_rootpath) / fpath.filename()).string() + ".frame_byte_offsets"; // by default the cache files are in the config directory
-
-	if (ifstream(cache_filename.c_str()).good()) {
-		Info::Inst()->write(string("Reading Frame Offset Positions from Cache File: ")+cache_filename);
-		read_frame_byte_offsets(cache_filename);
-	} else {
-		Info::Inst()->write("Scanning Trajectory for Frame Offset Position Information");
-		scan_frame_byte_offsets();
-		Info::Inst()->write(string("Writing Frame Offset Positions to Cache File: ")+cache_filename);		
-		write_frame_byte_offsets(cache_filename);
-	}
-
-	// apply range modifier (first,last,stride)
-	trim_frame_byte_offsets();
-	
-	return frame_byte_offsets.size();
-}
-
-void Frameset::read_frame_byte_offsets(string cache_filename) {
-	ifstream cache_file(cache_filename.c_str());
-
-	std::ios::streamoff frame_offset;	
-	while (cache_file>>frame_offset) {
-		frame_byte_offsets.push_back(frame_offset);
-	}
-
-}
-
-void Frameset::write_frame_byte_offsets(string cache_filename) {
-	ofstream cache_file(cache_filename.c_str());
-	
-	for(size_t i = 0; i < frame_byte_offsets.size(); ++i)
-	{
-		cache_file << frame_byte_offsets[i] << endl;
-	}
-}
-
-void Frameset::trim_frame_byte_offsets() {
+void Frameset::trim_index(size_t first,size_t last,bool last_set,size_t stride) {
 	
 	vector<std::ios::streamoff> lfo;
 	
-	for(size_t i = 0; i < frame_byte_offsets.size(); ++i)
+	for(size_t i = 0; i < frameset_index_.size(); ++i)
 	{
 		if (i<first) continue;
 		if (last_set && (i>last))	break;
-		if ((i % stride)==0) lfo.push_back(frame_byte_offsets[i]);		
+		if ((i % stride)==0) lfo.push_back(frameset_index_[i]);		
 	}
 	
-	if (frame_byte_offsets.size()!=lfo.size()) {
-		Info::Inst()->write(string("Applied Range(first,last,stride) reduced number of frames from ")+boost::lexical_cast<string>(frame_byte_offsets.size())+string(" to ")+boost::lexical_cast<string>(lfo.size()));
+	if (frameset_index_.size()!=lfo.size()) {
+		Info::Inst()->write(string("Applied Range(first,last,stride) reduced number of frames from ")+boost::lexical_cast<string>(frameset_index_.size())+string(" to ")+boost::lexical_cast<string>(lfo.size()));
 	}
-	
-	frame_byte_offsets = lfo;
+
+    frameset_index_.clear();
+    for(size_t i = 0; i < lfo.size(); ++i)
+    {
+        frameset_index_.push_back(lfo[i]);
+    }
+    number_of_frames = frameset_index_.size();
+}
+void Frameset::load_index(std::string index_filename) {
+    
+    frameset_index_.load(index_filename);
+    std::vector<char> sig = FramesetIndex::generate_signature(filename);
+
+    if (sig!=frameset_index_.get_signature()) {
+        Err::Inst()->write(string("FrameIndex file (")+index_filename+string(") incompatible with selected trajectory: ")+filename);
+        throw;
+    }    
 }
 
+void Frameset::save_index(std::string index_filename) {
+    frameset_index_.save(index_filename);
+}
 
-
+void DCDFrameset::generate_index() {
+    frameset_index_.clear();
+    frameset_index_.set_signature(FramesetIndex::generate_signature(filename));
+    
+    for(size_t i = 0; i < number_of_frames; ++i)
+	{
+        frameset_index_.push_back(i*block_size_byte + init_byte_pos);
+	}
+	
+}
 
 // constructor = analyze file and store frame locator information
 void DCDFrameset::init(std::string fn,size_t fno) {
@@ -284,16 +292,7 @@ void DCDFrameset::init(std::string fn,size_t fno) {
 	 // end dcd file read out
 	
 	// this overwrites the value we get from the dcd header
-	number_of_frames = init_frame_byte_offsets();
-	
-}
-
-void DCDFrameset::scan_frame_byte_offsets() {
-	// With DCD Files frame_byte_offsets are calculatable:
-	for(size_t i = 0; i < number_of_frames; ++i)
-	{
-		frame_byte_offsets.push_back(i*block_size_byte + init_byte_pos);
-	}
+//	number_of_frames = init_frame_byte_offsets();
 }
 
 bool DCDFrameset::detect(const string filename) {
@@ -312,7 +311,7 @@ void DCDFrameset::read_frame(size_t internalframenumber,Frame& cf) {
 	
 	// This reads the unit cell
 	if (flag_ext_block1) {
-		dcdfile.seekg(frame_byte_offsets[internalframenumber]+block1_byte_offset,ios_base::beg);
+		dcdfile.seekg(frameset_index_[internalframenumber]+block1_byte_offset,ios_base::beg);
 		for (int i=0;i<6;i++) {
 			dcdfile.read((char*) &(unit_cell_block[i]),sizeof(double)); 
 		}
@@ -331,22 +330,22 @@ void DCDFrameset::read_frame(size_t internalframenumber,Frame& cf) {
 	
 	cf.number_of_atoms = number_of_atoms;
 
-	dcdfile.seekg(frame_byte_offsets[internalframenumber]+x_byte_offset,ios_base::beg);
+	dcdfile.seekg(frameset_index_[internalframenumber]+x_byte_offset,ios_base::beg);
 	for (size_t i=0;i<number_of_atoms;i++) {
 		float temp; dcdfile.read((char*) &temp,sizeof(float)); cf.x.push_back(temp);
 	}
-	dcdfile.seekg(frame_byte_offsets[internalframenumber]+y_byte_offset,ios_base::beg);
+	dcdfile.seekg(frameset_index_[internalframenumber]+y_byte_offset,ios_base::beg);
 	for (size_t i=0;i<number_of_atoms;i++) {
 		float temp; dcdfile.read((char*) &temp,sizeof(float)); cf.y.push_back(temp);
 	}
-	dcdfile.seekg(frame_byte_offsets[internalframenumber]+z_byte_offset,ios_base::beg);
+	dcdfile.seekg(frameset_index_[internalframenumber]+z_byte_offset,ios_base::beg);
 	for (size_t i=0;i<number_of_atoms;i++) {
 		float temp; dcdfile.read((char*) &temp,sizeof(float)); cf.z.push_back(temp);
 	}
 
 	// This block has unknown feature
 	if (flag_ext_block2) {
-		dcdfile.seekg(frame_byte_offsets[internalframenumber]+block2_byte_offset,ios_base::beg);
+		dcdfile.seekg(frameset_index_[internalframenumber]+block2_byte_offset,ios_base::beg);
 		for (size_t i=0;i<number_of_atoms;i++) {
 			float temp; dcdfile.read((char*) &temp,sizeof(float));
 			// skip it
@@ -404,12 +403,12 @@ void PDBFrameset::init(std::string fn,size_t fno) {
 	
 	pdbfile.close();
 	
-	number_of_frames = init_frame_byte_offsets();
-	
 }
 
-void PDBFrameset::scan_frame_byte_offsets() {
+
+void PDBFrameset::generate_index() {
 	
+    std::vector<std::streamoff> frame_byte_offsets;
 	ifstream pdbfile(filename.c_str());	
 	
 	bool lastentryisater = false;
@@ -427,12 +426,20 @@ void PDBFrameset::scan_frame_byte_offsets() {
 			lastentryisater = false;
 		}
 	}
-	
+	    
 	// save last unterminated frame
 	if (!lastentryisater) {
 			frame_byte_offsets.push_back(filepos);
 	}
-	
+
+	frameset_index_.clear();
+    frameset_index_.set_signature(FramesetIndex::generate_signature(filename));
+		
+    for(size_t i = 0; i < frame_byte_offsets.size(); ++i)
+	{
+        frameset_index_.push_back(frame_byte_offsets[i]);
+
+	}    
 }
 
 bool PDBFrameset::detect(const string filename) {
@@ -454,7 +461,7 @@ void PDBFrameset::read_frame(size_t internalframenumber,Frame& cf) {
 	
 	vector<CartesianCoor3D> uc = default_uc; 
 
-	pdbfile.seekg(frame_byte_offsets[internalframenumber]);
+	pdbfile.seekg(frameset_index_[internalframenumber]);
 	
 	size_t number_of_atom_entries = 0;
 	string line;
@@ -511,14 +518,13 @@ void XTCFrameset::init(std::string fn,size_t fno) {
         throw;
   	}
 	number_of_atoms = natoms;
-
-	number_of_frames = init_frame_byte_offsets();
 	
 	return;
 }
 
-void XTCFrameset::scan_frame_byte_offsets() {
+void XTCFrameset::generate_index() {
 	
+    std::vector<size_t> frame_byte_offsets;
     XDRFILE* p_xdrfile =  xdrfile_open(const_cast<char*>(filename.c_str()),"r");	
 	FILE* fp = get_filepointer(p_xdrfile);
 	int step =0; float t =0;
@@ -537,6 +543,14 @@ void XTCFrameset::scan_frame_byte_offsets() {
 	
 	free(coords);
 	xdrfile_close(p_xdrfile);
+	
+	frameset_index_.clear();
+    frameset_index_.set_signature(FramesetIndex::generate_signature(filename));
+    		
+    for(size_t i = 0; i < frame_byte_offsets.size(); ++i)
+	{
+        frameset_index_.push_back(frame_byte_offsets[i]);
+	}
 }
 
 bool XTCFrameset::detect(const string filename) {
@@ -558,7 +572,7 @@ void XTCFrameset::read_frame(size_t internalframenumber,Frame& cf) {
 	rvec* coords = (rvec*) malloc(sizeof(rvec)*number_of_atoms);
 	matrix box; 	
 
-	fseek( fp, frame_byte_offsets[internalframenumber] , SEEK_SET );
+	fseek( fp, frameset_index_[internalframenumber] , SEEK_SET );
 	read_xtc(p_xdrfile,number_of_atoms,&step,&t,box,coords,&prec);
 		
 	vector<CartesianCoor3D> uc(3); 
@@ -605,13 +619,12 @@ void TRRFrameset::init(std::string fn,size_t fno) {
   	read_trr_natoms(const_cast<char*>(filename.c_str()),&natoms);
 	number_of_atoms = natoms;
 
-	number_of_frames = init_frame_byte_offsets();
-	
 	return;
 }
 
-void TRRFrameset::scan_frame_byte_offsets() {
+void TRRFrameset::generate_index() {
 	
+    std::vector<std::streamoff> frame_byte_offsets;
     XDRFILE* p_xdrfile =  xdrfile_open(const_cast<char*>(filename.c_str()),"r");	
 	FILE* fp = get_filepointer(p_xdrfile);
 	int step =0; float t =0;
@@ -630,6 +643,14 @@ void TRRFrameset::scan_frame_byte_offsets() {
 	
 	free(coords);
 	xdrfile_close(p_xdrfile);
+	
+	frameset_index_.clear();
+    frameset_index_.set_signature(FramesetIndex::generate_signature(filename));
+    		
+    for(size_t i = 0; i < frame_byte_offsets.size(); ++i)
+	{
+        frameset_index_.push_back(frame_byte_offsets[i]);
+	}    
 }
 
 bool TRRFrameset::detect(const string filename) {
@@ -651,7 +672,7 @@ void TRRFrameset::read_frame(size_t internalframenumber,Frame& cf) {
 	rvec* coords = (rvec*) malloc(sizeof(rvec)*number_of_atoms);
 	matrix box; 	
 
-	fseek( fp, frame_byte_offsets[internalframenumber] , SEEK_SET );
+	fseek( fp, frameset_index_[internalframenumber] , SEEK_SET );
 	read_trr(p_xdrfile,number_of_atoms,&step,&t,&lambda,box,coords,NULL,NULL);
 		
 	vector<CartesianCoor3D> uc(3); 

@@ -128,11 +128,14 @@ void Params::read_xml(std::string filename) {
 		fset.first = def_first;	fset.last = def_last; fset.last_set = def_last_set; fset.stride = def_stride;
         fset.clones = def_clones;
 		fset.filename = get_filepath(xmli.get_value<string>("./file"));
+        boost::filesystem::path index_path = get_filepath(xmli.get_value<string>("./file"));
+        fset.index = index_path.parent_path().string() +string("/")+ index_path.stem() + (".tnx");
 		fset.type = xmli.get_value<string>("./format");
 		if (xmli.exists("./first"))   fset.first  = xmli.get_value<size_t>("./first");
 		if (xmli.exists("./last"))  { fset.last   = xmli.get_value<size_t>("./last"); fset.last_set = true; }
 		if (xmli.exists("./stride"))  fset.stride = xmli.get_value<size_t>("./stride");
 		if (xmli.exists("./clones"))  fset.clones = xmli.get_value<size_t>("./clones");
+		if (xmli.exists("./index"))  fset.index = get_filepath(xmli.get_value<std::string>("./index"));
 		
 		sample.framesets.push_back(fset);
 		Info::Inst()->write(string("Added frames from ")+fset.filename+string(" using format: ")+fset.type);
@@ -490,8 +493,9 @@ void Params::read_xml(std::string filename) {
 
 	debug.timer = false; // this adds a log message when a timer is started/stopped
 	debug.barriers = false; // this de-/activates collective barriers before each collective operation, this way all nodes are synchronized before the communication takes place. This is an important step towards analysis of timing.
-    debug.monitor.progress = true;
-    debug.iowrite = true;
+    debug.monitor.update = true;
+    debug.iowrite.write = true;
+    debug.iowrite.buffer = false;
     debug.print.orientations = false;
 	if (xmli.exists("//debug")) {
 		if (xmli.exists("//debug/timer")) {
@@ -501,12 +505,17 @@ void Params::read_xml(std::string filename) {
 			debug.barriers = xmli.get_value<bool>("//debug/barriers");
 		}
 		if (xmli.exists("//debug/monitor")) {
-    		if (xmli.exists("//debug/monitor/progress")) {
-		    	debug.monitor.progress = xmli.get_value<bool>("//debug/monitor/progress");
+    		if (xmli.exists("//debug/monitor/update")) {
+		    	debug.monitor.update = xmli.get_value<bool>("//debug/monitor/update");
 	    	}
 		}
 		if (xmli.exists("//debug/iowrite")) {
-			debug.iowrite = xmli.get_value<bool>("//debug/iowrite");
+    		if (xmli.exists("//debug/iowrite/write")) {
+		    	debug.iowrite.write = xmli.get_value<bool>("//debug/iowrite/write");
+		    }
+    		if (xmli.exists("//debug/iowrite/buffer")) {
+		    	debug.iowrite.buffer = xmli.get_value<bool>("//debug/iowrite/buffer");
+		    }
 		}
 		
 		if (xmli.exists("//debug/print")) {

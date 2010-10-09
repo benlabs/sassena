@@ -213,15 +213,19 @@ bool HDF5WriterService::test_fqt_dim( size_t nf) {
 std::vector<size_t> HDF5WriterService::init_reuse(const std::vector<CartesianCoor3D>& qvectors,size_t nf)
 {     
     const std::string filename = m_filename;
-    if (test_fqt_dim(nf)==false) {
+    Warn::Inst()->write("Data file re-use currently broken. will create a new file.");
+    if (true) {
+//    if (test_fqt_dim(nf)==false) {
         // this in an "incompatible" data file
         // mv old one to a backup
         int n=0;
         while (boost::filesystem::exists(filename+".backup-"+boost::lexical_cast<string>(n))) n++;
-        boost::filesystem::rename(filename,filename+".backup-"+boost::lexical_cast<string>(n));
+        std::string newfilename = filename+".backup-"+boost::lexical_cast<string>(n);
+        Warn::Inst()->write(string("Moving old data file to ")+newfilename);        
+        boost::filesystem::rename(filename,newfilename);
         // escape by returning init_new
         return init_new(qvectors,nf);  
-    };
+    }
     
     //////////////////////////////
     // read info from data file
@@ -619,6 +623,8 @@ void HDF5WriterService::hangup() {
 
 void HDF5WriterClient::write(size_t qindex,const std::vector<std::complex<double> >& data) {
     
+    if (!Params::Inst()->debug.iowrite.write) return;
+    
     std::vector<std::complex<double> >* p_data = new std::vector<std::complex<double> >(data.size());
     *p_data = data;
     data_queue.push(make_pair(qindex,p_data));
@@ -633,6 +639,9 @@ void HDF5WriterClient::write(size_t qindex,const std::vector<std::complex<double
         flush();
     }
     
+    if (!Params::Inst()->debug.iowrite.buffer) {
+        flush();
+    }
 }
 
 

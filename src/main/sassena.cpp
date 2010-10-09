@@ -148,7 +148,7 @@ void detect_parameters() {
     }
 }
 
-int main(int argc,char** argv) {
+int main(int argc,char* argv[]) {
 
 	//------------------------------------------//
 	//
@@ -287,7 +287,9 @@ int main(int argc,char** argv) {
     
     // start services
     if (scatter_comm.rank()==0) {
+        Info::Inst()->write("Starting data file service...");	
         p_hdf5writer->run();
+        Info::Inst()->write("Starting monitor service...");	
         p_monitorservice->run();
     }
     if (world.rank()==0) Info::Inst()->write("Services setup and running...");	
@@ -307,7 +309,7 @@ int main(int argc,char** argv) {
     }
     size_t* p_qindexes = &(qindexes[0]);
     broadcast(scatter_comm,p_qindexes,nq,0);
-    coor_t* p_qvectors = &(qvectors[0].x);
+    coor2_t* p_qvectors = &(qvectors[0].x);
     broadcast(scatter_comm,p_qvectors,3*nq,0);
     
     // communicate services to all nodes
@@ -342,7 +344,7 @@ int main(int argc,char** argv) {
     if (world.rank()==0) Info::Inst()->write("Setting up parallel environment...");	
     
     // now create scattering device w/ reference to file server
-    ScatterDevice* p_ScatterDevice =NULL;
+    IScatterDevice* p_ScatterDevice =NULL;
     p_ScatterDevice = ScatterDeviceFactory::create(
     		scatter_comm,
     		sample,

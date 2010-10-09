@@ -24,7 +24,6 @@
 
 // other headers
 #include "math/coor3d.hpp"
-#include "math/smath.hpp"
 #include "decomposition/decompose.hpp"
 #include <fftw3.h>
 #include "control.hpp"
@@ -142,8 +141,8 @@ void DataStagerByFrame::stage_data() {
     
     // used by server
     //size_t frame_bytesize = NA*3*sizeof(double);
-    vector<CartesianCoor3D> ndata(NA);
-    coor_t* p_data = &(ndata[0].x);
+    coor_t* p_coordinates_buffer = (coor_t*) malloc(NA*3*sizeof(coor_t));
+
     //std::set<size_t>& assigned_frames = FS_assignment_table[rank];
 
     std::map<size_t,size_t> assignment_mapper;
@@ -157,19 +156,18 @@ void DataStagerByFrame::stage_data() {
             CoordinateSet* p_cset = m_sample.coordinate_sets.load(f);
             
             for(size_t n=0;n<NA;n++) {
-                p_data[3*n]=p_cset->c1[n];
-                p_data[3*n+1]=p_cset->c2[n];
-                p_data[3*n+2]=p_cset->c3[n];            
+                p_coordinates_buffer[3*n]=p_cset->c1[n];
+                p_coordinates_buffer[3*n+1]=p_cset->c2[n];
+                p_coordinates_buffer[3*n+2]=p_cset->c3[n];            
             }
             delete p_cset;
-
             for(size_t j=0;j<Frame_to_FClist[f].size();j++) {
                 size_t target_node = Frame_to_FClist[f][j];
                 if (target_node==s) {
                     coor_t* p_localdata = &(p_coordinates[assignment_mapper[f]*NA*3]);
-                    memcpy(p_localdata,p_data,3*NA*sizeof(coor_t));
+                    memcpy(p_localdata,p_coordinates_buffer,3*NA*sizeof(coor_t));
                 } else {
-                    m_comm.send(target_node,0,p_data,3*NA);
+                    m_comm.send(target_node,0,p_coordinates_buffer,3*NA);
                 }
             }  
         } else if (assignment_mapper.find(f)!=assignment_mapper.end()) {     
@@ -177,6 +175,7 @@ void DataStagerByFrame::stage_data() {
             m_comm.recv(s,0,p_localdata,3*NA);
         }
     }
+    delete p_coordinates_buffer;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

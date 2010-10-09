@@ -33,11 +33,13 @@
 
 #ifdef PRECISION_TYPE_DOUBLE
 typedef double coor_t;
-#else PRECISION_TYPE_SINGLE
+typedef double coor2_t;
+#endif
+#ifdef PRECISION_TYPE_SINGLE
 typedef float coor_t;
-#endif 
-
+typedef double coor2_t;
 
 #endif
 
-// end of file
+
+#endif

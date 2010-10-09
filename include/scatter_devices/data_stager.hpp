@@ -36,8 +36,6 @@
 #include "scatter_devices/scatter_factors.hpp"
 #include "report/timer.hpp"
 
-#include "scatter_devices/scatter_device.hpp"
-
 class DataStagerByFrame {
     Sample& m_sample;
     boost::mpi::communicator& m_comm;

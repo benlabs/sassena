@@ -32,6 +32,7 @@
 #include "sample/atoms.hpp"
 #include "sample/atomselection.hpp"
 #include "sample/frame.hpp"
+#include "sample/frameset_index.hpp"
 
 // Forward:
 class Frameset;
@@ -78,7 +79,7 @@ public:
 	size_t size();
 	
 	// push a frameset, frameset is specialized
-	size_t add_frameset(const std::string filename,const std::string filetype,size_t first, size_t last, bool last_set, size_t stride);
+	size_t add_frameset(const std::string filename,const std::string filetype,size_t first, size_t last, bool last_set, size_t stride,const std::string index_filename);
 
 	// load a Frame
 	Frame load(size_t framenumber);	
@@ -101,11 +102,13 @@ class Frameset {
 		ar & last;
 		ar & last_set;
 		ar & stride;		
-		ar & frame_byte_offsets;
+		ar & frameset_index_;
     }
 
 public:
 	virtual ~Frameset() {}
+	
+    FramesetIndex frameset_index_;
 	
 	size_t frame_number_offset;
 	size_t number_of_frames;
@@ -118,18 +121,14 @@ public:
 	bool last_set;
 	size_t stride;
 	
-	std::vector<std::ios::streamoff> frame_byte_offsets; // index implicit = internal frame number, offset = logical offset (can be byte offset , or line offset)
-	
-	// support performance boost for non-seekable files: caching of frame_offsets
-	size_t init_frame_byte_offsets(); // wrapper which is called by the init()
-	void read_frame_byte_offsets(std::string cache_filename); // read offsets from cache
-	void write_frame_byte_offsets(std::string cache_filename); // write offsets to cache
-	void trim_frame_byte_offsets(); // apply range modifier (first,last,stride)
+    void trim_index(size_t first,size_t last,bool last_set,size_t stride);
+    void load_index(std::string cache_filename);
+    void save_index(std::string cache_filename);
 
-	virtual void scan_frame_byte_offsets() {}
+    virtual void generate_index() = 0;
 	
 	// derived classes have to support this!
-	virtual void read_frame(size_t internalframenumber,Frame& cf) {}
+    virtual void read_frame(size_t internalframenumber,Frame& cf) = 0;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -188,13 +187,13 @@ public:
 	void init(std::string filename,size_t framenumber_offset);
 
 	// this constructor should be called by default
-	DCDFrameset(std::string filename,size_t f, size_t l, bool lset, size_t s, size_t frame_number_offset)  { first=f;last=l;last_set=lset;stride=s; init(filename,frame_number_offset); }
+	DCDFrameset(std::string filename, size_t frame_number_offset) { init(filename,frame_number_offset); }
 	
 	// internalframenumber used for positioning file pointer, data loaded into Frame argument
 	void read_frame(size_t internalframenumber,Frame& cf);
 	
 	// fill frame_offsets. non-seekable files have to be scanned completely!
-	void scan_frame_byte_offsets();
+	void generate_index();
 };
 
 
@@ -219,13 +218,13 @@ public:
 	void init(std::string filename,size_t framenumber_offset);
 
 	// this constructor should be called by default
-	PDBFrameset(std::string filename,size_t f, size_t l, bool lset, size_t s, size_t frame_number_offset) { first=f;last=l;last_set=lset;stride=s; init(filename,frame_number_offset); }
+	PDBFrameset(std::string filename, size_t frame_number_offset) { init(filename,frame_number_offset); }
 	
 	// internalframenumber used for positioning file pointer, data loaded into Frame argument
 	void read_frame(size_t internalframenumber,Frame& cf);
 
 	// fill frame_offsets. non-seekable files have to be scanned completely!
-	void scan_frame_byte_offsets();
+	void generate_index();
 };
 
 
@@ -246,13 +245,13 @@ public:
 	void init(std::string filename,size_t framenumber_offset);	
 
 	// this constructor should be called by default
-	XTCFrameset(std::string filename,size_t f, size_t l, bool lset, size_t s, size_t frame_number_offset) { first=f;last=l;last_set=lset;stride=s; init(filename,frame_number_offset); }
+	XTCFrameset(std::string filename, size_t frame_number_offset) { init(filename,frame_number_offset); }
 	
 	// internalframenumber used for positioning file pointer, data loaded into Frame argument
 	void read_frame(size_t internalframenumber,Frame& cf);
 
 	// fill frame_offsets. non-seekable files have to be scanned completely!
-	void scan_frame_byte_offsets();
+	void generate_index();
 };
 
 
@@ -273,13 +272,13 @@ public:
 	void init(std::string filename,size_t framenumber_offset);
 
 	// this constructor should be called by default
-	TRRFrameset(std::string filename,size_t f, size_t l, bool lset, size_t s, size_t frame_number_offset) { first=f;last=l;last_set=lset;stride=s; init(filename,frame_number_offset); }
+	TRRFrameset(std::string filename, size_t frame_number_offset) { init(filename,frame_number_offset); }
 	
 	// internalframenumber used for positioning file pointer, data loaded into Frame argument
 	void read_frame(size_t internalframenumber,Frame& cf);
 	
 	// fill frame_offsets. non-seekable files have to be scanned completely!
-	void scan_frame_byte_offsets();
+	void generate_index();
 };
 
 #endif

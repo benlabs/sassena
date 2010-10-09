@@ -9,8 +9,8 @@
  *
  */
 
-#ifndef SCATTER_DEVICES__SCATTER_DEVICE_HPP_
-#define SCATTER_DEVICES__SCATTER_DEVICE_HPP_
+#ifndef SCATTER_DEVICES__ABSTRACT_SCATTER_DEVICE_HPP_
+#define SCATTER_DEVICES__ABSTRACT_SCATTER_DEVICE_HPP_
 
 // common header
 #include "common.hpp"
@@ -33,6 +33,9 @@
 // other headers
 #include "math/coor3d.hpp"
 #include "report/timer.hpp"
+#include "services.hpp"
+#include "scatter_devices/scatter_factors.hpp"
+
 
 
  template<typename Data>
@@ -97,8 +100,8 @@
      }
  };
  
-class ScatterDevice {
-    
+class IScatterDevice {
+protected:
     virtual void runner() = 0;
 
     virtual size_t status() = 0;
@@ -107,38 +110,66 @@ class ScatterDevice {
 public:
     Timer timer;
 
-//    ScatterDevice (
-//        boost::mpi::communicator all_comm,
-//	    boost::mpi::communicator partition_comm,
-//	    Sample& sample,
-//	    vector<pair<size_t,CartesianCoor3D> > QIV,
-//	    boost::asio::ip::tcp::endpoint fileservice_endpoint,
-//        boost::asio::ip::tcp::endpoint monitorservice_endpoint
-//    );
-    
-//    Timer& get_timer() { return timer; }
-
     virtual void run() = 0;
 };
 
-//class AVScatterDevice : public ScatterDevice {
-//    void stage_data();
-//    
-//    
-//public:
-//    AVScatterDevice (
-//        boost::mpi::communicator all_comm,
-//	    boost::mpi::communicator partition_comm,
-//	    Sample& sample,
-//	    vector<pair<size_t,CartesianCoor3D> > QIV,
-//	    boost::asio::ip::tcp::endpoint fileservice_endpoint,
-//        boost::asio::ip::tcp::endpoint monitorservice_endpoint
-//    );
-//    
-//    
-//};
-//
-//
+class AbstractScatterDevice : public IScatterDevice {
+protected:
+    coor_t* p_coordinates;
+    
+    boost::mpi::communicator allcomm_;
+    boost::mpi::communicator partitioncomm_;
+	Sample& sample_;
+
+	std::vector<std::pair<size_t,CartesianCoor3D> > vector_index_;
+    size_t current_vector_;
+    
+    boost::shared_ptr<MonitorClient> p_monitor_;
+    boost::shared_ptr<HDF5WriterClient> p_hdf5writer_;
+    
+    size_t NN,NF,NA;
+    
+    std::vector<std::complex<double> > atfinal_;
+    std::vector<size_t> assignment_;
+    
+    ScatterFactors scatterfactors;
+        
+    virtual void stage_data() = 0;
+    virtual void compute_serial() = 0;
+
+    void next();
+    void write();
+    
+    void runner();
+    
+    virtual void print_pre_stage_info() {}
+    virtual void print_post_stage_info() {}
+    virtual void print_pre_runner_info() {}
+    virtual void print_post_runner_info() {}
+    
+    // use by threaded version
+    virtual void compute_threaded() = 0;
+    virtual void start_workers() = 0;
+    virtual void stop_workers() = 0;
+        
+    
+    size_t status();
+    double progress();
+    
+public:
+
+    AbstractScatterDevice(
+        boost::mpi::communicator allcomm,
+        boost::mpi::communicator partitioncomm,
+        Sample& sample,
+        std::vector<std::pair<size_t,CartesianCoor3D> > vector_index,
+        std::vector<size_t> assignment,
+        boost::asio::ip::tcp::endpoint fileservice_endpoint,
+		boost::asio::ip::tcp::endpoint monitorservice_endpoint
+        );    
+    
+    void run();
+};
 
 #endif
 

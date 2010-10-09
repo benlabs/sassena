@@ -20,11 +20,11 @@
 
 // other headers
 #include "sample.hpp"
-#include "scatter_devices/scatter_device.hpp"
+#include "scatter_devices/abstract_scatter_device.hpp"
 
 class ScatterDeviceFactory {
 public: 
-    static ScatterDevice* create(
+    static IScatterDevice* create(
     		boost::mpi::communicator& scatter_comm,
     		Sample& sample,
     		boost::asio::ip::tcp::endpoint fileservice_endpoint,

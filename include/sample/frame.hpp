@@ -59,9 +59,9 @@ public:
 	
 	CartesianCoor3D origin; // this is
 	
-	std::vector<coor_t> x; // x-coordinates
-	std::vector<coor_t> y; // y-coordinates
-	std::vector<coor_t> z; // z-coordinates
+	std::vector<coor2_t> x; // x-coordinates
+	std::vector<coor2_t> y; // y-coordinates
+	std::vector<coor2_t> z; // z-coordinates
 	
 	// base vectors of the unit cell
 	std::vector<CartesianCoor3D> unitcell;

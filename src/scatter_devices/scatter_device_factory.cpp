@@ -17,15 +17,12 @@
 #include "log.hpp"
 #include "decomposition/decompose.hpp"
 #include "decomposition/decomposition_plan.hpp"
-//#include "scatter_devices/all_multipole_sphere.hpp"
-//#include "scatter_devices/all_multipole_cylinder.hpp"
-//#include "scatter_devices/all_vectors.hpp"
-#include "scatter_devices/all_vectorsthread.hpp"
-//#include "scatter_devices/self_vectors.hpp"
-#include "scatter_devices/self_vectorsthread.hpp"
+#include "scatter_devices/all_vectors_scatter_device.hpp"
+#include "scatter_devices/self_vectors_scatter_device.hpp"
+
 using namespace std;
 
-ScatterDevice* ScatterDeviceFactory::create(
+IScatterDevice* ScatterDeviceFactory::create(
 		boost::mpi::communicator& all_comm,
 		Sample& sample,
         boost::asio::ip::tcp::endpoint fileservice_endpoint,
@@ -34,14 +31,13 @@ ScatterDevice* ScatterDeviceFactory::create(
 		std::vector<CartesianCoor3D>& qvectors)
 {
     
-    ScatterDevice* p_ScatterDevice = NULL;
+    IScatterDevice* p_ScatterDevice = NULL;
 
     size_t NN = all_comm.size();
     size_t NF = sample.coordinate_sets.size();
     string target = Params::Inst()->scattering.target;
     size_t NA = sample.atoms.selections[target].indexes.size();
     size_t NQ = qindexes.size();
-
     // check sample for data
     if (NF<1) {
         Err::Inst()->write("No frames available. Aborting");
@@ -92,12 +88,12 @@ ScatterDevice* ScatterDeviceFactory::create(
             NAF = NF;
         }
 
-        size_t ELBYTESIZE = 24;
+        size_t ELBYTESIZE = 3*sizeof(coor_t);
         size_t NMAXBYTESIZE = Params::Inst()->limits.memory.data;
         if (Params::Inst()->scattering.type == "self") {
-            ELBYTESIZE=24; // 3 times double: xyz
+            ELBYTESIZE=3*sizeof(coor_t); // 3 times double: xyz
         } else if (Params::Inst()->scattering.type == "all") {
-            ELBYTESIZE=NA*24; // 3 times double times number of atoms = frame
+            ELBYTESIZE=NA*3*sizeof(coor_t); // 3 times double times number of atoms = frame
         }
         
 		DecompositionPlan dplan(NN,NQ,NAF,ELBYTESIZE,NMAXBYTESIZE);
@@ -145,7 +141,7 @@ ScatterDevice* ScatterDeviceFactory::create(
     // all_comm for inter-partition communication, parition_comm for intra-partition communication
 
     if (Params::Inst()->scattering.type == "self") {
-    	p_ScatterDevice = new SelfVectorsThreadScatterDevice(
+    	p_ScatterDevice = new SelfVectorsScatterDevice(
     			all_comm,
     			partition_comm,
     			sample,
@@ -156,7 +152,7 @@ ScatterDevice* ScatterDeviceFactory::create(
     }
     else if (Params::Inst()->scattering.type == "all"){
     	if (Params::Inst()->scattering.average.orientation.type == "vectors") {
-        	p_ScatterDevice = new AllVectorsThreadScatterDevice(
+        	p_ScatterDevice = new AllVectorsScatterDevice(
         			all_comm,
         			partition_comm,
         			sample,
@@ -186,7 +182,7 @@ ScatterDevice* ScatterDeviceFactory::create(
 //    			throw;
 //    		}
     	} else if (Params::Inst()->scattering.average.orientation.type == "none") {
-        	p_ScatterDevice = new AllVectorsThreadScatterDevice(
+        	p_ScatterDevice = new AllVectorsScatterDevice(
         			all_comm,
         			partition_comm,
         			sample,

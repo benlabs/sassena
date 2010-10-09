@@ -118,7 +118,9 @@ void MonitorService::hangup() {
 }
 
 void MonitorService::timer_reset() {
+    m_timer.stop(m_timerlabel);
     m_timer.clear();
+    m_timer.start(m_timerlabel);
 }
 
 void MonitorService::update() {
@@ -173,6 +175,8 @@ MonitorClient::MonitorClient(boost::asio::ip::tcp::endpoint server) : m_endpoint
 }
 
 void MonitorClient::update(size_t rank,double progress) {
+    
+    if (!Params::Inst()->debug.monitor.update) return;
     
     size_t oldsize = update_thresholds.size();
     while(update_thresholds.front()<progress) {

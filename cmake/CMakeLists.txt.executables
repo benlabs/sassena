@@ -3,8 +3,15 @@ ADD_EXECUTABLE(sassena
     src/main/sassena.cpp
 )
 
+ADD_EXECUTABLE(s_maketnx 
+	src/common.cpp
+    src/main/s_maketnx.cpp
+)
+
+
 IF(STATIC)
 SET_TARGET_PROPERTIES(sassena PROPERTIES LINK_SEARCH_END_STATIC 1)
+SET_TARGET_PROPERTIES(s_maketnx PROPERTIES LINK_SEARCH_END_STATIC 1)
 ENDIF(STATIC)
 
 TARGET_LINK_LIBRARIES (sassena 
@@ -17,5 +24,13 @@ TARGET_LINK_LIBRARIES (sassena
 	${BOOST_LIBRARIES}
 )
 
+TARGET_LINK_LIBRARIES (s_maketnx 
+	sass_log
+	sass_controlio
+	sass_sample
+	${BOOST_LIBRARIES}
+)
+
 
 INSTALL(TARGETS sassena RUNTIME DESTINATION bin)
+INSTALL(TARGETS s_maketnx RUNTIME DESTINATION bin)

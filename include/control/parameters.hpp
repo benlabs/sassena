@@ -106,6 +106,7 @@ private:
 		ar & filename;
 		ar & type;
         ar & clones;
+        ar & index;
     }
 	/////////////////// 
 
@@ -117,6 +118,7 @@ public:
 	size_t stride;
 	std::string filename;
 	std::string type;
+    std::string index;
 };
 
 
@@ -723,12 +725,12 @@ class DebugMonitorParameters {
        friend class boost::serialization::access;	
    	template<class Archive> void serialize(Archive & ar, const unsigned int version)
        {
-   		ar & progress;
+   		ar & update;
        }
    	/////////////////// 
 
    public:
-   	bool progress; 
+   	bool update; 
 };
 
 class DebugPrintParameters {
@@ -745,6 +747,25 @@ private:
 
 public:
 	bool orientations;
+};
+
+
+class DebugIowriteParameters {
+private:
+	/////////////////// MPI related
+	// make this class serializable to 
+	// allow sample to be transmitted via MPI
+    friend class boost::serialization::access;	
+	template<class Archive> void serialize(Archive & ar, const unsigned int version)
+    {
+        ar & write;
+        ar & buffer;
+    }
+	/////////////////// 
+
+public:
+	bool write;
+    bool buffer;
 };
 
 class DebugParameters {
@@ -766,7 +787,7 @@ private:
 public:
 	bool timer;
 	bool barriers;
-    bool iowrite;
+    DebugIowriteParameters iowrite;
     DebugPrintParameters print;
     DebugMonitorParameters monitor;
 };
