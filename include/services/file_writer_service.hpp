@@ -57,6 +57,7 @@ class HDF5WriterService  {
     hid_t m_ds_checkpoint;
     hid_t m_ds_fqt;
     hid_t m_ds_fq;
+    hid_t m_ds_fq2;
     
     boost::posix_time::ptime m_lastflush;
 

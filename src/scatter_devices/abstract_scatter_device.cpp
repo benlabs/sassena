@@ -69,12 +69,17 @@ AbstractScatterDevice::AbstractScatterDevice(
 void AbstractScatterDevice::run() {
     
     print_pre_stage_info();
+    timer.start("sd:stage");
     stage_data();
+    timer.stop("sd:stage");
+    
     print_post_stage_info();
     
 
     print_pre_runner_info();
+    timer.start("sd:runner");
     runner();
+    timer.stop("sd:runner");
     print_post_runner_info();
 
     // notify the services to finalize

@@ -72,7 +72,6 @@ void Sample::init() {
     atoms.push_selection("system",sel); // provide two alternative ways to access a full selection
     atoms.system_selection = sel;
 
-    Params::Inst()->runtime.limits.cache.coordinate_sets = 1;    	
     coordinate_sets.init();
     Info::Inst()->write(string("Total number of coordinate sets found: ")+boost::lexical_cast<string>(coordinate_sets.size()));
 	coordinate_sets.set_atoms(atoms);

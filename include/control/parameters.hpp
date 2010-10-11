@@ -149,6 +149,7 @@ private:
 		ar & displace;
 		ar & direction;
 		ar & frequency;
+        ar & radius;
 		ar & selection;
 		ar & seed;
         ar & sampling;
@@ -159,6 +160,7 @@ public:
 	std::string type;
 	double displace;
 	double frequency;
+    double radius;
 	std::string selection;
 	long seed;
 	long sampling;	
@@ -417,7 +419,7 @@ public:
 	void create_from_scans();
 };
 
-class ScatteringDataParameters {
+class ScatteringSignalParameters {
 private:
 	/////////////////// MPI related
 	// make this class serializable to 
@@ -426,11 +428,17 @@ private:
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
     {
 		ar & file;
+        ar & fqt;
+        ar & fq;
+        ar & fq2;
     }
 	/////////////////// 
 
 public:
 	std::string file;
+    bool fqt;
+    bool fq;
+    bool fq2;
 };
 
 class ScatteringParameters {
@@ -447,14 +455,11 @@ private:
 		ar & qvectors;
 		ar & average;
 		ar & background;
-        ar & center;
-        ar & data;
+        ar & signal;
     }
 	/////////////////// 
 
-public:
-    bool center;
-	
+public:	
 	std::string type;
 	ScatteringDspParameters dsp;
 	std::string target;
@@ -464,52 +469,7 @@ public:
 	ScatteringAverageParameters average;
 	ScatteringBackgroundParameters background;	
 
-	ScatteringDataParameters data;	
-};
-
-class OutputFileParameters {
-private:
-	/////////////////// MPI related
-	// make this class serializable to 
-	// allow sample to be transmitted via MPI
-    friend class boost::serialization::access;	
-	template<class Archive> void serialize(Archive & ar, const unsigned int version)
-    {
-		ar & method;
-		ar & format;
-		ar & filename;
-		ar & name;
-    }
-	/////////////////// 
-
-public:
-	
-	std::string name;
-	std::string method;
-	std::string format;
-	std::string filename;
-};
-
-class OutputParameters {
-private:
-	/////////////////// MPI related
-	// make this class serializable to 
-	// allow sample to be transmitted via MPI
-    friend class boost::serialization::access;	
-	template<class Archive> void serialize(Archive & ar, const unsigned int version)
-    {
-		ar & prefix;
-		ar & files;
-    }
-	/////////////////// 
-
-public:
-	OutputParameters() {
-		prefix = "scattering-data-";
-	}
-	
-	std::string prefix;
-	std::vector<OutputFileParameters> files;
+	ScatteringSignalParameters signal;	
 };
 
 
@@ -620,6 +580,22 @@ public:
     LimitsDecompositionPartitionsParameters partitions;
 };
 
+class LimitsSignalParameters {
+private:
+	/////////////////// MPI related
+	// make this class serializable to 
+	// allow sample to be transmitted via MPI
+    friend class boost::serialization::access;	
+	template<class Archive> void serialize(Archive & ar, const unsigned int version)
+    {
+        ar & alloc_early;      
+    }
+	/////////////////// 
+
+public:
+    bool alloc_early;
+};
+
 class LimitsDataParameters {
 private:
 	/////////////////// MPI related
@@ -629,13 +605,11 @@ private:
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
     {
 		ar & servers;
-        ar & alloc_early;      
     }
 	/////////////////// 
 
 public:
     size_t servers;
-    bool alloc_early;
 };
 
 
@@ -648,6 +622,7 @@ private:
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
     {
         ar & data;
+        ar & signal;
 		ar & memory;
         ar & times;
         ar & decomposition;
@@ -657,64 +632,11 @@ private:
 
 public:
     LimitsDataParameters data;    
+    LimitsSignalParameters signal;    
     LimitsMemoryParameters memory;
     LimitsTimesParameters times;
     LimitsComputationParameters computation;    
     LimitsDecompositionParameters decomposition;
-};
-
-
-// this section is dedicated to parameters which are computed on the fly!
-class RuntimeCacheParameters {
-private:
-	/////////////////// MPI related
-	// make this class serializable to 
-	// allow sample to be transmitted via MPI
-    friend class boost::serialization::access;	
-	template<class Archive> void serialize(Archive & ar, const unsigned int version)
-    {
-		ar & coordinate_sets;
-    }
-	/////////////////// 
-
-public:
-	size_t coordinate_sets;
-};
-
-// this section is dedicated to parameters which are computed on the fly!
-class RuntimeLimitsParameters {
-private:
-	/////////////////// MPI related
-	// make this class serializable to 
-	// allow sample to be transmitted via MPI
-    friend class boost::serialization::access;	
-	template<class Archive> void serialize(Archive & ar, const unsigned int version)
-    {
-		ar & cache;
-    }
-	/////////////////// 
-
-public:
-	RuntimeCacheParameters cache;
-};
-
-// this section is dedicated to parameters which are computed on the fly!
-class RuntimeParameters {
-private:
-	/////////////////// MPI related
-	// make this class serializable to 
-	// allow sample to be transmitted via MPI
-    friend class boost::serialization::access;	
-	template<class Archive> void serialize(Archive & ar, const unsigned int version)
-    {
-		ar & config_rootpath;
-        ar & limits;
-    }
-	/////////////////// 
-
-public:
-	std::string config_rootpath;
-    RuntimeLimitsParameters limits;
 };
 
 class DebugMonitorParameters {
@@ -808,9 +730,7 @@ private:
 		ar & carboncopy;
 		ar & config_rootpath;
 		ar & sample;
-		ar & runtime;
 		ar & scattering;
-		ar & output;
 		ar & limits;
 		ar & debug;
     }
@@ -825,19 +745,13 @@ private:
 	std::string config_rootpath;
 	
 	std::string get_filepath(std::string filename);	
-	
-	void read_conf(std::string filename);
-	void read_xml(std::string filename);
 
-	std::string guessformat(std::string filename);
-	bool check();
+	void read_xml(std::string filename);
 	
 public: 
 	// interface for parameters
-	RuntimeParameters runtime;
 	SampleParameters sample;
 	ScatteringParameters scattering;
-	OutputParameters output;
 	LimitsParameters limits;
 	DebugParameters debug;
 	
@@ -847,7 +761,7 @@ public:
 	void init(std::string filename);
 	~Params() {}; // it is said some compilers have problems w/ private destructors.
 	
-	void write(std::string filename, std::string format="");	
+	void write_xml(std::string filename);	
 };
 
 #endif 

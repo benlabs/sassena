@@ -72,6 +72,17 @@ void print_title() {
 	Info::Inst()->write("");
 
 }
+void print_description() {
+    Info::Inst()->write(".................................................................");
+	Info::Inst()->write("......................D.E.S.C.R.I.P.T.I.O.N......................");
+	Info::Inst()->write(".................................................................");	
+
+	Info::Inst()->write("This binary computes the scattering intensities directly from");	
+	Info::Inst()->write("a molecular dynamics trajectory. ");	
+	Info::Inst()->write(".................................................................");	
+}
+
+
 
 void print_initialization() {
     Info::Inst()->write(".................................................................");
@@ -101,7 +112,7 @@ bool init_commandline(int argc,char** argv,po::variables_map& vm) {
         ("config", po::value<string>()->default_value("scatter.xml"),  "name of the xml configuration file")
         ("database",po::value<string>()->default_value("db.xml"),  "name of the xml database file")   
 
-        ("scattering-data-file",po::value<string>()->default_value("fqt.h5"),"name of the data output file")
+        ("scattering-signal-file",po::value<string>()->default_value("signal.h5"),"name of the data output file")
         ("limits-computation-threads",po::value<string>()->default_value("1"),"threadpool size for orientational averaging")        
     ;
     
@@ -113,16 +124,20 @@ bool init_commandline(int argc,char** argv,po::variables_map& vm) {
         cout << desc << endl;
         return false;
     }
-    
-    if (vm.find("config")==vm.end()) {
-        Info::Inst()->write("Require configuration file");
-        cout << desc << endl;
+
+    if (vm["config"].defaulted()) {
+        Info::Inst()->write("No configuration file specified. Will try to read from scatter.xml");
+    }
+    if (!boost::filesystem::exists(vm["config"].as<string>())) {
+        Err::Inst()->write(vm["config"].as<string>()+string(" does not exist!"));            
         return false;
     }
         
-    if (vm.find("database")==vm.end()) {
-        Info::Inst()->write("Require database file");
-        cout << desc << endl;
+    if (vm["database"].defaulted()) {
+        Info::Inst()->write("No database file specified. Will try to read from db.xml");
+    }
+    if (!boost::filesystem::exists(vm["database"].as<string>())) {
+        Err::Inst()->write(vm["database"].as<string>()+string(" does not exist!"));            
         return false;
     }
     
@@ -136,9 +151,9 @@ void read_parameters(po::variables_map vm) {
         Info::Inst()->write(string("Overwrite: limits.computation.threads=")+vm["limits-computation-threads"].as<string>());
         Params::Inst()->limits.computation.threads = boost::lexical_cast<size_t>(vm["limits-computation-threads"].as<string>());
     }
-    if (!vm["scattering-data-file"].defaulted()) {
-        Info::Inst()->write(string("Overwrite: scattering.data.file=")+vm["scattering-data-file"].as<string>());
-        Params::Inst()->scattering.data.file = vm["scattering-data-file"].as<string>();        
+    if (!vm["scattering-signal-file"].defaulted()) {
+        Info::Inst()->write(string("Overwrite: scattering.signal.file=")+vm["scattering-signal-file"].as<string>());
+        Params::Inst()->scattering.signal.file = vm["scattering-signal-file"].as<string>();        
     }
 }
 
@@ -184,12 +199,16 @@ int main(int argc,char* argv[]) {
     po::variables_map vm;    
     if (world.rank()==0) {
         print_title();
+        print_description();
         initstatus = init_commandline(argc,argv,vm);
     }
-    
-    if (world.rank()==0) print_initialization();
 
-    
+
+    broadcast(world,initstatus,0);            	
+	// if something went wrong during initialization, exit now.
+    if (!initstatus) return 1;
+
+    if (world.rank()==0) print_initialization();
 	if (world.rank()==0) {
 	    
 		try {
@@ -280,7 +299,7 @@ int main(int argc,char* argv[]) {
     // prepare services
     if (scatter_comm.rank()==0) {
         if (world.rank()==0) Info::Inst()->write("Initializing data file service...");	
-        p_hdf5writer = new HDF5WriterService(io_service, Params::Inst()->scattering.data.file,Params::Inst()->scattering.qvectors,sample.coordinate_sets.size());
+        p_hdf5writer = new HDF5WriterService(io_service, Params::Inst()->scattering.signal.file,Params::Inst()->scattering.qvectors,sample.coordinate_sets.size());
         if (world.rank()==0) Info::Inst()->write("Initializing monitor service...");	
         p_monitorservice = new MonitorService(io_service, 0, scatter_comm.size());        
     }

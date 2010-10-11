@@ -22,14 +22,6 @@
 #include <vector>
 
 // special library headers
-#include <boost/asio.hpp>
-#include <boost/date_time.hpp>
-#include <boost/regex.hpp>
-#include <boost/accumulators/accumulators.hpp>
-#include <boost/accumulators/statistics.hpp>
-#include <boost/archive/text_oarchive.hpp>
-#include <boost/archive/text_iarchive.hpp>
-#include <boost/exception/all.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/mpi.hpp>
 #include <boost/math/special_functions.hpp>
@@ -71,8 +63,8 @@ void print_description() {
     	Info::Inst()->write("......................D.E.S.C.R.I.P.T.I.O.N......................");
     	Info::Inst()->write(".................................................................");	
 
-    	Info::Inst()->write("This binary generates a trajectory index to allow random access");	
-    	Info::Inst()->write("to frames within a molecular dynamics trajectory. ");
+    	Info::Inst()->write("This binary generates a default configuration file as input for");	
+    	Info::Inst()->write("sassena");
     	Info::Inst()->write(".................................................................");	
     	
 }
@@ -82,32 +74,31 @@ bool init_commandline(int argc,char** argv,po::variables_map& vm) {
     po::options_description desc("Allowed options");
     desc.add_options()
         ("help", "produce help message")
-        ("trajectory",po::value<string>(),"name of the trajectory file")
-        ("format",po::value<string>(),"format of the trajectory file")
-        ("index",po::value<string>(),"name of the trajectory index file (defaults to trajectory file name with txn extension)")          
+        ("config",po::value<string>()->default_value("scatter.xml"),"name of the configuration file")
     ;
     
     po::store(po::parse_command_line(argc, argv, desc), vm);
     po::notify(vm);
-    
     
     if (vm.find("help")!=vm.end()) {
         cout << desc << endl;
         return false;
     }
     
-    if (vm.find("trajectory")==vm.end()) {
-        Err::Inst()->write("Require name of trajectory file");
-        cout << desc << endl;
-        return false;
+    if (vm["config"].defaulted()) {
+        Info::Inst()->write("No configuration filename specified. Will write to scatter.xml");
     }
-        
-    if (vm.find("format")==vm.end()) {
-        Err::Inst()->write("Require format of trajectory file");
-        cout << desc << endl;
-        return false;
+    if (boost::filesystem::exists(vm["config"].as<string>())) {
+        size_t n=0;
+        boost::filesystem::path fp = vm["config"].as<string>();
+        std::string fn = fp.string() + ".backup-" + boost::lexical_cast<string>(n);
+        while (boost::filesystem::exists(fn)) {
+            fn = fp.string() + ".backup-" + boost::lexical_cast<string>(++n);
+        }
+        Warn::Inst()->write("Moving old configuration file to "+fn);
+        boost::filesystem::rename(fp,fn);
     }
-        
+    
     return true;
 }
 
@@ -136,65 +127,58 @@ int main(int argc,char* argv[]) {
     if (!initstatus) {
         return 0;
     }
-
-//    read_parameters(vm);
-
     
-    using namespace boost::filesystem;
-    path trjpath(vm["trajectory"].as<string>());
-    if (!exists(trjpath)) {
-        Err::Inst()->write(string("No trajectory found with that path: ")+trjpath.filename());
-        return -1;
-    }
-
-    boost::filesystem::path ipath;
-    if (vm.find("index")==vm.end()) {
-        std::string tf = vm["trajectory"].as<string>();
-        boost::filesystem::path fpath = tf;
-    	string fdir;
-        if (fpath.parent_path().is_complete()) {
-    		fdir = fpath.parent_path().string();             
-        } else {
-    		fdir = (initial_path() / fpath).string();    	    
-    	}
-		ipath = (path(fdir).parent_path() / fpath.stem() ).string()+ string(".tnx");
-        Warn::Inst()->write("Index file name not specified. Defaulting to filename with tnx extension:");
-        Warn::Inst()->write(ipath.string());
-    } else {
-        ipath = vm["index"].as<string>();        
-    }
-
-    if (exists(ipath)) {
-        int n=0;
-        while (boost::filesystem::exists(ipath.filename()+".backup-"+boost::lexical_cast<string>(n))) n++;
-        path newidxpath = ipath.filename()+".backup-"+boost::lexical_cast<string>(n);
-        Warn::Inst()->write(string("Moving old index file to ")+newidxpath.filename());        
-        boost::filesystem::rename(ipath,newidxpath);
-    }
-
-    std::string format = vm["format"].as<string>();
-
-    Frameset* p_fs;
-    if (format=="dcd") {
-        p_fs = new DCDFrameset(trjpath.string(),0);
-    } else if (format=="pdb") {
-        p_fs = new PDBFrameset(trjpath.string(),0);        
-    } else if (format=="xtc") {
-        p_fs = new XTCFrameset(trjpath.string(),0);                
-    } else if (format=="trr") {
-        p_fs = new TRRFrameset(trjpath.string(),0);                        
-    } else {
-        Err::Inst()->write(string("Format not recognized: ")+format);
-        throw;
-    }
-    Info::Inst()->write("generating index ...");
-    p_fs->generate_index();
-    Info::Inst()->write(string("writing index to: ")+ipath.string());
-    p_fs->save_index(ipath.string());
+//    Params::Inst()->write_default(vm["config"].as<string>());
+    std::ofstream conf(vm["config"].as<string>().c_str());
     
-    if (p_fs!=NULL) delete p_fs;
+    conf << "<root>" << endl;
+    conf << " <sample>" << endl;
+    conf << "  <structure>" << endl;
+    conf << "   <file>sample.pdb</file>" << endl;    
+    conf << "   <format>pdb</format>" << endl;    
+    conf << "  </structure>" << endl;
+    conf << "  <framesets>" << endl;
+    conf << "   <frameset>" << endl;
+    conf << "    <file>sample.dcd</file>" << endl;    
+    conf << "    <format>dcd</format>" << endl;                
+    conf << "   </frameset>" << endl;
+    conf << "  </framesets>" << endl;    
+    conf << " </sample>" << endl;
     
-    Info::Inst()->write(string("Done."));
+    conf << " <scattering>" << endl;
+    conf << "  <type>all</type>" << endl;
+    conf << "  <target>system</target>" << endl;
+    conf << "  <vectors>" << endl;
+    conf << "   <type>scan</type>" << endl;
+    conf << "   <scan>" << endl;
+    conf << "    <from>0.1</from>" << endl;
+    conf << "    <to>1.5</to>" << endl;    
+    conf << "    <points>10</points>" << endl;    
+    conf << "    <basevector>" << endl;    
+    conf << "     <x>1.0</x>" << endl;    
+    conf << "     <y>0.0</y>" << endl;    
+    conf << "     <z>0.0</z>" << endl;    
+    conf << "    </basevector>" << endl;    
+    conf << "   </scan>" << endl;    
+    conf << "  </vectors>" << endl;
+    conf << "  <average>" << endl;
+    conf << "   <orientation>" << endl;
+    conf << "    <type>vectors</type>" << endl;
+    conf << "    <vectors>" << endl;
+    conf << "     <type>sphere</type>" << endl;
+    conf << "     <algorithm>boost_uniform_on_sphere</algorithm>" << endl;
+    conf << "     <resolution>50</resolution>" << endl;
+    conf << "    </vectors>" << endl;
+    conf << "   </orientation>" << endl;        
+    conf << "  </average>" << endl;
+    conf << " </scattering>" << endl;
+    
+    conf << "</root>" << endl;
+    
+    conf.close();
+    Info::Inst()->write(string("Configuration file written to ")+vm["config"].as<string>());
+    Info::Inst()->write("Have a nice day!");
+    
     
 	return 0;
 }

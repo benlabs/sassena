@@ -53,6 +53,7 @@ AbstractVectorsScatterDevice::AbstractVectorsScatterDevice(
     current_subvector_(0)
 {
 	NM = Params::Inst()->scattering.average.orientation.vectors.size();
+    if (NM==0) NM=1;
 	sample_.coordinate_sets.set_representation(CARTESIAN);		
 }
 
@@ -60,7 +61,8 @@ AbstractVectorsScatterDevice::AbstractVectorsScatterDevice(
 void AbstractVectorsScatterDevice::print_pre_stage_info() {
     if (allcomm_.rank()==0) {
         Info::Inst()->write("Staging data...");
-    }    
+        Info::Inst()->write(("limits.data.servers=")+boost::lexical_cast<string>(Params::Inst()->limits.data.servers));
+    }
 }
 
 void AbstractVectorsScatterDevice::print_post_stage_info() { }

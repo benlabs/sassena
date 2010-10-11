@@ -533,11 +533,22 @@ void XTCFrameset::generate_index() {
 	matrix box; 	
 
 	size_t cfn=0;
+	
 	while (true) {
 		std::ios::streamoff filepos = ftell( fp );
 		int retval = read_xtc(p_xdrfile,number_of_atoms,&step,&t,box,coords,&prec);
 		if (retval != exdrOK) break;
 		frame_byte_offsets.push_back(filepos);
+		if (cfn<10) {
+            Info::Inst()->write(string("Reading frame ")+boost::lexical_cast<string>(cfn));
+		} else if (cfn<100) {
+		    if ((cfn%10)==0) {
+                Info::Inst()->write(string("Reading frame ")+boost::lexical_cast<string>(cfn));		        
+		    }
+		} else if ((cfn%100)==0) {
+            Info::Inst()->write(string("Reading frame ")+boost::lexical_cast<string>(cfn));		        		    
+		}
+		
 		cfn++;		
 	}
 	
@@ -638,6 +649,16 @@ void TRRFrameset::generate_index() {
 		int retval = read_trr(p_xdrfile,number_of_atoms,&step,&t,&lambda,box,coords,NULL,NULL);
 		if (retval != exdrOK) break;
 		frame_byte_offsets.push_back(filepos);
+		if (cfn<10) {
+            Info::Inst()->write(string("Reading frame ")+boost::lexical_cast<string>(cfn));
+		} else if (cfn<100) {
+		    if ((cfn%10)==0) {
+                Info::Inst()->write(string("Reading frame ")+boost::lexical_cast<string>(cfn));		        
+		    }
+		} else if ((cfn%100)==0) {
+            Info::Inst()->write(string("Reading frame ")+boost::lexical_cast<string>(cfn));		        		    
+		}
+		
 		cfn++;		
 	}
 	

@@ -188,6 +188,48 @@ public:
 	CartesianCoor3D translation(size_t timepos);
 };
 
+
+
+class LocalBrownianMotionWalker : public MotionWalker {
+protected:
+    friend class boost::serialization::access;	
+	template<class Archive> void serialize(Archive & ar, const unsigned int version)
+    {
+        translations.clear();
+        ar & boost::serialization::base_object<MotionWalker, LocalBrownianMotionWalker>(*this);
+        ar & m_displace;
+        ar & m_seed;
+        ar & m_radius;
+        ar & m_sampling;
+        ar & m_direction;        
+    }
+	std::map<size_t,CartesianCoor3D> translations;
+
+    bool m_init; // init flag 
+    
+    double m_radius;
+	double m_displace;
+	long m_seed;
+    size_t m_sampling;
+	
+	CartesianCoor3D m_direction;
+    boost::variate_generator<boost::mt19937, boost::normal_distribution<double> >* p_mynormaldistribution;
+    boost::variate_generator<boost::mt19937, boost::uniform_on_sphere<double> >* p_myspheredistribution;
+	
+    void init();
+    
+	void generate(size_t timepos);
+
+    LocalBrownianMotionWalker() : m_init(true) {}	
+public:
+	
+	LocalBrownianMotionWalker(double radius, double displace,long seed,long sampling,  CartesianCoor3D direction);
+	~LocalBrownianMotionWalker();
+	
+	
+	CartesianCoor3D translation(size_t timepos);
+};
+
 #endif
 
 // end of file

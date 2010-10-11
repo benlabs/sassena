@@ -19,6 +19,7 @@
 
 // standard header
 #include <complex>
+#include <cstring>
 #include <sstream>
 #include <vector>
 

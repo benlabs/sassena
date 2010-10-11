@@ -28,9 +28,6 @@
 #include <boost/mpi.hpp>
 
 // other headers
-#include "sample/atomselection.hpp"
-#include "math/coor3d.hpp"
-#include "sample/sample.hpp"
 #include "report/timer.hpp"
 
 using namespace boost::accumulators;

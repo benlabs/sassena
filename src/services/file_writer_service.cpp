@@ -69,7 +69,7 @@ std::vector<size_t> HDF5WriterService::init_new(const std::vector<CartesianCoor3
     hid_t qvector_dapl = H5Pcreate(H5P_DATASET_ACCESS);
     H5Pset_chunk( qvector_dcpl, 2, cdims1);
     H5Pset_fill_value( qvector_dcpl, H5T_NATIVE_DOUBLE, &fill_val_double);
-    if (Params::Inst()->limits.data.alloc_early) {
+    if (Params::Inst()->limits.signal.alloc_early) {
         H5Pset_alloc_time(qvector_dcpl,H5D_ALLOC_TIME_EARLY);
     } else {
         H5Pset_alloc_time(qvector_dcpl,H5D_ALLOC_TIME_DEFAULT);
@@ -82,67 +82,98 @@ std::vector<size_t> HDF5WriterService::init_new(const std::vector<CartesianCoor3
     H5Sclose(dspace_qv);
     H5Dclose(ds_qv);
 
-    // fqt
+    if (Params::Inst()->scattering.signal.fqt) {
 
-    hsize_t dims2[3],maxdims2[3],cdims2[3];
-    dims2[0]=qvectors.size();
-    dims2[1]=nf;
-    dims2[2]=2;
-    maxdims2[0]=H5S_UNLIMITED;
-    maxdims2[1]=nf;
-    maxdims2[2]=2;
-    cdims2[0]=1;
-    cdims2[1]= ((nf>0) && (nf<10000)) ? nf : 10000;
-    cdims2[2]=2;
-    hid_t fqt_lcpl = H5Pcreate(H5P_LINK_CREATE);
-    hid_t fqt_dcpl = H5Pcreate(H5P_DATASET_CREATE);
-    hid_t fqt_dapl = H5Pcreate(H5P_DATASET_ACCESS);
-    H5Pset_chunk( fqt_dcpl, 3, cdims2);
-    H5Pset_fill_value( fqt_dcpl, H5T_NATIVE_DOUBLE, &fill_val_double);
-    if (Params::Inst()->limits.data.alloc_early) {
-        H5Pset_alloc_time(fqt_dcpl,H5D_ALLOC_TIME_EARLY);
-    } else {
-        H5Pset_alloc_time(fqt_dcpl,H5D_ALLOC_TIME_DEFAULT);
+        hsize_t dims2[3],maxdims2[3],cdims2[3];
+        dims2[0]=qvectors.size();
+        dims2[1]=nf;
+        dims2[2]=2;
+        maxdims2[0]=H5S_UNLIMITED;
+        maxdims2[1]=nf;
+        maxdims2[2]=2;
+        cdims2[0]=1;
+        cdims2[1]= ((nf>0) && (nf<10000)) ? nf : 10000;
+        cdims2[2]=2;
+        hid_t fqt_lcpl = H5Pcreate(H5P_LINK_CREATE);
+        hid_t fqt_dcpl = H5Pcreate(H5P_DATASET_CREATE);
+        hid_t fqt_dapl = H5Pcreate(H5P_DATASET_ACCESS);
+        H5Pset_chunk( fqt_dcpl, 3, cdims2);
+        H5Pset_fill_value( fqt_dcpl, H5T_NATIVE_DOUBLE, &fill_val_double);
+        if (Params::Inst()->limits.signal.alloc_early) {
+            H5Pset_alloc_time(fqt_dcpl,H5D_ALLOC_TIME_EARLY);
+        } else {
+            H5Pset_alloc_time(fqt_dcpl,H5D_ALLOC_TIME_DEFAULT);
+        }
+
+
+        hid_t dspace_fqt = H5Screate_simple(3, dims2, maxdims2); 
+        hid_t ds_fqt = H5Dcreate(h5file, "fqt", H5T_NATIVE_DOUBLE, dspace_fqt, fqt_lcpl,fqt_dcpl,fqt_dapl);
+        H5Pclose(fqt_lcpl);
+        H5Pclose(fqt_dcpl);
+        H5Pclose(fqt_dapl);
+        H5Sclose(dspace_fqt);
+        H5Dclose(ds_fqt);
+
     }
-        
 
-    hid_t dspace_fqt = H5Screate_simple(3, dims2, maxdims2); 
-    hid_t ds_fqt = H5Dcreate(h5file, "fqt", H5T_NATIVE_DOUBLE, dspace_fqt, fqt_lcpl,fqt_dcpl,fqt_dapl);
-    H5Pclose(fqt_lcpl);
-    H5Pclose(fqt_dcpl);
-    H5Pclose(fqt_dapl);
-    H5Sclose(dspace_fqt);
-    H5Dclose(ds_fqt);
-    
-    // fq
-    
-    
-    hsize_t dims_fq[2],maxdims_fq[2],cdims_fq[2];
-    dims_fq[0]=qvectors.size();
-    dims_fq[1]=2;
-    maxdims_fq[0]=H5S_UNLIMITED;
-    maxdims_fq[1]=2;
-    cdims_fq[0]= 10000;
-    cdims_fq[1]=2;
-    hid_t fq_lcpl = H5Pcreate(H5P_LINK_CREATE);
-    hid_t fq_dcpl = H5Pcreate(H5P_DATASET_CREATE);
-    hid_t fq_dapl = H5Pcreate(H5P_DATASET_ACCESS);
-    H5Pset_chunk( fq_dcpl, 2, cdims_fq);
-    H5Pset_fill_value( fq_dcpl, H5T_NATIVE_DOUBLE, &fill_val_double);
-    if (Params::Inst()->limits.data.alloc_early) {
-        H5Pset_alloc_time(fq_dcpl,H5D_ALLOC_TIME_EARLY);
-    } else {
-        H5Pset_alloc_time(fq_dcpl,H5D_ALLOC_TIME_DEFAULT);
+    if (Params::Inst()->scattering.signal.fq) {
+
+        hsize_t dims_fq[2],maxdims_fq[2],cdims_fq[2];
+        dims_fq[0]=qvectors.size();
+        dims_fq[1]=2;
+        maxdims_fq[0]=H5S_UNLIMITED;
+        maxdims_fq[1]=2;
+        cdims_fq[0]= 10000;
+        cdims_fq[1]=2;
+        hid_t fq_lcpl = H5Pcreate(H5P_LINK_CREATE);
+        hid_t fq_dcpl = H5Pcreate(H5P_DATASET_CREATE);
+        hid_t fq_dapl = H5Pcreate(H5P_DATASET_ACCESS);
+        H5Pset_chunk( fq_dcpl, 2, cdims_fq);
+        H5Pset_fill_value( fq_dcpl, H5T_NATIVE_DOUBLE, &fill_val_double);
+        if (Params::Inst()->limits.signal.alloc_early) {
+            H5Pset_alloc_time(fq_dcpl,H5D_ALLOC_TIME_EARLY);
+        } else {
+            H5Pset_alloc_time(fq_dcpl,H5D_ALLOC_TIME_DEFAULT);
+        }
+        hid_t dspace_fq = H5Screate_simple(2, dims_fq, maxdims_fq); 
+        hid_t ds_fq = H5Dcreate(h5file, "fq", H5T_NATIVE_DOUBLE, dspace_fq, fq_lcpl,fq_dcpl,fq_dapl);
+        H5Pclose(fq_lcpl);
+        H5Pclose(fq_dcpl);
+        H5Pclose(fq_dapl);
+        H5Sclose(dspace_fq);
+        H5Dclose(ds_fq);
+
     }
-    hid_t dspace_fq = H5Screate_simple(2, dims_fq, maxdims_fq); 
-    hid_t ds_fq = H5Dcreate(h5file, "fq", H5T_NATIVE_DOUBLE, dspace_fq, fq_lcpl,fq_dcpl,fq_dapl);
-    H5Pclose(fq_lcpl);
-    H5Pclose(fq_dcpl);
-    H5Pclose(fq_dapl);
-    H5Sclose(dspace_fq);
-    H5Dclose(ds_fq);
-
     
+    
+    if (Params::Inst()->scattering.signal.fq2) {
+
+        hsize_t dims_fq[2],maxdims_fq[2],cdims_fq[2];
+        dims_fq[0]=qvectors.size();
+        dims_fq[1]=2;
+        maxdims_fq[0]=H5S_UNLIMITED;
+        maxdims_fq[1]=2;
+        cdims_fq[0]= 10000;
+        cdims_fq[1]=2;
+        hid_t fq_lcpl = H5Pcreate(H5P_LINK_CREATE);
+        hid_t fq_dcpl = H5Pcreate(H5P_DATASET_CREATE);
+        hid_t fq_dapl = H5Pcreate(H5P_DATASET_ACCESS);
+        H5Pset_chunk( fq_dcpl, 2, cdims_fq);
+        H5Pset_fill_value( fq_dcpl, H5T_NATIVE_DOUBLE, &fill_val_double);
+        if (Params::Inst()->limits.signal.alloc_early) {
+            H5Pset_alloc_time(fq_dcpl,H5D_ALLOC_TIME_EARLY);
+        } else {
+            H5Pset_alloc_time(fq_dcpl,H5D_ALLOC_TIME_DEFAULT);
+        }
+        hid_t dspace_fq = H5Screate_simple(2, dims_fq, maxdims_fq); 
+        hid_t ds_fq = H5Dcreate(h5file, "fq2", H5T_NATIVE_DOUBLE, dspace_fq, fq_lcpl,fq_dcpl,fq_dapl);
+        H5Pclose(fq_lcpl);
+        H5Pclose(fq_dcpl);
+        H5Pclose(fq_dapl);
+        H5Sclose(dspace_fq);
+        H5Dclose(ds_fq);
+
+    }
     // checkpoint
     
     hsize_t dims3[1],maxdims3[1],cdims3[1];
@@ -154,7 +185,7 @@ std::vector<size_t> HDF5WriterService::init_new(const std::vector<CartesianCoor3
     hid_t cp_dapl = H5Pcreate(H5P_DATASET_ACCESS);
     H5Pset_chunk( cp_dcpl, 1, cdims3);
     H5Pset_fill_value( cp_dcpl, H5T_NATIVE_INT, &fill_val_int);
-    if (Params::Inst()->limits.data.alloc_early) {
+    if (Params::Inst()->limits.signal.alloc_early) {
         H5Pset_alloc_time(cp_dcpl,H5D_ALLOC_TIME_EARLY);
     } else {
         H5Pset_alloc_time(cp_dcpl,H5D_ALLOC_TIME_DEFAULT);
@@ -424,13 +455,15 @@ std::vector<CartesianCoor3D> HDF5WriterService::get_qvectors(const std::vector<s
 void HDF5WriterService::open() {
     m_hdf5_handle = H5Fopen(m_filename.c_str(),H5F_ACC_RDWR,H5P_DEFAULT);
     m_ds_fqt = H5Dopen(m_hdf5_handle,"fqt",H5P_DEFAULT);
-    m_ds_fq = H5Dopen(m_hdf5_handle,"fq",H5P_DEFAULT);    
+    m_ds_fq = H5Dopen(m_hdf5_handle,"fq",H5P_DEFAULT);  
+    if (Params::Inst()->scattering.signal.fq2) m_ds_fq2 = H5Dopen(m_hdf5_handle,"fq2",H5P_DEFAULT);  
     m_ds_checkpoint = H5Dopen(m_hdf5_handle,"checkpoint",H5P_DEFAULT);
 }
 
 void HDF5WriterService::close() {
     H5Dclose(m_ds_fqt);
     H5Dclose(m_ds_fq);    
+    if (Params::Inst()->scattering.signal.fq2) H5Dclose(m_ds_fq2);  
     H5Dclose(m_ds_checkpoint);
     H5Fclose(m_hdf5_handle);
 }
@@ -477,6 +510,30 @@ void HDF5WriterService::write(const  size_t qindex, const std::vector<complex<do
 
     H5Sclose(dspace_fq1);
 
+    if (Params::Inst()->scattering.signal.fq2) {
+
+        hid_t dspace_fq2 = H5Dget_space(m_ds_fq2);    
+        // fq
+        
+        hsize_t fq2_start[2];  // Start of hyperslab
+        hsize_t fq2_count[2];  // Block count
+        fq2_start[0]=qindex;
+        fq2_start[1]=0;
+        fq2_count[0]=1;
+        fq2_count[1]=2;
+        
+        H5Sselect_hyperslab(dspace_fq2,H5S_SELECT_SET,fq2_start,NULL,fq2_count,NULL);
+        hsize_t dfq12[2];
+        dfq12[0]=1;dfq12[1]=2;
+        hid_t dspace_fq12 = H5Screate_simple(2, dfq12, NULL);         
+        std::complex<double> fq2 = fq*conj(fq);
+        double* p_datafq2 =&(fq2.real());
+        H5Dwrite(m_ds_fq2,H5T_NATIVE_DOUBLE,dspace_fq12,dspace_fq2,H5P_DEFAULT,p_datafq2);
+        
+        H5Sclose(dspace_fq12);
+        H5Sclose(dspace_fq2);
+
+    }
 
     int ok =1 ;	    		                
                        
@@ -546,17 +603,20 @@ void HDF5WriterService::listener() {
 
             for(size_t i=0;i<count;i++) {
                 boost::asio::read(socket,boost::asio::buffer(&qindex,sizeof(size_t))); 
-                boost::asio::read(socket,boost::asio::buffer(&size,sizeof(size_t))); 
 
-                std::vector<complex<double> >* p_data = new std::vector<complex<double> >(size/2);
-                double* p_doubledata = (double*) &((*p_data)[0]);
-                std::complex<double> fq;
-                double* p_fq = (double*) &fq;  
-                boost::asio::read(socket,boost::asio::buffer(p_doubledata,sizeof(double)*size)); 
-                boost::asio::read(socket,boost::asio::buffer(p_fq,sizeof(double)*2)); 
-  
-                data_queue_fqt.push(make_pair(qindex,p_data));                
-                data_queue_fq.push(make_pair(qindex,fq));
+                if (Params::Inst()->scattering.signal.fqt) {
+                    boost::asio::read(socket,boost::asio::buffer(&size,sizeof(size_t))); 
+                    std::vector<complex<double> >* p_data = new std::vector<complex<double> >(size/2);
+                    double* p_doubledata = (double*) &((*p_data)[0]);
+                    boost::asio::read(socket,boost::asio::buffer(p_doubledata,sizeof(double)*size)); 
+                    data_queue_fqt.push(make_pair(qindex,p_data));                
+                }
+                if (Params::Inst()->scattering.signal.fq) {
+                    std::complex<double> fq;
+                    double* p_fq = (double*) &fq;  
+                    boost::asio::read(socket,boost::asio::buffer(p_fq,sizeof(double)*2)); 
+                    data_queue_fq.push(make_pair(qindex,fq));
+                }
             }
         }        
         socket.close();
@@ -685,12 +745,16 @@ void HDF5WriterClient::flush() {
 
             size_t size = 2*p_data->size();
                         
-            boost::asio::write(socket,boost::asio::buffer(&qindex,sizeof(size_t))); 
-            boost::asio::write(socket,boost::asio::buffer(&size,sizeof(size_t))); 
-            double* p_doubledata = (double*) &((*p_data)[0]);
-            boost::asio::write(socket,boost::asio::buffer(p_doubledata,sizeof(double)*size)); 
-            double* p_doubledata2 = (double*) &(fq);
-            boost::asio::write(socket,boost::asio::buffer(p_doubledata2,sizeof(double)*2)); 
+            boost::asio::write(socket,boost::asio::buffer(&qindex,sizeof(size_t)));
+            if (Params::Inst()->scattering.signal.fqt) {
+                boost::asio::write(socket,boost::asio::buffer(&size,sizeof(size_t))); 
+                double* p_doubledata = (double*) &((*p_data)[0]);
+                boost::asio::write(socket,boost::asio::buffer(p_doubledata,sizeof(double)*size));                 
+            } 
+            if (Params::Inst()->scattering.signal.fq) {
+                double* p_doubledata2 = (double*) &(fq);
+                boost::asio::write(socket,boost::asio::buffer(p_doubledata2,sizeof(double)*2));                 
+            }
                         
             delete p_data;
         }

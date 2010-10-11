@@ -50,6 +50,7 @@ protected:
         ar.register_type(static_cast<FixedMotionWalker*>(NULL));
         ar.register_type(static_cast<OscillationMotionWalker*>(NULL));
         ar.register_type(static_cast<BrownianMotionWalker*>(NULL));
+        ar.register_type(static_cast<LocalBrownianMotionWalker*>(NULL));
         
         ar & m_prealignmentvectors;
         ar & m_postalignmentvectors;

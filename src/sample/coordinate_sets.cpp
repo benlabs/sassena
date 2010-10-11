@@ -82,6 +82,9 @@ void CoordinateSets::init() {
 			else if (motion.type=="brownian") {
 				p_mw = new BrownianMotionWalker(motion.displace,motion.seed,motion.sampling, motion.direction);				
 			}
+			else if (motion.type=="localbrownian") {
+				p_mw = new LocalBrownianMotionWalker(motion.radius,motion.displace,motion.seed,motion.sampling, motion.direction);							    
+			}
 			else if (motion.type=="none") {
                 p_mw = NULL;
 			}

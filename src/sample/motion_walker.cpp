@@ -88,6 +88,84 @@ void BrownianMotionWalker::generate(size_t timepos) {
 	}
 }
 
+// Localized Brownian Motion
+
+LocalBrownianMotionWalker::LocalBrownianMotionWalker(double radius, double displace,long seed,long sampling, CartesianCoor3D direction): m_init(true) {
+	m_seed = seed;
+    m_radius = radius;
+    m_sampling = sampling;
+	m_direction = direction;
+	m_displace = displace;
+	
+	if (m_displace>m_radius) {
+        Err::Inst()->write("radius size for local brownian motion smaller than displacement!");
+        throw;
+    }
+}
+
+void LocalBrownianMotionWalker::init() {
+	boost::mt19937 brownian_displace_rng; // that's my random number generator
+	boost::mt19937 spherical_rng; // that's my random number generator
+	brownian_displace_rng.seed(m_seed);
+    spherical_rng.seed(m_seed+1);
+
+	boost::normal_distribution<double> gauss; // that's my distribution
+	boost::uniform_on_sphere<double> sphere(3); // that's my distribution
+
+	p_mynormaldistribution = new boost::variate_generator<boost::mt19937, boost::normal_distribution<double> >(brownian_displace_rng,gauss);
+    p_myspheredistribution = new boost::variate_generator<boost::mt19937, boost::uniform_on_sphere<double> >(spherical_rng,sphere);
+	
+    m_init = false;
+}
+
+LocalBrownianMotionWalker::~LocalBrownianMotionWalker() {
+    if (!m_init) {
+    	delete p_myspheredistribution;
+        delete p_mynormaldistribution;        
+    }
+}
+
+CartesianCoor3D LocalBrownianMotionWalker::translation(size_t timepos) {
+    
+	if (translations.find(timepos)==translations.end()) {
+		generate(timepos);
+	}
+	return translations[timepos];
+}
+
+
+void LocalBrownianMotionWalker::generate(size_t timepos) {
+    if (m_init) init();    
+	size_t oldtimepos = translations.size();
+	if (timepos<oldtimepos) return; // don't generate anything if we already have it
+
+	CartesianCoor3D oldtranslation(0,0,0);
+	if (oldtimepos>0) {
+		oldtranslation = translations[oldtimepos-1];		
+	}
+    
+	for(size_t ti = oldtimepos; ti <= timepos; ++ti)
+	{
+        CartesianCoor3D newtrans;
+        while(true) {
+            double normran = (*p_mynormaldistribution)();
+            vector<double> sphereran = (*p_myspheredistribution)();
+    	    for(size_t i = 0; i < (m_sampling-1); ++i)
+            {
+                (*p_mynormaldistribution)();
+                (*p_myspheredistribution)();
+            }
+            double displacement = m_displace * normran; 
+    		newtrans = oldtranslation + displacement*CartesianCoor3D(sphereran[0],sphereran[1],sphereran[2]) ;
+            if (newtrans.length()>m_radius) continue; else break;
+        }
+        translations[ti] = newtrans;
+        oldtranslation = newtrans;
+	}
+}
+
+// Localized Brownian Motion
+
 
 // random walk 
 
