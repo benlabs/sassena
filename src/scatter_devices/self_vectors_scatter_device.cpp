@@ -37,7 +37,7 @@ SelfVectorsScatterDevice::SelfVectorsScatterDevice(
     boost::mpi::communicator allcomm,
     boost::mpi::communicator partitioncomm,
     Sample& sample,
-    std::vector<std::pair<size_t,CartesianCoor3D> > vector_index,
+    std::vector<CartesianCoor3D> vectors,
     std::vector<size_t> assignment,
     boost::asio::ip::tcp::endpoint fileservice_endpoint,
 	boost::asio::ip::tcp::endpoint monitorservice_endpoint
@@ -46,17 +46,15 @@ SelfVectorsScatterDevice::SelfVectorsScatterDevice(
         allcomm,
         partitioncomm,
         sample,
-        vector_index,
+        vectors,
         assignment,
         fileservice_endpoint,
         monitorservice_endpoint
     )
 {
-    at2_.resize(NF,0);
-    fftw_complex* wspace= (fftw_complex*) fftw_malloc(sizeof(fftw_complex)*2*NF);
+    fftw_complex* wspace= NULL;
     fftw_planF_ = fftw_plan_dft_1d(2*NF, wspace, wspace, FFTW_FORWARD, FFTW_ESTIMATE);
     fftw_planB_ = fftw_plan_dft_1d(2*NF, wspace, wspace, FFTW_BACKWARD, FFTW_ESTIMATE);    
-    fftw_free(wspace);
 }
 
 void SelfVectorsScatterDevice::stage_data() {
@@ -172,12 +170,13 @@ void SelfVectorsScatterDevice::worker2() {
 }
 
 void SelfVectorsScatterDevice::compute_serial() {
-	CartesianCoor3D q=vector_index_[current_vector_].second;
+	CartesianCoor3D q=vectors_[current_vector_];
     init_subvectors(q);
 
 	scatterfactors.update(q); // scatter factors only dependent on length of q, hence we can do it once before the loop
 
     current_subvector_=0;
+    at2_.resize(NF,0);
     fill_n(at2_.begin(),NF,0);
 
     for(size_t i = 0; i < NM; ++i)
@@ -193,8 +192,6 @@ void SelfVectorsScatterDevice::compute_serial() {
         p_monitor_->update(allcomm_.rank(),progress());                                  
     }
 
-    
-    fill_n(atfinal_.begin(),NF,0);
 
     double factor = 1.0/subvector_index_.size();    
     if (NN>1) {
@@ -213,7 +210,7 @@ void SelfVectorsScatterDevice::compute_serial() {
 }
 
 void SelfVectorsScatterDevice::compute_threaded() {
-    CartesianCoor3D q=vector_index_[current_vector_].second;
+    CartesianCoor3D q=vectors_[current_vector_];
 
     init_subvectors(q);
 
@@ -224,6 +221,7 @@ void SelfVectorsScatterDevice::compute_threaded() {
     worker2_counter = 0;
     worker2_done = false;
     boost::mutex::scoped_lock w2l(worker2_mutex);
+    at2_.resize(NF,0);
     fill_n(at2_.begin(),NF,0);
 
     for(size_t i = 0; i < NM; ++i) {
@@ -234,9 +232,6 @@ void SelfVectorsScatterDevice::compute_threaded() {
     }
     while (!worker2_done)  worker2_notifier.wait(w2l);
 
-
-    
-    fill_n(atfinal_.begin(),NF,0);
     
     double factor = 1.0/subvector_index_.size();
     if (NN>1) {

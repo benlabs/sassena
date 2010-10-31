@@ -82,11 +82,9 @@ void Params::read_xml(std::string filename) {
         		double sv = 1.0;
                 string sn = "beta";
                 string ff = "pdb";
-                string fn = "selection";
-                string sname = string("selection_")+boost::lexical_cast<string>(i);
-        		if (xmli.exists("./name")) {
-        			sname = xmli.get_value<string>("./name") ;
-        		}
+                string fn = "selection.pdb";
+                string sname = string("_")+boost::lexical_cast<string>(i);
+        		if (xmli.exists("./name")) sname = xmli.get_value<string>("./name") ;
         		if (xmli.exists("./file")) {		
         			fn = get_filepath( xmli.get_value<string>("./file") );
         		}
@@ -101,17 +99,19 @@ void Params::read_xml(std::string filename) {
         		}
         		sample.groups[sname] = SampleGroupParameters(sname,fn,ff,sn,sv);
         	}
-	    }	    
+	    }
 	    if (xmli.exists("//sample/framesets")) {
         	size_t def_first=0;	
         	size_t def_last=0;	
         	bool def_last_set=false; 
         	size_t def_stride = 1;
             size_t def_clones = 1;
+            string def_format = "dcd";
         	if (xmli.exists("//sample/framesets/first"))   def_first  = xmli.get_value<size_t>("//sample/framesets/first");
         	if (xmli.exists("//sample/framesets/last"))  { def_last   = xmli.get_value<size_t>("//sample/framesets/last"); def_last_set = true; }
         	if (xmli.exists("//sample/framesets/stride"))  def_stride = xmli.get_value<size_t>("//sample/framesets/stride");
         	if (xmli.exists("//sample/framesets/clones"))  def_clones = xmli.get_value<size_t>("//sample/framesets/clones");
+        	if (xmli.exists("//sample/framesets/format"))   def_first  = xmli.get_value<size_t>("//sample/framesets/format");
 
         	// read in frame information
 
@@ -121,11 +121,12 @@ void Params::read_xml(std::string filename) {
         		xmli.set_current(framesets[i]);
         		SampleFramesetParameters fset;	
         		fset.first = def_first;	fset.last = def_last; fset.last_set = def_last_set; fset.stride = def_stride;
+                fset.type = def_format;
                 fset.clones = def_clones;
         		fset.filename = get_filepath(xmli.get_value<string>("./file"));
                 boost::filesystem::path index_path = get_filepath(xmli.get_value<string>("./file"));
                 fset.index = index_path.parent_path().string() +string("/")+ index_path.stem() + (".tnx");
-        		fset.type = xmli.get_value<string>("./format");
+        		if (xmli.exists("./format"))  fset.type = xmli.get_value<string>("./format");
         		if (xmli.exists("./first"))   fset.first  = xmli.get_value<size_t>("./first");
         		if (xmli.exists("./last"))  { fset.last   = xmli.get_value<size_t>("./last"); fset.last_set = true; }
         		if (xmli.exists("./stride"))  fset.stride = xmli.get_value<size_t>("./stride");
@@ -184,16 +185,14 @@ void Params::read_xml(std::string filename) {
     	    	xmli.set_current(alignments[i]);
     	    	SampleAlignmentParameters alignment;	
     	    	alignment.type = "center";	 
-    	    	alignment.selection = "";
+    	    	alignment.selection = "system";
                 alignment.order = "pre";
     	    	if (xmli.exists("./type"))   alignment.type  = xmli.get_value<string>("./type");
-    	    	if (xmli.exists("./selection"))  alignment.selection   = xmli.get_value<string>("./selection");			
+    	    	if (xmli.exists("./selection")) alignment.selection   = xmli.get_value<string>("./selection");
     	    	if (xmli.exists("./order"))  alignment.order   = xmli.get_value<string>("./order");			
 
     	    	sample.alignments.push_back(alignment);
-                string selection_string = "system";
-                if (alignment.selection!="") selection_string = alignment.selection;
-    	    	Info::Inst()->write(string("Adding additional alignment to sample: type=")+alignment.type+string(", selection=")+selection_string+string(", order=")+alignment.order);
+    	    	Info::Inst()->write(string("Adding additional alignment to sample: type=")+alignment.type+string(", selection=")+alignment.selection+string(", order=")+alignment.order);
     	    }
         }	
 	
@@ -220,6 +219,7 @@ void Params::read_xml(std::string filename) {
 
     scattering.signal.file = "signal.h5";
     scattering.signal.fqt = true;
+    scattering.signal.fq0 = true;
     scattering.signal.fq = true;
     scattering.signal.fq2 = true;
 
@@ -261,35 +261,37 @@ void Params::read_xml(std::string filename) {
     	}	
     	// generating qqqvectors, i.e. the spectrum
 	    if (xmli.exists("//scattering/vectors")) {
-	        
-    	    string vt = xmli.get_value<string>("//scattering/vectors/type");
-    	    if (vt=="single") {	
             
+            string vt = "single";
+            if (xmli.exists("//scattering/vectors/type"))  vt = xmli.get_value<string>("//scattering/vectors/type");
+    	    if (vt=="single") {	
     	    	double x = xmli.get_value<double>("//scattering/vectors/single/x");
     	    	double y = xmli.get_value<double>("//scattering/vectors/single/y");
     	    	double z = xmli.get_value<double>("//scattering/vectors/single/z");
             
     	    	scattering.qvectors.push_back(CartesianCoor3D(x,y,z));
     	    }
-    	    else if (vt=="scan") {	
+    	    else if (vt=="scans") {	
+                
+                if (xmli.exists("//scattering/scans")) {
+    	    	    vector<XMLElement> scans = xmli.get("//scattering/vectors/scans/scan");
             
-    	    	vector<XMLElement> scans = xmli.get("//scattering/vectors/scan");
+    	    	    for(size_t i = 0; i < scans.size(); ++i)
+    	    	    {
+    	    		    xmli.set_current(scans[i]);
+    	    		    ScatteringVectorsScanParameters sc;
             
-    	    	for(size_t i = 0; i < scans.size(); ++i)
-    	    	{
-    	    		xmli.set_current(scans[i]);
-    	    		ScatteringVectorsScanParameters sc;
-            
-    	    		sc.basevector.x = xmli.get_value<double>("./basevector/x");
-    	    		sc.basevector.y = xmli.get_value<double>("./basevector/y");
-    	    		sc.basevector.z = xmli.get_value<double>("./basevector/z");
-            
-    	    		sc.from     = xmli.get_value<double>("./from");
-    	    		sc.to       = xmli.get_value<double>("./to");
-    	    		sc.points   = xmli.get_value<size_t>("./points");
-    	    		if (xmli.exists("./exponent")) sc.exponent = xmli.get_value<double>("./exponent");
-    	    		scattering.qvectors.scans.push_back(sc);
-    	    	}
+    	    		    sc.basevector.x = xmli.get_value<double>("./basevector/x");
+    	    		    sc.basevector.y = xmli.get_value<double>("./basevector/y");
+    	    		    sc.basevector.z = xmli.get_value<double>("./basevector/z");
+                        
+    	    		    sc.from     = xmli.get_value<double>("./from");
+    	    		    sc.to       = xmli.get_value<double>("./to");
+    	    		    sc.points   = xmli.get_value<size_t>("./points");
+    	    		    if (xmli.exists("./exponent")) sc.exponent = xmli.get_value<double>("./exponent");
+    	    		    scattering.qvectors.scans.push_back(sc);
+    	    	    }
+	    	    }
             
     	    	scattering.qvectors.create_from_scans();
     	    }
@@ -302,6 +304,11 @@ void Params::read_xml(std::string filename) {
     	    		scattering.qvectors.push_back(CartesianCoor3D(x,y,z));
     	    	}
     	    }
+        }
+        
+        if (scattering.qvectors.size()==0) {
+            Err::Inst()->write("No q vectors generated. Check the scattering.vectors section for errors.");
+            throw;
         }
 
     	if (xmli.exists("//scattering/dsp")) {
@@ -379,6 +386,9 @@ void Params::read_xml(std::string filename) {
 	        if (xmli.exists("//scattering/signal/fqt")) {
         		scattering.signal.file = xmli.get_value<bool>("//scattering/signal/fqt");	        
 	        } 
+	        if (xmli.exists("//scattering/signal/fq0")) {
+        		scattering.signal.fq0 = xmli.get_value<bool>("//scattering/signal/fq0");	        
+	        }
 	        if (xmli.exists("//scattering/signal/fq")) {
         		scattering.signal.fq = xmli.get_value<bool>("//scattering/signal/fq");	        
 	        }

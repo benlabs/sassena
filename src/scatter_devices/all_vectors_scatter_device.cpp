@@ -37,7 +37,7 @@ AllVectorsScatterDevice::AllVectorsScatterDevice(
     boost::mpi::communicator allcomm,
     boost::mpi::communicator partitioncomm,
     Sample& sample,
-    std::vector<std::pair<size_t,CartesianCoor3D> > vector_index,
+    std::vector<CartesianCoor3D> vectors,
     std::vector<size_t> assignment,
     boost::asio::ip::tcp::endpoint fileservice_endpoint,
 	boost::asio::ip::tcp::endpoint monitorservice_endpoint
@@ -46,14 +46,13 @@ AllVectorsScatterDevice::AllVectorsScatterDevice(
         allcomm,
         partitioncomm,
         sample,
-        vector_index,
+        vectors,
         assignment,
         fileservice_endpoint,
         monitorservice_endpoint
     )
 {
-    at3_.resize(NF,0);
-    fftw_complex* wspace= (fftw_complex*) fftw_malloc(sizeof(fftw_complex)*2*NF);
+    fftw_complex* wspace= NULL;
     fftw_planF_ = fftw_plan_dft_1d(2*NF, wspace, wspace, FFTW_FORWARD, FFTW_ESTIMATE);
     fftw_planB_ = fftw_plan_dft_1d(2*NF, wspace, wspace, FFTW_BACKWARD, FFTW_ESTIMATE);
     fftw_free(wspace);
@@ -252,13 +251,14 @@ void AllVectorsScatterDevice::worker3() {
 }
 
 void AllVectorsScatterDevice::compute_serial() {
-	CartesianCoor3D q=vector_index_[current_vector_].second;
+	CartesianCoor3D q=vectors_[current_vector_];
 
     init_subvectors(q);
 
 	scatterfactors.update(q); // scatter factors only dependent on length of q, hence we can do it once before the loop
             
     current_subvector_=0;
+    at3_.resize(NF,0);
     fill_n(at3_.begin(),NF,0);
 
 
@@ -300,7 +300,7 @@ void AllVectorsScatterDevice::compute_serial() {
 
 
 void AllVectorsScatterDevice::compute_threaded() {
-    CartesianCoor3D q=vector_index_[current_vector_].second;
+    CartesianCoor3D q=vectors_[current_vector_];
 
     init_subvectors(q);
 
@@ -311,7 +311,9 @@ void AllVectorsScatterDevice::compute_threaded() {
     worker2_counter = 0;
     worker3_done = false;
     boost::mutex::scoped_lock w3l(worker3_mutex);
+    at3_.resize(NF,0);
     fill_n(at3_.begin(),NF,0);
+
 
     for(size_t i = 0; i < NM; ++i) at0_.push(i);
     while (!worker3_done)  worker3_notifier.wait(w3l);

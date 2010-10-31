@@ -65,7 +65,7 @@ DecompositionParameters::DecompositionParameters(size_t NN,size_t NQ,size_t NAF,
     m_NP = NP;
 
     m_elbytesize = elbytesize;
-    m_nbytesize = m_NAF*m_elbytesize;
+    m_nbytesize = NAFcycles*m_elbytesize;
 }
 
 
@@ -83,6 +83,7 @@ DecompositionPlan::DecompositionPlan(size_t nn,size_t nq,size_t naf,size_t elbyt
     if (npmax>nq) npmax = nq;
         
 	if (Params::Inst()->limits.decomposition.partitions.automatic) {
+	    Info::Inst()->write("Automatic decomposition. Searching for best utilization.");	
         size_t npmax = naf;
         if (naf>nn) npmax = nn;
         for (size_t nnpp=npmax;nnpp>=1;nnpp--) {
@@ -99,19 +100,26 @@ DecompositionPlan::DecompositionPlan(size_t nn,size_t nq,size_t naf,size_t elbyt
                 }
             }
         } 
+        
+        if (p_dp_best == NULL) {
+    		Err::Inst()->write("Automatic decomposition failed to match the necessary requirements.");	
+    		Err::Inst()->write("Either change the partition size manually or change the number of nodes.");
+    		Err::Inst()->write("Beware that size of a partition <= frames / atoms (depends)");
+    		Err::Inst()->write("Limits:");
+    		Err::Inst()->write(string("limits.memory.data=")+boost::lexical_cast<string>(nmaxbytesize));
+            Err::Inst()->write("Minimal Requirements:");         
+            DecompositionParameters dp(nn,nq,naf,npmax,elbytesize);   
+    		Err::Inst()->write(string("limits.memory.data=")+boost::lexical_cast<string>(dp.nbytesize()));            	
+    		throw;
+        }
+        
     } else {
+        Warn::Inst()->write("Manual decomposition. This might not yield the best utilization!");	
         if (Params::Inst()->limits.decomposition.partitions.size<=naf) {
             p_dp_best = new DecompositionParameters(nn,nq,naf,Params::Inst()->limits.decomposition.partitions.size,elbytesize);            
         }
     }
-
-    if (p_dp_best == NULL) {
-		Err::Inst()->write("No decomposition found to match the necessary requirements.");
-		Err::Inst()->write("Either change the partition size manually or change the number of nodes.");
-		Err::Inst()->write("Beware that size of a partition <= frames / atoms (depends)");
-		throw;
-    }
-    
+        
     Info::Inst()->write("Final decomposition parameters:");
     Info::Inst()->write(string("NN                : ")+boost::lexical_cast<string>(p_dp_best->get_NN()));
     Info::Inst()->write(string("NQ                : ")+boost::lexical_cast<string>(p_dp_best->get_NQ()));

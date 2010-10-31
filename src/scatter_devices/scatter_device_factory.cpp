@@ -27,7 +27,6 @@ IScatterDevice* ScatterDeviceFactory::create(
 		Sample& sample,
         boost::asio::ip::tcp::endpoint fileservice_endpoint,
         boost::asio::ip::tcp::endpoint monitorservice_endpoint,        
-		std::vector<size_t>& qindexes,
 		std::vector<CartesianCoor3D>& qvectors)
 {
     
@@ -37,7 +36,7 @@ IScatterDevice* ScatterDeviceFactory::create(
     size_t NF = sample.coordinate_sets.size();
     string target = Params::Inst()->scattering.target;
     size_t NA = sample.atoms.selections[target].indexes.size();
-    size_t NQ = qindexes.size();
+    size_t NQ = qvectors.size();
     // check sample for data
     if (NF<1) {
         Err::Inst()->write("No frames available. Aborting");
@@ -88,12 +87,12 @@ IScatterDevice* ScatterDeviceFactory::create(
             NAF = NF;
         }
 
-        size_t ELBYTESIZE = 3*sizeof(coor_t);
+        size_t ELBYTESIZE = NF*3*sizeof(coor_t);
         size_t NMAXBYTESIZE = Params::Inst()->limits.memory.data;
         if (Params::Inst()->scattering.type == "self") {
-            ELBYTESIZE=3*sizeof(coor_t); // 3 times double: xyz
+            ELBYTESIZE=NF*3*sizeof(coor_t); // 3 times coor_t times number of frames 
         } else if (Params::Inst()->scattering.type == "all") {
-            ELBYTESIZE=NA*3*sizeof(coor_t); // 3 times double times number of atoms = frame
+            ELBYTESIZE=NA*3*sizeof(coor_t); // 3 times coor_t times number of atoms = frame
         }
         
 		DecompositionPlan dplan(NN,NQ,NAF,ELBYTESIZE,NMAXBYTESIZE);
@@ -109,11 +108,8 @@ IScatterDevice* ScatterDeviceFactory::create(
     
     boost::mpi::communicator partition_comm = all_comm.split(colors[all_comm.rank()]);
 
-    // exchange absolute values for q vectors
-    vector<CartesianCoor3D> finalqvectors = qvectors;
-
-    EvenDecompose qindex_decomposition(qindexes.size(),partitions);
-	vector<pair<size_t,CartesianCoor3D> > thispartition_QIV;
+    EvenDecompose qindex_decomposition(qvectors.size(),partitions);
+	vector<CartesianCoor3D> thispartition_QIV;
 
 	// determine the partition this node lives in:
 	size_t mypartition = colors[all_comm.rank()];
@@ -122,7 +118,7 @@ IScatterDevice* ScatterDeviceFactory::create(
 	if (mypartition<partitions) {
 		vector<size_t> qii = qindex_decomposition.indexes_for(mypartition);
 		for(size_t j=0;j<qii.size();j++) {
-			thispartition_QIV.push_back(make_pair(qindexes[qii[j]],finalqvectors[qii[j]]));
+			thispartition_QIV.push_back(qvectors[qii[j]]);
 		}
 	}
 	

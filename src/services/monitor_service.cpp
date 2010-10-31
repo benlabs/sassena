@@ -179,8 +179,12 @@ void MonitorClient::update(size_t rank,double progress) {
     if (!Params::Inst()->debug.monitor.update) return;
     
     size_t oldsize = update_thresholds.size();
+
+    if (oldsize<1) return;
+
     while(update_thresholds.front()<progress) {
         update_thresholds.pop();
+        if (update_thresholds.size()<1) break;
     }
     if (update_thresholds.size()!=oldsize) {
         // setup monitoring service

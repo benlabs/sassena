@@ -299,7 +299,7 @@ int main(int argc,char* argv[]) {
     // prepare services
     if (scatter_comm.rank()==0) {
         if (world.rank()==0) Info::Inst()->write("Initializing data file service...");	
-        p_hdf5writer = new HDF5WriterService(io_service, Params::Inst()->scattering.signal.file,Params::Inst()->scattering.qvectors,sample.coordinate_sets.size());
+        p_hdf5writer = new HDF5WriterService(io_service, Params::Inst()->scattering.signal.file,sample.coordinate_sets.size());
         if (world.rank()==0) Info::Inst()->write("Initializing monitor service...");	
         p_monitorservice = new MonitorService(io_service, 0, scatter_comm.size());        
     }
@@ -313,21 +313,34 @@ int main(int argc,char* argv[]) {
     }
     if (world.rank()==0) Info::Inst()->write("Services setup and running...");	
 
-    // communicate some global parameters
-    vector<size_t> qindexes;
+    // only compute those q vectors which have not been written so far
     vector<CartesianCoor3D> qvectors;
     if (scatter_comm.rank()==0) {
-        qindexes = p_hdf5writer->get_qindexes();
-        qvectors = p_hdf5writer->get_qvectors();
+        vector<CartesianCoor3D> oldqvectors = p_hdf5writer->get_qvectors();
+        vector<CartesianCoor3D> newqvectors = Params::Inst()->scattering.qvectors;
+
+        bool found = false;
+        for(size_t j = 0; j < newqvectors.size(); ++j)
+        {
+            for(size_t i = 0; i < oldqvectors.size(); ++i)
+            {
+                if ( (oldqvectors[i].x==newqvectors[j].x) &&
+                     (oldqvectors[i].y==newqvectors[j].y) &&
+                     (oldqvectors[i].z==newqvectors[j].z) )
+                    found = true;
+            }
+            if (!found) {
+                qvectors.push_back(newqvectors[j]);
+            }
+        }
     }
-    size_t nq=qindexes.size();
+    
+    // communicate some global parameters
+    size_t nq=qvectors.size();
     broadcast(scatter_comm,nq,0);
     if (scatter_comm.rank()!=0) {
-        qindexes.resize(nq);
         qvectors.resize(nq);
     }
-    size_t* p_qindexes = &(qindexes[0]);
-    broadcast(scatter_comm,p_qindexes,nq,0);
     coor2_t* p_qvectors = &(qvectors[0].x);
     broadcast(scatter_comm,p_qvectors,3*nq,0);
     
@@ -369,7 +382,6 @@ int main(int argc,char* argv[]) {
     		sample,
     	    fileservice_endpoint,
             monitorservice_endpoint,
-            qindexes,
             qvectors);
 
 	world.barrier();	

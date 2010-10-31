@@ -207,6 +207,8 @@ DataStagerByAtom::DataStagerByAtom(Sample& sample,boost::mpi::communicator& comm
         }
         throw;
     }
+
+    Info::Inst()->write(string("Maximum memory allocated for coordinates (bytes): ")+boost::lexical_cast<string>(data_bytesize_indicator_max));
     p_coordinates = (coor_t*) malloc(data_bytesize);
         
     // determine number of nodes which act as file servers:
@@ -293,6 +295,16 @@ void DataStagerByAtom::stage_data() {
     size_t buffer_bytesize = Params::Inst()->limits.memory.data_stager;
     size_t frame_bytesize = NA*3*sizeof(coor_t);
     size_t framesbuffer_maxsize = buffer_bytesize/frame_bytesize;
+    
+    if (framesbuffer_maxsize==0) {
+        if (m_comm.rank()==0) {
+            Err::Inst()->write("Cannot load trajectory into buffer.");
+            Err::Inst()->write(string("limits.memory.data_stager=")+boost::lexical_cast<string>(Params::Inst()->limits.memory.data_stager));
+            Err::Inst()->write(string("requested=")+boost::lexical_cast<string>(frame_bytesize));            
+        }
+        throw;
+    }
+    
     coor_t* p_coordinates_buffer = (coor_t*) malloc(framesbuffer_maxsize*NA*3*sizeof(coor_t));
     
     std::vector<std::vector<size_t> > framesbuffer(NFN);
@@ -340,7 +352,7 @@ void DataStagerByAtom::distribute_coordinates(coor_t* p_coordinates_buffer,std::
 
             size_t off = offlen.first;
             size_t len = offlen.second;
-            // marshal data
+            // marshal data            
             coor_t* p_fsdata = (coor_t*) malloc(LNF*len*3*sizeof(coor_t));
             for(size_t f = 0; f < LNF; ++f)
             {

@@ -430,6 +430,7 @@ private:
 		ar & file;
         ar & fqt;
         ar & fq;
+        ar & fq0;
         ar & fq2;
     }
 	/////////////////// 
@@ -438,6 +439,7 @@ public:
 	std::string file;
     bool fqt;
     bool fq;
+    bool fq0;
     bool fq2;
 };
 

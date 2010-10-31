@@ -36,7 +36,7 @@ AbstractVectorsScatterDevice::AbstractVectorsScatterDevice(
     boost::mpi::communicator allcomm,
     boost::mpi::communicator partitioncomm,
     Sample& sample,
-    std::vector<std::pair<size_t,CartesianCoor3D> > vector_index,
+    std::vector<CartesianCoor3D> vectors,
     std::vector<size_t> assignment,
     boost::asio::ip::tcp::endpoint fileservice_endpoint,
 	boost::asio::ip::tcp::endpoint monitorservice_endpoint
@@ -45,7 +45,7 @@ AbstractVectorsScatterDevice::AbstractVectorsScatterDevice(
         allcomm,
         partitioncomm,
         sample,
-        vector_index,
+        vectors,
         assignment,
         fileservice_endpoint,
         monitorservice_endpoint
@@ -94,7 +94,7 @@ void AbstractVectorsScatterDevice::print_pre_runner_info() {
 void AbstractVectorsScatterDevice::print_post_runner_info() { }
 
 double AbstractVectorsScatterDevice::progress() {
-    double scale1 = 1.0/vector_index_.size();
+    double scale1 = 1.0/vectors_.size();
     double scale2 = 1.0/subvector_index_.size();
     
     double base1 =  current_vector_*scale1;

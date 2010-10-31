@@ -55,7 +55,7 @@ public:
         boost::mpi::communicator allcomm,
         boost::mpi::communicator partitioncomm,
         Sample& sample,
-        std::vector<std::pair<size_t,CartesianCoor3D> > vector_index,
+        std::vector<CartesianCoor3D> vectors,
         std::vector<size_t> assignment,
         boost::asio::ip::tcp::endpoint fileservice_endpoint,
 		boost::asio::ip::tcp::endpoint monitorservice_endpoint

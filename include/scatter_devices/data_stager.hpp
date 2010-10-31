@@ -77,7 +77,7 @@ class DataStagerByAtom  {
     //owned by all clients, init in constructor
     std::map<size_t, std::set<size_t> > FS_assignment_table;
     std::map<size_t,std::vector<size_t> > FS_to_framelist_table;
-    
+
     std::vector<std::pair<std::pair<size_t,size_t>,std::vector<size_t> > > AtomOffLen_to_FClist;
     
     void distribute_coordinates(coor_t* p_coordinates_buffer,std::vector<std::vector<size_t> >& framesbuffer,size_t s);

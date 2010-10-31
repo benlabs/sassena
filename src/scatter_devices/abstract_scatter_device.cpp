@@ -36,7 +36,7 @@ AbstractScatterDevice::AbstractScatterDevice(
     boost::mpi::communicator allcomm,
     boost::mpi::communicator partitioncomm,
     Sample& sample,
-    std::vector<std::pair<size_t,CartesianCoor3D> > vector_index,
+    std::vector<CartesianCoor3D> vectors,
     std::vector<size_t> assignment,
     boost::asio::ip::tcp::endpoint fileservice_endpoint,
 	boost::asio::ip::tcp::endpoint monitorservice_endpoint
@@ -44,7 +44,7 @@ AbstractScatterDevice::AbstractScatterDevice(
     allcomm_(allcomm),
     partitioncomm_(partitioncomm),
     sample_(sample),
-    vector_index_(vector_index),
+    vectors_(vectors),
     current_vector_(0),
     assignment_(assignment)
 {
@@ -111,23 +111,23 @@ void AbstractScatterDevice::runner() {
 
 
 void AbstractScatterDevice::next() {
-	if (current_vector_>=vector_index_.size()) return;
+	if (current_vector_>=vectors_.size()) return;
 	current_vector_++;    
 }
 
 double AbstractScatterDevice::progress() {
-    double scale = 1.0/vector_index_.size();
+    double scale = 1.0/vectors_.size();
     double base =  current_vector_*scale;
     return base;    
 }
 
 size_t AbstractScatterDevice::status() {
-    if (current_vector_==vector_index_.size()) return 1; else return 0;
+    if (current_vector_==vectors_.size()) return 1; else return 0;
 }
 
 void AbstractScatterDevice::write() {
     if (partitioncomm_.rank()==0) {
-        size_t index = vector_index_[current_vector_].first; 
-        p_hdf5writer_->write(index,atfinal_);
+        CartesianCoor3D vector = vectors_[current_vector_]; 
+        p_hdf5writer_->write(vector,atfinal_);
     }
 }
