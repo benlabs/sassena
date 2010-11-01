@@ -409,7 +409,7 @@ void Params::read_xml(std::string filename) {
     // assign default memory limits:
     limits.data_stager.servers = 1;
     limits.signal.alloc_early = false;
-    limits.signal.chunksize = false;
+    limits.signal.chunksize = 10000;
 
     limits.memory.at1_buffer = 2*1024*1024; // 2MB    
     limits.memory.data_stager = 100*1024*1024; // 100MB
@@ -445,7 +445,7 @@ void Params::read_xml(std::string filename) {
     	        limits.signal.alloc_early = xmli.get_value<bool>("//limits/signal/alloc_early");
             }      
     	    if (xmli.exists("//limits/signal/chunksize")) {
-    	        limits.signal.chunksize = xmli.get_value<bool>("//limits/signal/chunksize");
+    	        limits.signal.chunksize = xmli.get_value<size_t>("//limits/signal/chunksize");
             }                  
 	    }
     	
