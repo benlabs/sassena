@@ -229,7 +229,7 @@ HDF5WriterService::HDF5WriterService(boost::asio::io_service& io_service,const s
     init(nf);
     
     // spawn a dedicated thread for writing
-    
+    m_lastflush = boost::posix_time::second_clock::universal_time();
 
 }
 
@@ -308,17 +308,11 @@ void HDF5WriterService::listener() {
 void HDF5WriterService::flush() {
     m_lastflush = boost::posix_time::second_clock::universal_time();
     
-    cout << "opening h5file " <<  boost::posix_time::second_clock::universal_time() << endl;
     hid_t h5file = H5Fopen(m_filename.c_str(),H5F_ACC_RDWR,H5P_DEFAULT);
-    cout << "flushing qvectors " <<  boost::posix_time::second_clock::universal_time() << endl;
     if (data_qvectors.size()>0) {
         size_t nq = data_qvectors.size();
 
-        cout << "find qv " <<  boost::posix_time::second_clock::universal_time() << endl;        
-
-        if (H5LTfind_dataset(h5file,"qvectors")==1) {
-            cout << "foudn qv " <<  boost::posix_time::second_clock::universal_time() << endl;        
-            
+        if (H5LTfind_dataset(h5file,"qvectors")==1) {            
             hsize_t dims[2];hsize_t start[2];hsize_t count[2];
             H5LTget_dataset_info(h5file,"qvectors",dims,NULL,NULL); 
             
@@ -339,24 +333,17 @@ void HDF5WriterService::flush() {
             H5Sselect_hyperslab(mspace,H5S_SELECT_SET,start,NULL,count,NULL);
 
             double* p_data = reinterpret_cast<double*>(&data_qvectors[0]);
-            cout << "write qv " <<  boost::posix_time::second_clock::universal_time() << endl;        
-            
             H5Dwrite(ds,H5T_NATIVE_DOUBLE,mspace,dspace,H5P_DEFAULT,p_data);            
-            cout << "wrote qv " <<  boost::posix_time::second_clock::universal_time() << endl;        
             
         }        
     }
     data_qvectors.clear();        
     
-    cout << "flushing fqt " <<  boost::posix_time::second_clock::universal_time() << endl;
     if (data_fqt.size()>0) {
         size_t nq = data_fqt.size();
         size_t nf = data_fqt[0]->size();
         
-        cout << "find fqt " <<  boost::posix_time::second_clock::universal_time() << endl;        
-        
         if (H5LTfind_dataset(h5file,"fqt")==1) {
-            cout << "found fqt " <<  boost::posix_time::second_clock::universal_time() << endl;        
 
             double* p_fqtdata = (double*) malloc(sizeof(double)*2*nq*nf);
             for(size_t i = 0; i < nq; ++i)
@@ -382,19 +369,12 @@ void HDF5WriterService::flush() {
             count[0]=nq;count[1]=nf;count[2]=2;            
             H5Sselect_hyperslab(mspace,H5S_SELECT_SET,start,NULL,count,NULL);
 
-            cout << "write fqt " <<  boost::posix_time::second_clock::universal_time() << endl;        
-
             H5Dwrite(ds,H5T_NATIVE_DOUBLE,mspace,dspace,H5P_DEFAULT,p_fqtdata);  
-            cout << "wrote fqt " <<  boost::posix_time::second_clock::universal_time() << endl;        
             
             free(p_fqtdata);          
         }  
-               
-        cout << "flushing fq0 " <<  boost::posix_time::second_clock::universal_time() << endl;            
-        cout << "find fq0 " <<  boost::posix_time::second_clock::universal_time() << endl;        
         
         if (H5LTfind_dataset(h5file,"fq0")==1) {
-            cout << "found fq0 " <<  boost::posix_time::second_clock::universal_time() << endl;        
             
             double* p_fq0data = (double*) malloc(sizeof(double)*2*nq);
             
@@ -422,10 +402,7 @@ void HDF5WriterService::flush() {
             count[0]=nq;count[1]=2;            
             H5Sselect_hyperslab(mspace,H5S_SELECT_SET,start,NULL,count,NULL);
 
-            cout << "write fq0 " <<  boost::posix_time::second_clock::universal_time() << endl;        
-
             H5Dwrite(ds,H5T_NATIVE_DOUBLE,mspace,dspace,H5P_DEFAULT,p_fq0data);
-            cout << "wrote fq0 " <<  boost::posix_time::second_clock::universal_time() << endl;        
             
             free(p_fq0data);       
         }  
@@ -433,37 +410,24 @@ void HDF5WriterService::flush() {
     for(size_t i = 0; i < data_fqt.size(); ++i) delete data_fqt[i];
     data_fqt.clear();
     
-    cout << "flushing fq " <<  boost::posix_time::second_clock::universal_time() << endl;
     if (data_fq.size()>0) {
         size_t nq = data_fq.size();
 
-        cout << "find fq " <<  boost::posix_time::second_clock::universal_time() << endl;        
         if (H5LTfind_dataset(h5file,"fq")==1) {
-            cout << "found fq " <<  boost::posix_time::second_clock::universal_time() << endl;        
 
             hsize_t dims[2];hsize_t start[2];hsize_t count[2];
-            cout << "getinfo fq " <<  boost::posix_time::second_clock::universal_time() << endl;        
             H5LTget_dataset_info(h5file,"fq",dims,NULL,NULL);             
-            cout << "gotinfo fq " <<  boost::posix_time::second_clock::universal_time() << endl;        
             
             dims[0]+=nq;
-            hid_t ds = H5Dopen(h5file,"fq",H5P_DEFAULT);
-            cout << "setextent fq " <<  boost::posix_time::second_clock::universal_time() << endl;        
-            
+            hid_t ds = H5Dopen(h5file,"fq",H5P_DEFAULT);            
             H5Dset_extent(ds,dims);
-            cout << "setextent fq " <<  boost::posix_time::second_clock::universal_time() << endl;        
-
-            cout << "getspace fq " <<  boost::posix_time::second_clock::universal_time() << endl;        
 
             hid_t dspace = H5Dget_space(ds);
-            cout << "gotspace fq " <<  boost::posix_time::second_clock::universal_time() << endl;        
 
             hsize_t mdims[2];
             mdims[0]=nq; mdims[1]=2;
-            cout << "createspace fq " <<  boost::posix_time::second_clock::universal_time() << endl;        
             
             hid_t mspace = H5Screate_simple(2, mdims, NULL);             
-            cout << "createdspace fq " <<  boost::posix_time::second_clock::universal_time() << endl;        
 
             start[0]=dims[0]-nq;start[1]=0;
             count[0]=nq;count[1]=2;
@@ -472,14 +436,10 @@ void HDF5WriterService::flush() {
             count[0]=nq;count[1]=2;            
             H5Sselect_hyperslab(mspace,H5S_SELECT_SET,start,NULL,count,NULL);
             double* p_data = reinterpret_cast<double*>(&data_fq[0]);
-            cout << "write fq " <<  boost::posix_time::second_clock::universal_time() << endl;        
             
             H5Dwrite(ds,H5T_NATIVE_DOUBLE,mspace,dspace,H5P_DEFAULT,p_data);
-            cout << "wrote fq " <<  boost::posix_time::second_clock::universal_time() << endl;        
-
         }
         
-        cout << "flushing fq2 " <<  boost::posix_time::second_clock::universal_time() << endl;
         if (H5LTfind_dataset(h5file,"fq2")==1) {
             hsize_t dims[2];hsize_t start[2];hsize_t count[2];
             H5LTget_dataset_info(h5file,"fq2",dims,NULL,NULL);             
@@ -513,11 +473,8 @@ void HDF5WriterService::flush() {
         }   
     }    
     data_fq.clear();
-    
-    cout << "closing h5file " <<  boost::posix_time::second_clock::universal_time() << endl;
-    H5Fclose(h5file);
-    cout << "done h5file " <<  boost::posix_time::second_clock::universal_time() << endl;
-    
+
+    H5Fclose(h5file);    
 }
 
 
@@ -546,6 +503,7 @@ void HDF5WriterClient::write(CartesianCoor3D qvector,const std::vector<std::comp
     *p_data = data;
     data_queue.push(make_pair(qvector,p_data));
 
+    boost::posix_time::time_period tp(m_lastflush,boost::posix_time::second_clock::universal_time());    
     if ((boost::posix_time::second_clock::universal_time()-m_lastflush) >
         (boost::posix_time::seconds(Params::Inst()->limits.times.iowrite_client)) ){
         flush();
@@ -619,6 +577,12 @@ void HDF5WriterClient::flush() {
         socket.close();
     }
 }
+HDF5WriterClient::HDF5WriterClient(boost::asio::ip::tcp::endpoint server) 
+ : m_endpoint(server)
+{
+    m_lastflush = boost::posix_time::second_clock::universal_time();
+}
+
 
 HDF5WriterClient::~HDF5WriterClient() {
     flush();

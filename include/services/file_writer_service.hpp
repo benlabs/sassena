@@ -41,7 +41,7 @@ class HDF5WriterClient {
     std::queue<std::pair<CartesianCoor3D,std::vector<std::complex<double> >*> > data_queue;
     
 public:
-    HDF5WriterClient(boost::asio::ip::tcp::endpoint server) : m_endpoint(server) {}
+    HDF5WriterClient(boost::asio::ip::tcp::endpoint server);
     ~HDF5WriterClient();
 
     void write(CartesianCoor3D qvector,const std::vector<std::complex<double> >& data);
