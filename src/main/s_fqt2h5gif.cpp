@@ -286,7 +286,7 @@ int main(int argc,char* argv[])
     herr_t        status; 
 
     int width = boost::lexical_cast<int>(argv[1]);
-    int height = boost::lexical_cast<int>(argv[2]]);
+    int height = boost::lexical_cast<int>(argv[2]);
     float maxval = boost::lexical_cast<float>(argv[3]);
     
     // read data:

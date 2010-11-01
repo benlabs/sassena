@@ -297,43 +297,63 @@ int main(int argc,char* argv[]) {
     MonitorService* p_monitorservice = NULL;    
 
     // prepare services
-    if (scatter_comm.rank()==0) {
-        if (world.rank()==0) Info::Inst()->write("Initializing data file service...");	
+    if (world.rank()==0) {
+        Info::Inst()->write("Initializing data file service...");	
         p_hdf5writer = new HDF5WriterService(io_service, Params::Inst()->scattering.signal.file,sample.coordinate_sets.size());
-        if (world.rank()==0) Info::Inst()->write("Initializing monitor service...");	
+        Info::Inst()->write("Initializing monitor service...");	
         p_monitorservice = new MonitorService(io_service, 0, scatter_comm.size());        
     }
     
     // start services
-    if (scatter_comm.rank()==0) {
+    if (world.rank()==0) {
         Info::Inst()->write("Starting data file service...");	
         p_hdf5writer->run();
         Info::Inst()->write("Starting monitor service...");	
         p_monitorservice->run();
+        Info::Inst()->write("Services setup and running...");	
     }
-    if (world.rank()==0) Info::Inst()->write("Services setup and running...");	
 
+    if (world.rank()==0) {
+    }
     // only compute those q vectors which have not been written so far
+    // shutdown gracefully if no work is to be done
+    initstatus = true;
     vector<CartesianCoor3D> qvectors;
-    if (scatter_comm.rank()==0) {
+    if (world.rank()==0) {
+        
+        Info::Inst()->write(string("Checking ")+Params::Inst()->scattering.signal.file + string(" for old results."));
         vector<CartesianCoor3D> oldqvectors = p_hdf5writer->get_qvectors();
-        vector<CartesianCoor3D> newqvectors = Params::Inst()->scattering.qvectors;
-
-        bool found = false;
-        for(size_t j = 0; j < newqvectors.size(); ++j)
+        set<CartesianCoor3D> oldqvectors_set;
+        for(size_t i = 0; i < oldqvectors.size(); ++i)
         {
-            for(size_t i = 0; i < oldqvectors.size(); ++i)
-            {
-                if ( (oldqvectors[i].x==newqvectors[j].x) &&
-                     (oldqvectors[i].y==newqvectors[j].y) &&
-                     (oldqvectors[i].z==newqvectors[j].z) )
-                    found = true;
-            }
-            if (!found) {
-                qvectors.push_back(newqvectors[j]);
+            oldqvectors_set.insert(oldqvectors[i]);
+        }
+
+        for(size_t i = 0; i < Params::Inst()->scattering.qvectors.size(); ++i)
+        {
+            if (oldqvectors_set.find(Params::Inst()->scattering.qvectors[i])==oldqvectors_set.end()) {
+                qvectors.push_back(Params::Inst()->scattering.qvectors[i]);
             }
         }
+        
+        if (qvectors.size()!=Params::Inst()->scattering.qvectors.size()) {
+            Info::Inst()->write(string("Found ")+ boost::lexical_cast<string>(Params::Inst()->scattering.qvectors.size()-qvectors.size()) + string(" old qvectors."));            
+            Info::Inst()->write(string("Total number of qvectors to compute reduced from ")+boost::lexical_cast<string>(Params::Inst()->scattering.qvectors.size()) + string(" to ") + boost::lexical_cast<string>(qvectors.size()) + string("."));            
+        }
+
+        if (qvectors.size()==0) {
+            Info::Inst()->write("Very good. No qvectors left to compute.");
+
+            Info::Inst()->write("Stopping services.");
+            p_monitorservice->hangup();
+            p_hdf5writer->hangup();
+
+            initstatus = false;
+            Info::Inst()->write("Broadcasting hangup to all nodes. Have a nice day!");
+        }
     }
+    broadcast(world,initstatus,0);            	
+    if (!initstatus) return 1;
     
     // communicate some global parameters
     size_t nq=qvectors.size();
@@ -343,7 +363,8 @@ int main(int argc,char* argv[]) {
     }
     coor2_t* p_qvectors = &(qvectors[0].x);
     broadcast(scatter_comm,p_qvectors,3*nq,0);
-    
+       
+        
     // communicate services to all nodes
     std::string host_str,fileservice_port_str,monitorservice_port_str;
     if (scatter_comm.rank()==0) {

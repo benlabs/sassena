@@ -273,7 +273,7 @@ void Params::read_xml(std::string filename) {
     	    }
     	    else if (vt=="scans") {	
                 
-                if (xmli.exists("//scattering/scans")) {
+                if (xmli.exists("//scattering/vectors/scans")) {
     	    	    vector<XMLElement> scans = xmli.get("//scattering/vectors/scans/scan");
             
     	    	    for(size_t i = 0; i < scans.size(); ++i)
@@ -384,7 +384,7 @@ void Params::read_xml(std::string filename) {
         		scattering.signal.file = xmli.get_value<string>("//scattering/signal/file");	        
 	        } 
 	        if (xmli.exists("//scattering/signal/fqt")) {
-        		scattering.signal.file = xmli.get_value<bool>("//scattering/signal/fqt");	        
+        		scattering.signal.fqt = xmli.get_value<bool>("//scattering/signal/fqt");	        
 	        } 
 	        if (xmli.exists("//scattering/signal/fq0")) {
         		scattering.signal.fq0 = xmli.get_value<bool>("//scattering/signal/fq0");	        
@@ -398,17 +398,18 @@ void Params::read_xml(std::string filename) {
 	    }
 	    Info::Inst()->write(string("scattering.signal.file=")+scattering.signal.file);	
 	    Info::Inst()->write(string("scattering.signal.fqt=")+boost::lexical_cast<string>(scattering.signal.fqt));	
+	    Info::Inst()->write(string("scattering.signal.fq0=")+boost::lexical_cast<string>(scattering.signal.fq0));	            
 	    Info::Inst()->write(string("scattering.signal.fq=")+boost::lexical_cast<string>(scattering.signal.fq));	
 	    Info::Inst()->write(string("scattering.signal.fq2=")+boost::lexical_cast<string>(scattering.signal.fq2));	    
-        
     }  
 	// END OF scattering section //
 
 	// START OF limits section //
 
     // assign default memory limits:
-    limits.data.servers = 1;
+    limits.data_stager.servers = 1;
     limits.signal.alloc_early = false;
+    limits.signal.chunksize = false;
 
     limits.memory.at1_buffer = 2*1024*1024; // 2MB    
     limits.memory.data_stager = 100*1024*1024; // 100MB
@@ -433,9 +434,9 @@ void Params::read_xml(std::string filename) {
     limits.decomposition.partitions.size = 1; // not used if automatic = true, if false -> this determines the partition size
 
 	if (xmli.exists("//limits")) {   
-	    if (xmli.exists("//limits/data")) {
-        	if (xmli.exists("//limits/data/servers")) {
-    	        limits.data.servers = xmli.get_value<size_t>("//limits/data/servers");
+	    if (xmli.exists("//limits/data_stager")) {
+        	if (xmli.exists("//limits/data_stager/servers")) {
+    	        limits.data_stager.servers = xmli.get_value<size_t>("//limits/data_stager/servers");
 	        }	        
 	    }
 	    
@@ -443,6 +444,9 @@ void Params::read_xml(std::string filename) {
     	    if (xmli.exists("//limits/signal/alloc_early")) {
     	        limits.signal.alloc_early = xmli.get_value<bool>("//limits/signal/alloc_early");
             }      
+    	    if (xmli.exists("//limits/signal/chunksize")) {
+    	        limits.signal.chunksize = xmli.get_value<bool>("//limits/signal/chunksize");
+            }                  
 	    }
     	
 	         

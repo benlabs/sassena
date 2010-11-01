@@ -590,15 +590,17 @@ private:
     friend class boost::serialization::access;	
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
     {
-        ar & alloc_early;      
+        ar & alloc_early;    
+        ar & chunksize;  
     }
 	/////////////////// 
 
 public:
     bool alloc_early;
+    size_t chunksize;
 };
 
-class LimitsDataParameters {
+class LimitsDataStagerParameters {
 private:
 	/////////////////// MPI related
 	// make this class serializable to 
@@ -623,7 +625,7 @@ private:
     friend class boost::serialization::access;	
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
     {
-        ar & data;
+        ar & data_stager;
         ar & signal;
 		ar & memory;
         ar & times;
@@ -633,7 +635,7 @@ private:
 	/////////////////// 
 
 public:
-    LimitsDataParameters data;    
+    LimitsDataStagerParameters data_stager;    
     LimitsSignalParameters signal;    
     LimitsMemoryParameters memory;
     LimitsTimesParameters times;

@@ -63,7 +63,7 @@ DataStagerByFrame::DataStagerByFrame(Sample& sample,boost::mpi::communicator& co
     p_coordinates = (coor_t*) malloc(data_bytesize);
         
     // determine number of nodes which act as file servers:
-    NFN = Params::Inst()->limits.data.servers;
+    NFN = Params::Inst()->limits.data_stager.servers;
     
     if (NFN>NN) NFN=NN; 
     if (NFN>NF) {
@@ -212,7 +212,7 @@ DataStagerByAtom::DataStagerByAtom(Sample& sample,boost::mpi::communicator& comm
     p_coordinates = (coor_t*) malloc(data_bytesize);
         
     // determine number of nodes which act as file servers:
-    NFN = Params::Inst()->limits.data.servers;
+    NFN = Params::Inst()->limits.data_stager.servers;
     
     if (NFN>NN) NFN=NN; 
     if (NFN>NF) {
