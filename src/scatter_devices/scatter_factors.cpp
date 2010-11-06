@@ -104,6 +104,28 @@ vector<double>& ScatterFactors::get_all() {
 	return factors;
 }
 
+double ScatterFactors::compute_background(CartesianCoor3D q) {
+
+    double efactor_sum = 0;
+    double sf_sum=0;
+	double ql = q.length();
+
+	for(size_t i = 0; i < p_selection->indexes.size(); ++i)
+	{
+		size_t atomID = p_sample->atoms[p_selection->indexes[i]].ID;
+		double sf = Database::Inst()->sfactors.get(atomID,ql);
+
+		double k  = m_kappas[p_selection->indexes[i]];
+		double v = Database::Inst()->volumes.get(atomID);
+		double efactor = Database::Inst()->exclusionfactors.get(atomID,k*v,ql);
+
+        efactor_sum+=efactor;
+        sf_sum+=sf;            
+	}
+    return sf_sum/efactor_sum;
+}
+
+
 void ScatterFactors::set_background(bool status) {
 	m_background = status;
 }

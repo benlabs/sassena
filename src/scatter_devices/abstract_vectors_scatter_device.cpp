@@ -37,7 +37,7 @@ AbstractVectorsScatterDevice::AbstractVectorsScatterDevice(
     boost::mpi::communicator partitioncomm,
     Sample& sample,
     std::vector<CartesianCoor3D> vectors,
-    std::vector<size_t> assignment,
+    size_t NAF,
     boost::asio::ip::tcp::endpoint fileservice_endpoint,
 	boost::asio::ip::tcp::endpoint monitorservice_endpoint
 ) :
@@ -46,7 +46,7 @@ AbstractVectorsScatterDevice::AbstractVectorsScatterDevice(
         partitioncomm,
         sample,
         vectors,
-        assignment,
+        NAF,
         fileservice_endpoint,
         monitorservice_endpoint
     ),

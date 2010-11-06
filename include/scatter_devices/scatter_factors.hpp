@@ -53,7 +53,8 @@ public:
 	
 	void update(CartesianCoor3D q);
 	void update_kappas();
-	
+    double compute_background(CartesianCoor3D q);
+    
 	void set_background(bool status);
 };
 

@@ -15,6 +15,7 @@
 // other headers
 #include "control.hpp"
 #include "log.hpp"
+#include "decomposition/assignment.hpp"
 #include "decomposition/decompose.hpp"
 #include "decomposition/decomposition_plan.hpp"
 #include "scatter_devices/all_vectors_scatter_device.hpp"
@@ -59,6 +60,14 @@ IScatterDevice* ScatterDeviceFactory::create(
     ////////////////////////////////////////////////////////////
     // Decomposition
     ////////////////////////////////////////////////////////////
+    // for coherent scattering:
+    size_t NAF = NA;
+    if (Params::Inst()->scattering.type == "self") {
+        NAF = NA;
+    } else if (Params::Inst()->scattering.type == "all") {
+        NAF = NF;
+    }
+        
     if (all_comm.rank()==0) {
 
         // decompose parallel space into independent partitions
@@ -77,14 +86,6 @@ IScatterDevice* ScatterDeviceFactory::create(
         } else {
     	    Err::Inst()->write(string("Scattering Interference type not understood. Must be 'self' or 'all'."));            
             throw;
-        }
-
-        // for coherent scattering:
-        size_t NAF = NA;
-        if (Params::Inst()->scattering.type == "self") {
-            NAF = NA;
-        } else if (Params::Inst()->scattering.type == "all") {
-            NAF = NF;
         }
 
         size_t ELBYTESIZE = NF*3*sizeof(coor_t);
@@ -121,15 +122,7 @@ IScatterDevice* ScatterDeviceFactory::create(
 			thispartition_QIV.push_back(qvectors[qii[j]]);
 		}
 	}
-	
-	// compute assignments
-    std::vector<size_t> assignment;
-	if (Params::Inst()->scattering.type == "self") {
-        assignment = EvenDecompose(NA,partition_comm.size()).indexes_for(partition_comm.rank());
-    } else if (Params::Inst()->scattering.type == "all") {
-        assignment = EvenDecompose(NF,partition_comm.size()).indexes_for(partition_comm.rank());
-    }
-	
+		
 	/////////////////////////////////////////////////////////////
     // Creating of scattering devices
     ////////////////////////////////////////////////////////////
@@ -142,7 +135,7 @@ IScatterDevice* ScatterDeviceFactory::create(
     			partition_comm,
     			sample,
     			thispartition_QIV,
-                assignment,
+    			NAF,
 		        fileservice_endpoint,
 		        monitorservice_endpoint);
     }
@@ -153,7 +146,7 @@ IScatterDevice* ScatterDeviceFactory::create(
         			partition_comm,
         			sample,
         			thispartition_QIV,
-	                assignment,
+        			NAF,        			
         			fileservice_endpoint,
         			monitorservice_endpoint);
 //    	} else if (Params::Inst()->scattering.average.orientation.type == "multipole") {
@@ -183,7 +176,7 @@ IScatterDevice* ScatterDeviceFactory::create(
         			partition_comm,
         			sample,
         			thispartition_QIV,
-        			assignment,
+        			NAF,
         			fileservice_endpoint,
         			monitorservice_endpoint);
     	}

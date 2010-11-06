@@ -19,9 +19,7 @@ module load PrgEnv-gnu
 module load hdf5
 module load fftw
 
-export BOOST_ROOT=$PREFIX
-
-cmake -D STATIC=true -D CRAY=true ../..
+cmake -D CMAKE_PREFIX_PATH=$PREFIX -D STATIC=true -D CRAY=true ../..
 
 
 

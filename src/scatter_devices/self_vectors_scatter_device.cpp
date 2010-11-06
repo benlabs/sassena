@@ -38,7 +38,7 @@ SelfVectorsScatterDevice::SelfVectorsScatterDevice(
     boost::mpi::communicator partitioncomm,
     Sample& sample,
     std::vector<CartesianCoor3D> vectors,
-    std::vector<size_t> assignment,
+    size_t NAF,
     boost::asio::ip::tcp::endpoint fileservice_endpoint,
 	boost::asio::ip::tcp::endpoint monitorservice_endpoint
 ) :
@@ -47,7 +47,7 @@ SelfVectorsScatterDevice::SelfVectorsScatterDevice(
         partitioncomm,
         sample,
         vectors,
-        assignment,
+        NAF,
         fileservice_endpoint,
         monitorservice_endpoint
     )

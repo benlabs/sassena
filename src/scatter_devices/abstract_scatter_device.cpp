@@ -23,6 +23,7 @@
 
 // other headers
 #include "math/coor3d.hpp"
+#include "decomposition/assignment.hpp"
 #include "decomposition/decompose.hpp"
 #include <fftw3.h>
 #include "control.hpp"
@@ -37,7 +38,7 @@ AbstractScatterDevice::AbstractScatterDevice(
     boost::mpi::communicator partitioncomm,
     Sample& sample,
     std::vector<CartesianCoor3D> vectors,
-    std::vector<size_t> assignment,
+    size_t NAF,
     boost::asio::ip::tcp::endpoint fileservice_endpoint,
 	boost::asio::ip::tcp::endpoint monitorservice_endpoint
 ) :
@@ -46,7 +47,7 @@ AbstractScatterDevice::AbstractScatterDevice(
     sample_(sample),
     vectors_(vectors),
     current_vector_(0),
-    assignment_(assignment)
+    assignment_(partitioncomm.size(),partitioncomm.rank(),NAF)
 {
     
     p_hdf5writer_ = boost::shared_ptr<HDF5WriterClient>(new HDF5WriterClient(fileservice_endpoint));
@@ -67,14 +68,19 @@ AbstractScatterDevice::AbstractScatterDevice(
 }
 
 void AbstractScatterDevice::run() {
-    
+        
     print_pre_stage_info();
     timer.start("sd:stage");
     stage_data();
     timer.stop("sd:stage");
     
     print_post_stage_info();
-    
+
+    if (allcomm_.rank()==0) {
+        scatterfactors.update(CartesianCoor3D(0,0,0));
+        Info::Inst()->write("Target initialized. ");
+        Info::Inst()->write(string("Target produces a background scattering length density of ")+boost::lexical_cast<string>(scatterfactors.compute_background(CartesianCoor3D(0,0,0))));
+    }
 
     print_pre_runner_info();
     timer.start("sd:runner");

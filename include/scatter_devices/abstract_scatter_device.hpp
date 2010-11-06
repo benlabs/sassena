@@ -31,6 +31,7 @@
 #include <boost/thread.hpp>
 
 // other headers
+#include "decomposition/assignment.hpp"
 #include "math/coor3d.hpp"
 #include "report/timer.hpp"
 #include "services.hpp"
@@ -130,7 +131,7 @@ protected:
     size_t NN,NF,NA;
     
     std::vector<std::complex<double> > atfinal_;
-    std::vector<size_t> assignment_;
+    Assignment assignment_;
     
     ScatterFactors scatterfactors;
         
@@ -163,7 +164,7 @@ public:
         boost::mpi::communicator partitioncomm,
         Sample& sample,
         std::vector<CartesianCoor3D> vectors,
-        std::vector<size_t> assignment,
+        size_t NAF,
         boost::asio::ip::tcp::endpoint fileservice_endpoint,
 		boost::asio::ip::tcp::endpoint monitorservice_endpoint
         );    

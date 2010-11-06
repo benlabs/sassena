@@ -369,10 +369,10 @@ double DatabaseSFactorsParameters::get(size_t ID,double q) {
 		
 	size_t& ft = m_functiontypes[ID];
 	vector<double>& v = m_constants[ID];
+
 	if (ft==0) { // 0 = constants
 		return v[0];
 	}
-	
 	// a shortcut for expensive calculations, this thing grows. 
 	if ((ft==1) || (ft==2)) {
 		if ((m_quicklookup.find(q)!=m_quicklookup.end()) && (m_quicklookup[q].find(ID)!=m_quicklookup[q].end())) {

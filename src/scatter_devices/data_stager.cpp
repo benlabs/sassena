@@ -36,7 +36,7 @@ struct binary_max : public binary_function<size_t,size_t,size_t> {
     size_t operator() (size_t a,size_t b) {if (a>b) return a; else return b;}
 };
 
-DataStagerByFrame::DataStagerByFrame(Sample& sample,boost::mpi::communicator& comm, std::vector<size_t> assignment) 
+DataStagerByFrame::DataStagerByFrame(Sample& sample,boost::mpi::communicator& comm, Assignment assignment) 
     : m_sample(sample),
     m_comm(comm),
     FC_assignment(assignment)
@@ -183,7 +183,7 @@ void DataStagerByFrame::stage_data() {
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-DataStagerByAtom::DataStagerByAtom(Sample& sample,boost::mpi::communicator& comm, std::vector<size_t> assignment) 
+DataStagerByAtom::DataStagerByAtom(Sample& sample,boost::mpi::communicator& comm, Assignment assignment) 
     : m_sample(sample),
     m_comm(comm),
     FC_assignment(assignment)

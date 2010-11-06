@@ -33,13 +33,14 @@
 #include "sample.hpp"
 #include "services.hpp"
 #include "math/coor3d.hpp"
+#include "decomposition/assignment.hpp"
 #include "scatter_devices/scatter_factors.hpp"
 #include "report/timer.hpp"
 
 class DataStagerByFrame {
     Sample& m_sample;
     boost::mpi::communicator& m_comm;
-    std::vector<size_t> FC_assignment;
+    Assignment FC_assignment;
     
     size_t NFN;
     size_t NN;
@@ -58,7 +59,7 @@ class DataStagerByFrame {
     void stage_data();
 
 public:
-    DataStagerByFrame(Sample& sample,boost::mpi::communicator& comm, std::vector<size_t> assignment);
+    DataStagerByFrame(Sample& sample,boost::mpi::communicator& comm, Assignment assignment);
     coor_t* stage();
     
 };
@@ -67,7 +68,7 @@ public:
 class DataStagerByAtom  {
     Sample& m_sample;
     boost::mpi::communicator& m_comm;
-    std::vector<size_t> FC_assignment;
+    Assignment FC_assignment;
     
     size_t NFN;
     size_t NN;
@@ -89,7 +90,7 @@ class DataStagerByAtom  {
     void stage_data();
     
 public:
-    DataStagerByAtom(Sample& sample,boost::mpi::communicator& comm, std::vector<size_t> assignment);
+    DataStagerByAtom(Sample& sample,boost::mpi::communicator& comm, Assignment assignment);
     
     coor_t* stage();    
 };
