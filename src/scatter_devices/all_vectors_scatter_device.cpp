@@ -139,14 +139,10 @@ void AllVectorsScatterDevice::worker1() {
 
 void AllVectorsScatterDevice::worker2_task(const size_t subvector_index,std::vector< std::complex<double> >* p_a) {
     // compute global assignment patterns:
-    EvenDecompose frameindexes(NF,NN);
-    vector<size_t> nframe_offsets(NN);
-    vector<size_t> nframes(NN);
-    size_t nframe_integral=0;
+    
+    vector<Assignment> assignments;
     for (size_t i=0;i<NN;i++) {
-        nframes[i]=frameindexes.indexes_for(i).size();
-        nframe_offsets[i]=nframe_integral;
-        nframe_integral+=nframes[i];        
+        assignments.push_back(Assignment(NN,i,NF));
     }
 	
     size_t target_node = (subvector_index%NN);
@@ -156,11 +152,11 @@ void AllVectorsScatterDevice::worker2_task(const size_t subvector_index,std::vec
         std::vector< std::complex<double> >* p_at_allframes = new std::vector<std::complex<double> >(NF);
         for(size_t i = 0; i < NN; ++i)
         {
-            double* pp_at_allframes = (double*) &((*p_at_allframes)[nframe_offsets[i]]);
+            double* pp_at_allframes = (double*) &((*p_at_allframes)[assignments[i].offset()]);
             if (i==rank) {
-                memcpy(pp_at_allframes,&((*p_a)[0]),2*nframes[i]*sizeof(double));
+                memcpy(pp_at_allframes,&((*p_a)[0]),2*assignments[i].size()*sizeof(double));
             } else {
-                partitioncomm_.recv(i,0,pp_at_allframes,2*nframes[i]); 
+                partitioncomm_.recv(i,0,pp_at_allframes,2*assignments[i].size()); 
             }
         }        
         at2_.push(p_at_allframes);  
