@@ -44,16 +44,16 @@ protected:
 
     // first = q, second = frames
     concurrent_queue< size_t > at0_;    
-    concurrent_queue< std::pair<size_t,std::vector< std::complex<double> >* > > at1_;
-    concurrent_queue< std::vector< std::complex<double> >* > at2_;
-    mutable std::vector< std::complex<double> > at3_;
+    concurrent_queue< std::pair<size_t,fftw_complex*> > at1_;
+    concurrent_queue< fftw_complex* > at2_;
+    mutable fftw_complex* at3_;
     mutable boost::mutex at3_mutex;
 	std::queue<boost::thread*> worker_threads;
     
 	// data, outer loop by frame, inner by atoms, XYZ entries
     coor_t* p_coordinates;
     
-	std::vector< std::complex<double> >* scatter(size_t this_subvector);
+	fftw_complex* scatter(size_t this_subvector);
     
     void stage_data();
         
@@ -62,8 +62,8 @@ protected:
     void worker3();
 
     void worker1_task(size_t this_subvector);
-    void worker2_task(size_t this_subvector,std::vector<std::complex<double> >* p_a);
-    void worker3_task(std::vector<std::complex<double> >* p_a);
+    void worker2_task(size_t this_subvector,fftw_complex* p_a);
+    void worker3_task(fftw_complex* p_a);
     
     volatile size_t worker2_counter;
     mutable boost::mutex worker3_mutex;
@@ -88,7 +88,7 @@ public:
 			boost::mpi::communicator partitioncomm,
 			Sample& sample,
 			std::vector<CartesianCoor3D> vectors,
-			std::vector<size_t> assignment,
+			size_t NAF,
 			boost::asio::ip::tcp::endpoint fileservice_endpoint,
 			boost::asio::ip::tcp::endpoint monitorservice_endpoint			
 

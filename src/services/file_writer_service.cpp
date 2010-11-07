@@ -495,6 +495,33 @@ void HDF5WriterService::hangup() {
 }
 
 
+void HDF5WriterClient::write(CartesianCoor3D qvector,const fftw_complex* data,size_t NF) {
+    
+    if (!Params::Inst()->debug.iowrite.write) return;
+    
+    std::vector<std::complex<double> >* p_data = new std::vector<std::complex<double> >(NF);
+    for(size_t i = 0; i < NF; ++i)
+    {
+        (*p_data)[i]=std::complex<double>(data[i][0],data[i][1]);
+    }
+    data_queue.push(make_pair(qvector,p_data));
+
+    boost::posix_time::time_period tp(m_lastflush,boost::posix_time::second_clock::universal_time());    
+    if ((boost::posix_time::second_clock::universal_time()-m_lastflush) >
+        (boost::posix_time::seconds(Params::Inst()->limits.times.iowrite_client)) ){
+        flush();
+    }
+
+    size_t data_bytesize = (sizeof(fftw_complex)*NF+sizeof(size_t)) * data_queue.size();
+    if (data_bytesize > Params::Inst()->limits.memory.iowrite_client) {
+        flush();
+    }
+    
+    if (!Params::Inst()->debug.iowrite.buffer) {
+        flush();
+    }
+}
+
 void HDF5WriterClient::write(CartesianCoor3D qvector,const std::vector<std::complex<double> >& data) {
     
     if (!Params::Inst()->debug.iowrite.write) return;

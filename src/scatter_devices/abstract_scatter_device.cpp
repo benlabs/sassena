@@ -47,6 +47,7 @@ AbstractScatterDevice::AbstractScatterDevice(
     sample_(sample),
     vectors_(vectors),
     current_vector_(0),
+    atfinal_(NULL),
     assignment_(partitioncomm.size(),partitioncomm.rank(),NAF)
 {
     
@@ -67,13 +68,20 @@ AbstractScatterDevice::AbstractScatterDevice(
 	// defer memory allocation for scattering data
     // atfinal_.resize(NF);
     // but check limits nevertheless:
-    size_t scattering_databytesize = NF*2*sizeof(double);
+    size_t scattering_databytesize = NF*sizeof(fftw_complex);
     if (Params::Inst()->limits.memory.atfinal_buffer<scattering_databytesize) {
         if (allcomm_.rank()==0) {
             Err::Inst()->write("Insufficient Buffer size for scattering (limits.memory.atfinal_buffer)");
             Err::Inst()->write(string("Requested (bytes): ")+boost::lexical_cast<string>(scattering_databytesize));
         }
         throw;
+    }
+}
+
+AbstractScatterDevice::~AbstractScatterDevice() {
+    if (atfinal_!=NULL) {
+        fftw_free(atfinal_);
+        atfinal_=NULL;
     }
 }
 
@@ -108,9 +116,6 @@ void AbstractScatterDevice::runner() {
  
     bool threads_on = Params::Inst()->limits.computation.threads;
     
-    // allocate memory now
-    atfinal_.resize(NF);
-        
     if (threads_on) {
          start_workers();
          while(status()==0) {
@@ -147,6 +152,10 @@ size_t AbstractScatterDevice::status() {
 void AbstractScatterDevice::write() {
     if (partitioncomm_.rank()==0) {
         CartesianCoor3D vector = vectors_[current_vector_]; 
-        p_hdf5writer_->write(vector,atfinal_);
+        p_hdf5writer_->write(vector,atfinal_,NF);
+    }
+    if (atfinal_!=NULL) {
+        fftw_free(atfinal_);
+        atfinal_=NULL;
     }
 }

@@ -29,6 +29,7 @@
 #include <boost/numeric/ublas/matrix.hpp>
 #include <boost/mpi.hpp>
 #include <boost/thread.hpp>
+#include <fftw3.h>
 
 // other headers
 #include "decomposition/assignment.hpp"
@@ -130,7 +131,7 @@ protected:
     
     size_t NN,NF,NA;
     
-    std::vector<std::complex<double> > atfinal_;
+    fftw_complex* atfinal_;
     DivAssignment assignment_;
     
     ScatterFactors scatterfactors;
@@ -168,6 +169,7 @@ public:
         boost::asio::ip::tcp::endpoint fileservice_endpoint,
 		boost::asio::ip::tcp::endpoint monitorservice_endpoint
         );    
+    ~AbstractScatterDevice();
     
     void run();
 };

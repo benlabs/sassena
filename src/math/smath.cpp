@@ -140,6 +140,24 @@ template <class T> void auto_correlate_fftw(std::vector<std::complex<T> >& data,
     
 }
 
+
+void auto_correlate_fftw(fftw_complex* data,fftw_plan p1,fftw_plan p2,size_t NF) {
+        
+    fftw_execute_dft(p1,data,data); /* repeat as needed */
+    for(size_t i = 0; i < 2*NF; ++i)  {
+        data[i][0]=data[i][0]*data[i][0]+data[i][1]*data[i][1];
+        data[i][1]=0;  
+    }
+    fftw_execute_dft(p2,data,data); /* repeat as needed */
+
+    for(size_t i = 0; i < NF; ++i) {
+        double factor = (1.0/(2*NF*(NF-i)));
+        data[i][0]*=factor;
+        data[i][1]*=factor;        
+    }
+    
+}
+
 template <class T> void square_elements(std::vector<std::complex<T> >& data) {
 
     size_t NF = data.size();
@@ -157,7 +175,7 @@ void square_elements(fftw_complex* data,size_t N) {
     {
         double r = data[n][0]*data[n][0]+data[n][1]*data[n][1];
         data[n][0]=r;
-        data[n][0]=0;        
+        data[n][1]=0;        
     }
 }
 
@@ -171,6 +189,15 @@ template <class T> void multiply_elements(const T& factor,std::vector<std::compl
     }
 }
 
+
+void multiply_elements(const double factor,fftw_complex* data,size_t NF) {
+    for(size_t n = 0; n < NF; n++)
+    {
+        data[n][0]*=factor;
+        data[n][1]*=factor;
+    }
+}
+
 template <class T> void add_elements(std::vector<std::complex<T> >& target,const std::vector<std::complex<T> >& source) {
     
     size_t NF = target.size();
@@ -181,6 +208,14 @@ template <class T> void add_elements(std::vector<std::complex<T> >& target,const
     }
 }
 
+
+void add_elements(fftw_complex* target,const fftw_complex* source,size_t NF) {
+    for(size_t n = 0; n < NF; n++)
+    {
+        target[n][0]+=source[n][0];
+        target[n][1]+=source[n][1];
+    }
+}
 
 template<class T> void add_elements(std::vector<std::complex<T> >& target,const fftw_complex* source,size_t N) {
     

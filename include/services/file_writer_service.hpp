@@ -28,6 +28,7 @@
 #include <boost/date_time.hpp>
 #include <hdf5.h>
 #include <hdf5_hl.h>
+#include <fftw3.h>
 
 // other headers
 #include "math/coor3d.hpp"
@@ -45,6 +46,8 @@ public:
     ~HDF5WriterClient();
 
     void write(CartesianCoor3D qvector,const std::vector<std::complex<double> >& data);
+    void write(CartesianCoor3D qvector,const fftw_complex* data,size_t NF);
+    
     void flush();    
 };
 

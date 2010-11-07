@@ -44,15 +44,21 @@ inline double sine(double& x)
 }
 
 template<class T> void multiply_elements(const T& factor,std::vector<std::complex<T> >& data);
+void multiply_elements(const double factor,fftw_complex* data,size_t NF);
+
 template<class T> void square_elements(std::vector<std::complex<T> >& data);
 template<class T> void add_elements(std::vector<std::complex<T> >& target,const std::vector<std::complex<T> >& source);
+void add_elements(fftw_complex* target,const fftw_complex* source,size_t NF);
+
 template<class T> void auto_correlate_fftw(std::vector<std::complex<T> >& data,fftw_plan p1,fftw_plan p2);
 template<class T> void auto_correlate_direct(std::vector<std::complex<T> >& data);
 template<class T> std::complex<T> reduce(const std::vector<std::complex<T> >& data);
 template<class T> std::complex<T> reduce(const fftw_complex* data,size_t N);
     
 void auto_correlate_fftw(std::vector<std::complex<double> >& data,fftw_plan p1,fftw_plan p2,fftw_complex* fftw_planspace);
+void auto_correlate_fftw(fftw_complex* data,fftw_plan p1,fftw_plan p2,size_t NF);
 void auto_correlate_direct(fftw_complex* data,size_t N);
+
 void square_elements(fftw_complex* data,size_t N);
 template<class T> void add_elements(std::vector<std::complex<T> >& target,const fftw_complex* source,size_t N);
 }

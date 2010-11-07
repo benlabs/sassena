@@ -183,7 +183,7 @@ DataStagerByAtom::DataStagerByAtom(Sample& sample,boost::mpi::communicator& comm
         throw;
     }
 
-    Info::Inst()->write(string("Maximum memory allocated for coordinates (bytes): ")+boost::lexical_cast<string>(data_bytesize_indicator_max));
+//    Info::Inst()->write(string("Maximum memory allocated for coordinates (bytes): ")+boost::lexical_cast<string>(data_bytesize_indicator_max));
     p_coordinates = (coor_t*) malloc(data_bytesize);
         
     // determine number of nodes which act as file servers:

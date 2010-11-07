@@ -44,8 +44,8 @@ protected:
     
     // first = q, second = frames
     concurrent_queue< std::pair<size_t,size_t> > at0_;    
-    concurrent_queue< std::vector< std::complex<double> >* > at1_;
-    std::vector< std::complex<double> > at2_;
+    concurrent_queue< fftw_complex* > at1_;
+    fftw_complex* at2_;
     mutable boost::mutex at2_mutex;
 
     coor_t* p_coordinates;
@@ -54,7 +54,7 @@ protected:
     // methods
     //////////////////////////////
     
-    std::vector<std::complex<double> >* scatter(size_t qindex,size_t aindex);
+    fftw_complex* scatter(size_t qindex,size_t aindex);
     
     void stage_data();
     
@@ -62,7 +62,7 @@ protected:
     void compute_serial();
     void compute_threaded();    
     void worker1_task(size_t this_subvector,size_t this_atom);    
-    void worker2_task(std::vector< std::complex<double> >* p_a);
+    void worker2_task(fftw_complex* p_a);
     void start_workers();
     void stop_workers();
     void worker1();

@@ -63,9 +63,20 @@ void SelfVectorsScatterDevice::stage_data() {
 }
 
 SelfVectorsScatterDevice::~SelfVectorsScatterDevice() {
-    if (p_coordinates!=NULL) free(p_coordinates);
+    if (p_coordinates!=NULL) {
+        free(p_coordinates);
+        p_coordinates=NULL;
+    }
     fftw_destroy_plan(fftw_planF_);
     fftw_destroy_plan(fftw_planB_);
+    if (at2_!=NULL) {
+        fftw_free(at2_);
+        at2_=NULL;
+    }
+    if (atfinal_!=NULL) {
+        fftw_free(atfinal_);
+        atfinal_=NULL;
+    }
 }
 
 void SelfVectorsScatterDevice::start_workers() {
@@ -98,22 +109,22 @@ void SelfVectorsScatterDevice::stop_workers() {
 }
 
 void SelfVectorsScatterDevice::worker1_task(size_t this_subvector,size_t this_atom) {
-    std::vector<std::complex<double> >* p_at_local = NULL;
+    fftw_complex* p_at_local = NULL;
     p_at_local=scatter(this_subvector,this_atom);
     
     // apply dsp
     if (Params::Inst()->scattering.dsp.type=="autocorrelate") {
         if (Params::Inst()->scattering.dsp.method=="direct") {
-            smath::auto_correlate_direct(*p_at_local);	        
+            smath::auto_correlate_direct(p_at_local,NF);	        
         } else if (Params::Inst()->scattering.dsp.method=="fftw") {          
-            smath::auto_correlate_fftw(*p_at_local,fftw_planF_,fftw_planB_);
+            smath::auto_correlate_fftw(p_at_local,fftw_planF_,fftw_planB_,NF);
         } else {
             Err::Inst()->write("Correlation method not understood");
             Err::Inst()->write("scattering.dsp.method == direct, fftw");        
             throw;
         }
 	} else if (Params::Inst()->scattering.dsp.type=="square") {
-        smath::square_elements(*p_at_local);
+        smath::square_elements(p_at_local,NF);
 	}
     at1_.push(p_at_local);
 }
@@ -123,7 +134,7 @@ void SelfVectorsScatterDevice::worker1() {
     size_t maxbuffer_bytesize = Params::Inst()->limits.memory.at1_buffer;
     size_t timeout = Params::Inst()->limits.times.at1_buffer;
 
-    size_t single_entry_bytesize = NF*2*sizeof(double);
+    size_t single_entry_bytesize = NF*sizeof(fftw_complex);
     size_t max_entries = maxbuffer_bytesize/single_entry_bytesize;
     
     while (true) {
@@ -142,18 +153,18 @@ void SelfVectorsScatterDevice::worker1() {
     }
 }
 
-void SelfVectorsScatterDevice::worker2_task(std::vector< std::complex<double> >* p_a) {
+void SelfVectorsScatterDevice::worker2_task(fftw_complex* p_a) {
 
     worker2_counter++;
-    smath::add_elements(at2_,*p_a);
+    smath::add_elements(at2_,p_a,NF);
     p_monitor_->update(allcomm_.rank(),progress());    						            
 
-    delete p_a;
+    fftw_free(p_a); p_a=NULL;
 }
 
 void SelfVectorsScatterDevice::worker2() {
     while ( true ) {
-        std::vector< std::complex<double> >* p_at_local=NULL;
+        fftw_complex* p_at_local=NULL;
         at1_.wait_and_pop(p_at_local);
         if (p_at_local==NULL) { // ats as sentinal
             worker2_done = true;
@@ -176,15 +187,16 @@ void SelfVectorsScatterDevice::compute_serial() {
 	scatterfactors.update(q); // scatter factors only dependent on length of q, hence we can do it once before the loop
 
     current_subvector_=0;
-    at2_.resize(NF,0);
-    fill_n(at2_.begin(),NF,0);
+
+    at2_ = (fftw_complex*) fftw_malloc(NF*sizeof(fftw_complex));
+    memset(at2_,0,NF*sizeof(fftw_complex));
 
     for(size_t i = 0; i < NM; ++i)
     {
         for(size_t n = 0; n < assignment_.size(); ++n)
         {
             worker1_task(i,n);
-            std::vector< std::complex<double> >* p_a(NULL);        
+            fftw_complex* p_a=NULL;        
             at1_.wait_and_pop(p_a);
             worker2_task(p_a); 
         }
@@ -192,21 +204,23 @@ void SelfVectorsScatterDevice::compute_serial() {
         p_monitor_->update(allcomm_.rank(),progress());                                  
     }
 
+    atfinal_ = (fftw_complex*) fftw_malloc(NF*sizeof(fftw_complex));
+    memset(atfinal_,0,NF*sizeof(fftw_complex));
 
     double factor = 1.0/subvector_index_.size();    
     if (NN>1) {
-        vector<complex<double> > atlocal(NF,0);
         double* p_at2 = (double*) &(at2_[0]);
-        double* p_atlocal = (double*) &(atlocal[0]);
+        double* p_atlocal = (double*) &(atfinal_[0]);
 
         boost::mpi::reduce(partitioncomm_,p_at2,2*NF,p_atlocal,std::plus<double>(),0);
-        smath::multiply_elements(factor,atlocal);
-        atfinal_=atlocal;
     }
     else {
-        smath::multiply_elements(factor,at2_);
-        atfinal_=at2_;
+        memcpy(atfinal_,at2_,NF*sizeof(fftw_complex));
     }
+    
+    fftw_free(at2_); at2_=NULL;
+
+    smath::multiply_elements(factor,atfinal_,NF);
 }
 
 void SelfVectorsScatterDevice::compute_threaded() {
@@ -221,8 +235,10 @@ void SelfVectorsScatterDevice::compute_threaded() {
     worker2_counter = 0;
     worker2_done = false;
     boost::mutex::scoped_lock w2l(worker2_mutex);
-    at2_.resize(NF,0);
-    fill_n(at2_.begin(),NF,0);
+
+    at2_ = (fftw_complex*) fftw_malloc(NF*sizeof(fftw_complex));
+    memset(at2_,0,NF*sizeof(fftw_complex));
+
 
     for(size_t i = 0; i < NM; ++i) {
         for(size_t n = 0; n < assignment_.size(); ++n)
@@ -232,30 +248,32 @@ void SelfVectorsScatterDevice::compute_threaded() {
     }
     while (!worker2_done)  worker2_notifier.wait(w2l);
 
+    atfinal_ = (fftw_complex*) fftw_malloc(NF*sizeof(fftw_complex));
+    memset(atfinal_,0,NF*sizeof(fftw_complex));
     
-    double factor = 1.0/subvector_index_.size();
+    double factor = 1.0/subvector_index_.size();    
     if (NN>1) {
-        vector<complex<double> > at_local(NF,0);
-
         double* p_at2 = (double*) &(at2_[0]);
-        double* p_atlocal = (double*) &(at_local[0]);
+        double* p_atlocal = (double*) &(atfinal_[0]);
 
         boost::mpi::reduce(partitioncomm_,p_at2,2*NF,p_atlocal,std::plus<double>(),0);
-        smath::multiply_elements(factor,at_local);
-        atfinal_=at_local;
     }
     else {
-        smath::multiply_elements(factor,at2_);
-        atfinal_=at2_;
+        memcpy(atfinal_,at2_,NF*sizeof(fftw_complex));
     }
+    
+    fftw_free(at2_); at2_=NULL;
+
+    smath::multiply_elements(factor,atfinal_,NF);
 }
 
-std::vector<std::complex<double> >* SelfVectorsScatterDevice::scatter(size_t mi,size_t ai) {
+fftw_complex* SelfVectorsScatterDevice::scatter(size_t mi,size_t ai) {
 
 	// this is broken <-- revise this!!!
 	double s = scatterfactors.get(assignment_[ai]);
 	
-    std::vector<std::complex<double> >* p_at_local = new std::vector<std::complex<double> >(NF);
+	// double allocate (2*NF), to allow direct application of autocorrelation. 
+    fftw_complex* p_at_local = (fftw_complex*) fftw_malloc(2*NF*sizeof(fftw_complex));
     
     double qx = subvector_index_[mi].x;
     double qy = subvector_index_[mi].y;
@@ -273,8 +291,11 @@ std::vector<std::complex<double> >* SelfVectorsScatterDevice::scatter(size_t mi,
 		double p1 = x1*qx+y1*qy+z1*qz;
         double sp1 = sin(p1);
         double cp1 = cos(p1);
-        (*p_at_local)[j] = std::complex<double>(s*cp1,s*sp1);
+        p_at_local[j][0] = s*cp1;
+        p_at_local[j][1] = s*sp1;
 	}
+	
+    memset(&p_at_local[NF],0,NF*sizeof(fftw_complex));
   
     return p_at_local;
 }
