@@ -458,6 +458,9 @@ void Params::read_xml(std::string filename) {
         	if (xmli.exists("//limits/memory/at1_buffer")) {
     	        limits.memory.at1_buffer = xmli.get_value<size_t>("//limits/memory/at1_buffer");
 	        }
+        	if (xmli.exists("//limits/memory/atfinal_buffer")) {
+    	        limits.memory.atfinal_buffer = xmli.get_value<size_t>("//limits/memory/atfinal_buffer");
+	        }
         	if (xmli.exists("//limits/memory/data_stager")) {
     	        limits.memory.data_stager = xmli.get_value<size_t>("//limits/memory/data_stager");
 	        }

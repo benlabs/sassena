@@ -286,16 +286,20 @@ void AllVectorsScatterDevice::compute_serial() {
         if (at_local!=NULL) worker3_task(at_local);
         p_monitor_->update(allcomm_.rank(),progress());
     }
-    
-    atfinal_ = (fftw_complex*) fftw_malloc(NF*sizeof(fftw_complex));
-    memset(atfinal_,0,NF*sizeof(fftw_complex));
 
+    if (partitioncomm_.rank()==0) {
+        atfinal_ = (fftw_complex*) fftw_malloc(NF*sizeof(fftw_complex));
+        memset(atfinal_,0,NF*sizeof(fftw_complex));        
+    }
 
     double factor = 1.0/subvector_index_.size();
     if (NN>1) {
 
         double* p_at3 = (double*) &(at3_[0][0]);
-        double* p_atlocal = (double*) &(atfinal_[0][0]);
+        double* p_atlocal=NULL;
+        if (partitioncomm_.rank()==0) {
+            p_atlocal = (double*) &(atfinal_[0][0]);;
+        }
 
         boost::mpi::reduce(partitioncomm_,p_at3,2*NF,p_atlocal,std::plus<double>(),0);
     }
@@ -305,7 +309,9 @@ void AllVectorsScatterDevice::compute_serial() {
     
     fftw_free(at3_); at3_=NULL;
 
-    smath::multiply_elements(factor,atfinal_,NF);
+    if (partitioncomm_.rank()==0) {
+        smath::multiply_elements(factor,atfinal_,NF);
+    }
 }
 
 
@@ -328,23 +334,31 @@ void AllVectorsScatterDevice::compute_threaded() {
     for(size_t i = 0; i < NM; ++i) at0_.push(i);
     while (!worker3_done)  worker3_notifier.wait(w3l);
 
-    atfinal_ = (fftw_complex*) fftw_malloc(NF*sizeof(fftw_complex));
-    memset(atfinal_,0,NF*sizeof(fftw_complex));
-    
-    double factor = 1.0/subvector_index_.size();    
+    if (partitioncomm_.rank()==0) {
+        atfinal_ = (fftw_complex*) fftw_malloc(NF*sizeof(fftw_complex));
+        memset(atfinal_,0,NF*sizeof(fftw_complex));        
+    }
+
+    double factor = 1.0/subvector_index_.size();
     if (NN>1) {
+
         double* p_at3 = (double*) &(at3_[0][0]);
-        double* p_atlocal = (double*) &(atfinal_[0][0]);
-        
+        double* p_atlocal=NULL;
+        if (partitioncomm_.rank()==0) {
+            p_atlocal = (double*) &(atfinal_[0][0]);;
+        }
+
         boost::mpi::reduce(partitioncomm_,p_at3,2*NF,p_atlocal,std::plus<double>(),0);
     }
     else {
         memcpy(atfinal_,at3_,NF*sizeof(fftw_complex));
     }
     
-    fftw_free(at3_); at3_ = NULL;
-        
-    smath::multiply_elements(factor,atfinal_,NF);
+    fftw_free(at3_); at3_=NULL;
+
+    if (partitioncomm_.rank()==0) {
+        smath::multiply_elements(factor,atfinal_,NF);
+    }
 }
 
 fftw_complex* AllVectorsScatterDevice::scatter(size_t this_subvector) {

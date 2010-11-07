@@ -78,6 +78,7 @@ DataStagerByFrame::DataStagerByFrame(Sample& sample,boost::mpi::communicator& al
 
 coor_t* DataStagerByFrame::stage() {
     stage_firstpartition();
+    allcomm_.barrier();
     stage_fillpartitions();
     return p_coordinates;
 }

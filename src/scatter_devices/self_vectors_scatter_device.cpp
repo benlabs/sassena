@@ -204,13 +204,19 @@ void SelfVectorsScatterDevice::compute_serial() {
         p_monitor_->update(allcomm_.rank(),progress());                                  
     }
 
-    atfinal_ = (fftw_complex*) fftw_malloc(NF*sizeof(fftw_complex));
-    memset(atfinal_,0,NF*sizeof(fftw_complex));
-
+    if (partitioncomm_.rank()==0) {
+        atfinal_ = (fftw_complex*) fftw_malloc(NF*sizeof(fftw_complex));
+        memset(atfinal_,0,NF*sizeof(fftw_complex));        
+    }
+    
     double factor = 1.0/subvector_index_.size();    
     if (NN>1) {
-        double* p_at2 = (double*) &(at2_[0]);
-        double* p_atlocal = (double*) &(atfinal_[0]);
+        double* p_at2 = (double*) &(at2_[0][0]);
+
+        double* p_atlocal = NULL;
+        if (partitioncomm_.rank()==0) {
+            p_atlocal = (double*) &(atfinal_[0][0]);
+        }
 
         boost::mpi::reduce(partitioncomm_,p_at2,2*NF,p_atlocal,std::plus<double>(),0);
     }
@@ -220,7 +226,9 @@ void SelfVectorsScatterDevice::compute_serial() {
     
     fftw_free(at2_); at2_=NULL;
 
-    smath::multiply_elements(factor,atfinal_,NF);
+    if (partitioncomm_.rank()==0) {
+        smath::multiply_elements(factor,atfinal_,NF);
+    }
 }
 
 void SelfVectorsScatterDevice::compute_threaded() {
@@ -248,13 +256,19 @@ void SelfVectorsScatterDevice::compute_threaded() {
     }
     while (!worker2_done)  worker2_notifier.wait(w2l);
 
-    atfinal_ = (fftw_complex*) fftw_malloc(NF*sizeof(fftw_complex));
-    memset(atfinal_,0,NF*sizeof(fftw_complex));
+    if (partitioncomm_.rank()==0) {
+        atfinal_ = (fftw_complex*) fftw_malloc(NF*sizeof(fftw_complex));
+        memset(atfinal_,0,NF*sizeof(fftw_complex));        
+    }
     
     double factor = 1.0/subvector_index_.size();    
     if (NN>1) {
-        double* p_at2 = (double*) &(at2_[0]);
-        double* p_atlocal = (double*) &(atfinal_[0]);
+        double* p_at2 = (double*) &(at2_[0][0]);
+
+        double* p_atlocal = NULL;
+        if (partitioncomm_.rank()==0) {
+            p_atlocal = (double*) &(atfinal_[0][0]);
+        }
 
         boost::mpi::reduce(partitioncomm_,p_at2,2*NF,p_atlocal,std::plus<double>(),0);
     }
@@ -264,7 +278,9 @@ void SelfVectorsScatterDevice::compute_threaded() {
     
     fftw_free(at2_); at2_=NULL;
 
-    smath::multiply_elements(factor,atfinal_,NF);
+    if (partitioncomm_.rank()==0) {
+        smath::multiply_elements(factor,atfinal_,NF);
+    }
 }
 
 fftw_complex* SelfVectorsScatterDevice::scatter(size_t mi,size_t ai) {

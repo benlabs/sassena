@@ -52,8 +52,8 @@ protected:
         ar.register_type(static_cast<BrownianMotionWalker*>(NULL));
         ar.register_type(static_cast<LocalBrownianMotionWalker*>(NULL));
         
-        ar & m_prealignmentvectors;
-        ar & m_postalignmentvectors;
+        // ar & m_prealignmentvectors;
+        // ar & m_postalignmentvectors;
 
         ar & m_motion_walkers;
         ar & m_prealignments;
@@ -68,8 +68,8 @@ protected:
         ar & m_representation;
     }
     
-    std::map<size_t,std::vector<CartesianCoor3D> > m_prealignmentvectors;
-    std::map<size_t,std::vector<CartesianCoor3D> > m_postalignmentvectors;
+    // std::map<size_t,std::vector<CartesianCoor3D> > m_prealignmentvectors;
+    // std::map<size_t,std::vector<CartesianCoor3D> > m_postalignmentvectors;
 
 	std::vector< std::pair<std::string,MotionWalker*> > m_motion_walkers;
 	std::vector< std::pair<std::string,std::string> > m_prealignments;
@@ -88,8 +88,8 @@ public:
 	
 	CoordinateSet* load(size_t frame);	
      
-	std::vector<CartesianCoor3D> get_prealignmentvectors(size_t frame);	
-	std::vector<CartesianCoor3D> get_postalignmentvectors(size_t frame);	
+	// std::vector<CartesianCoor3D> get_prealignmentvectors(size_t frame);	
+	// std::vector<CartesianCoor3D> get_postalignmentvectors(size_t frame);	
 	
 	// use these to initialize the coordinate set:
 	void set_selection(Atomselection& selection);
