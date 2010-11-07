@@ -131,7 +131,7 @@ protected:
     size_t NN,NF,NA;
     
     std::vector<std::complex<double> > atfinal_;
-    Assignment assignment_;
+    DivAssignment assignment_;
     
     ScatterFactors scatterfactors;
         

@@ -510,7 +510,8 @@ private:
         ar & data;
         ar & iowrite_client;
         ar & iowrite_server;
-        ar & at1_buffer;     
+        ar & at1_buffer; 
+        ar & atfinal_buffer;     
         ar & data_stager;   
     }
 	/////////////////// 
@@ -522,6 +523,7 @@ public:
     size_t iowrite_client;
     size_t iowrite_server;    
     size_t at1_buffer;
+    size_t atfinal_buffer;    
     size_t data_stager;
 };
 

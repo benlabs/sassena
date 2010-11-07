@@ -411,6 +411,7 @@ void Params::read_xml(std::string filename) {
     limits.signal.alloc_early = false;
     limits.signal.chunksize = 10000;
 
+    limits.memory.atfinal_buffer = 100*1024*1024; // 100MB    
     limits.memory.at1_buffer = 2*1024*1024; // 2MB    
     limits.memory.data_stager = 100*1024*1024; // 100MB
     

@@ -36,22 +36,23 @@ struct binary_max : public binary_function<size_t,size_t,size_t> {
     size_t operator() (size_t a,size_t b) {if (a>b) return a; else return b;}
 };
 
-DataStagerByFrame::DataStagerByFrame(Sample& sample,boost::mpi::communicator& comm, Assignment assignment) 
+DataStagerByFrame::DataStagerByFrame(Sample& sample,boost::mpi::communicator& allcomm,boost::mpi::communicator& partitioncomm,DivAssignment assignment) 
     : m_sample(sample),
-    m_comm(comm),
+    allcomm_(allcomm),
+    partitioncomm_(partitioncomm),    
     FC_assignment(assignment)
 {
-    NN = m_comm.size();    
+    NN = allcomm_.size();    
     NF = m_sample.coordinate_sets.size();
     std::string target = Params::Inst()->scattering.target;
     NA = m_sample.atoms.selections[target].indexes.size();
 
-    size_t rank = m_comm.rank();
+    size_t rank = allcomm_.rank();
 
     // check data size requirements & allocate memory
     size_t data_bytesize = FC_assignment.size()*NA*3*sizeof(coor_t);
     size_t data_bytesize_indicator_max = 0;
-    boost::mpi::all_reduce(m_comm,data_bytesize,data_bytesize_indicator_max,binary_max());
+    boost::mpi::all_reduce(allcomm,data_bytesize,data_bytesize_indicator_max,binary_max());
 
     if (Params::Inst()->limits.memory.data<data_bytesize_indicator_max) {
         if (rank==0) {
@@ -60,6 +61,7 @@ DataStagerByFrame::DataStagerByFrame(Sample& sample,boost::mpi::communicator& co
         }
         throw;
     }
+
     p_coordinates = (coor_t*) malloc(data_bytesize);
         
     // determine number of nodes which act as file servers:
@@ -68,76 +70,20 @@ DataStagerByFrame::DataStagerByFrame(Sample& sample,boost::mpi::communicator& co
     if (NFN>NN) NFN=NN; 
     if (NFN>NF) {
         NFN=NF;  
-        if (m_comm.rank()==0) {
+        if (allcomm_.rank()==0) {
             Info::Inst()->write("Number of data servers limited by number of frames");
-        }
-    }    
-
-    // file FS_assignment_table, all client own this list
-    for(size_t i=0;i<NF;i++) {
-        size_t assigned_server = i%NFN;
-        FS_assignment_table[assigned_server].insert(i);
-    }
-
-    // create a local FS_to_framelist_table
-    // its an intersection of the FC_assignment and the FS_assignment_table
-    for(size_t i=0;i<FC_assignment.size();i++) {
-        for(size_t j=0;j<NFN;j++) {
-            size_t frame = FC_assignment[i];
-            if (FS_assignment_table[j].find(frame)!=FS_assignment_table[j].end()) {
-                FS_to_framelist_table[j].push_back(frame);
-                break;
-            }
         }
     }    
 }
 
 coor_t* DataStagerByFrame::stage() {
-    stage_registration();
-    stage_data();
+    stage_firstpartition();
+    stage_fillpartitions();
     return p_coordinates;
 }
 
-void DataStagerByFrame::stage_registration() {
-    size_t rank = m_comm.rank();
-        
-    for(size_t s=0;s<NFN;s++) {
-        for(size_t c=0;c<NN;c++) {
-            // test for client:
-            if ((rank==c) && (rank==s)) {
-                // communicate to self
-                size_t datasize = FS_to_framelist_table[s].size();
-                std::vector<size_t> frames = FS_to_framelist_table[s];
-                
-                for(size_t j=0;j<datasize;j++) {
-                    Frame_to_FClist[frames[j]].push_back(rank);
-                }
-            } else if (rank==c) {
-                size_t datasize = FS_to_framelist_table[s].size();
-                m_comm.send(s,0,&datasize,1);
-                if (datasize>0) {
-                    size_t* p_data = &(FS_to_framelist_table[s][0]);
-                    m_comm.send(s,0,p_data,datasize);
-                }
-            } else if (rank==s) {
-                size_t datasize;    
-                m_comm.recv(c,0,&datasize,1);
-                if (datasize>0) {
-                    std::vector<size_t> frames(datasize);
-                    m_comm.recv(c,0,&(frames[0]),datasize);
-
-                    for(size_t j=0;j<datasize;j++) {
-                        Frame_to_FClist[frames[j]].push_back(c);
-                    }
-                }
-            }
-        }
-    }
-}
-
-void DataStagerByFrame::stage_data() {
-    size_t rank = m_comm.rank();
-    
+void DataStagerByFrame::stage_firstpartition() {
+    size_t rank = allcomm_.rank();
     
     // used by server
     //size_t frame_bytesize = NA*3*sizeof(double);
@@ -145,10 +91,13 @@ void DataStagerByFrame::stage_data() {
 
     //std::set<size_t>& assigned_frames = FS_assignment_table[rank];
 
-    std::map<size_t,size_t> assignment_mapper;
-    for(size_t i=0;i<FC_assignment.size();i++) {
-        assignment_mapper[FC_assignment[i]]=i;
+    vector<DivAssignment> assignments;
+    for (size_t i=0;i<NN;i++) {
+        assignments.push_back(DivAssignment(NN,i,NF));
     }
+    
+    bool firstpartition=true;
+    if (allcomm_.rank()>=partitioncomm_.size()) firstpartition=false;
 
     for(size_t f=0;f<NF;f++) {
         size_t s = f%NFN; // this is the responsible data server
@@ -161,21 +110,47 @@ void DataStagerByFrame::stage_data() {
                 p_coordinates_buffer[3*n+2]=p_cset->c3[n];            
             }
             delete p_cset;
-            for(size_t j=0;j<Frame_to_FClist[f].size();j++) {
-                size_t target_node = Frame_to_FClist[f][j];
-                if (target_node==s) {
-                    coor_t* p_localdata = &(p_coordinates[assignment_mapper[f]*NA*3]);
-                    memcpy(p_localdata,p_coordinates_buffer,3*NA*sizeof(coor_t));
-                } else {
-                    m_comm.send(target_node,0,p_coordinates_buffer,3*NA);
+
+            size_t target_node = 0;
+            for(size_t i = 0; i < assignments.size(); ++i)
+            {
+                if (assignments[i].contains(f)) {
+                    target_node=i;
+                    break;
                 }
-            }  
-        } else if (assignment_mapper.find(f)!=assignment_mapper.end()) {     
-            coor_t* p_localdata = &(p_coordinates[assignment_mapper[f]*NA*3]);
-            m_comm.recv(s,0,p_localdata,3*NA);
+            }
+            if (target_node==s) {
+                coor_t* p_localdata = &(p_coordinates[FC_assignment.index(f)*NA*3]);
+                memcpy(p_localdata,p_coordinates_buffer,3*NA*sizeof(coor_t));                
+            } else {
+                allcomm_.send(target_node,0,p_coordinates_buffer,3*NA);
+            }
+            
+        } else if (firstpartition && FC_assignment.contains(f)) {
+            coor_t* p_localdata = &(p_coordinates[FC_assignment.index(f)*NA*3]);
+            allcomm_.recv(s,0,p_localdata,3*NA);            
         }
     }
-    delete p_coordinates_buffer;
+    free(p_coordinates_buffer);
+}
+
+
+void DataStagerByFrame::stage_fillpartitions() {
+    
+    bool firstpartition=true;
+    if (allcomm_.rank()>=partitioncomm_.size()) firstpartition=false;
+    size_t partitions = allcomm_.size()/partitioncomm_.size();
+
+    if (firstpartition) {
+        for(size_t i = 1; i < partitions; ++i)
+        {
+            size_t target_node = i*partitioncomm_.size() + partitioncomm_.rank();
+            allcomm_.send(target_node,0,p_coordinates,FC_assignment.size()*NA*3);            
+        }
+    } else {
+        size_t source_node = partitioncomm_.rank();
+        allcomm_.recv(source_node,0,p_coordinates,FC_assignment.size()*NA*3);            
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -183,7 +158,7 @@ void DataStagerByFrame::stage_data() {
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-DataStagerByAtom::DataStagerByAtom(Sample& sample,boost::mpi::communicator& comm, Assignment assignment) 
+DataStagerByAtom::DataStagerByAtom(Sample& sample,boost::mpi::communicator& comm, DivAssignment assignment) 
     : m_sample(sample),
     m_comm(comm),
     FC_assignment(assignment)
@@ -393,4 +368,3 @@ void DataStagerByAtom::fill_coordinates(coor_t* p_localdata,size_t len,vector<si
         }
     }
 }
-

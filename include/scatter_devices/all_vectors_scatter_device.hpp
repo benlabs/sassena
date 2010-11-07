@@ -88,7 +88,7 @@ public:
 			boost::mpi::communicator partitioncomm,
 			Sample& sample,
 			std::vector<CartesianCoor3D> vectors,
-		    size_t NAF,
+			std::vector<size_t> assignment,
 			boost::asio::ip::tcp::endpoint fileservice_endpoint,
 			boost::asio::ip::tcp::endpoint monitorservice_endpoint			
 

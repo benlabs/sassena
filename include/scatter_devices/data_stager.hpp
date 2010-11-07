@@ -39,27 +39,23 @@
 
 class DataStagerByFrame {
     Sample& m_sample;
-    boost::mpi::communicator& m_comm;
-    Assignment FC_assignment;
+    boost::mpi::communicator& allcomm_;
+    boost::mpi::communicator& partitioncomm_;
+    DivAssignment FC_assignment;
     
     size_t NFN;
     size_t NN;
     size_t NA;
     size_t NF;
-    
-    //owned by all clients, init in constructor
-    std::map<size_t, std::set<size_t> > FS_assignment_table;
-    std::map<size_t,std::vector<size_t> > FS_to_framelist_table;
-
-    // used by file servers
-    std::map<size_t,std::vector<size_t> > Frame_to_FClist; 
-    
+        
     coor_t* p_coordinates;
-    void stage_registration();
-    void stage_data();
-
+//    void stage_registration();
+//    void stage_data();
+    void stage_firstpartition();
+    void stage_fillpartitions();
+    
 public:
-    DataStagerByFrame(Sample& sample,boost::mpi::communicator& comm, Assignment assignment);
+    DataStagerByFrame(Sample& sample,boost::mpi::communicator& allcomm,boost::mpi::communicator& partitioncomm, DivAssignment assignment);
     coor_t* stage();
     
 };
@@ -68,7 +64,7 @@ public:
 class DataStagerByAtom  {
     Sample& m_sample;
     boost::mpi::communicator& m_comm;
-    Assignment FC_assignment;
+    DivAssignment FC_assignment;
     
     size_t NFN;
     size_t NN;
@@ -90,7 +86,7 @@ class DataStagerByAtom  {
     void stage_data();
     
 public:
-    DataStagerByAtom(Sample& sample,boost::mpi::communicator& comm, Assignment assignment);
+    DataStagerByAtom(Sample& sample,boost::mpi::communicator& comm, DivAssignment assignment);
     
     coor_t* stage();    
 };

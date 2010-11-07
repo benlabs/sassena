@@ -55,11 +55,11 @@ AllVectorsScatterDevice::AllVectorsScatterDevice(
     fftw_complex* wspace= NULL;
     fftw_planF_ = fftw_plan_dft_1d(2*NF, wspace, wspace, FFTW_FORWARD, FFTW_ESTIMATE);
     fftw_planB_ = fftw_plan_dft_1d(2*NF, wspace, wspace, FFTW_BACKWARD, FFTW_ESTIMATE);
-    fftw_free(wspace);
+//    fftw_free(wspace);
 }
 
 void AllVectorsScatterDevice::stage_data() {
-    DataStagerByFrame data_stager(sample_,allcomm_,assignment_);
+    DataStagerByFrame data_stager(sample_,allcomm_,partitioncomm_,assignment_);
     p_coordinates = data_stager.stage();
 }
 
@@ -140,9 +140,9 @@ void AllVectorsScatterDevice::worker1() {
 void AllVectorsScatterDevice::worker2_task(const size_t subvector_index,std::vector< std::complex<double> >* p_a) {
     // compute global assignment patterns:
     
-    vector<Assignment> assignments;
+    vector<DivAssignment> assignments;
     for (size_t i=0;i<NN;i++) {
-        assignments.push_back(Assignment(NN,i,NF));
+        assignments.push_back(DivAssignment(NN,i,NF));
     }
 	
     size_t target_node = (subvector_index%NN);
@@ -276,7 +276,6 @@ void AllVectorsScatterDevice::compute_serial() {
     
     fill_n(atfinal_.begin(),NF,0);
     
-
     double factor = 1.0/subvector_index_.size();
     if (NN>1) {
         vector<complex<double> > atlocal(NF,0);
@@ -307,14 +306,14 @@ void AllVectorsScatterDevice::compute_threaded() {
     worker2_counter = 0;
     worker3_done = false;
     boost::mutex::scoped_lock w3l(worker3_mutex);
+
+
     at3_.resize(NF,0);
     fill_n(at3_.begin(),NF,0);
 
-
     for(size_t i = 0; i < NM; ++i) at0_.push(i);
     while (!worker3_done)  worker3_notifier.wait(w3l);
-    
-    sleep(100);
+
     fill_n(atfinal_.begin(),NF,0);
 
     double factor = 1.0/subvector_index_.size();    
@@ -371,8 +370,11 @@ std::vector< std::complex<double> >* AllVectorsScatterDevice::scatter(size_t thi
            Ar += sfs[j]*cos(p);
            Ai += sfs[j]*sin(p);
 	   }
-       (*p_a)[fi] = complex<double>(Ar,Ai);
+      // (*p_a)[fi] = complex<double>(Ar,Ai);
+       (*p_a)[fi] = complex<double>(3,2);
 	}
+	
+	
 
     return p_a;
 }

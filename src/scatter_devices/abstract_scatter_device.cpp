@@ -64,7 +64,17 @@ AbstractScatterDevice::AbstractScatterDevice(
 	scatterfactors.set_selection(sample_.atoms.selections[target]);
 	scatterfactors.set_background(true);
 	
-    atfinal_.resize(NF);
+	// defer memory allocation for scattering data
+    // atfinal_.resize(NF);
+    // but check limits nevertheless:
+    size_t scattering_databytesize = NF*2*sizeof(double);
+    if (Params::Inst()->limits.memory.atfinal_buffer<scattering_databytesize) {
+        if (allcomm_.rank()==0) {
+            Err::Inst()->write("Insufficient Buffer size for scattering (limits.memory.atfinal_buffer)");
+            Err::Inst()->write(string("Requested (bytes): ")+boost::lexical_cast<string>(scattering_databytesize));
+        }
+        throw;
+    }
 }
 
 void AbstractScatterDevice::run() {
@@ -98,6 +108,9 @@ void AbstractScatterDevice::runner() {
  
     bool threads_on = Params::Inst()->limits.computation.threads;
     
+    // allocate memory now
+    atfinal_.resize(NF);
+        
     if (threads_on) {
          start_workers();
          while(status()==0) {

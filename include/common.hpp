@@ -21,6 +21,7 @@
 #include <complex>
 #include <cstring>
 #include <sstream>
+#include <fstream>
 #include <vector>
 
 // special library headers
@@ -39,7 +40,6 @@ typedef double coor2_t;
 #ifdef PRECISION_TYPE_SINGLE
 typedef float coor_t;
 typedef double coor2_t;
-
 #endif
 
 
