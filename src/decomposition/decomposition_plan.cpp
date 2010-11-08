@@ -116,7 +116,12 @@ DecompositionPlan::DecompositionPlan(size_t nn,size_t nq,size_t naf,size_t elbyt
     } else {
         Warn::Inst()->write("Manual decomposition. This might not yield the best utilization!");	
         if (Params::Inst()->limits.decomposition.partitions.size<=naf) {
-            p_dp_best = new DecompositionParameters(nn,nq,naf,Params::Inst()->limits.decomposition.partitions.size,elbytesize);            
+            size_t nnpp = Params::Inst()->limits.decomposition.partitions.size;
+            if (nnpp>nn) {
+                nnpp=nn;
+                Warn::Inst()->write("Partition size larger than NN. Setting NNPP=NN.");	
+            }
+            p_dp_best = new DecompositionParameters(nn,nq,naf,nnpp,elbytesize);            
         }
     }
         
