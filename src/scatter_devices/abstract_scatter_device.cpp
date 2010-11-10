@@ -57,7 +57,7 @@ AbstractScatterDevice::AbstractScatterDevice(
     NN = partitioncomm_.size();
 	NF = sample_.coordinate_sets.size();
 	std::string target = Params::Inst()->scattering.target;
-	NA = sample_.atoms.selections[target].indexes.size(); // Number of Atoms
+	NA = sample_.atoms.selections[target]->size(); // Number of Atoms
 	
 	sample_.coordinate_sets.set_selection(sample.atoms.selections[target]);
 	

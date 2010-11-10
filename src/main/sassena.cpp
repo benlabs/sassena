@@ -260,14 +260,18 @@ int main(int argc,char* argv[]) {
 	world.barrier();
 
 	timer.start("sample::communication");
+    if (world.rank()==0) Info::Inst()->write("params... ");
 
 	broadcast(world,*params,0);
 
 	world.barrier();
 
+    if (world.rank()==0) Info::Inst()->write("database... ");
+
 	broadcast(world,*database,0);
 
 	world.barrier();
+    if (world.rank()==0) Info::Inst()->write("sample... ");
 
 	broadcast(world,sample,0);
 

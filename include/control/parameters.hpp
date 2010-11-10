@@ -62,33 +62,87 @@ public:
 	std::string format;
 };
 
-class SampleGroupParameters {
-private:
-	/////////////////// MPI related
-	// make this class serializable to 
-	// allow sample to be transmitted via MPI
+class SampleSelectionParameters {
     friend class boost::serialization::access;	
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
     {
-		ar & name;
-		ar & file;
-		ar & format;
-		ar & select;
-		ar & select_value;
+		ar & type_;
     }
-	/////////////////// 
+    std::string type_;
+public:
+    SampleSelectionParameters() {}
+    SampleSelectionParameters(std::string type) : type_(type) {}
+    
+    std::string type() { return type_;}
+};
 
-public:	
-	std::string name;
-	std::string file;
-	std::string format;
-	std::string select;
-	double select_value;
-	
-	SampleGroupParameters() {}
-	SampleGroupParameters(const std::string& v1,const std::string& v2,const std::string& v3,const std::string& v4,const double& v5) {
-		name = v1; file = v2; format = v3; select = v4; select_value = v5; 
-	}
+
+class SampleIndexSelectionParameters : public SampleSelectionParameters {
+    friend class boost::serialization::access;	
+	template<class Archive> void serialize(Archive & ar, const unsigned int version)
+    {
+        ar & boost::serialization::base_object<SampleSelectionParameters, SampleIndexSelectionParameters>(*this);
+		ar & ids_;
+    }
+public:
+    
+    std::vector<size_t> ids_;
+    SampleIndexSelectionParameters() {}    
+    SampleIndexSelectionParameters(std::vector<size_t> ids) : SampleSelectionParameters("index"), ids_(ids) {}
+};
+
+class SampleRangeSelectionParameters : public SampleSelectionParameters {
+    friend class boost::serialization::access;	
+	template<class Archive> void serialize(Archive & ar, const unsigned int version)
+    {
+        ar & boost::serialization::base_object<SampleSelectionParameters, SampleRangeSelectionParameters>(*this);
+		ar & from_;
+        ar & to_;
+    }
+public:
+    
+    size_t from_;
+    size_t to_;
+
+    SampleRangeSelectionParameters() {}
+    SampleRangeSelectionParameters(size_t from, size_t to) : SampleSelectionParameters("range"), from_(from), to_(to) {}
+};
+
+
+class SampleLexicalSelectionParameters : public SampleSelectionParameters {
+    friend class boost::serialization::access;	
+	template<class Archive> void serialize(Archive & ar, const unsigned int version)
+    {
+        ar & boost::serialization::base_object<SampleSelectionParameters, SampleLexicalSelectionParameters>(*this);
+		ar & expression_;
+    }
+public:
+    
+    std::string expression_;
+    
+    SampleLexicalSelectionParameters() {}
+    SampleLexicalSelectionParameters(std::string expression) : SampleSelectionParameters("lexical"), expression_(expression) {}
+};
+
+class SampleFileSelectionParameters : public SampleSelectionParameters {
+    friend class boost::serialization::access;	
+	template<class Archive> void serialize(Archive & ar, const unsigned int version)
+    {
+        ar & boost::serialization::base_object<SampleSelectionParameters, SampleFileSelectionParameters>(*this);
+		ar & file_;
+        ar & format_;
+        ar & selector_;
+        ar & expression_;
+    }
+public:
+
+    std::string file_;
+    std::string format_;
+    std::string selector_;    
+    std::string expression_;
+    
+    SampleFileSelectionParameters() {}
+    SampleFileSelectionParameters(std::string file, std::string format, std::string selector, std::string expression) : SampleSelectionParameters("file"), file_(file), format_(format), selector_(selector), expression_(expression) {}
 };
 
 class SampleFramesetParameters {
@@ -196,8 +250,13 @@ private:
     friend class boost::serialization::access;	
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
     {
+        ar.register_type(static_cast<SampleIndexSelectionParameters*>(NULL));
+        ar.register_type(static_cast<SampleRangeSelectionParameters*>(NULL));
+        ar.register_type(static_cast<SampleFileSelectionParameters*>(NULL));
+        ar.register_type(static_cast<SampleLexicalSelectionParameters*>(NULL));
+        
 		ar & structure;
-		ar & groups;
+		ar & selections;
 		ar & framesets;
 		ar & motions;
         ar & alignments;
@@ -205,8 +264,10 @@ private:
 	/////////////////// 
 
 public:	
+    ~SampleParameters();
+    
 	SampleStructureParameters structure;
-	std::map<std::string,SampleGroupParameters> groups;
+	std::map<std::string,SampleSelectionParameters*> selections;
 	SampleFramesetsParameters framesets;
 	std::vector<SampleMotionParameters> motions;
     std::vector<SampleAlignmentParameters> alignments;

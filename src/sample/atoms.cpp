@@ -18,6 +18,9 @@
 #include <string>
 #include <vector>
 
+// special library headers
+#include <boost/regex.hpp>
+
 // other headers
 #include "sample/atom.hpp"
 #include "sample/atomselection.hpp"
@@ -32,6 +35,10 @@ using namespace std;
 // for the pdb format (ATOM entry look below)
 Atoms::Atoms(string filename, string fileformat) {
 	add(filename,fileformat);
+}
+
+Atoms::~Atoms() {
+    clear_selections();
 }
  
 // for the pdb format (ATOM entry look below)
@@ -84,8 +91,6 @@ void Atoms::add(string filename, string fileformat) {
 			line_counter++;
 		}		
 	}	
-	
-    system_selection = select();
 }
 
 /* pdb file format , atom section:
@@ -151,91 +156,23 @@ COLUMNS        DATA  TYPE    FIELD        DEFINITION
 //}
 
 
-Atomselection Atoms::select(string label) {
-    Atomselection selection;
+IAtomselection* Atoms::select(string expression) {
 
+    std::vector<size_t> ids;
+    
+    boost::regex expr(expression);
+    
     for(size_t i = 0; i < this->size(); ++i)
     {
-        if (label=="") { // default: add
-            selection.add(this->at(i).index);
-        } else if ( this->at(i).name ==label) {
-            selection.add(this->at(i).index);
+        if ( regex_match(this->at(i).name,expr) ) {
+            ids.push_back(this->at(i).index);
         }
     }
     
-    return selection;
+    return (new IndexAtomselection(ids));
 }
 
-Atomselection Atoms::select_pdb(std::string filename, std::string select, double select_value) {
-    Atomselection selection;
-
-	ifstream pdbfile(filename.c_str());
-	size_t linecounter = 0;
-	if (select=="beta") {
-		string line; double beta;
-		while (getline(pdbfile,line)) {
-			if (line.substr(0,6)=="ATOM  ") {
-				try {
-					beta = atof(line.substr(60,65).c_str());
-					if (beta==select_value) {
-						selection.add(linecounter);
-					}
-					
-				} catch (...) { cerr << "Error at reading atomselection line:" << endl << line << endl; throw; }
-				linecounter++;				
-			}
-		}
-	} else {
-        Err::Inst()->write("atomselection only supports beta at the moment");
-        throw;
-	}
-
-    return selection;
-}
-
-vector<pair<string,Atomselection> > Atoms::select_ndx(std::string filename) {
-    vector<pair<string,Atomselection> > result;
-    
-   	ifstream ndxfile(filename.c_str());
-   	string line; 
-   	map<string,vector<size_t> > indexes;
-   	string name = "";
-   	
-   	while (getline(ndxfile,line)) {
-   		size_t pos = line.find("[");
-   		if ( pos !=string::npos )  {
-   			size_t pos2 = line.find("]");
-   			if (pos2==string::npos) {
-   				Err::Inst()->write("ndx file is missing closing bracket");					
-   				throw;
-   			}
-   			stringstream cleannamestream(line.substr(pos+1,pos2-pos));
-   			string cleanname; cleannamestream >> cleanname;
-   			name = cleanname;
-   		}
-   		else if (name!="") {
-   			stringstream thisline(line);
-   			size_t index=0;
-   			while (thisline>>index) {
-   				indexes[name].push_back(index-1); // ndx files start with 1 as an index
-   			}
-   		}
-   	}
-   	
-   	for (map<string,vector<size_t> >::iterator ii=indexes.begin();ii!=indexes.end();ii++) {
-   		Atomselection selection;
-   		for(size_t i = 0; i < ii->second.size(); ++i)
-   		{
-               selection.add(ii->second[i]);
-   		}
-        result.push_back(make_pair<string,Atomselection>(ii->first,selection));
-   		Info::Inst()->write(string("Adding selection: ") + ii->first);
-   	}
-
-    return result;
-}
-
-void Atoms::push_selection(std::string name, Atomselection& selection) {
+void Atoms::push_selection(std::string name, IAtomselection* selection) {
     selections[name] = selection;
 }
 
@@ -248,6 +185,10 @@ void Atoms::assert_selection(std::string groupname) {
 }
 
 void Atoms::clear_selections() {
+    for(std::map<std::string,IAtomselection*>::iterator i = selections.begin(); i != selections.end(); ++i)
+    {
+        delete i->second;
+    }
     selections.clear();
 }
 // end of file

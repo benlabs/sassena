@@ -26,8 +26,8 @@
 class CenterOfMass {
 	CartesianCoor3D m_center;
 public:
-	CenterOfMass(Atoms& atoms,Atomselection& cofm_selection,Atomselection& cs_selection, CoordinateSet& cs);
-	CenterOfMass(Atoms& atoms,Frame& frame,Atomselection& selection);
+	CenterOfMass(Atoms& atoms,IAtomselection* pcofm_selection,IAtomselection* pcs_selection, CoordinateSet& cs);
+	CenterOfMass(Atoms& atoms,Frame& frame,IAtomselection* pselection);
 	
 	operator CartesianCoor3D (); //conversion operator
 };

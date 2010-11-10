@@ -32,12 +32,12 @@ CoordinateSet::CoordinateSet() {
 }
 
 
-CoordinateSet::CoordinateSet(CoordinateSet& cs,Atomselection& cs_selection, Atomselection& sub_selection) {
-    Atomselection& csel = cs_selection;
-    Atomselection& ssel = sub_selection;
+CoordinateSet::CoordinateSet(CoordinateSet& cs,IAtomselection* cs_selection, IAtomselection* sub_selection) {
+    IAtomselection& csel = *cs_selection;
+    IAtomselection& ssel = *sub_selection;
 
-    size_t csel_total = csel.indexes.size();
-    size_t ssel_total = ssel.indexes.size();
+    size_t csel_total = csel.size();
+    size_t ssel_total = ssel.size();
     
     if (csel_total<1) {
         return;
@@ -50,10 +50,10 @@ CoordinateSet::CoordinateSet(CoordinateSet& cs,Atomselection& cs_selection, Atom
     size_t ssel_iter = 0;
     size_t count =0;
     while( ( csel_iter < csel_total) && (ssel_iter < ssel_total) ) {
-        size_t csel_index = csel.indexes[csel_iter];
-        size_t ssel_index = ssel.indexes[ssel_iter];
+        size_t csel_id = csel[csel_iter];
+        size_t ssel_id = ssel[ssel_iter];
         
-        if (csel_index==ssel_index) {
+        if (csel_id==ssel_id) {
     		c1.push_back(cs.c1[csel_iter]);
     		c2.push_back(cs.c2[csel_iter]);
     		c3.push_back(cs.c3[csel_iter]);
@@ -61,9 +61,9 @@ CoordinateSet::CoordinateSet(CoordinateSet& cs,Atomselection& cs_selection, Atom
             
             ssel_iter++;
             csel_iter++;           
-        } else if (csel_index>ssel_index) {
+        } else if (csel_id>ssel_id) {
             ssel_iter++;
-        } else if (csel_index<ssel_index) {
+        } else if (csel_id<ssel_id) {
             csel_iter++;
         }
     }
@@ -72,21 +72,21 @@ CoordinateSet::CoordinateSet(CoordinateSet& cs,Atomselection& cs_selection, Atom
     m_representation = cs.get_representation();
 }
 
-CartesianCoordinateSet::CartesianCoordinateSet(CartesianCoordinateSet& cs,Atomselection& cs_selection, Atomselection& sub_selection) :
- CoordinateSet(cs,cs_selection,sub_selection)
+CartesianCoordinateSet::CartesianCoordinateSet(CartesianCoordinateSet& cs,IAtomselection* pcs_selection, IAtomselection* psub_selection) :
+ CoordinateSet(cs,pcs_selection,psub_selection)
 {
     m_representation = CARTESIAN;
     // inherit copy constructor from parent
 }
 
-CartesianCoordinateSet::CartesianCoordinateSet(Frame& frame,Atomselection& selection) {
+CartesianCoordinateSet::CartesianCoordinateSet(Frame& frame,IAtomselection* selection) {
     m_representation = CARTESIAN;
     
     vector<coor2_t>& x = c1;
     vector<coor2_t>& y = c2;
     vector<coor2_t>& z = c3;
 
-	m_size = selection.indexes.size();
+	m_size = selection->size();
 	x.resize(m_size);
 	y.resize(m_size);
 	z.resize(m_size);
@@ -98,20 +98,20 @@ CartesianCoordinateSet::CartesianCoordinateSet(Frame& frame,Atomselection& selec
     
 	for(size_t i = 0; i < m_size; ++i)
 	{
-		size_t thisindex = selection.indexes[i];
+		size_t thisindex = (*selection)[i];
 		x[i] = frame.x[thisindex];
 		y[i] = frame.y[thisindex];
 		z[i] = frame.z[thisindex];		
 	}
 }
 
-void CartesianCoordinateSet::translate(CartesianCoor3D trans, Atomselection& cs_selection, Atomselection& sub_selection) {
+void CartesianCoordinateSet::translate(CartesianCoor3D trans, IAtomselection* pcs_selection, IAtomselection* psub_selection) {
 	
-    Atomselection& csel = cs_selection;
-    Atomselection& ssel = sub_selection;
+    IAtomselection& csel = *pcs_selection;
+    IAtomselection& ssel = *psub_selection;
 
-    size_t csel_total = csel.indexes.size();
-    size_t ssel_total = ssel.indexes.size();
+    size_t csel_total = csel.size();
+    size_t ssel_total = ssel.size();
     
     if (csel_total<1) {
         return;
@@ -124,19 +124,19 @@ void CartesianCoordinateSet::translate(CartesianCoor3D trans, Atomselection& cs_
     size_t ssel_iter = 0;
     
     while( ( csel_iter < csel_total) && (ssel_iter < ssel_total) ) {
-        size_t csel_index = csel.indexes[csel_iter];
-        size_t ssel_index = ssel.indexes[ssel_iter];
+        size_t csel_id = csel[csel_iter];
+        size_t ssel_id = ssel[ssel_iter];
         
-        if (csel_index==ssel_index) {
+        if (csel_id==ssel_id) {
 			c1[csel_iter] += trans.x;
 			c2[csel_iter] += trans.y;
 			c3[csel_iter] += trans.z;
 			
             ssel_iter++;
             csel_iter++;           
-        } else if (csel_index>ssel_index) {
+        } else if (csel_id>ssel_id) {
             ssel_iter++;
-        } else if (csel_index<ssel_index) {
+        } else if (csel_id<ssel_id) {
             csel_iter++;
         }
     }

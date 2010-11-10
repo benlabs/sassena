@@ -150,10 +150,13 @@ void CoordinateSets::set_atoms(Atoms& atoms) {
 CoordinateSet* CoordinateSets::load(size_t framenumber) {
 	
 	Frame frame = frames.load(framenumber);
-	CartesianCoordinateSet cset(frame,p_atoms->system_selection);
+	CartesianCoordinateSet cset(frame,p_atoms->selections["system"]);
 	
-    if ( frame.x.size() != p_atoms->system_selection.indexes.size() ) {
+    if ( frame.x.size() != p_atoms->selections["system"]->size() ) {
         Err::Inst()->write(string("Wrong number of atoms, frame:")+boost::lexical_cast<string>(framenumber));
+        Err::Inst()->write(string("Atoms in Frame: ")+boost::lexical_cast<string>(frame.x.size()));
+        Err::Inst()->write(string("Atoms in Selection: ")+boost::lexical_cast<string>(p_atoms->selections["system"]->size()));
+        throw;
     }
 
     // align here
@@ -164,7 +167,7 @@ CoordinateSet* CoordinateSets::load(size_t framenumber) {
 		string type = m_prealignments[i].second;
         if (type=="center") {
 			p_atoms->assert_selection(sel);
-            CartesianCoor3D origin = CenterOfMass(*p_atoms,p_atoms->selections[sel],p_atoms->system_selection,cset);
+            CartesianCoor3D origin = CenterOfMass(*p_atoms,p_atoms->selections[sel],p_atoms->selections["system"],cset);
             cset.translate(-1.0*origin);
             // m_prealignmentvectors[framenumber].push_back(-1.0*origin);
         }
@@ -177,7 +180,7 @@ CoordinateSet* CoordinateSets::load(size_t framenumber) {
 		MotionWalker* p_mw = m_motion_walkers[i].second;
 
 		p_atoms->assert_selection(sel);
-		cset.translate(p_mw->translation(framenumber),p_atoms->system_selection, p_atoms->selections[sel]);						
+		cset.translate(p_mw->translation(framenumber),p_atoms->selections["system"], p_atoms->selections[sel]);						
 	}		
 
     // align here
@@ -188,14 +191,14 @@ CoordinateSet* CoordinateSets::load(size_t framenumber) {
 		string type = m_postalignments[i].second;
         if (type=="center") {
 			p_atoms->assert_selection(sel);        
-            CartesianCoor3D origin = CenterOfMass(*p_atoms,p_atoms->selections[sel],p_atoms->system_selection,cset);
+            CartesianCoor3D origin = CenterOfMass(*p_atoms,p_atoms->selections[sel],p_atoms->selections["system"],cset);
             cset.translate(-1.0*origin);            
             // m_postalignmentvectors[framenumber].push_back(-1.0*origin);
         }
     }    
     
     // reduce the coordinate set to the target selection
-	CartesianCoordinateSet* pcset_reduced = new CartesianCoordinateSet(cset,p_atoms->system_selection,*p_selection);
+	CartesianCoordinateSet* pcset_reduced = new CartesianCoordinateSet(cset,p_atoms->selections["system"],p_selection);
     
     // convert to the current representation
 	if (m_representation==CARTESIAN) {
@@ -226,11 +229,11 @@ void CoordinateSets::write_xyz(std::string filename) {
     ofile.close();
 }
 
-void CoordinateSets::set_selection(Atomselection& selection) {
-	p_selection = &selection;
+void CoordinateSets::set_selection(IAtomselection* selection) {
+	p_selection = selection;
 }
 
-Atomselection& CoordinateSets::get_selection() {
+IAtomselection& CoordinateSets::get_selection() {
 	return *p_selection;
 }
 

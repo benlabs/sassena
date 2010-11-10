@@ -21,6 +21,7 @@
 
 // special library headers
 #include <boost/regex.hpp>
+#include <boost/lexical_cast.hpp>
 
 // other headers
 #include "sample/atom.hpp"
@@ -32,44 +33,39 @@
 
 using namespace std;
 
-//Atomselection& Atomselection::operator+=(const Atomselection& that) {
-//    
-//    for(size_t i = 0; i < that.indexes.size(); ++i)
-//    {
-//        add(that.indexes[i]);
-//    }
-//}
-//
-//Atomselection& Atomselection::operator-=(const Atomselection& that) {
-//    
-//    for(size_t i = 0; i < that.indexes.size(); ++i)
-//    {
-//        remove(that.indexes[i]);
-//    }
-//}
-
-void Atomselection::add(size_t index) {
-	indexes.push_back(index);
-}
-
-void Atomselection::remove(size_t index) {
-	vector<size_t>::iterator ai = find(indexes.begin(),indexes.end(),index);
-	indexes.erase(ai);
-}
-
-std::vector<Atomselection> Atomselection::slice(size_t parts) {
-
-    std::vector<Atomselection> result(parts);
+IndexAtomselection::IndexAtomselection(std::vector<size_t> ids) :
+    ids_(ids)
+{
     
-    size_t total = indexes.size();
-        
-    for(size_t i = 0; i < total; ++i)
-    {
-        size_t rank = (i*parts)/(total);
-        result[rank].add(indexes[i]);
+}
+
+size_t IndexAtomselection::operator[](size_t index) {
+    return ids_[index];
+}
+
+size_t IndexAtomselection::size() {
+    return ids_.size();
+}
+
+
+RangeAtomselection::RangeAtomselection(size_t from,size_t to) : 
+    from_(from), 
+    to_(to)
+{
+    if (to_<from_) {
+        Err::Inst()->write("Range Atomselection specified is negative range!");
+        Err::Inst()->write(string("from = ")+boost::lexical_cast<string>(from_));
+        Err::Inst()->write(string("to = ")+boost::lexical_cast<string>(to_));
+        throw;
     }
-	
-	return result;
+}
+
+size_t RangeAtomselection::operator[](size_t index) {
+    return from_+index;
+}
+
+size_t RangeAtomselection::size() {
+    return (1+to_)-from_;
 }
 
 // end of file

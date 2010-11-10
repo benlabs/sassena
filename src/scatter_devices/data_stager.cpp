@@ -45,7 +45,7 @@ DataStagerByFrame::DataStagerByFrame(Sample& sample,boost::mpi::communicator& al
     NN = allcomm_.size();    
     NF = m_sample.coordinate_sets.size();
     std::string target = Params::Inst()->scattering.target;
-    NA = m_sample.atoms.selections[target].indexes.size();
+    NA = m_sample.atoms.selections[target]->size();
 
     size_t rank = allcomm_.rank();
 
@@ -167,7 +167,7 @@ DataStagerByAtom::DataStagerByAtom(Sample& sample,boost::mpi::communicator& comm
     NN = m_comm.size();    
     NF = m_sample.coordinate_sets.size();
     std::string target = Params::Inst()->scattering.target;
-    NA = m_sample.atoms.selections[target].indexes.size();
+    NA = m_sample.atoms.selections[target]->size();
 
     size_t rank = m_comm.rank();
 

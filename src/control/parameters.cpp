@@ -79,25 +79,73 @@ void Params::read_xml(std::string filename) {
         	for(size_t i = 0; i < selections.size(); ++i)
         	{
         		xmli.set_current(selections[i]);
-        		double sv = 1.0;
-                string sn = "beta";
-                string ff = "pdb";
-                string fn = "selection.pdb";
-                string sname = string("_")+boost::lexical_cast<string>(i);
-        		if (xmli.exists("./name")) sname = xmli.get_value<string>("./name") ;
-        		if (xmli.exists("./file")) {		
-        			fn = get_filepath( xmli.get_value<string>("./file") );
-        		}
-        		if (xmli.exists("./format")) {		
-        			ff = xmli.get_value<string>("./format") ;
-        		}
-        		if (xmli.exists("./select")) {		
-        			sn = xmli.get_value<string>("./select") ;
-        		}
-        		if (xmli.exists("./select_value")) {
-        			sv = xmli.get_value<double>("./select_value") ;
-        		}
-        		sample.groups[sname] = SampleGroupParameters(sname,fn,ff,sn,sv);
+                string type = "index";
+
+                if (xmli.exists("./type")) type = xmli.get_value<string>("./type");
+                
+                if (type=="index") {
+                    string sname = string("_")+boost::lexical_cast<string>(i); 
+                    vector<size_t> ids;
+                    
+                    if (xmli.exists("./name")) sname = xmli.get_value<string>("./name") ;
+
+                    vector<XMLElement> indexes = xmli.get("./index");
+                    for(size_t pi = 0; pi < indexes.size(); ++pi)
+                    {
+                        xmli.set_current(indexes[i]);
+                        ids.push_back(xmli.get_value<size_t>("."));
+                    }                        
+
+                    sample.selections[sname] = new SampleIndexSelectionParameters(ids);         
+                    Info::Inst()->write(string("Creating Index Atomselection: ")+sname+string(" , elements:")+boost::lexical_cast<string>(ids.size()));
+
+                } else if (type=="range") {
+                    string sname = string("_")+boost::lexical_cast<string>(i); 
+                    size_t from = 0;
+                    size_t to = 0;
+                    
+                    if (xmli.exists("./name")) sname = xmli.get_value<string>("./name") ;
+
+                    if (xmli.exists("./from")) from = xmli.get_value<size_t>("./from") ;
+                    if (xmli.exists("./to")) to = xmli.get_value<size_t>("./to") ;
+                    
+                    sample.selections[sname] = new SampleRangeSelectionParameters(from,to);
+                    Info::Inst()->write(string("Creating Range Atomselection: ")+sname+string(" , from:")+boost::lexical_cast<string>(from) + string(", to: ")+boost::lexical_cast<string>(to));
+
+                } else if (type=="lexical") {
+                    string sname = string("_")+boost::lexical_cast<string>(i); 
+                    string expression = "";
+                    
+                    if (xmli.exists("./name")) sname = xmli.get_value<string>("./name") ;
+
+                    if (xmli.exists("./expression")) expression = xmli.get_value<string>("./expression") ;
+                    
+                    sample.selections[sname] = new SampleLexicalSelectionParameters(expression);
+                    Info::Inst()->write(string("Creating Lexical Atomselection: ")+sname+string(" , expression:")+expression);                    
+                    
+                } else if (type=="file") {
+                    string sname = string("_")+boost::lexical_cast<string>(i); // NOT used by ndx file format
+                    string filename = "selection.pdb";
+                    string format = "pdb";
+                    string selector = "beta";
+                    string expression = "1|1\\.0|1\\.00";
+                    
+                    if (xmli.exists("./format")) format = xmli.get_value<string>("./format") ;
+
+                    // this is a convenience overwrite for the ndx file format
+                    if (format=="ndx") {
+                        filename = "index.ndx";
+                        selector = "name";
+                        expression = ".*";
+                    }
+                    if (xmli.exists("./file")) filename = xmli.get_value<string>("./file") ;
+                    
+                    if (xmli.exists("./selector")) selector = xmli.get_value<string>("./selector") ;
+                    if (xmli.exists("./expression")) expression = xmli.get_value<string>("./expression") ;
+                    
+                    sample.selections[sname] = new SampleFileSelectionParameters(filename,format,selector,expression);                    
+                    Info::Inst()->write(string("Creating File Atomselection: ")+sname+string(" , file: ")+filename+string(", format: ")+format+string(", selector: ")+selector+string(", expression: ")+expression);
+                }
         	}
 	    }
 	    if (xmli.exists("//sample/framesets")) {
@@ -563,6 +611,12 @@ void Params::init(std::string filename) {
 	Info::Inst()->write(string("Looking for configuration file: ") + filename);
 	
 	read_xml(filename);
+}
+
+SampleParameters::~SampleParameters() {
+    for (std::map<std::string,SampleSelectionParameters*>::iterator i=selections.begin();i!=selections.end();i++) {
+        delete i->second;
+    }
 }
 
 void ScatteringAverageOrientationVectorsParameters::create() {

@@ -47,10 +47,10 @@ void ScatterFactors::update_kappas() {
     for(size_t i = 0; i < kappas.size(); ++i)
     {
         p_sample->atoms.assert_selection(kappas[i].selection);
-        Atomselection& selection = p_sample->atoms.selections[kappas[i].selection];
-        for(size_t j = 0; j < selection.indexes.size(); ++j)
+        IAtomselection* selection = p_sample->atoms.selections[kappas[i].selection];
+        for(size_t j = 0; j < selection->size(); ++j)
         {
-            m_kappas[selection.indexes[j]] = kappas[i].value;
+            m_kappas[(*selection)[j]] = kappas[i].value;
         }
     }
     
@@ -60,15 +60,15 @@ void ScatterFactors::update(CartesianCoor3D q) {
 	
 	double background_sl = Params::Inst()->scattering.background.factor;
 
-	for(size_t i = 0; i < p_selection->indexes.size(); ++i)
+	for(size_t i = 0; i < p_selection->size(); ++i)
 	{
-		size_t atomID = p_sample->atoms[p_selection->indexes[i]].ID;
+		size_t atomID = p_sample->atoms[(*p_selection)[i]].ID;
 		double ql = q.length();
 		double sf = Database::Inst()->sfactors.get(atomID,ql);
 	
 		// calculate effective scattering length:
 		if (m_background) {
-			double k  = m_kappas[p_selection->indexes[i]];
+			double k  = m_kappas[(*p_selection)[i]];
 			double v = Database::Inst()->volumes.get(atomID);
 			double efactor = Database::Inst()->exclusionfactors.get(atomID,k*v,ql);
 
@@ -80,13 +80,13 @@ void ScatterFactors::update(CartesianCoor3D q) {
 	
 }
 
-void ScatterFactors::set_selection(Atomselection& selection) {
-	factors.resize(selection.indexes.size());
-	p_selection = &selection;
+void ScatterFactors::set_selection(IAtomselection* selection) {
+	factors.resize(selection->size());
+	p_selection = selection;
 }
 
-Atomselection& ScatterFactors::get_selection() {
-	return *p_selection;
+IAtomselection* ScatterFactors::get_selection() {
+	return p_selection;
 }
 
 void ScatterFactors::set_sample(Sample& sample) {
@@ -110,12 +110,12 @@ double ScatterFactors::compute_background(CartesianCoor3D q) {
     double sf_sum=0;
 	double ql = q.length();
 
-	for(size_t i = 0; i < p_selection->indexes.size(); ++i)
+	for(size_t i = 0; i < p_selection->size(); ++i)
 	{
-		size_t atomID = p_sample->atoms[p_selection->indexes[i]].ID;
+		size_t atomID = p_sample->atoms[(*p_selection)[i]].ID;
 		double sf = Database::Inst()->sfactors.get(atomID,ql);
 
-		double k  = m_kappas[p_selection->indexes[i]];
+		double k  = m_kappas[(*p_selection)[i]];
 		double v = Database::Inst()->volumes.get(atomID);
 		double efactor = Database::Inst()->exclusionfactors.get(atomID,k*v,ql);
 

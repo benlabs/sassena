@@ -33,7 +33,7 @@
 // This class is used by Scatterdevices to recalculate the q dependent scattering factors
 class ScatterFactors {
 	Sample* p_sample;
-	Atomselection* p_selection;
+	IAtomselection* p_selection;
 	
 	bool m_background;
 	
@@ -43,10 +43,10 @@ public:
 	ScatterFactors();
 	
 	// use these to initialize the scatterfactors set:
-	void set_selection(Atomselection& selection);
+	void set_selection(IAtomselection* selection);
 	void set_sample(Sample& sample);
 	
-	Atomselection& get_selection();
+	IAtomselection* get_selection();
 	
 	double get(size_t atomselectionindex);	
 	std::vector<double>& get_all();

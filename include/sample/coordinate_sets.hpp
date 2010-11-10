@@ -43,7 +43,6 @@ protected:
     {
         ar.register_type(static_cast<CoordinateSet*>(NULL));
         ar.register_type(static_cast<Atoms*>(NULL));
-        ar.register_type(static_cast<Atomselection*>(NULL));
         
         ar.register_type(static_cast<LinearMotionWalker*>(NULL));
         ar.register_type(static_cast<RandomMotionWalker*>(NULL));
@@ -78,7 +77,7 @@ protected:
     Frames frames;
 
 	Atoms* p_atoms;
-	Atomselection* p_selection;
+	IAtomselection* p_selection;
 	
     CoordinateRepresentation m_representation;
 
@@ -92,7 +91,7 @@ public:
 	// std::vector<CartesianCoor3D> get_postalignmentvectors(size_t frame);	
 	
 	// use these to initialize the coordinate set:
-	void set_selection(Atomselection& selection);
+	void set_selection(IAtomselection* selection);
 	void set_atoms(Atoms& atoms);
 	
     void set_representation(CoordinateRepresentation representation);
@@ -102,7 +101,7 @@ public:
 	
     void write_xyz(std::string filename); // dumps coordinates to file in xyz format
 	
-	Atomselection& get_selection();
+	IAtomselection& get_selection();
     
     void init();
     size_t size() { return frames.size(); }

@@ -21,15 +21,19 @@
 
 using namespace std;
 
-CenterOfMass::CenterOfMass(Atoms& atoms,Atomselection& cofm_selection,Atomselection& cs_selection, CoordinateSet& cs) {
+CenterOfMass::CenterOfMass(Atoms& atoms,IAtomselection* pcofm_selection,IAtomselection* pcs_selection, CoordinateSet& cs) {
+	
+	IAtomselection& cs_selection = *pcs_selection;
+    IAtomselection& cofm_selection = *pcofm_selection;
+    
 	
 	if (cs.get_representation()!=CARTESIAN) {
         Err::Inst()->write("Center of Mass only implementated for cartesian Coordinate Sets");
         throw;
 	}
 	
-    size_t csel_total = cs_selection.indexes.size();
-    size_t ssel_total = cofm_selection.indexes.size();
+    size_t csel_total = cs_selection.size();
+    size_t ssel_total = cofm_selection.size();
     
 	if (ssel_total<1) {
 		Warn::Inst()->write("Warning! Computing Center of Mass for an empty atomselection");
@@ -50,11 +54,11 @@ CenterOfMass::CenterOfMass(Atoms& atoms,Atomselection& cofm_selection,Atomselect
         size_t ssel_iter = 0;
 
         while( ( csel_iter < csel_total) && (ssel_iter < ssel_total) ) {
-            size_t csel_index = cs_selection.indexes[csel_iter];
-            size_t ssel_index = cofm_selection.indexes[ssel_iter];
+            size_t csel_id = cs_selection[csel_iter];
+            size_t ssel_id = cofm_selection[ssel_iter];
 
-            if (csel_index==ssel_index) {
-                mi = atoms[csel_index].mass;
+            if (csel_id==ssel_id) {
+                mi = atoms[csel_id].mass;
     			m += mi;
     			
     			xt += cs.c1[csel_iter]*mi;
@@ -63,9 +67,9 @@ CenterOfMass::CenterOfMass(Atoms& atoms,Atomselection& cofm_selection,Atomselect
     			
                 ssel_iter++;
                 csel_iter++;           
-            } else if (csel_index>ssel_index) {
+            } else if (csel_id>ssel_id) {
                 ssel_iter++;
-            } else if (csel_index<ssel_index) {
+            } else if (csel_id<ssel_id) {
                 csel_iter++;
             }
         }
@@ -77,9 +81,11 @@ CenterOfMass::CenterOfMass(Atoms& atoms,Atomselection& cofm_selection,Atomselect
 }
 
 
-CenterOfMass::CenterOfMass(Atoms& atoms,Frame& frame,Atomselection& selection) {
+CenterOfMass::CenterOfMass(Atoms& atoms,Frame& frame,IAtomselection* pselection) {
 	
-	if (selection.indexes.empty()) {
+    IAtomselection& selection = *pselection;
+	
+	if (selection.size()==0) {
 		Err::Inst()->write("Warning! Computing Center of Mass for an empty atomselection");
 		Err::Inst()->write("Setting Center of mass to (0,0,0)");		
 		m_center = CartesianCoor3D(0,0,0);
@@ -91,12 +97,12 @@ CenterOfMass::CenterOfMass(Atoms& atoms,Frame& frame,Atomselection& selection) {
 	xt = yt = zt = 0.0;
 	m = 0.0;
 
-	for (size_t i=0;i<selection.indexes.size();i++) {
-		mi = atoms[selection.indexes[i]].mass;
+	for (size_t i=0;i<selection.size();i++) {
+		mi = atoms[selection[i]].mass;
 		m += mi;
-		xt += frame.x[selection.indexes[i]]*mi;
-		yt += frame.y[selection.indexes[i]]*mi;
-		zt += frame.z[selection.indexes[i]]*mi;
+		xt += frame.x[selection[i]]*mi;
+		yt += frame.y[selection[i]]*mi;
+		zt += frame.z[selection[i]]*mi;
 	}
 	
 	m_center =  CartesianCoor3D(xt/m,yt/m,zt/m);

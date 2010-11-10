@@ -36,7 +36,7 @@ IScatterDevice* ScatterDeviceFactory::create(
     size_t NN = all_comm.size();
     size_t NF = sample.coordinate_sets.size();
     string target = Params::Inst()->scattering.target;
-    size_t NA = sample.atoms.selections[target].indexes.size();
+    size_t NA = sample.atoms.selections[target]->size();
     size_t NQ = qvectors.size();
     // check sample for data
     if (NF<1) {

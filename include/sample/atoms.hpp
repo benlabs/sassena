@@ -41,14 +41,15 @@ class Atoms : public std::vector<Atom> {
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
     {
 		ar & boost::serialization::base_object<std::vector<Atom> >(*this);
+		ar.register_type(static_cast<IndexAtomselection*>(NULL));
+        ar.register_type(static_cast<RangeAtomselection*>(NULL));
+        
 		ar & selections;
-        ar & system_selection;
     }
 	///////////////////
 public:	
 	
-	std::map<std::string,Atomselection> selections;	
-    Atomselection system_selection;
+	std::map<std::string,IAtomselection*> selections;	
     
 	Atoms() {}
 	Atoms(std::string filename, std::string fileformat = "pdb");
@@ -56,18 +57,14 @@ public:
 //	void write( std::string filename,Frame& frame, std::string fileformat = "pdb");
 
 	void add(std::string filename, std::string fileformat = "pdb");
-
-    // support for selections
-    std::vector<std::pair<std::string,Atomselection> > select_ndx(std::string filename);
-    Atomselection select_pdb(std::string filename, std::string select,double select_value);
-    Atomselection select(std::string label="");
     
-	void push_selection(std::string name, Atomselection& selection);
+    IAtomselection* select(std::string expression);
+	void push_selection(std::string name, IAtomselection* selection);
     void clear_selections();
 	
 	void assert_selection(std::string groupname); // throws an exception when groupname isn't found.
 	
-	~Atoms() {}
+    ~Atoms();
 };
 
 #endif
