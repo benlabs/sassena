@@ -45,7 +45,6 @@ protected:
     // first = q, second = frames
     concurrent_queue< std::pair<size_t,size_t> > at0_;    
     concurrent_queue< fftw_complex* > at1_;
-    fftw_complex* at2_;
     mutable boost::mutex at2_mutex;
 
     coor_t* p_coordinates;

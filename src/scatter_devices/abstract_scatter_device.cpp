@@ -66,6 +66,7 @@ AbstractScatterDevice::AbstractScatterDevice(
 	scatterfactors.set_background(true);
 	
 	// defer memory allocation for scattering data
+    atfinal_ = NULL;
     // atfinal_.resize(NF);
     // but check limits nevertheless:
     size_t scattering_databytesize = 3*NF*sizeof(fftw_complex); // peak consumption: 2*NF (padded signal) + 1*NF (integral)
@@ -119,7 +120,7 @@ void AbstractScatterDevice::run() {
 void AbstractScatterDevice::runner() {
  
     bool threads_on = Params::Inst()->limits.computation.threads.on;
-    
+        
     if (threads_on) {
          start_workers();
          while(status()==0) {
@@ -136,7 +137,6 @@ void AbstractScatterDevice::runner() {
         }                     
     }
 }
-
 
 void AbstractScatterDevice::next() {
 	if (current_vector_>=vectors_.size()) return;
@@ -157,9 +157,5 @@ void AbstractScatterDevice::write() {
     if (partitioncomm_.rank()==0) {
         CartesianCoor3D vector = vectors_[current_vector_]; 
         p_hdf5writer_->write(vector,atfinal_,NF);
-    }
-    if (atfinal_!=NULL) {
-        fftw_free(atfinal_);
-        atfinal_=NULL;
     }
 }
