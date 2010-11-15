@@ -61,11 +61,7 @@ void HDF5WriterService::init_new(size_t nf)
     hid_t dapl = H5Pcreate(H5P_DATASET_ACCESS);
     H5Pset_chunk( dcpl, 2, cdims);
     H5Pset_fill_value(dcpl, H5T_NATIVE_DOUBLE, &fill_val_double);
-    if (Params::Inst()->limits.signal.alloc_early) {
-        H5Pset_alloc_time(dcpl,H5D_ALLOC_TIME_EARLY);
-    } else {
-        H5Pset_alloc_time(dcpl,H5D_ALLOC_TIME_DEFAULT);
-    }
+    H5Pset_alloc_time(dcpl,H5D_ALLOC_TIME_DEFAULT);
     hid_t dspace = H5Screate_simple(2, dims, mdims); 
     hid_t ds = H5Dcreate(h5file, "qvectors", H5T_NATIVE_DOUBLE, dspace,lcpl,dcpl,dapl);
     H5Pclose(lcpl);
@@ -87,11 +83,7 @@ void HDF5WriterService::init_new(size_t nf)
         hid_t dapl = H5Pcreate(H5P_DATASET_ACCESS);
         H5Pset_chunk( dcpl, 3, cdims);
         H5Pset_fill_value(dcpl, H5T_NATIVE_DOUBLE, &fill_val_double);
-        if (Params::Inst()->limits.signal.alloc_early) {
-            H5Pset_alloc_time(dcpl,H5D_ALLOC_TIME_EARLY);
-        } else {
-            H5Pset_alloc_time(dcpl,H5D_ALLOC_TIME_DEFAULT);
-        }
+        H5Pset_alloc_time(dcpl,H5D_ALLOC_TIME_DEFAULT);
         hid_t dspace = H5Screate_simple(3, dims, mdims); 
         hid_t ds = H5Dcreate(h5file, "fqt", H5T_NATIVE_DOUBLE, dspace,lcpl,dcpl,dapl);
         H5Pclose(lcpl);
@@ -111,11 +103,7 @@ void HDF5WriterService::init_new(size_t nf)
         hid_t dapl = H5Pcreate(H5P_DATASET_ACCESS);
         H5Pset_chunk( dcpl, 2, cdims);
         H5Pset_fill_value(dcpl, H5T_NATIVE_DOUBLE, &fill_val_double);
-        if (Params::Inst()->limits.signal.alloc_early) {
-            H5Pset_alloc_time(dcpl,H5D_ALLOC_TIME_EARLY);
-        } else {
-            H5Pset_alloc_time(dcpl,H5D_ALLOC_TIME_DEFAULT);
-        }
+        H5Pset_alloc_time(dcpl,H5D_ALLOC_TIME_DEFAULT);
         hid_t dspace = H5Screate_simple(2, dims, mdims); 
         hid_t ds = H5Dcreate(h5file, "fq0", H5T_NATIVE_DOUBLE, dspace,lcpl,dcpl,dapl);
         H5Pclose(lcpl);
@@ -135,11 +123,7 @@ void HDF5WriterService::init_new(size_t nf)
         hid_t dapl = H5Pcreate(H5P_DATASET_ACCESS);
         H5Pset_chunk( dcpl, 2, cdims);
         H5Pset_fill_value(dcpl, H5T_NATIVE_DOUBLE, &fill_val_double);
-        if (Params::Inst()->limits.signal.alloc_early) {
-            H5Pset_alloc_time(dcpl,H5D_ALLOC_TIME_EARLY);
-        } else {
-            H5Pset_alloc_time(dcpl,H5D_ALLOC_TIME_DEFAULT);
-        }
+        H5Pset_alloc_time(dcpl,H5D_ALLOC_TIME_DEFAULT);
         hid_t dspace = H5Screate_simple(2, dims, mdims); 
         hid_t ds = H5Dcreate(h5file, "fq", H5T_NATIVE_DOUBLE, dspace,lcpl,dcpl,dapl);
         H5Pclose(lcpl);
@@ -159,11 +143,7 @@ void HDF5WriterService::init_new(size_t nf)
         hid_t dapl = H5Pcreate(H5P_DATASET_ACCESS);
         H5Pset_chunk( dcpl, 2, cdims);
         H5Pset_fill_value(dcpl, H5T_NATIVE_DOUBLE, &fill_val_double);
-        if (Params::Inst()->limits.signal.alloc_early) {
-            H5Pset_alloc_time(dcpl,H5D_ALLOC_TIME_EARLY);
-        } else {
-            H5Pset_alloc_time(dcpl,H5D_ALLOC_TIME_DEFAULT);
-        }
+        H5Pset_alloc_time(dcpl,H5D_ALLOC_TIME_DEFAULT);
         hid_t dspace = H5Screate_simple(2, dims, mdims); 
         hid_t ds = H5Dcreate(h5file, "fq2", H5T_NATIVE_DOUBLE, dspace,lcpl,dcpl,dapl);
         H5Pclose(lcpl);
@@ -284,7 +264,7 @@ void HDF5WriterService::listener() {
         socket.close();
         
         if ((boost::posix_time::second_clock::universal_time()-m_lastflush) >
-            (boost::posix_time::seconds(Params::Inst()->limits.times.iowrite_server)) ) {
+            (boost::posix_time::seconds(Params::Inst()->limits.services.signal.times.serverflush)) ) {
             flush();
         }
 
@@ -293,7 +273,7 @@ void HDF5WriterService::listener() {
         data_bytesize += (sizeof(double)*3) * data_qvectors.size();
         data_bytesize += (sizeof(double)*2) * data_fq.size();
 
-        if (data_bytesize > Params::Inst()->limits.memory.iowrite_server) {
+        if (data_bytesize > Params::Inst()->limits.services.signal.memory.server) {
             flush();
         }
         
@@ -508,12 +488,12 @@ void HDF5WriterClient::write(CartesianCoor3D qvector,const fftw_complex* data,si
 
     boost::posix_time::time_period tp(m_lastflush,boost::posix_time::second_clock::universal_time());    
     if ((boost::posix_time::second_clock::universal_time()-m_lastflush) >
-        (boost::posix_time::seconds(Params::Inst()->limits.times.iowrite_client)) ){
+        (boost::posix_time::seconds(Params::Inst()->limits.services.signal.times.clientflush)) ){
         flush();
     }
 
     size_t data_bytesize = (sizeof(fftw_complex)*NF+sizeof(size_t)) * data_queue.size();
-    if (data_bytesize > Params::Inst()->limits.memory.iowrite_client) {
+    if (data_bytesize > Params::Inst()->limits.services.signal.memory.client) {
         flush();
     }
     
@@ -532,12 +512,12 @@ void HDF5WriterClient::write(CartesianCoor3D qvector,const std::vector<std::comp
 
     boost::posix_time::time_period tp(m_lastflush,boost::posix_time::second_clock::universal_time());    
     if ((boost::posix_time::second_clock::universal_time()-m_lastflush) >
-        (boost::posix_time::seconds(Params::Inst()->limits.times.iowrite_client)) ){
+        (boost::posix_time::seconds(Params::Inst()->limits.services.signal.times.clientflush)) ){
         flush();
     }
 
     size_t data_bytesize = (sizeof(double)*2*data.size()+sizeof(size_t)) * data_queue.size();
-    if (data_bytesize > Params::Inst()->limits.memory.iowrite_client) {
+    if (data_bytesize > Params::Inst()->limits.services.signal.memory.client) {
         flush();
     }
     

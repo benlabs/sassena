@@ -68,10 +68,10 @@ AbstractScatterDevice::AbstractScatterDevice(
 	// defer memory allocation for scattering data
     // atfinal_.resize(NF);
     // but check limits nevertheless:
-    size_t scattering_databytesize = NF*sizeof(fftw_complex);
-    if (Params::Inst()->limits.memory.atfinal_buffer<scattering_databytesize) {
+    size_t scattering_databytesize = 3*NF*sizeof(fftw_complex); // peak consumption: 2*NF (padded signal) + 1*NF (integral)
+    if (Params::Inst()->limits.computation.memory.signal<scattering_databytesize) {
         if (allcomm_.rank()==0) {
-            Err::Inst()->write("Insufficient Buffer size for scattering (limits.memory.atfinal_buffer)");
+            Err::Inst()->write("Insufficient Buffer size for scattering (limits.computation.memory.signal)");
             Err::Inst()->write(string("Requested (bytes): ")+boost::lexical_cast<string>(scattering_databytesize));
         }
         throw;
@@ -100,6 +100,10 @@ void AbstractScatterDevice::run() {
         Info::Inst()->write(string("Target produces a background scattering length density of ")+boost::lexical_cast<string>(scatterfactors.compute_background(CartesianCoor3D(0,0,0))));
     }
 
+    // allocate memory for computation now.
+    atfinal_ = (fftw_complex*) fftw_malloc(NF*sizeof(fftw_complex));
+    memset(atfinal_,0,NF*sizeof(fftw_complex));
+
     print_pre_runner_info();
     timer.start("sd:runner");
     runner();
@@ -114,7 +118,7 @@ void AbstractScatterDevice::run() {
 
 void AbstractScatterDevice::runner() {
  
-    bool threads_on = Params::Inst()->limits.computation.threads;
+    bool threads_on = Params::Inst()->limits.computation.threads.on;
     
     if (threads_on) {
          start_workers();

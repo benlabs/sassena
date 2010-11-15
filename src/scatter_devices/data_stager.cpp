@@ -227,14 +227,14 @@ void DataStagerByAtom::stage_firstpartition() {
 
     // initialize local coordinates buffer
     
-    size_t buffer_bytesize = Params::Inst()->limits.memory.data_stager;
+    size_t buffer_bytesize = Params::Inst()->limits.stage.memory.buffer;
     size_t frame_bytesize = NA*3*sizeof(coor_t);
     size_t framesbuffer_maxsize = buffer_bytesize/frame_bytesize;
     
     if (framesbuffer_maxsize==0) {
         if (allcomm_.rank()==0) {
             Err::Inst()->write("Cannot load trajectory into buffer.");
-            Err::Inst()->write(string("limits.memory.data_stager=")+boost::lexical_cast<string>(Params::Inst()->limits.memory.data_stager));
+            Err::Inst()->write(string("limits.memory.data_stager=")+boost::lexical_cast<string>(Params::Inst()->limits.stage.memory.buffer));
             Err::Inst()->write(string("requested=")+boost::lexical_cast<string>(frame_bytesize));            
         }
         throw;

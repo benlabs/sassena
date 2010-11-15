@@ -89,7 +89,7 @@ IScatterDevice* ScatterDeviceFactory::create(
         }
 
         size_t ELBYTESIZE = NF*3*sizeof(coor_t);
-        size_t NMAXBYTESIZE = Params::Inst()->limits.memory.data;
+        size_t NMAXBYTESIZE = Params::Inst()->limits.stage.memory.data;
         if (Params::Inst()->scattering.type == "self") {
             ELBYTESIZE=NF*3*sizeof(coor_t); // 3 times coor_t times number of frames 
         } else if (Params::Inst()->scattering.type == "all") {

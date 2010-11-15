@@ -535,6 +535,113 @@ public:
 	ScatteringSignalParameters signal;	
 };
 
+class LimitsServicesSignalMemoryParameters {
+private:
+	/////////////////// MPI related
+	// make this class serializable to 
+	// allow sample to be transmitted via MPI
+    friend class boost::serialization::access;	
+	template<class Archive> void serialize(Archive & ar, const unsigned int version)
+    {
+		ar & server;
+        ar & client;
+    }
+	/////////////////// 
+
+public:
+    size_t server;
+    size_t client;
+};
+
+class LimitsServicesSignalTimesParameters {
+private:
+	/////////////////// MPI related
+	// make this class serializable to 
+	// allow sample to be transmitted via MPI
+    friend class boost::serialization::access;	
+	template<class Archive> void serialize(Archive & ar, const unsigned int version)
+    {
+		ar & serverflush;
+        ar & clientflush;
+    }
+	/////////////////// 
+
+public:
+    size_t serverflush;
+    size_t clientflush;
+};
+
+class LimitsServicesSignalParameters {
+private:
+	/////////////////// MPI related
+	// make this class serializable to 
+	// allow sample to be transmitted via MPI
+    friend class boost::serialization::access;	
+	template<class Archive> void serialize(Archive & ar, const unsigned int version)
+    {
+		ar & memory;
+        ar & times;
+    }
+	/////////////////// 
+
+public:
+    LimitsServicesSignalMemoryParameters memory;
+    LimitsServicesSignalTimesParameters times;    
+};
+
+class LimitsServicesParameters {
+private:
+	/////////////////// MPI related
+	// make this class serializable to 
+	// allow sample to be transmitted via MPI
+    friend class boost::serialization::access;	
+	template<class Archive> void serialize(Archive & ar, const unsigned int version)
+    {
+		ar & signal;
+    }
+	/////////////////// 
+
+public:
+    LimitsServicesSignalParameters signal;
+};
+
+class LimitsComputationMemoryParameters {
+private:
+	/////////////////// MPI related
+	// make this class serializable to 
+	// allow sample to be transmitted via MPI
+    friend class boost::serialization::access;	
+	template<class Archive> void serialize(Archive & ar, const unsigned int version)
+    {
+		ar & signal;
+    }
+	/////////////////// 
+
+public:
+    size_t signal;
+};
+
+class LimitsComputationThreadsParameters {
+private:
+	/////////////////// MPI related
+	// make this class serializable to 
+	// allow sample to be transmitted via MPI
+    friend class boost::serialization::access;	
+	template<class Archive> void serialize(Archive & ar, const unsigned int version)
+    {
+		ar & on;
+		ar & scatter;
+		ar & dsp;	
+        ar & scatter_timeout;	
+    }
+	/////////////////// 
+
+public:
+    bool on;
+    size_t scatter;
+    size_t scatter_timeout;
+    size_t dsp;    
+};
 
 
 class LimitsComputationParameters {
@@ -546,66 +653,13 @@ private:
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
     {
 		ar & threads;
-		ar & worker1_threads;
-		ar & worker3_threads;
-		
+		ar & memory;
     }
 	/////////////////// 
 
 public:
-    bool threads;
-    size_t worker1_threads;
-    size_t worker3_threads;
-};
-
-class LimitsMemoryParameters {
-private:
-	/////////////////// MPI related
-	// make this class serializable to 
-	// allow sample to be transmitted via MPI
-    friend class boost::serialization::access;	
-	template<class Archive> void serialize(Archive & ar, const unsigned int version)
-    {
-		ar & scattering_matrix;
-        ar & coordinate_sets;
-        ar & data;
-        ar & iowrite_client;
-        ar & iowrite_server;
-        ar & at1_buffer; 
-        ar & atfinal_buffer;     
-        ar & data_stager;   
-    }
-	/////////////////// 
-
-public:
-    size_t scattering_matrix;
-    size_t coordinate_sets;
-    size_t data;
-    size_t iowrite_client;
-    size_t iowrite_server;    
-    size_t at1_buffer;
-    size_t atfinal_buffer;    
-    size_t data_stager;
-};
-
-class LimitsTimesParameters {
-private:
-	/////////////////// MPI related
-	// make this class serializable to 
-	// allow sample to be transmitted via MPI
-    friend class boost::serialization::access;	
-	template<class Archive> void serialize(Archive & ar, const unsigned int version)
-    {
-        ar & iowrite_client;
-        ar & iowrite_server;        
-        ar & at1_buffer;
-    }
-	/////////////////// 
-
-public:
-    size_t iowrite_client;
-    size_t iowrite_server;    
-    size_t at1_buffer;
+    LimitsComputationThreadsParameters threads;
+    LimitsComputationMemoryParameters memory;
 };
 
 class LimitsDecompositionPartitionsParameters {
@@ -653,13 +707,11 @@ private:
     friend class boost::serialization::access;	
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
     {
-        ar & alloc_early;    
         ar & chunksize;  
     }
 	/////////////////// 
 
 public:
-    bool alloc_early;
     size_t chunksize;
 };
 
@@ -710,8 +762,7 @@ private:
     {
         ar & stage;
         ar & signal;
-		ar & memory;
-        ar & times;
+        ar & services;
         ar & decomposition;
         ar & computation;
     }
@@ -720,8 +771,7 @@ private:
 public:
     LimitsStageParameters stage;    
     LimitsSignalParameters signal;    
-    LimitsMemoryParameters memory;
-    LimitsTimesParameters times;
+    LimitsServicesParameters services;    
     LimitsComputationParameters computation;    
     LimitsDecompositionParameters decomposition;
 };

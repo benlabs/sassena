@@ -113,7 +113,7 @@ bool init_commandline(int argc,char** argv,po::variables_map& vm) {
         ("database",po::value<string>()->default_value("db.xml"),  "name of the xml database file")   
 
         ("scattering-signal-file",po::value<string>()->default_value("signal.h5"),"name of the data output file")
-        ("limits-computation-threads",po::value<string>()->default_value("1"),"threadpool size for orientational averaging")        
+//        ("limits-computation-threads",po::value<string>()->default_value("1"),"threadpool size for orientational averaging")        
     ;
     
     po::store(po::parse_command_line(argc, argv, desc), vm);
@@ -147,10 +147,10 @@ bool init_commandline(int argc,char** argv,po::variables_map& vm) {
 void read_parameters(po::variables_map vm) {
     Info::Inst()->write("Checking command line for parameter overwrite");
     // second stage , allow command line parameters to overwrite defaults in the configuration file
-	if (!vm["limits-computation-threads"].defaulted()) {
-        Info::Inst()->write(string("Overwrite: limits.computation.threads=")+vm["limits-computation-threads"].as<string>());
-        Params::Inst()->limits.computation.threads = boost::lexical_cast<size_t>(vm["limits-computation-threads"].as<string>());
-    }
+//	if (!vm["limits-computation-threads"].defaulted()) {
+//        Info::Inst()->write(string("Overwrite: limits.computation.threads=")+vm["limits-computation-threads"].as<string>());
+ //       Params::Inst()->limits.computation.threads = boost::lexical_cast<size_t>(vm["limits-computation-threads"].as<string>());
+   // }
     if (!vm["scattering-signal-file"].defaulted()) {
         Info::Inst()->write(string("Overwrite: scattering.signal.file=")+vm["scattering-signal-file"].as<string>());
         Params::Inst()->scattering.signal.file = vm["scattering-signal-file"].as<string>();        

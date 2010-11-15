@@ -470,25 +470,17 @@ void Params::read_xml(std::string filename) {
     limits.stage.memory.data   = 500*1024*1024;
     
     limits.signal.chunksize = 10000;
+        
+    limits.computation.threads.on = false;
+    limits.computation.threads.scatter = 1;
+    limits.computation.threads.scatter_timeout = 25; // 25 ms
+    limits.computation.threads.dsp = 1;
+    limits.computation.memory.signal = 200*1024*1024; // 100MB 
 
-    limits.memory.atfinal_buffer = 100*1024*1024; // 100MB    
-    limits.memory.at1_buffer = 2*1024*1024; // 2MB    
-    limits.memory.data_stager = 100*1024*1024; // 100MB
-    
-    limits.memory.scattering_matrix = 100*1024*1024; // 100MB
-    limits.memory.data = 500*1024*1024; // 500MB
-    limits.memory.coordinate_sets = 500*1024*1024; // 500MB
-
-    limits.memory.iowrite_server = 100*1024*1024; // 100MB
-    limits.memory.iowrite_client = 10*1024*1024; // 10MB
-
-    limits.times.iowrite_client = 600; // 600 seconds
-    limits.times.iowrite_client = 600; // 600 seconds
-    limits.times.at1_buffer = 25; // 25 ms
-
-    limits.computation.threads = false;
-    limits.computation.worker1_threads = 1;
-    limits.computation.worker3_threads = 1;
+    limits.services.signal.memory.server = 100*1024*1024; // 100MB
+    limits.services.signal.memory.client = 10*1024*1024; // 10MB
+    limits.services.signal.times.serverflush = 600; // 600 seconds
+    limits.services.signal.times.clientflush = 600; // 600 seconds
     
     limits.decomposition.utilization = 0.95; // 5% max loss
     limits.decomposition.partitions.automatic = true; // pick number of independent partitions based on some heuristics
@@ -510,55 +502,53 @@ void Params::read_xml(std::string filename) {
 	    }
 	    
 	    if (xmli.exists("//limits/signal")) {
-    	    if (xmli.exists("//limits/signal/alloc_early")) {
-    	        limits.signal.alloc_early = xmli.get_value<bool>("//limits/signal/alloc_early");
-            }      
     	    if (xmli.exists("//limits/signal/chunksize")) {
     	        limits.signal.chunksize = xmli.get_value<size_t>("//limits/signal/chunksize");
             }                  
 	    }
-    	
-	         
-    	if (xmli.exists("//limits/memory")) {
-        	if (xmli.exists("//limits/memory/scattering_matrix")) {
-    	        limits.memory.scattering_matrix = xmli.get_value<size_t>("//limits/memory/scattering_matrix");
-	        }
-        	if (xmli.exists("//limits/memory/at1_buffer")) {
-    	        limits.memory.at1_buffer = xmli.get_value<size_t>("//limits/memory/at1_buffer");
-	        }
-        	if (xmli.exists("//limits/memory/atfinal_buffer")) {
-    	        limits.memory.atfinal_buffer = xmli.get_value<size_t>("//limits/memory/atfinal_buffer");
-	        }
-    	    if (xmli.exists("//limits/memory/iowrite_server")) {
-    	        limits.memory.iowrite_server = xmli.get_value<size_t>("//limits/memory/iowrite_server");
-	        }
-	        if (xmli.exists("//limits/memory/iowrite_client")) {
-    	        limits.memory.iowrite_client = xmli.get_value<size_t>("//limits/memory/iowrite_client");
-	        }
-	    }
+
     	if (xmli.exists("//limits/computation")) {
         	if (xmli.exists("//limits/computation/threads")) {
-    	        limits.computation.threads = xmli.get_value<bool>("//limits/computation/threads");
+            	if (xmli.exists("//limits/computation/threads/on")) {
+        	        limits.computation.threads.on = xmli.get_value<bool>("//limits/computation/threads/on");
+    	        }
+            	if (xmli.exists("//limits/computation/threads/scatter")) {
+        	        limits.computation.threads.scatter = xmli.get_value<size_t>("//limits/computation/threads/scatter");
+    	        }
+            	if (xmli.exists("//limits/computation/threads/dsp")) {
+        	        limits.computation.threads.dsp = xmli.get_value<size_t>("//limits/computation/threads/dsp");
+    	        }
+            	if (xmli.exists("//limits/computation/threads/scatter_timeout")) {
+        	        limits.computation.threads.scatter_timeout = xmli.get_value<size_t>("//limits/computation/threads/scatter_timeout");
+    	        }
 	        }
-        	if (xmli.exists("//limits/computation/worker1_threads")) {
-    	        limits.computation.worker1_threads = xmli.get_value<size_t>("//limits/computation/worker1_threads");
-	        }
-        	if (xmli.exists("//limits/computation/worker3_threads")) {
-    	        limits.computation.worker3_threads = xmli.get_value<size_t>("//limits/computation/worker3_threads");
+        	if (xmli.exists("//limits/computation/memory")) {
+            	if (xmli.exists("//limits/computation/memory/signal")) {
+    	            limits.computation.memory.signal = xmli.get_value<size_t>("//limits/computation/memory/signal");
+    	        }
 	        }
 	    }
-	    if (xmli.exists("//limits/times")) {
-	        if (xmli.exists("//limits/times/iowrite_server")) {
-    	        limits.times.iowrite_server = xmli.get_value<size_t>("//limits/times/iowrite_server");
-	        }
-	        if (xmli.exists("//limits/times/iowrite_client")) {
-    	        limits.times.iowrite_client = xmli.get_value<size_t>("//limits/times/iowrite_client");
-	        }
-	        if (xmli.exists("//limits/times/at1_buffer")) {
-    	        limits.times.at1_buffer = xmli.get_value<size_t>("//limits/times/at1_buffer");
+	    
+	    if (xmli.exists("//limits/services")) {
+        	if (xmli.exists("//limits/services/signal")) {
+            	if (xmli.exists("//limits/services/signal/memory")) {
+                	if (xmli.exists("//limits/services/signal/memory/server")) {
+        	            limits.services.signal.memory.server = xmli.get_value<size_t>("//limits/services/signal/memory/server");
+    	            }
+                	if (xmli.exists("//limits/services/signal/memory/client")) {
+        	            limits.services.signal.memory.client = xmli.get_value<size_t>("//limits/services/signal/memory/client");
+    	            }
+    	        }
+            	if (xmli.exists("//limits/services/signal/times")) {
+                	if (xmli.exists("//limits/services/signal/times/serverflush")) {
+        	            limits.services.signal.times.serverflush = xmli.get_value<size_t>("//limits/services/signal/times/serverflush");
+    	            }
+                	if (xmli.exists("//limits/services/signal/times/clientflush")) {
+        	            limits.services.signal.times.clientflush = xmli.get_value<size_t>("//limits/services/signal/times/clientflush");
+    	            }
+    	        }    	        
 	        }
 	    }
-    	
     	if (xmli.exists("//limits/decomposition")) {
         	if (xmli.exists("//limits/decomposition/utilization")) {
 			    limits.decomposition.utilization = xmli.get_value<double>("//limits/decomposition/utilization");

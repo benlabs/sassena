@@ -51,7 +51,9 @@ SelfVectorsScatterDevice::SelfVectorsScatterDevice(
         fileservice_endpoint,
         monitorservice_endpoint
     )
-{
+{    
+    atfinal_ = NULL;
+    
     fftw_complex* wspace= NULL;
     fftw_planF_ = fftw_plan_dft_1d(2*NF, wspace, wspace, FFTW_FORWARD, FFTW_ESTIMATE);
     fftw_planB_ = fftw_plan_dft_1d(2*NF, wspace, wspace, FFTW_BACKWARD, FFTW_ESTIMATE);    
@@ -69,10 +71,6 @@ SelfVectorsScatterDevice::~SelfVectorsScatterDevice() {
     }
     fftw_destroy_plan(fftw_planF_);
     fftw_destroy_plan(fftw_planB_);
-    if (at2_!=NULL) {
-        fftw_free(at2_);
-        at2_=NULL;
-    }
     if (atfinal_!=NULL) {
         fftw_free(atfinal_);
         atfinal_=NULL;
@@ -82,7 +80,7 @@ SelfVectorsScatterDevice::~SelfVectorsScatterDevice() {
 void SelfVectorsScatterDevice::start_workers() {
 
     size_t worker2_threads = 1;
-    size_t worker1_threads = Params::Inst()->limits.computation.worker1_threads;
+    size_t worker1_threads = Params::Inst()->limits.computation.threads.scatter;
     
     // don't allow more worker1 threads than NM are available!
     if (worker1_threads>NM) worker1_threads = NM;
@@ -131,11 +129,13 @@ void SelfVectorsScatterDevice::worker1_task(size_t this_subvector,size_t this_at
                 
 void SelfVectorsScatterDevice::worker1() {
     
-    size_t maxbuffer_bytesize = Params::Inst()->limits.memory.at1_buffer;
-    size_t timeout = Params::Inst()->limits.times.at1_buffer;
+//    size_t maxbuffer_bytesize = Params::Inst()->limits.;
+//    size_t timeout = Params::Inst()->limits.times.at1_buffer;
+    size_t timeout = Params::Inst()->limits.computation.threads.scatter_timeout;
 
-    size_t single_entry_bytesize = NF*sizeof(fftw_complex);
-    size_t max_entries = maxbuffer_bytesize/single_entry_bytesize;
+//    size_t single_entry_bytesize = NF*sizeof(fftw_complex);
+//    size_t max_entries = maxbuffer_bytesize/single_entry_bytesize;
+    size_t max_entries = 1;
     
     while (true) {
         
@@ -156,7 +156,7 @@ void SelfVectorsScatterDevice::worker1() {
 void SelfVectorsScatterDevice::worker2_task(fftw_complex* p_a) {
 
     worker2_counter++;
-    smath::add_elements(at2_,p_a,NF);
+    smath::add_elements(atfinal_,p_a,NF);
     p_monitor_->update(allcomm_.rank(),progress());    						            
 
     fftw_free(p_a); p_a=NULL;
@@ -188,9 +188,6 @@ void SelfVectorsScatterDevice::compute_serial() {
 
     current_subvector_=0;
 
-    at2_ = (fftw_complex*) fftw_malloc(NF*sizeof(fftw_complex));
-    memset(at2_,0,NF*sizeof(fftw_complex));
-
     for(size_t i = 0; i < NM; ++i)
     {
         for(size_t n = 0; n < assignment_.size(); ++n)
@@ -203,29 +200,27 @@ void SelfVectorsScatterDevice::compute_serial() {
         current_subvector_++;
         p_monitor_->update(allcomm_.rank(),progress());                                  
     }
-
-    if (partitioncomm_.rank()==0) {
-        atfinal_ = (fftw_complex*) fftw_malloc(NF*sizeof(fftw_complex));
-        memset(atfinal_,0,NF*sizeof(fftw_complex));        
-    }
     
-    double factor = 1.0/subvector_index_.size();    
     if (NN>1) {
-        double* p_at2 = (double*) &(at2_[0][0]);
+        double* p_atfinal = (double*) &(atfinal_[0][0]);
 
         double* p_atlocal = NULL;
         if (partitioncomm_.rank()==0) {
-            p_atlocal = (double*) &(atfinal_[0][0]);
+            fftw_complex* atlocal_ = (fftw_complex*) fftw_malloc(NF*sizeof(fftw_complex));            
+            p_atlocal = (double*) &(atlocal_[0][0]);
+            memset(p_atlocal,0,NF*sizeof(fftw_complex));        
         }
 
-        boost::mpi::reduce(partitioncomm_,p_at2,2*NF,p_atlocal,std::plus<double>(),0);
-    }
-    else {
-        memcpy(atfinal_,at2_,NF*sizeof(fftw_complex));
-    }
-    
-    fftw_free(at2_); at2_=NULL;
+        boost::mpi::reduce(partitioncomm_,p_atfinal,2*NF,p_atlocal,std::plus<double>(),0);
 
+        // swap pointers on rank 0 
+        if (partitioncomm_.rank()==0) {
+            fftw_free(atfinal_); 
+            atfinal_ = (fftw_complex*) p_atlocal;
+        }        
+    }
+
+    double factor = 1.0/subvector_index_.size();    
     if (partitioncomm_.rank()==0) {
         smath::multiply_elements(factor,atfinal_,NF);
     }
@@ -244,10 +239,6 @@ void SelfVectorsScatterDevice::compute_threaded() {
     worker2_done = false;
     boost::mutex::scoped_lock w2l(worker2_mutex);
 
-    at2_ = (fftw_complex*) fftw_malloc(NF*sizeof(fftw_complex));
-    memset(at2_,0,NF*sizeof(fftw_complex));
-
-
     for(size_t i = 0; i < NM; ++i) {
         for(size_t n = 0; n < assignment_.size(); ++n)
         {
@@ -255,29 +246,27 @@ void SelfVectorsScatterDevice::compute_threaded() {
         }
     }
     while (!worker2_done)  worker2_notifier.wait(w2l);
-
-    if (partitioncomm_.rank()==0) {
-        atfinal_ = (fftw_complex*) fftw_malloc(NF*sizeof(fftw_complex));
-        memset(atfinal_,0,NF*sizeof(fftw_complex));        
-    }
     
-    double factor = 1.0/subvector_index_.size();    
     if (NN>1) {
-        double* p_at2 = (double*) &(at2_[0][0]);
+        double* p_atfinal = (double*) &(atfinal_[0][0]);
 
         double* p_atlocal = NULL;
         if (partitioncomm_.rank()==0) {
-            p_atlocal = (double*) &(atfinal_[0][0]);
+            fftw_complex* atlocal_ = (fftw_complex*) fftw_malloc(NF*sizeof(fftw_complex));            
+            p_atlocal = (double*) &(atlocal_[0][0]);
+            memset(p_atlocal,0,NF*sizeof(fftw_complex));        
         }
 
-        boost::mpi::reduce(partitioncomm_,p_at2,2*NF,p_atlocal,std::plus<double>(),0);
-    }
-    else {
-        memcpy(atfinal_,at2_,NF*sizeof(fftw_complex));
-    }
-    
-    fftw_free(at2_); at2_=NULL;
+        boost::mpi::reduce(partitioncomm_,p_atfinal,2*NF,p_atlocal,std::plus<double>(),0);
 
+        // swap pointers on rank 0 
+        if (partitioncomm_.rank()==0) {
+            fftw_free(atfinal_); 
+            atfinal_ = (fftw_complex*) p_atlocal;
+        }        
+    }
+
+    double factor = 1.0/subvector_index_.size();    
     if (partitioncomm_.rank()==0) {
         smath::multiply_elements(factor,atfinal_,NF);
     }

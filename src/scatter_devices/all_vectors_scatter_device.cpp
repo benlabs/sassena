@@ -70,10 +70,6 @@ AllVectorsScatterDevice::~AllVectorsScatterDevice() {
     }
     fftw_destroy_plan(fftw_planF_);
     fftw_destroy_plan(fftw_planB_);
-    if (at3_!=NULL) {
-        fftw_free(at3_); 
-        at3_=NULL;
-    }
     if (atfinal_!=NULL) {
         fftw_free(atfinal_);    
         atfinal_=NULL;
@@ -83,9 +79,9 @@ AllVectorsScatterDevice::~AllVectorsScatterDevice() {
 void AllVectorsScatterDevice::start_workers() {
 
     //size_t worker3_threads = 1; // fix this at the moment;
-    size_t worker3_threads = Params::Inst()->limits.computation.worker3_threads;    
+    size_t worker3_threads = Params::Inst()->limits.computation.threads.dsp;    
     size_t worker2_threads = 1;
-    size_t worker1_threads = Params::Inst()->limits.computation.worker1_threads;
+    size_t worker1_threads = Params::Inst()->limits.computation.threads.scatter;
 
     // don't allow more worker1 threads than NM are available!
     if (worker1_threads>NM) worker1_threads = NM;
@@ -126,12 +122,12 @@ void AllVectorsScatterDevice::worker1_task(size_t subvector_index) {
 
 void AllVectorsScatterDevice::worker1() {
     
-    size_t maxbuffer_bytesize = Params::Inst()->limits.memory.at1_buffer;
-    size_t timeout = Params::Inst()->limits.times.at1_buffer;
+//    size_t maxbuffer_bytesize = Params::Inst()->limits.memory.at1_buffer;
+    size_t timeout = Params::Inst()->limits.computation.threads.scatter_timeout;
 
-    size_t single_entry_bytesize = assignment_.size()*sizeof(fftw_complex);
-    size_t max_entries = maxbuffer_bytesize/single_entry_bytesize;
-    
+//    size_t single_entry_bytesize = assignment_.size()*sizeof(fftw_complex);
+//    size_t max_entries = maxbuffer_bytesize/single_entry_bytesize;
+    size_t max_entries = 1;
     while (true) {
         
         // retrieve from queue
@@ -234,7 +230,7 @@ void AllVectorsScatterDevice::worker3_task(fftw_complex* p_a) {
         smath::square_elements(p_a,NF);
 	}
     boost::mutex::scoped_lock at3l(at3_mutex);
-    smath::add_elements(at3_,p_a,NF);
+    smath::add_elements(atfinal_,p_a,NF);
     at3l.unlock();
     fftw_free(p_a); p_a=NULL;
 }
@@ -269,10 +265,6 @@ void AllVectorsScatterDevice::compute_serial() {
             
     current_subvector_=0;
     
-    at3_ = (fftw_complex*) fftw_malloc(NF*sizeof(fftw_complex));
-    memset(at3_,0,NF*sizeof(fftw_complex));
-
-
     for(size_t i = 0; i < NM; ++i)
     {
         worker1_task(i);
@@ -287,28 +279,26 @@ void AllVectorsScatterDevice::compute_serial() {
         p_monitor_->update(allcomm_.rank(),progress());
     }
 
-    if (partitioncomm_.rank()==0) {
-        atfinal_ = (fftw_complex*) fftw_malloc(NF*sizeof(fftw_complex));
-        memset(atfinal_,0,NF*sizeof(fftw_complex));        
-    }
-
-    double factor = 1.0/subvector_index_.size();
     if (NN>1) {
 
-        double* p_at3 = (double*) &(at3_[0][0]);
+        double* p_atfinal = (double*) &(atfinal_[0][0]);
         double* p_atlocal=NULL;
         if (partitioncomm_.rank()==0) {
-            p_atlocal = (double*) &(atfinal_[0][0]);;
+            fftw_complex* atlocal_ = (fftw_complex*) fftw_malloc(NF*sizeof(fftw_complex));
+            p_atlocal = (double*) &(atlocal_[0][0]);;
+            memset(atlocal_,0,NF*sizeof(fftw_complex));        
         }
 
-        boost::mpi::reduce(partitioncomm_,p_at3,2*NF,p_atlocal,std::plus<double>(),0);
-    }
-    else {
-        memcpy(atfinal_,at3_,NF*sizeof(fftw_complex));
+        boost::mpi::reduce(partitioncomm_,p_atfinal,2*NF,p_atlocal,std::plus<double>(),0);
+
+        // swap pointers on rank 0 
+        if (partitioncomm_.rank()==0) {
+            fftw_free(atfinal_); 
+            atfinal_ = (fftw_complex*) p_atlocal;
+        }
     }
     
-    fftw_free(at3_); at3_=NULL;
-
+    double factor = 1.0/subvector_index_.size();
     if (partitioncomm_.rank()==0) {
         smath::multiply_elements(factor,atfinal_,NF);
     }
@@ -328,34 +318,29 @@ void AllVectorsScatterDevice::compute_threaded() {
     worker3_done = false;
     boost::mutex::scoped_lock w3l(worker3_mutex);
 
-    at3_ = (fftw_complex*) fftw_malloc(NF*sizeof(fftw_complex));
-    memset(at3_,0,NF*sizeof(fftw_complex));
-
     for(size_t i = 0; i < NM; ++i) at0_.push(i);
     while (!worker3_done)  worker3_notifier.wait(w3l);
 
-    if (partitioncomm_.rank()==0) {
-        atfinal_ = (fftw_complex*) fftw_malloc(NF*sizeof(fftw_complex));
-        memset(atfinal_,0,NF*sizeof(fftw_complex));        
-    }
-
-    double factor = 1.0/subvector_index_.size();
     if (NN>1) {
 
-        double* p_at3 = (double*) &(at3_[0][0]);
+        double* p_atfinal = (double*) &(atfinal_[0][0]);
         double* p_atlocal=NULL;
         if (partitioncomm_.rank()==0) {
-            p_atlocal = (double*) &(atfinal_[0][0]);;
+            fftw_complex* atlocal_ = (fftw_complex*) fftw_malloc(NF*sizeof(fftw_complex));
+            p_atlocal = (double*) &(atlocal_[0][0]);;
+            memset(atlocal_,0,NF*sizeof(fftw_complex));        
         }
 
-        boost::mpi::reduce(partitioncomm_,p_at3,2*NF,p_atlocal,std::plus<double>(),0);
-    }
-    else {
-        memcpy(atfinal_,at3_,NF*sizeof(fftw_complex));
+        boost::mpi::reduce(partitioncomm_,p_atfinal,2*NF,p_atlocal,std::plus<double>(),0);
+
+        // swap pointers on rank 0 
+        if (partitioncomm_.rank()==0) {
+            fftw_free(atfinal_); 
+            atfinal_ = (fftw_complex*) p_atlocal;
+        }
     }
     
-    fftw_free(at3_); at3_=NULL;
-
+    double factor = 1.0/subvector_index_.size();
     if (partitioncomm_.rank()==0) {
         smath::multiply_elements(factor,atfinal_,NF);
     }
