@@ -54,11 +54,12 @@ CenterOfMass::CenterOfMass(Atoms& atoms,IAtomselection* pcofm_selection,IAtomsel
         size_t ssel_iter = 0;
 
         while( ( csel_iter < csel_total) && (ssel_iter < ssel_total) ) {
-            size_t csel_id = cs_selection[csel_iter];
-            size_t ssel_id = cofm_selection[ssel_iter];
+            size_t csel_index = cs_selection[csel_iter];
+            size_t ssel_index = cofm_selection[ssel_iter];
 
-            if (csel_id==ssel_id) {
-                mi = atoms[csel_id].mass;
+            if (csel_index==ssel_index) {
+                size_t csel_id = atoms[csel_index];
+                mi = Database::Inst()->masses.get(csel_id);
     			m += mi;
     			
     			xt += cs.c1[csel_iter]*mi;
@@ -67,9 +68,9 @@ CenterOfMass::CenterOfMass(Atoms& atoms,IAtomselection* pcofm_selection,IAtomsel
     			
                 ssel_iter++;
                 csel_iter++;           
-            } else if (csel_id>ssel_id) {
+            } else if (csel_index>ssel_index) {
                 ssel_iter++;
-            } else if (csel_id<ssel_id) {
+            } else if (csel_index<ssel_index) {
                 csel_iter++;
             }
         }
@@ -98,7 +99,8 @@ CenterOfMass::CenterOfMass(Atoms& atoms,Frame& frame,IAtomselection* pselection)
 	m = 0.0;
 
 	for (size_t i=0;i<selection.size();i++) {
-		mi = atoms[selection[i]].mass;
+        size_t sel_id = atoms[selection[i]];
+        mi = Database::Inst()->masses.get(sel_id);
 		m += mi;
 		xt += frame.x[selection[i]]*mi;
 		yt += frame.y[selection[i]]*mi;

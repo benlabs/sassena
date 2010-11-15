@@ -34,19 +34,21 @@ class Atom;
 class Frame;
 class Atomselection;
 
-class Atoms : public std::vector<Atom> {
+class Atoms {
 	// make this class serializable to 
 	// allow sample to be transmitted via MPI
     friend class boost::serialization::access;	
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
     {
-		ar & boost::serialization::base_object<std::vector<Atom> >(*this);
 		ar.register_type(static_cast<IndexAtomselection*>(NULL));
         ar.register_type(static_cast<RangeAtomselection*>(NULL));
         
 		ar & selections;
+        ar & ids_;
     }
 	///////////////////
+	
+    std::vector<size_t> ids_;
 public:	
 	
 	std::map<std::string,IAtomselection*> selections;	
@@ -65,6 +67,9 @@ public:
 	void assert_selection(std::string groupname); // throws an exception when groupname isn't found.
 	
     ~Atoms();
+    
+    size_t operator[](size_t index) { return ids_[index]; }
+    size_t size() { return ids_.size(); }    
 };
 
 #endif

@@ -311,11 +311,16 @@ void Params::read_xml(std::string filename) {
 	    if (xmli.exists("//scattering/vectors")) {
             
             string vt = "single";
+            
             if (xmli.exists("//scattering/vectors/type"))  vt = xmli.get_value<string>("//scattering/vectors/type");
     	    if (vt=="single") {	
-    	    	double x = xmli.get_value<double>("//scattering/vectors/single/x");
-    	    	double y = xmli.get_value<double>("//scattering/vectors/single/y");
-    	    	double z = xmli.get_value<double>("//scattering/vectors/single/z");
+    	        double x = 1.0;
+                double y = 0;
+                double z = 0;
+                
+    	    	if (xmli.exists("//scattering/vectors/x")) x = xmli.get_value<double>("//scattering/vectors/x");
+    	    	if (xmli.exists("//scattering/vectors/y")) x = xmli.get_value<double>("//scattering/vectors/y");
+    	    	if (xmli.exists("//scattering/vectors/z")) x = xmli.get_value<double>("//scattering/vectors/z");
             
     	    	scattering.qvectors.push_back(CartesianCoor3D(x,y,z));
     	    }
@@ -328,15 +333,21 @@ void Params::read_xml(std::string filename) {
     	    	    {
     	    		    xmli.set_current(scans[i]);
     	    		    ScatteringVectorsScanParameters sc;
-            
-    	    		    sc.basevector.x = xmli.get_value<double>("./basevector/x");
-    	    		    sc.basevector.y = xmli.get_value<double>("./basevector/y");
-    	    		    sc.basevector.z = xmli.get_value<double>("./basevector/z");
-                        
-    	    		    sc.from     = xmli.get_value<double>("./from");
-    	    		    sc.to       = xmli.get_value<double>("./to");
-    	    		    sc.points   = xmli.get_value<size_t>("./points");
-    	    		    if (xmli.exists("./exponent")) sc.exponent = xmli.get_value<double>("./exponent");
+            	        sc.basevector.x = 1.0;
+                        sc.basevector.y = 0;
+                        sc.basevector.z = 0;
+                        sc.from = 0;
+                        sc.to = 1;
+                        sc.points = 100;
+                        sc.exponent = 1.0;
+
+    	    		    if (xmli.exists("./x"))         sc.basevector.x = xmli.get_value<double>("./x");
+    	    		    if (xmli.exists("./y"))         sc.basevector.y = xmli.get_value<double>("./y");
+    	    		    if (xmli.exists("./z"))         sc.basevector.z = xmli.get_value<double>("./z");
+    	    		    if (xmli.exists("./from"))      sc.from     = xmli.get_value<double>("./from");
+    	    		    if (xmli.exists("./to"))        sc.to       = xmli.get_value<double>("./to");
+    	    		    if (xmli.exists("./points"))    sc.points   = xmli.get_value<size_t>("./points");
+    	    		    if (xmli.exists("./exponent"))  sc.exponent = xmli.get_value<double>("./exponent");
     	    		    scattering.qvectors.scans.push_back(sc);
     	    	    }
 	    	    }
@@ -419,7 +430,6 @@ void Params::read_xml(std::string filename) {
 	    				scattering.average.orientation.multipole.axis.y = xmli.get_value<double>("//scattering/average/orientation/multipole/axis/y");
 	    				scattering.average.orientation.multipole.axis.z = xmli.get_value<double>("//scattering/average/orientation/multipole/axis/z");					
 	    			}						
-	    						
 	    		} else if (scattering.average.orientation.type!="none") {
 	    			Err::Inst()->write(string("Orientation averaging type not understood: ")+scattering.average.orientation.type);
 	    			throw;
@@ -455,8 +465,10 @@ void Params::read_xml(std::string filename) {
 	// START OF limits section //
 
     // assign default memory limits:
-    limits.data_stager.servers = 1;
-    limits.signal.alloc_early = false;
+    limits.stage.nodes = 1;
+    limits.stage.memory.buffer = 100*1024*1024;
+    limits.stage.memory.data   = 500*1024*1024;
+    
     limits.signal.chunksize = 10000;
 
     limits.memory.atfinal_buffer = 100*1024*1024; // 100MB    
@@ -482,10 +494,18 @@ void Params::read_xml(std::string filename) {
     limits.decomposition.partitions.automatic = true; // pick number of independent partitions based on some heuristics
     limits.decomposition.partitions.size = 1; // not used if automatic = true, if false -> this determines the partition size
 
-	if (xmli.exists("//limits")) {   
-	    if (xmli.exists("//limits/data_stager")) {
-        	if (xmli.exists("//limits/data_stager/servers")) {
-    	        limits.data_stager.servers = xmli.get_value<size_t>("//limits/data_stager/servers");
+	if (xmli.exists("//limits")) {       	
+	    if (xmli.exists("//limits/stage")) {
+        	if (xmli.exists("//limits/stage/nodes")) {
+    	        limits.stage.nodes = xmli.get_value<size_t>("//limits/stage/nodes");
+	        }	        
+        	if (xmli.exists("//limits/stage/memory")) {
+            	if (xmli.exists("//limits/stage/memory/buffer")) {
+        	        limits.stage.memory.buffer = xmli.get_value<size_t>("//limits/stage/memory/buffer");
+    	        }	        
+            	if (xmli.exists("//limits/stage/memory/data")) {
+        	        limits.stage.memory.data = xmli.get_value<size_t>("//limits/stage/memory/data");
+    	        }	            	        
 	        }	        
 	    }
 	    
@@ -509,12 +529,6 @@ void Params::read_xml(std::string filename) {
         	if (xmli.exists("//limits/memory/atfinal_buffer")) {
     	        limits.memory.atfinal_buffer = xmli.get_value<size_t>("//limits/memory/atfinal_buffer");
 	        }
-        	if (xmli.exists("//limits/memory/data_stager")) {
-    	        limits.memory.data_stager = xmli.get_value<size_t>("//limits/memory/data_stager");
-	        }
-        	if (xmli.exists("//limits/memory/data")) {	        
-			    limits.memory.data = xmli.get_value<size_t>("//limits/memory/data");
-    	    }
     	    if (xmli.exists("//limits/memory/iowrite_server")) {
     	        limits.memory.iowrite_server = xmli.get_value<size_t>("//limits/memory/iowrite_server");
 	        }
@@ -532,7 +546,6 @@ void Params::read_xml(std::string filename) {
         	if (xmli.exists("//limits/computation/worker3_threads")) {
     	        limits.computation.worker3_threads = xmli.get_value<size_t>("//limits/computation/worker3_threads");
 	        }
-
 	    }
 	    if (xmli.exists("//limits/times")) {
 	        if (xmli.exists("//limits/times/iowrite_server")) {

@@ -42,7 +42,8 @@ DataStagerByFrame::DataStagerByFrame(Sample& sample,boost::mpi::communicator& al
     partitioncomm_(partitioncomm),    
     FC_assignment(assignment)
 {
-    NN = allcomm_.size();    
+    NN = allcomm_.size();  
+    NNPP = partitioncomm_.size();
     NF = m_sample.coordinate_sets.size();
     std::string target = Params::Inst()->scattering.target;
     NA = m_sample.atoms.selections[target]->size();
@@ -52,9 +53,9 @@ DataStagerByFrame::DataStagerByFrame(Sample& sample,boost::mpi::communicator& al
     // check data size requirements & allocate memory
     size_t data_bytesize = FC_assignment.size()*NA*3*sizeof(coor_t);
     size_t data_bytesize_indicator_max = 0;
-    boost::mpi::all_reduce(allcomm,data_bytesize,data_bytesize_indicator_max,binary_max());
+    boost::mpi::all_reduce(partitioncomm_,data_bytesize,data_bytesize_indicator_max,binary_max());
 
-    if (Params::Inst()->limits.memory.data<data_bytesize_indicator_max) {
+    if (Params::Inst()->limits.stage.memory.data<data_bytesize_indicator_max) {
         if (rank==0) {
             Err::Inst()->write("Insufficient Buffer size for coordinates (limits.memory.data)");
             Err::Inst()->write(string("Requested (bytes): ")+boost::lexical_cast<string>(data_bytesize_indicator_max));
@@ -65,7 +66,7 @@ DataStagerByFrame::DataStagerByFrame(Sample& sample,boost::mpi::communicator& al
     p_coordinates = (coor_t*) malloc(data_bytesize);
         
     // determine number of nodes which act as file servers:
-    NFN = Params::Inst()->limits.data_stager.servers;
+    NFN = Params::Inst()->limits.stage.nodes;
     
     if (NFN>NN) NFN=NN; 
     if (NFN>NF) {
@@ -93,15 +94,16 @@ void DataStagerByFrame::stage_firstpartition() {
     //std::set<size_t>& assigned_frames = FS_assignment_table[rank];
 
     vector<DivAssignment> assignments;
-    for (size_t i=0;i<NN;i++) {
-        assignments.push_back(DivAssignment(NN,i,NF));
+    for (size_t i=0;i<NNPP;i++) {
+        assignments.push_back(DivAssignment(NNPP,i,NF));
     }
     
     bool firstpartition=true;
     if (allcomm_.rank()>=partitioncomm_.size()) firstpartition=false;
 
     for(size_t f=0;f<NF;f++) {
-        size_t s = f%NFN; // this is the responsible data server
+        size_t s = (f*NFN)/NF; // this is the responsible data server
+        
         if (rank==s) {
             CoordinateSet* p_cset = m_sample.coordinate_sets.load(f);
             
@@ -158,25 +160,27 @@ void DataStagerByFrame::stage_fillpartitions() {
 // By Atom
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-
-DataStagerByAtom::DataStagerByAtom(Sample& sample,boost::mpi::communicator& comm, DivAssignment assignment) 
+DataStagerByAtom::DataStagerByAtom(Sample& sample,boost::mpi::communicator& allcomm,boost::mpi::communicator& partitioncomm,DivAssignment assignment) 
     : m_sample(sample),
-    m_comm(comm),
+    allcomm_(allcomm),
+    partitioncomm_(partitioncomm),    
     FC_assignment(assignment)
 {
-    NN = m_comm.size();    
+    NN = allcomm_.size(); 
+    NNPP = partitioncomm_.size();    
+    NP = NN/NNPP;
     NF = m_sample.coordinate_sets.size();
     std::string target = Params::Inst()->scattering.target;
     NA = m_sample.atoms.selections[target]->size();
 
-    size_t rank = m_comm.rank();
+    size_t rank = allcomm_.rank();
 
     // check data size requirements & allocate memory
     size_t data_bytesize = FC_assignment.size()*NF*3*sizeof(coor_t);
     size_t data_bytesize_indicator_max = 0;
-    boost::mpi::all_reduce(m_comm,data_bytesize,data_bytesize_indicator_max,binary_max());
+    boost::mpi::all_reduce(partitioncomm_,data_bytesize,data_bytesize_indicator_max,binary_max());
 
-    if (Params::Inst()->limits.memory.data<data_bytesize_indicator_max) {
+    if (Params::Inst()->limits.stage.memory.data<data_bytesize_indicator_max) {
         if (rank==0) {
             Err::Inst()->write("Insufficient Buffer size for coordinates (limits.memory.data)");
             Err::Inst()->write(string("Requested (bytes): ")+boost::lexical_cast<string>(data_bytesize_indicator_max));
@@ -188,104 +192,59 @@ DataStagerByAtom::DataStagerByAtom(Sample& sample,boost::mpi::communicator& comm
     p_coordinates = (coor_t*) malloc(data_bytesize);
         
     // determine number of nodes which act as file servers:
-    NFN = Params::Inst()->limits.data_stager.servers;
+    NFN = Params::Inst()->limits.stage.nodes;
     
     if (NFN>NN) NFN=NN; 
     if (NFN>NF) {
         NFN=NF;  
-        if (m_comm.rank()==0) {
+        if (allcomm_.rank()==0) {
             Info::Inst()->write("Number of data servers limited by number of frames");
         }
     }    
-
-    // file FS_assignment_table, all client own this list
-    for(size_t i=0;i<NF;i++) {
-        size_t assigned_server = i%NFN;
-        FS_assignment_table[assigned_server].insert(i);
-    }
-
 }
 
 coor_t* DataStagerByAtom::stage() {
-    stage_registration();    
-    stage_data();
+    
+    stage_firstpartition();
+    allcomm_.barrier();
+    stage_fillpartitions();
     return p_coordinates;
-}
-
-void DataStagerByAtom::stage_registration() {
-    size_t off = FC_assignment[0];
-    size_t len = FC_assignment.size();
     
-    size_t NN = m_comm.size();
-    size_t rank = m_comm.rank();
+//    stage_registration();    
+//    stage_data();
+//    return p_coordinates;
+}
+
+
+void DataStagerByAtom::stage_firstpartition() {
+    size_t rank = allcomm_.rank();
     
-    for(size_t s = 0; s < NFN; ++s)
-    {
-        for(size_t c = 0; c < NN; ++c)
-        {
-            if (rank==s) {
-                if (s==c) {            
-                    add_client(off,len,c);                    
-                } else {
-                    size_t coff,clen;
-                    m_comm.recv(c,0,&coff,1);
-                    m_comm.recv(c,0,&clen,1);                    
-                    add_client(coff,clen,c);
-                }
-            }
-            if (rank==c) {
-                m_comm.send(s,0,&off,1);
-                m_comm.send(s,0,&len,1);                                    
-            }
-        }
-    }
-}
+    // used by server
+    //size_t frame_bytesize = NA*3*sizeof(double);
+//    coor_t* p_coordinates_buffer = (coor_t*) malloc(NA*3*sizeof(coor_t));
 
-void DataStagerByAtom::add_client(size_t off,size_t len, size_t client) {
-    bool found = false;
-    for(size_t i = 0; i < AtomOffLen_to_FClist.size(); ++i)
-    {
-        if (AtomOffLen_to_FClist[i].first.first == off) {
-            if (AtomOffLen_to_FClist[i].first.second == len) {
-                AtomOffLen_to_FClist[i].second.push_back(client);
-                found = true;
-                break;
-            }
-        }
-    }
-    if (!found) {
-        std::pair<size_t,size_t> key = make_pair(off,len);
-        vector<size_t> val; val.push_back(client);
-        AtomOffLen_to_FClist.push_back(make_pair(key,val));
-    }
-}
+    //std::set<size_t>& assigned_frames = FS_assignment_table[rank];
 
-void DataStagerByAtom::stage_data() {
-
-	size_t rank = m_comm.rank();
-
-	//////////////////////////////////////////////////
-	// Assignment of atoms to compute
-	//////////////////////////////////////////////////    
+    // initialize local coordinates buffer
     
     size_t buffer_bytesize = Params::Inst()->limits.memory.data_stager;
     size_t frame_bytesize = NA*3*sizeof(coor_t);
     size_t framesbuffer_maxsize = buffer_bytesize/frame_bytesize;
     
     if (framesbuffer_maxsize==0) {
-        if (m_comm.rank()==0) {
+        if (allcomm_.rank()==0) {
             Err::Inst()->write("Cannot load trajectory into buffer.");
             Err::Inst()->write(string("limits.memory.data_stager=")+boost::lexical_cast<string>(Params::Inst()->limits.memory.data_stager));
             Err::Inst()->write(string("requested=")+boost::lexical_cast<string>(frame_bytesize));            
         }
         throw;
     }
-    
     coor_t* p_coordinates_buffer = (coor_t*) malloc(framesbuffer_maxsize*NA*3*sizeof(coor_t));
+    std::vector< std::vector<size_t> > framesbuffer(NFN);
     
-    std::vector<std::vector<size_t> > framesbuffer(NFN);
     for(size_t f=0;f<NF;f++) {
-        size_t s = f%NFN; // this is the responsible data server
+        size_t s = (f*NFN)/NF; // this is the responsible data server
+        
         if (rank==s) {
             CoordinateSet* p_cset = m_sample.coordinate_sets.load(f);
             coor_t* p_data = &(p_coordinates_buffer[framesbuffer[s].size()*NA*3]);
@@ -296,6 +255,7 @@ void DataStagerByAtom::stage_data() {
                 p_data[3*n+2]=p_cset->c3[n];            
             }
             delete p_cset;
+            
         }
         framesbuffer[s].push_back(f);
         if (framesbuffer[s].size()==framesbuffer_maxsize) {
@@ -318,17 +278,27 @@ void DataStagerByAtom::stage_data() {
 void DataStagerByAtom::distribute_coordinates(coor_t* p_coordinates_buffer,std::vector<std::vector<size_t> >& framesbuffer,size_t s) {
     
     size_t LNF = framesbuffer[s].size();
-    size_t rank = m_comm.rank();  
+    size_t rank = allcomm_.rank();  
+    
+    // use internal data structure: FC_assignments
+    vector<DivAssignment> assignments;
+    for (size_t i=0;i<NNPP;i++) {
+        assignments.push_back(DivAssignment(NNPP,i,NA));
+    }
+            
+    bool firstpartition=true;
+    if (allcomm_.rank()>=partitioncomm_.size()) firstpartition=false;
     
     if (rank==s) {
-        for(size_t i = 0; i < AtomOffLen_to_FClist.size(); ++i)
-        {
-            std::pair<size_t,size_t> offlen = AtomOffLen_to_FClist[i].first;
-            std::vector<size_t> clients = AtomOffLen_to_FClist[i].second;
-
-            size_t off = offlen.first;
-            size_t len = offlen.second;
-            // marshal data            
+        
+        for (size_t i=0;i<NNPP;i++) {
+            
+            size_t target_node = i;
+            
+            DivAssignment target_node_assignment(NNPP,i,NA);
+            size_t off = target_node_assignment.offset();
+            size_t len = target_node_assignment.size();
+            
             coor_t* p_fsdata = (coor_t*) malloc(LNF*len*3*sizeof(coor_t));
             for(size_t f = 0; f < LNF; ++f)
             {
@@ -336,23 +306,19 @@ void DataStagerByAtom::distribute_coordinates(coor_t* p_coordinates_buffer,std::
                 coor_t* p_to = &(p_fsdata[f*len*3]);
                 memcpy(p_to,p_from,len*3*sizeof(coor_t));
             }
-
-            for(size_t j = 0; j < clients.size(); ++j)
-            {
-                size_t target_node = clients[j];
-                if (target_node==s) {                    
-                    fill_coordinates(p_fsdata,len,framesbuffer[s]);
-                } else {
-                    m_comm.send(target_node,0,p_fsdata,LNF*len*3);
-                }
+            
+            if (target_node==s) {                    
+                fill_coordinates(p_fsdata,len,framesbuffer[s]);
+            } else {
+                allcomm_.send(target_node,0,p_fsdata,LNF*len*3);
             }
             free(p_fsdata);
         }
-    } else {
+    } else if (firstpartition) {
         size_t len = FC_assignment.size();
         
         coor_t* p_localdata = (coor_t*) malloc(LNF*len*3*sizeof(coor_t));
-        m_comm.recv(s,0,p_localdata,LNF*len*3);
+        allcomm_.recv(s,0,p_localdata,LNF*len*3);
         fill_coordinates(p_localdata,len,framesbuffer[s]);
         free(p_localdata);
     }
@@ -367,5 +333,24 @@ void DataStagerByAtom::fill_coordinates(coor_t* p_localdata,size_t len,vector<si
             p_coordinates[ NF*n*3 + frames[f]*3 + 1 ] = p_localdata[ len*f*3 + n*3 + 1 ];
             p_coordinates[ NF*n*3 + frames[f]*3 + 2 ] = p_localdata[ len*f*3 + n*3 + 2 ];
         }
+    }
+}
+
+
+void DataStagerByAtom::stage_fillpartitions() {
+    
+    bool firstpartition=true;
+    if (allcomm_.rank()>=partitioncomm_.size()) firstpartition=false;
+    size_t partitions = allcomm_.size()/partitioncomm_.size();
+
+    if (firstpartition) {
+        for(size_t i = 1; i < partitions; ++i)
+        {
+            size_t target_node = i*partitioncomm_.size() + partitioncomm_.rank();
+            allcomm_.send(target_node,0,p_coordinates,FC_assignment.size()*NF*3);            
+        }
+    } else {
+        size_t source_node = partitioncomm_.rank();
+        allcomm_.recv(source_node,0,p_coordinates,FC_assignment.size()*NF*3);            
     }
 }

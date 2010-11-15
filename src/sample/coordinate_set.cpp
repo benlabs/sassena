@@ -50,10 +50,10 @@ CoordinateSet::CoordinateSet(CoordinateSet& cs,IAtomselection* cs_selection, IAt
     size_t ssel_iter = 0;
     size_t count =0;
     while( ( csel_iter < csel_total) && (ssel_iter < ssel_total) ) {
-        size_t csel_id = csel[csel_iter];
-        size_t ssel_id = ssel[ssel_iter];
+        size_t csel_index = csel[csel_iter];
+        size_t ssel_index = ssel[ssel_iter];
         
-        if (csel_id==ssel_id) {
+        if (csel_index==ssel_index) {
     		c1.push_back(cs.c1[csel_iter]);
     		c2.push_back(cs.c2[csel_iter]);
     		c3.push_back(cs.c3[csel_iter]);
@@ -61,9 +61,9 @@ CoordinateSet::CoordinateSet(CoordinateSet& cs,IAtomselection* cs_selection, IAt
             
             ssel_iter++;
             csel_iter++;           
-        } else if (csel_id>ssel_id) {
+        } else if (csel_index>ssel_index) {
             ssel_iter++;
-        } else if (csel_id<ssel_id) {
+        } else if (csel_index<ssel_index) {
             csel_iter++;
         }
     }
@@ -124,19 +124,19 @@ void CartesianCoordinateSet::translate(CartesianCoor3D trans, IAtomselection* pc
     size_t ssel_iter = 0;
     
     while( ( csel_iter < csel_total) && (ssel_iter < ssel_total) ) {
-        size_t csel_id = csel[csel_iter];
-        size_t ssel_id = ssel[ssel_iter];
+        size_t csel_index = csel[csel_iter];
+        size_t ssel_index = ssel[ssel_iter];
         
-        if (csel_id==ssel_id) {
+        if (csel_index==ssel_index) {
 			c1[csel_iter] += trans.x;
 			c2[csel_iter] += trans.y;
 			c3[csel_iter] += trans.z;
 			
             ssel_iter++;
             csel_iter++;           
-        } else if (csel_id>ssel_id) {
+        } else if (csel_index>ssel_index) {
             ssel_iter++;
-        } else if (csel_id<ssel_id) {
+        } else if (csel_index<ssel_index) {
             csel_iter++;
         }
     }

@@ -526,6 +526,10 @@ void XTCFrameset::generate_index() {
 	
     std::vector<size_t> frame_byte_offsets;
     XDRFILE* p_xdrfile =  xdrfile_open(const_cast<char*>(filename.c_str()),"r");	
+    if (p_xdrfile==NULL) {
+        Err::Inst()->write(string("Unable to open file: ")+filename);
+        throw;
+    }
 	FILE* fp = get_filepointer(p_xdrfile);
 	int step =0; float t =0;
 	float prec =  1000.0;
@@ -577,6 +581,10 @@ void XTCFrameset::read_frame(size_t internalframenumber,Frame& cf) {
 	
 	// read a specific frame
     XDRFILE* p_xdrfile =  xdrfile_open(const_cast<char*>(filename.c_str()),"r");	
+    if (p_xdrfile==NULL) {
+        Err::Inst()->write(string("Unable to open file: ")+filename);
+        throw;
+    }
 	FILE* fp = get_filepointer(p_xdrfile);
 	int step =0; float t =0;
 	float prec =  1000.0;
@@ -637,6 +645,10 @@ void TRRFrameset::generate_index() {
 	
     std::vector<std::streamoff> frame_byte_offsets;
     XDRFILE* p_xdrfile =  xdrfile_open(const_cast<char*>(filename.c_str()),"r");	
+    if (p_xdrfile==NULL) {
+        Err::Inst()->write(string("Unable to open file: ")+filename);
+        throw;
+    }
 	FILE* fp = get_filepointer(p_xdrfile);
 	int step =0; float t =0;
 	float lambda =  0.0;
@@ -687,6 +699,10 @@ void TRRFrameset::read_frame(size_t internalframenumber,Frame& cf) {
 	
 	// read a specific frame
     XDRFILE* p_xdrfile =  xdrfile_open(const_cast<char*>(filename.c_str()),"r");	
+    if (p_xdrfile==NULL) {
+        Err::Inst()->write(string("Unable to open file: ")+filename);
+        throw;
+    }
 	FILE* fp = get_filepointer(p_xdrfile);
 	int step =0; float t =0;
 	float lambda = 0;

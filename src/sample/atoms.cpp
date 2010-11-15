@@ -20,6 +20,7 @@
 
 // special library headers
 #include <boost/regex.hpp>
+#include <boost/algorithm/string.hpp>
 
 // other headers
 #include "sample/atom.hpp"
@@ -50,45 +51,18 @@ void Atoms::add(string filename, string fileformat) {
 		Err::Inst()->write("Typo in filename?");
 		throw;
 	}
-	int atom_index=this->size();
 
 	if (fileformat == "pdb") {
 		string line;
-		Atom temp_atom;
-		int line_counter=0; int atom_counter =0;
-		// lookup table for speedup:
 		while (getline(input,line)) {
 			if (line.substr(0,6)=="ATOM  ") {
-				try {
-					temp_atom.name = Database::Inst()->names.pdb.get(line.substr(12,4));
-					temp_atom.ID = Database::Inst()->atomIDs.get(temp_atom.name); // get a unique ID for the name
-					
-					// independent atomic constants:
-					temp_atom.mass = Database::Inst()->masses.get(temp_atom.ID);
-					
-//					temp_atom.original_name = line.substr(12,4);
-//					temp_atom.residue_name = line.substr(17,4);
-//					temp_atom.chainid = line.substr(21,1);
-//					temp_atom.resseq = line.substr(22,4);
-//					temp_atom.occupancy = line.substr(54,6);
-//					temp_atom.tempFactor = line.substr(60,6);
-//					temp_atom.element = line.substr(76,2);
-//					temp_atom.charge = line.substr(78,2);																															
-//					temp_atom.x = atof(line.substr(30,8).c_str());
-//					temp_atom.y = atof(line.substr(38,8).c_str());
-//					temp_atom.z = atof(line.substr(46,8).c_str());
-//					temp_atom.beta = atof(line.substr(60,65).c_str());
-					// make sure kappa is initialized:
-				} catch (...) { 
-					Err::Inst()->write(string("Error at reading pdb line:"));
-					Err::Inst()->write(line);
-					throw; 
-				}
-				temp_atom.index = atom_index++; // assign and THEN increment...
-				push_back(temp_atom);
-				atom_counter++;
+                string pdbname = line.substr(12,4);
+                boost::trim(pdbname);
+                string name = Database::Inst()->names.pdb.get(pdbname);
+                size_t ID = Database::Inst()->atomIDs.get(name);
+
+                ids_.push_back(ID);
 			}
-			line_counter++;
 		}		
 	}	
 }
@@ -162,10 +136,11 @@ IAtomselection* Atoms::select(string expression) {
     
     boost::regex expr(expression);
     
-    for(size_t i = 0; i < this->size(); ++i)
+    for(size_t i = 0; i < ids_.size(); ++i)
     {
-        if ( regex_match(this->at(i).name,expr) ) {
-            ids.push_back(this->at(i).index);
+        string name = Database::Inst()->atomIDs.rget(ids_[i]);
+        if ( regex_match(name,expr) ) {
+            ids.push_back(ids_[i]);
         }
     }
     

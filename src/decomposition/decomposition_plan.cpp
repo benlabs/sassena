@@ -115,13 +115,23 @@ DecompositionPlan::DecompositionPlan(size_t nn,size_t nq,size_t naf,size_t elbyt
         
     } else {
         Warn::Inst()->write("Manual decomposition. This might not yield the best utilization!");	
+        size_t nnpp = Params::Inst()->limits.decomposition.partitions.size;
+        if (nnpp>nn) {
+            nnpp=nn;
+            Warn::Inst()->write("Partition size larger than NN. Setting NNPP=NN.");	
+            Warn::Inst()->write(string("New partition size: ")+boost::lexical_cast<string>(nnpp));	
+        }
         if (Params::Inst()->limits.decomposition.partitions.size<=naf) {
-            size_t nnpp = Params::Inst()->limits.decomposition.partitions.size;
-            if (nnpp>nn) {
-                nnpp=nn;
-                Warn::Inst()->write("Partition size larger than NN. Setting NNPP=NN.");	
-            }
-            p_dp_best = new DecompositionParameters(nn,nq,naf,nnpp,elbytesize);            
+            nnpp=naf;
+            Warn::Inst()->write("Partition size larger than NAF. Setting NNPP=NAF.");	
+            Warn::Inst()->write(string("New partition size: ")+boost::lexical_cast<string>(nnpp));	
+        }
+        
+        p_dp_best = new DecompositionParameters(nn,nq,naf,nnpp,elbytesize); 
+        
+        if (p_dp_best == NULL) {
+    		Err::Inst()->write("Manual decomposition failed.");	
+    		throw;
         }
     }
         

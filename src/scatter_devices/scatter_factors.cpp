@@ -62,7 +62,7 @@ void ScatterFactors::update(CartesianCoor3D q) {
 
 	for(size_t i = 0; i < p_selection->size(); ++i)
 	{
-		size_t atomID = p_sample->atoms[(*p_selection)[i]].ID;
+		size_t atomID = p_sample->atoms[(*p_selection)[i]];
 		double ql = q.length();
 		double sf = Database::Inst()->sfactors.get(atomID,ql);
 	
@@ -112,7 +112,7 @@ double ScatterFactors::compute_background(CartesianCoor3D q) {
 
 	for(size_t i = 0; i < p_selection->size(); ++i)
 	{
-		size_t atomID = p_sample->atoms[(*p_selection)[i]].ID;
+		size_t atomID = p_sample->atoms[(*p_selection)[i]];
 		double sf = Database::Inst()->sfactors.get(atomID,ql);
 
 		double k  = m_kappas[(*p_selection)[i]];

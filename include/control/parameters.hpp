@@ -663,7 +663,7 @@ public:
     size_t chunksize;
 };
 
-class LimitsDataStagerParameters {
+class LimitsStageMemoryParameters {
 private:
 	/////////////////// MPI related
 	// make this class serializable to 
@@ -671,12 +671,32 @@ private:
     friend class boost::serialization::access;	
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
     {
-		ar & servers;
+		ar & data;
+        ar & buffer;
     }
 	/////////////////// 
 
 public:
-    size_t servers;
+    size_t data;
+    size_t buffer;
+};
+
+class LimitsStageParameters {
+private:
+	/////////////////// MPI related
+	// make this class serializable to 
+	// allow sample to be transmitted via MPI
+    friend class boost::serialization::access;	
+	template<class Archive> void serialize(Archive & ar, const unsigned int version)
+    {
+        ar & memory;
+		ar & nodes;
+    }
+	/////////////////// 
+
+public:
+    LimitsStageMemoryParameters memory;
+    size_t nodes;
 };
 
 
@@ -688,7 +708,7 @@ private:
     friend class boost::serialization::access;	
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
     {
-        ar & data_stager;
+        ar & stage;
         ar & signal;
 		ar & memory;
         ar & times;
@@ -698,7 +718,7 @@ private:
 	/////////////////// 
 
 public:
-    LimitsDataStagerParameters data_stager;    
+    LimitsStageParameters stage;    
     LimitsSignalParameters signal;    
     LimitsMemoryParameters memory;
     LimitsTimesParameters times;
