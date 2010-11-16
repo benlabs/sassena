@@ -215,7 +215,6 @@ coor_t* DataStagerByAtom::stage() {
 //    return p_coordinates;
 }
 
-
 void DataStagerByAtom::stage_firstpartition() {
     size_t rank = allcomm_.rank();
     
@@ -264,6 +263,8 @@ void DataStagerByAtom::stage_firstpartition() {
         }
     }
     
+    allcomm_.barrier();
+    
     for(size_t i = 0; i < framesbuffer.size(); ++i)
     {
         if (framesbuffer[i].size()!=0) {
@@ -279,21 +280,12 @@ void DataStagerByAtom::distribute_coordinates(coor_t* p_coordinates_buffer,std::
     
     size_t LNF = framesbuffer[s].size();
     size_t rank = allcomm_.rank();  
-    
-    // use internal data structure: FC_assignments
-    vector<DivAssignment> assignments;
+                    
     for (size_t i=0;i<NNPP;i++) {
-        assignments.push_back(DivAssignment(NNPP,i,NA));
-    }
-            
-    bool firstpartition=true;
-    if (allcomm_.rank()>=partitioncomm_.size()) firstpartition=false;
-    
-    if (rank==s) {
-        
-        for (size_t i=0;i<NNPP;i++) {
-            
-            size_t target_node = i;
+
+        size_t target_node = i;
+
+        if (rank==s) {
             
             DivAssignment target_node_assignment(NNPP,i,NA);
             size_t off = target_node_assignment.offset();
@@ -313,14 +305,17 @@ void DataStagerByAtom::distribute_coordinates(coor_t* p_coordinates_buffer,std::
                 allcomm_.send(target_node,0,p_fsdata,LNF*len*3);
             }
             free(p_fsdata);
-        }
-    } else if (firstpartition) {
-        size_t len = FC_assignment.size();
+            
+        } else if (target_node==rank) {
+            size_t len = FC_assignment.size();
         
-        coor_t* p_localdata = (coor_t*) malloc(LNF*len*3*sizeof(coor_t));
-        allcomm_.recv(s,0,p_localdata,LNF*len*3);
-        fill_coordinates(p_localdata,len,framesbuffer[s]);
-        free(p_localdata);
+            coor_t* p_localdata = (coor_t*) malloc(LNF*len*3*sizeof(coor_t));
+            allcomm_.recv(s,0,p_localdata,LNF*len*3);
+            fill_coordinates(p_localdata,len,framesbuffer[s]);
+            free(p_localdata);
+        }
+        
+        if ((i%1000)==0) allcomm_.barrier();
     }
 }
 

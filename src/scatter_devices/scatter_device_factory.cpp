@@ -24,7 +24,7 @@
 using namespace std;
 
 IScatterDevice* ScatterDeviceFactory::create(
-		boost::mpi::communicator& all_comm,
+		boost::mpi::communicator& scatter_comm,
 		Sample& sample,
         boost::asio::ip::tcp::endpoint fileservice_endpoint,
         boost::asio::ip::tcp::endpoint monitorservice_endpoint,        
@@ -33,7 +33,7 @@ IScatterDevice* ScatterDeviceFactory::create(
     
     IScatterDevice* p_ScatterDevice = NULL;
 
-    size_t NN = all_comm.size();
+    size_t NN = scatter_comm.size();
     size_t NF = sample.coordinate_sets.size();
     string target = Params::Inst()->scattering.target;
     size_t NA = sample.atoms.selections[target]->size();
@@ -54,9 +54,8 @@ IScatterDevice* ScatterDeviceFactory::create(
         throw;
     }
 
-    std::vector<size_t> colors(all_comm.size());    
     size_t partitions;
-        
+    size_t partitionsize;
     ////////////////////////////////////////////////////////////
     // Decomposition
     ////////////////////////////////////////////////////////////
@@ -68,13 +67,13 @@ IScatterDevice* ScatterDeviceFactory::create(
         NAF = NF;
     }
         
-    if (all_comm.rank()==0) {
+    if (scatter_comm.rank()==0) {
 
         // decompose parallel space into independent partitions
         // each operating on a distinct set of qvectors.
         
     	Info::Inst()->write(string("Searching for decomposition plan: "));
-	    Info::Inst()->write(string("nodes    = ")+ boost::lexical_cast<string>(all_comm.size()));
+	    Info::Inst()->write(string("nodes    = ")+ boost::lexical_cast<string>(scatter_comm.size()));
 	    Info::Inst()->write(string("qvectors = ")+ boost::lexical_cast<string>(NQ));
 	    Info::Inst()->write(string("frames   = ")+ boost::lexical_cast<string>(NF));
 	    Info::Inst()->write(string("atoms   = ")+ boost::lexical_cast<string>(NA));
@@ -97,15 +96,22 @@ IScatterDevice* ScatterDeviceFactory::create(
         }
         
 		DecompositionPlan dplan(NN,NQ,NAF,ELBYTESIZE,NMAXBYTESIZE);
-		colors = dplan.colors();        
 
         partitions = dplan.partitions();
+        partitionsize = dplan.partitionsize();
     }
 
-    broadcast(all_comm,partitions,0);
-
-    //broadcast colors
-	broadcast(all_comm,reinterpret_cast<size_t*>(&colors[0]),colors.size(),0);
+    broadcast(scatter_comm,partitions,0);
+    broadcast(scatter_comm,partitionsize,0);
+    
+    long allcommsize = partitions*partitionsize;
+    boost::mpi::communicator all_comm = scatter_comm.split( ( (scatter_comm.rank()<allcommsize) ? 0 : 1 ) );
+    
+    std::vector<size_t> colors;
+    for(size_t i = 0; i < all_comm.size(); ++i)
+    {
+        colors.push_back(i*partitions/partitionsize);
+    }
     
     boost::mpi::communicator partition_comm = all_comm.split(colors[all_comm.rank()]);
 

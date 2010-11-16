@@ -203,7 +203,7 @@ void Params::read_xml(std::string filename) {
 	    		motion.selection = "system";
 	    		motion.seed = 0;
 	    		motion.sampling = 1;			
-	    		motion.frequency=2*M_PI/1000.0; // corresponds to one full cycle per 1000 frames, used for linear oscillation and rotation
+	    		motion.frequency=0.001; // corresponds to one full cycle per 1000 frames, used for linear oscillation and rotation
 	    		if (xmli.exists("./type"))   motion.type  = xmli.get_value<string>("./type");
 	    		if (xmli.exists("./displace"))  motion.displace   = xmli.get_value<double>("./displace");
 	    		if (xmli.exists("./frequency"))  motion.frequency   = xmli.get_value<double>("./frequency");			
@@ -211,9 +211,9 @@ void Params::read_xml(std::string filename) {
 	    		if (xmli.exists("./sampling"))  motion.seed   = xmli.get_value<long>("./sampling");			
 	    		if (xmli.exists("./selection"))  motion.selection   = xmli.get_value<string>("./selection");			
 	    		if (xmli.exists("./direction")) {
-	    			motion.direction.x   = xmli.get_value<double>("./direction/x");
-	    			motion.direction.y   = xmli.get_value<double>("./direction/y");
-	    			motion.direction.z   = xmli.get_value<double>("./direction/z");				
+	    			if (xmli.exists("./direction/x")) motion.direction.x   = xmli.get_value<double>("./direction/x");
+	    			if (xmli.exists("./direction/y")) motion.direction.y   = xmli.get_value<double>("./direction/y");
+	    			if (xmli.exists("./direction/z")) motion.direction.z   = xmli.get_value<double>("./direction/z");				
 	    		} 
                 motion.radius = motion.displace*10;
 	    		if (xmli.exists("./radius"))  motion.radius   = xmli.get_value<double>("./radius");			
@@ -259,7 +259,7 @@ void Params::read_xml(std::string filename) {
 	scattering.average.orientation.vectors.resolution = 100;
 	scattering.average.orientation.vectors.seed = 0;
 	scattering.average.orientation.vectors.axis = CartesianCoor3D(0,0,1);
-	scattering.average.orientation.vectors.file = "";
+	scattering.average.orientation.vectors.file = "qvector-orientations.txt";
 	scattering.average.orientation.multipole.type = "sphere";
 	scattering.average.orientation.multipole.resolution = 20;
 	scattering.average.orientation.multipole.axis = CartesianCoor3D(0,0,1);
@@ -318,9 +318,11 @@ void Params::read_xml(std::string filename) {
                 double y = 0;
                 double z = 0;
                 
-    	    	if (xmli.exists("//scattering/vectors/x")) x = xmli.get_value<double>("//scattering/vectors/x");
-    	    	if (xmli.exists("//scattering/vectors/y")) x = xmli.get_value<double>("//scattering/vectors/y");
-    	    	if (xmli.exists("//scattering/vectors/z")) x = xmli.get_value<double>("//scattering/vectors/z");
+                if (xmli.exists("//scattering/vectors/single/x")) {
+        	    	if (xmli.exists("//scattering/vectors/single/x")) x = xmli.get_value<double>("//scattering/vectors/single/x");
+        	    	if (xmli.exists("//scattering/vectors/single/y")) y = xmli.get_value<double>("//scattering/vectors/single/y");
+        	    	if (xmli.exists("//scattering/vectors/single/z")) z = xmli.get_value<double>("//scattering/vectors/single/z");                    
+                }
             
     	    	scattering.qvectors.push_back(CartesianCoor3D(x,y,z));
     	    }
@@ -340,10 +342,12 @@ void Params::read_xml(std::string filename) {
                         sc.to = 1;
                         sc.points = 100;
                         sc.exponent = 1.0;
-
-    	    		    if (xmli.exists("./x"))         sc.basevector.x = xmli.get_value<double>("./x");
-    	    		    if (xmli.exists("./y"))         sc.basevector.y = xmli.get_value<double>("./y");
-    	    		    if (xmli.exists("./z"))         sc.basevector.z = xmli.get_value<double>("./z");
+                        
+                        if (xmli.exists("./base")) {
+        	    		    if (xmli.exists("./base/x"))         sc.basevector.x = xmli.get_value<double>("./base/x");
+        	    		    if (xmli.exists("./base/y"))         sc.basevector.y = xmli.get_value<double>("./base/y");
+        	    		    if (xmli.exists("./base/z"))         sc.basevector.z = xmli.get_value<double>("./base/z");                            
+                        }
     	    		    if (xmli.exists("./from"))      sc.from     = xmli.get_value<double>("./from");
     	    		    if (xmli.exists("./to"))        sc.to       = xmli.get_value<double>("./to");
     	    		    if (xmli.exists("./points"))    sc.points   = xmli.get_value<size_t>("./points");
@@ -355,7 +359,8 @@ void Params::read_xml(std::string filename) {
     	    	scattering.qvectors.create_from_scans();
     	    }
     	    else if (vt=="file") {
-    	    	string qqqfilename = get_filepath(xmli.get_value<string>("//scattering/vectors/file"));
+                string qqqfilename = "qvectors.txt";
+                if (xmli.exists("//scattering/vectors/file")) qqqfilename = get_filepath(xmli.get_value<string>("//scattering/vectors/file"));
     	    	ifstream qqqfile(qqqfilename.c_str());
             
     	    	double x,y,z; 

@@ -415,7 +415,7 @@ int main(int argc,char* argv[]) {
     if (world.rank()==0) Info::Inst()->write("Starting scattering...");
 
     if (world.rank()==0) p_monitorservice->timer_reset();
-    p_ScatterDevice->run();
+    if (p_ScatterDevice!=NULL) p_ScatterDevice->run();
 
     world.barrier();
     
@@ -437,17 +437,16 @@ int main(int argc,char* argv[]) {
 	
 	timer.stop("total");
 	
-    PerformanceAnalyzer perfanal(world,p_ScatterDevice->timer); // collect timing information from everybody.
-    delete p_ScatterDevice;
-    if (world.rank()==0) {
-		perfanal.report();
-		perfanal.report_relative(timer.sum("total")*world.size());
-    	Info::Inst()->write(string("Total runtime (s): ")+boost::lexical_cast<string>(timer.sum("total")));
-    	Info::Inst()->write("Successfully finished... Have a nice day!");
+	if (p_ScatterDevice!=NULL) {
+        PerformanceAnalyzer perfanal(world,p_ScatterDevice->timer); // collect timing information from everybody.
+        delete p_ScatterDevice;
+        if (world.rank()==0) {
+    		perfanal.report();
+    		perfanal.report_relative(timer.sum("total")*world.size());
+        	Info::Inst()->write(string("Total runtime (s): ")+boost::lexical_cast<string>(timer.sum("total")));
+        	Info::Inst()->write("Successfully finished... Have a nice day!");
+    	}
 	}
-
-
-
 
 	//------------------------------------------//
 	//
