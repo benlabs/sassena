@@ -117,10 +117,17 @@ IScatterDevice* ScatterDeviceFactory::create(
     if (scatter_comm.rank()<allcommsize) allcommflag = 1;
     boost::mpi::communicator all_comm = scatter_comm.split( allcommflag );
     
-    if (!allcommflag) return NULL;
+    if (allcommflag==0) {
+        Warn::Inst()->write("Exiting computation.");        
+        return NULL;
+    }
     
-    DivAssignment partitionIDs(partitions,all_comm.rank(),all_comm.size());
-
+    vector<size_t> partitionIDs(all_comm.size());
+    for(size_t i = 0; i < all_comm.size(); ++i)
+    {
+        partitionIDs[i]=(i*partitions)/all_comm.size();
+    }
+    
 	// determine the partition this node lives in:
 	size_t partitionID = partitionIDs[all_comm.rank()];
     

@@ -22,6 +22,7 @@
 // special library headers
 
 // other headers
+#include "log/log.hpp"
 
 using namespace std;
 
@@ -47,7 +48,14 @@ DivAssignment::DivAssignment(size_t NN,size_t rank, size_t NAF) :
 }
 
 size_t DivAssignment::operator[](size_t index) {
-    return offset_+index;
+
+    if (index<size_) {
+        return offset_+index;
+    } else {
+        Err::Inst()->write("Assignment out of bounds, operator[]");
+        throw;
+    }
+    
 }
 
 size_t DivAssignment::size() {
@@ -92,7 +100,12 @@ ModAssignment::ModAssignment(size_t NN,size_t rank, size_t NAF) :
 }
 
 size_t ModAssignment::operator[](size_t index) {
-    return offset_+index*NN_;
+    if (index<size_) {
+        return offset_+index*NN_;        
+    } else {
+        Err::Inst()->write("Assignment out of bounds, operator[]");
+        throw;
+    }
 }
 
 size_t ModAssignment::size() {
