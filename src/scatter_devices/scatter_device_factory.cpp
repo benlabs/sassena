@@ -105,19 +105,24 @@ IScatterDevice* ScatterDeviceFactory::create(
     broadcast(scatter_comm,partitionsize,0);
     
     long allcommsize = partitions*partitionsize;
-    boost::mpi::communicator all_comm = scatter_comm.split( ( (scatter_comm.rank()<allcommsize) ? 0 : 1 ) );
-    
-    std::vector<size_t> partitionIDs;
-    for(size_t i = 0; i < all_comm.size(); ++i)
-    {
-        partitionIDs.push_back(i*partitions/partitionsize);
+    size_t sparenodes = scatter_comm.size()-allcommsize;
+
+    if (sparenodes>0) {
+        if (scatter_comm.rank()==0) {
+            Warn::Inst()->write(string("Partitioning only partly successful. Number of nodes NOT used: ")+boost::lexical_cast<string>(sparenodes));
+        }
     }
+    
+    size_t allcommflag = 0;
+    if (scatter_comm.rank()<allcommsize) allcommflag = 1;
+    boost::mpi::communicator all_comm = scatter_comm.split( allcommflag );
+    
+    if (!allcommflag) return NULL;
+    
+    DivAssignment partitionIDs(partitions,all_comm.rank(),all_comm.size());
 
 	// determine the partition this node lives in:
 	size_t partitionID = partitionIDs[all_comm.rank()];
-
-	// don't include the remaining nodes in the following partitioning
-    if (partitionID>partitions) return NULL;
     
     boost::mpi::communicator partition_comm = all_comm.split(partitionID);
     
