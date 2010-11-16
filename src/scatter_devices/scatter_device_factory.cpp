@@ -107,26 +107,25 @@ IScatterDevice* ScatterDeviceFactory::create(
     long allcommsize = partitions*partitionsize;
     boost::mpi::communicator all_comm = scatter_comm.split( ( (scatter_comm.rank()<allcommsize) ? 0 : 1 ) );
     
-    std::vector<size_t> colors;
+    std::vector<size_t> partitionIDs;
     for(size_t i = 0; i < all_comm.size(); ++i)
     {
-        colors.push_back(i*partitions/partitionsize);
+        partitionIDs.push_back(i*partitions/partitionsize);
     }
-    
-    boost::mpi::communicator partition_comm = all_comm.split(colors[all_comm.rank()]);
-
-    EvenDecompose qindex_decomposition(qvectors.size(),partitions);
-	vector<CartesianCoor3D> thispartition_QIV;
 
 	// determine the partition this node lives in:
-	size_t mypartition = colors[all_comm.rank()];
+	size_t partitionID = partitionIDs[all_comm.rank()];
 
-	// don't include any "leftover" worlds
-	if (mypartition<partitions) {
-		vector<size_t> qii = qindex_decomposition.indexes_for(mypartition);
-		for(size_t j=0;j<qii.size();j++) {
-			thispartition_QIV.push_back(qvectors[qii[j]]);
-		}
+	// don't include the remaining nodes in the following partitioning
+    if (partitionID>partitions) return NULL;
+    
+    boost::mpi::communicator partition_comm = all_comm.split(partitionID);
+    
+    DivAssignment qindex_assignment(partitions,partitionID,qvectors.size());
+	vector<CartesianCoor3D> thispartition_QIV;
+
+	for(size_t i=0;i<qindex_assignment.size();i++) {
+		thispartition_QIV.push_back(qvectors[qindex_assignment[i]]);
 	}
 		
 	/////////////////////////////////////////////////////////////
