@@ -198,15 +198,18 @@ DataStagerByAtom::DataStagerByAtom(Sample& sample,boost::mpi::communicator& allc
     if (NFN>NF) {
         NFN=NF;  
         if (allcomm_.rank()==0) {
-            Info::Inst()->write("Number of data servers limited by number of frames");
+            Info::Inst()->write("Number of data servers limited by number of frames.");
         }
     }    
 }
 
 coor_t* DataStagerByAtom::stage() {
-    
+
+    if (allcomm_.rank()==0) Info::Inst()->write("Staging first partition.");
     stage_firstpartition();
     allcomm_.barrier();
+
+    if (allcomm_.rank()==0) Info::Inst()->write("Staging remaining partitions.");
     stage_fillpartitions();
     return p_coordinates;
     

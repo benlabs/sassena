@@ -437,15 +437,16 @@ int main(int argc,char* argv[]) {
 	
 	timer.stop("total");
 	
-	if (p_ScatterDevice!=NULL) {
-        PerformanceAnalyzer perfanal(world,p_ScatterDevice->timer); // collect timing information from everybody.
-        delete p_ScatterDevice;
-        if (world.rank()==0) {
-    		perfanal.report();
-    		perfanal.report_relative(timer.sum("total")*world.size());
-        	Info::Inst()->write(string("Total runtime (s): ")+boost::lexical_cast<string>(timer.sum("total")));
-        	Info::Inst()->write("Successfully finished... Have a nice day!");
-    	}
+    Timer performance_timer;
+    if (p_ScatterDevice!=NULL) performance_timer = p_ScatterDevice->timer;
+    PerformanceAnalyzer perfanal(world,performance_timer); // collect timing information from everybody.
+    if (p_ScatterDevice!=NULL) delete p_ScatterDevice;
+        
+    if (world.rank()==0) {
+		perfanal.report();
+		perfanal.report_relative(timer.sum("total")*world.size());
+    	Info::Inst()->write(string("Total runtime (s): ")+boost::lexical_cast<string>(timer.sum("total")));
+    	Info::Inst()->write("Successfully finished... Have a nice day!");
 	}
 
 	//------------------------------------------//
