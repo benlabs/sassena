@@ -101,8 +101,25 @@ void DataStagerByFrame::stage_firstpartition() {
     bool firstpartition=true;
     if (allcomm_.rank()>=partitioncomm_.size()) firstpartition=false;
 
+    size_t sync_barrier = Params::Inst()->limits.stage.sync_barrier;
+    size_t mode; // 0 = mod
+    if (Params::Inst()->limits.stage.mode=="mod") {
+        mode = 0;
+    } else if (Params::Inst()->limits.stage.mode=="div") {
+        mode = 1;
+    } else {
+        Err::Inst()->write(string("Stage mode not understood: ")+Params::Inst()->limits.stage.mode);
+        Err::Inst()->write(string("limits.stage.mode= mod, div"));
+        throw;
+    }
+    
     for(size_t f=0;f<NF;f++) {
-        size_t s = (f*NFN)/NF; // this is the responsible data server
+        size_t s;
+        if (mode==0) {
+            s = f%NFN; // this is the responsible data server            
+        } else {
+            s = (f*NFN)/NF; // this is the responsible data server                        
+        }
         
         if (rank==s) {
             CoordinateSet* p_cset = m_sample.coordinate_sets.load(f);
@@ -133,6 +150,8 @@ void DataStagerByFrame::stage_firstpartition() {
             coor_t* p_localdata = &(p_coordinates[FC_assignment.index(f)*NA*3]);
             allcomm_.recv(s,0,p_localdata,3*NA);            
         }
+        
+        if ( ((f+1)%sync_barrier) == 0) allcomm_.barrier();
     }
     free(p_coordinates_buffer);
 }
@@ -244,8 +263,25 @@ void DataStagerByAtom::stage_firstpartition() {
     coor_t* p_coordinates_buffer = (coor_t*) malloc(framesbuffer_maxsize*NA*3*sizeof(coor_t));
     std::vector< std::vector<size_t> > framesbuffer(NFN);
     
+    size_t sync_barrier = Params::Inst()->limits.stage.sync_barrier;
+    size_t mode; // 0 = mod
+    if (Params::Inst()->limits.stage.mode=="mod") {
+        mode = 0;
+    } else if (Params::Inst()->limits.stage.mode=="div") {
+        mode = 1;
+    } else {
+        Err::Inst()->write(string("Stage mode not understood: ")+Params::Inst()->limits.stage.mode);
+        Err::Inst()->write(string("limits.stage.mode= mod, div"));
+        throw;
+    }
+    
     for(size_t f=0;f<NF;f++) {
-        size_t s = (f*NFN)/NF; // this is the responsible data server
+        size_t s;
+        if (mode==0) {
+            s = f%NFN; // this is the responsible data server            
+        } else {
+            s = (f*NFN)/NF; // this is the responsible data server                        
+        }
         
         if (rank==s) {
             CoordinateSet* p_cset = m_sample.coordinate_sets.load(f);
@@ -264,6 +300,8 @@ void DataStagerByAtom::stage_firstpartition() {
             distribute_coordinates(p_coordinates_buffer,framesbuffer,s);            
             framesbuffer[s].clear();
         }
+        
+        if ( ((f+1)%sync_barrier) == 0) allcomm_.barrier();
     }
     
     allcomm_.barrier();

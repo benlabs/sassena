@@ -228,7 +228,11 @@ void AllVectorsScatterDevice::worker3_task(fftw_complex* p_a) {
         }
 	} else if (Params::Inst()->scattering.dsp.type=="square")  {
         smath::square_elements(p_a,NF);
-	}
+	} else if (!(Params::Inst()->scattering.dsp.type=="plain")) {
+        Err::Inst()->write(string("DSP type not understood: ")+Params::Inst()->scattering.dsp.type);
+        Err::Inst()->write("scattering.dsp.type == autocorrelate, square, plain");        
+        throw;	    
+    }
     boost::mutex::scoped_lock at3l(at3_mutex);
     smath::add_elements(atfinal_,p_a,NF);
     at3l.unlock();

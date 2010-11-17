@@ -471,6 +471,8 @@ void Params::read_xml(std::string filename) {
 
     // assign default memory limits:
     limits.stage.nodes = 1;
+    limits.stage.mode = "mod";
+    limits.stage.sync_barrier = 1000;
     limits.stage.memory.buffer = 100*1024*1024;
     limits.stage.memory.data   = 500*1024*1024;
     
