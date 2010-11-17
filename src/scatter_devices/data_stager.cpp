@@ -75,6 +75,11 @@ DataStagerByFrame::DataStagerByFrame(Sample& sample,boost::mpi::communicator& al
             Info::Inst()->write("Number of data servers limited by number of frames");
         }
     }    
+    
+    if (NFN==0) {
+        if (allcomm_.rank()==0) Info::Inst()->write(string("Setting NFN to parition size (0=automatic,limits.stage.nodes)"));
+        NFN=partitioncomm_.size();    
+    }
 }
 
 coor_t* DataStagerByFrame::stage() {
@@ -104,8 +109,10 @@ void DataStagerByFrame::stage_firstpartition() {
     size_t sync_barrier = Params::Inst()->limits.stage.sync_barrier;
     size_t mode; // 0 = mod
     if (Params::Inst()->limits.stage.mode=="mod") {
+        if (allcomm_.rank()==0) Info::Inst()->write(string("Setting stage mode to modulo logic (limits.stage.mode)."));
         mode = 0;
     } else if (Params::Inst()->limits.stage.mode=="div") {
+        if (allcomm_.rank()==0) Info::Inst()->write(string("Setting stage mode to div logic (limits.stage.mode)."));
         mode = 1;
     } else {
         Err::Inst()->write(string("Stage mode not understood: ")+Params::Inst()->limits.stage.mode);
@@ -212,14 +219,19 @@ DataStagerByAtom::DataStagerByAtom(Sample& sample,boost::mpi::communicator& allc
         
     // determine number of nodes which act as file servers:
     NFN = Params::Inst()->limits.stage.nodes;
-    
+        
     if (NFN>NN) NFN=NN; 
     if (NFN>NF) {
         NFN=NF;  
         if (allcomm_.rank()==0) {
             Info::Inst()->write("Number of data servers limited by number of frames.");
         }
-    }    
+    }
+    
+    if (NFN==0) {
+        if (allcomm_.rank()==0) Info::Inst()->write(string("Setting NFN to parition size (0=automatic,limits.stage.nodes)"));
+        NFN=partitioncomm_.size();    
+    }
 }
 
 coor_t* DataStagerByAtom::stage() {
