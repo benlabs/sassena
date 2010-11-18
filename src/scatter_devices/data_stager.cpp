@@ -181,7 +181,7 @@ void DataStagerByFrame::distribute_coordinates(coor_t* p_coordinates_buffer,std:
     for(size_t i = 0; i < framesbuffer[s].size(); ++i)
     {
         size_t f = framesbuffer[s][i];
-        target_node = (f*NNPP)/NF;
+        size_t target_node = (f*NNPP)/NF;
 
         if (rank==s) {
             // send data
