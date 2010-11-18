@@ -54,6 +54,7 @@ class DataStagerByFrame {
 //    void stage_registration();
 //    void stage_data();
     void stage_firstpartition();
+    void distribute_coordinates(coor_t* p_coordinates_buffer,std::vector<std::vector<size_t> >& framesbuffer,size_t s);
     void stage_fillpartitions();
     
 public:
