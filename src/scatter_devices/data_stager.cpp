@@ -94,14 +94,24 @@ void DataStagerByFrame::stage_firstpartition() {
     
     // used by server
     //size_t frame_bytesize = NA*3*sizeof(double);
-    coor_t* p_coordinates_buffer = (coor_t*) malloc(NA*3*sizeof(coor_t));
+//    coor_t* p_coordinates_buffer = (coor_t*) malloc(NA*3*sizeof(coor_t));
 
     //std::set<size_t>& assigned_frames = FS_assignment_table[rank];
-
-    vector<DivAssignment> assignments;
-    for (size_t i=0;i<NNPP;i++) {
-        assignments.push_back(DivAssignment(NNPP,i,NF));
+    
+    size_t buffer_bytesize = Params::Inst()->limits.stage.memory.buffer;
+    size_t frame_bytesize = NA*3*sizeof(coor_t);
+    size_t framesbuffer_maxsize = buffer_bytesize/frame_bytesize;
+    
+    if (framesbuffer_maxsize==0) {
+        if (allcomm_.rank()==0) {
+            Err::Inst()->write("Cannot load trajectory into buffer.");
+            Err::Inst()->write(string("limits.memory.data_stager=")+boost::lexical_cast<string>(Params::Inst()->limits.stage.memory.buffer));
+            Err::Inst()->write(string("requested=")+boost::lexical_cast<string>(frame_bytesize));            
+        }
+        throw;
     }
+    coor_t* p_coordinates_buffer = (coor_t*) malloc(framesbuffer_maxsize*NA*3*sizeof(coor_t));
+    std::vector< std::vector<size_t> > framesbuffer(NFN);
     
     bool firstpartition=true;
     if (allcomm_.rank()>=partitioncomm_.size()) firstpartition=false;
@@ -130,37 +140,64 @@ void DataStagerByFrame::stage_firstpartition() {
         
         if (rank==s) {
             CoordinateSet* p_cset = m_sample.coordinate_sets.load(f);
+            coor_t* p_data = &(p_coordinates_buffer[framesbuffer[s].size()*NA*3]);
             
             for(size_t n=0;n<NA;n++) {
-                p_coordinates_buffer[3*n]=p_cset->c1[n];
-                p_coordinates_buffer[3*n+1]=p_cset->c2[n];
-                p_coordinates_buffer[3*n+2]=p_cset->c3[n];            
+                p_data[3*n]=p_cset->c1[n];
+                p_data[3*n+1]=p_cset->c2[n];
+                p_data[3*n+2]=p_cset->c3[n];            
             }
             delete p_cset;
+            
+        }            
+        
+        framesbuffer[s].push_back(f);
+        if (framesbuffer[s].size()==framesbuffer_maxsize) {
+            distribute_coordinates(p_coordinates_buffer,framesbuffer,s);            
+            framesbuffer[s].clear();
+        }
+        
+        if ( ((f+1)%sync_barrier) == 0) allcomm_.barrier();
+    }
+    
+    allcomm_.barrier();
+    for(size_t i = 0; i < framesbuffer.size(); ++i)
+    {
+        if (framesbuffer[i].size()!=0) {
+            distribute_coordinates(p_coordinates_buffer,framesbuffer,i);            
+            framesbuffer[i].clear();
+        }
+    }
+    
+    free(p_coordinates_buffer);
+}
 
-            size_t target_node = 0;
-            for(size_t i = 0; i < assignments.size(); ++i)
-            {
-                if (assignments[i].contains(f)) {
-                    target_node=i;
-                    break;
-                }
-            }
+
+void DataStagerByFrame::distribute_coordinates(coor_t* p_coordinates_buffer,std::vector<std::vector<size_t> >& framesbuffer,size_t s) {
+    
+    size_t LNF = framesbuffer[s].size();
+    size_t rank = allcomm_.rank();  
+
+    for(size_t i = 0; i < framesbuffer[s].size(); ++i)
+    {
+        size_t f = framesbuffer[s][i];
+        target_node = (f*NNPP)/NF;
+
+        if (rank==s) {
+            // send data
             if (target_node==s) {
                 coor_t* p_localdata = &(p_coordinates[FC_assignment.index(f)*NA*3]);
                 memcpy(p_localdata,p_coordinates_buffer,3*NA*sizeof(coor_t));                
             } else {
                 allcomm_.send(target_node,0,p_coordinates_buffer,3*NA);
             }
-            
-        } else if (firstpartition && FC_assignment.contains(f)) {
-            coor_t* p_localdata = &(p_coordinates[FC_assignment.index(f)*NA*3]);
-            allcomm_.recv(s,0,p_localdata,3*NA);            
+        } else {
+            if (rank==target_node) {
+                coor_t* p_localdata = &(p_coordinates[FC_assignment.index(f)*NA*3]);
+                allcomm_.recv(s,0,p_localdata,3*NA); 
+            }
         }
-        
-        if ( ((f+1)%sync_barrier) == 0) allcomm_.barrier();
     }
-    free(p_coordinates_buffer);
 }
 
 
