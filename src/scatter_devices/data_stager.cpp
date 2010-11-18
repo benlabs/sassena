@@ -155,8 +155,6 @@ void DataStagerByFrame::stage_firstpartition() {
             distribute_coordinates(p_coordinates_buffer,framesbuffer,s);            
             framesbuffer[s].clear();
         }
-        
-        if ( ((f+1)%sync_barrier) == 0) allcomm_.barrier();
     }
     
     allcomm_.barrier();
