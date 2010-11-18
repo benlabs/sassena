@@ -116,7 +116,6 @@ void DataStagerByFrame::stage_firstpartition() {
     bool firstpartition=true;
     if (allcomm_.rank()>=partitioncomm_.size()) firstpartition=false;
 
-    size_t sync_barrier = Params::Inst()->limits.stage.sync_barrier;
     size_t mode; // 0 = mod
     if (Params::Inst()->limits.stage.mode=="mod") {
         if (allcomm_.rank()==0) Info::Inst()->write(string("Setting stage mode to modulo logic (limits.stage.mode)."));
@@ -177,6 +176,8 @@ void DataStagerByFrame::distribute_coordinates(coor_t* p_coordinates_buffer,std:
     
     size_t LNF = framesbuffer[s].size();
     size_t rank = allcomm_.rank();  
+    
+    size_t sync_barrier = Params::Inst()->limits.stage.sync_barrier;
 
     for(size_t i = 0; i < framesbuffer[s].size(); ++i)
     {
@@ -197,6 +198,8 @@ void DataStagerByFrame::distribute_coordinates(coor_t* p_coordinates_buffer,std:
                 allcomm_.recv(s,0,p_localdata,3*NA); 
             }
         }
+       
+        if ( ((i+1)%sync_barrier) == 0) allcomm_.barrier();
     }
 }
 
@@ -312,7 +315,6 @@ void DataStagerByAtom::stage_firstpartition() {
     coor_t* p_coordinates_buffer = (coor_t*) malloc(framesbuffer_maxsize*NA*3*sizeof(coor_t));
     std::vector< std::vector<size_t> > framesbuffer(NFN);
     
-    size_t sync_barrier = Params::Inst()->limits.stage.sync_barrier;
     size_t mode; // 0 = mod
     if (Params::Inst()->limits.stage.mode=="mod") {
         mode = 0;
@@ -348,9 +350,7 @@ void DataStagerByAtom::stage_firstpartition() {
         if (framesbuffer[s].size()==framesbuffer_maxsize) {
             distribute_coordinates(p_coordinates_buffer,framesbuffer,s);            
             framesbuffer[s].clear();
-        }
-        
-        if ( ((f+1)%sync_barrier) == 0) allcomm_.barrier();
+        }   
     }
     
     allcomm_.barrier();
@@ -370,6 +370,8 @@ void DataStagerByAtom::distribute_coordinates(coor_t* p_coordinates_buffer,std::
     
     size_t LNF = framesbuffer[s].size();
     size_t rank = allcomm_.rank();  
+    
+    size_t sync_barrier = Params::Inst()->limits.stage.sync_barrier;
                     
     for (size_t i=0;i<NNPP;i++) {
 
@@ -405,7 +407,7 @@ void DataStagerByAtom::distribute_coordinates(coor_t* p_coordinates_buffer,std::
             free(p_localdata);
         }
         
-        if ((i%1000)==0) allcomm_.barrier();
+        if (((i+1)%sync_barrier)==0) allcomm_.barrier();
     }
 }
 
