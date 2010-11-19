@@ -199,7 +199,7 @@ void DataStagerByFrame::distribute_coordinates(coor_t* p_coordinates_buffer,std:
     size_t LNF = framesbuffer[s].size();
     size_t rank = allcomm_.rank();  
     
-    size_t sync_barrier = Params::Inst()->limits.stage.sync_barrier;
+    size_t barrier = Params::Inst()->limits.stage.barrier;
 
     for(size_t i = 0; i < framesbuffer[s].size(); ++i)
     {
@@ -221,12 +221,16 @@ void DataStagerByFrame::distribute_coordinates(coor_t* p_coordinates_buffer,std:
             }
         }
        
-        if ( ((i+1)%sync_barrier) == 0) {
+        if ( ((i+1)%barrier) == 0) {
             timer_.start("st:wait");
             allcomm_.barrier();
             timer_.stop("st:wait");
         }
     }
+    
+    timer_.start("st:wait");
+    allcomm_.barrier();
+    timer_.stop("st:wait");
 }
 
 
@@ -433,7 +437,7 @@ void DataStagerByAtom::distribute_coordinates(coor_t* p_coordinates_buffer,std::
     size_t LNF = framesbuffer[s].size();
     size_t rank = allcomm_.rank();  
     
-    size_t sync_barrier = Params::Inst()->limits.stage.sync_barrier;
+    size_t barrier = Params::Inst()->limits.stage.barrier;
                     
     for (size_t i=0;i<NNPP;i++) {
 
@@ -469,12 +473,16 @@ void DataStagerByAtom::distribute_coordinates(coor_t* p_coordinates_buffer,std::
             free(p_localdata);
         }
         
-        if (((i+1)%sync_barrier)==0) {
+        if (((i+1)%barrier)==0) {
             timer_.start("st:wait");
             allcomm_.barrier();
             timer_.stop("st:wait");        
         }
     }
+
+    timer_.start("st:wait");
+    allcomm_.barrier();
+    timer_.stop("st:wait");        
 }
 
 void DataStagerByAtom::fill_coordinates(coor_t* p_localdata,size_t len,vector<size_t> frames) {

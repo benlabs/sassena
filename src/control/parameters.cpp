@@ -482,10 +482,9 @@ void Params::read_xml(std::string filename) {
     // assign default memory limits:
     limits.stage.nodes = 0; // 0 = automatic, partition size
     limits.stage.mode = "mod";        
-    if (scattering.type=="all") limits.stage.mode = "div";
-    limits.stage.modblock = 10;        
+    limits.stage.modblock = 1;        
+    limits.stage.barrier = 1000;
     
-    limits.stage.sync_barrier = 1000;
     limits.stage.memory.buffer = 100*1024*1024;
     limits.stage.memory.data   = 500*1024*1024;
     
@@ -514,8 +513,8 @@ void Params::read_xml(std::string filename) {
         	if (xmli.exists("//limits/stage/mode")) {
     	        limits.stage.mode = xmli.get_value<string>("//limits/stage/mode");
 	        }	       
-        	if (xmli.exists("//limits/stage/sync_barrier")) {
-    	        limits.stage.sync_barrier = xmli.get_value<size_t>("//limits/stage/sync_barrier");
+        	if (xmli.exists("//limits/stage/barrier")) {
+    	        limits.stage.barrier = xmli.get_value<size_t>("//limits/stage/barrier");
 	        }	       
         	if (xmli.exists("//limits/stage/modblock")) {
     	        limits.stage.modblock = xmli.get_value<size_t>("//limits/stage/modblock");
