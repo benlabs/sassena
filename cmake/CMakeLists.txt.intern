@@ -38,7 +38,6 @@ ADD_LIBRARY(sass_sample ${INTERNAL_LIBRARY_TYPE}
 
 ADD_LIBRARY(sass_decomposition ${INTERNAL_LIBRARY_TYPE}
     src/decomposition/assignment.cpp
-	src/decomposition/decompose.cpp
 	src/decomposition/decomposition_plan.cpp	
 )
 
