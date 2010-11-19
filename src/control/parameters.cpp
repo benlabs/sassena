@@ -481,7 +481,8 @@ void Params::read_xml(std::string filename) {
 
     // assign default memory limits:
     limits.stage.nodes = 0; // 0 = automatic, partition size
-    limits.stage.mode = "mod";        
+    limits.stage.mode = "mod";    
+    if (scattering.type=="all") limits.stage.mode="div";    
     limits.stage.modblock = 1;        
     limits.stage.barrier = 1000;
     

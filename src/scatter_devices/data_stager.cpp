@@ -128,7 +128,7 @@ void DataStagerByFrame::stage_firstpartition() {
             Info::Inst()->write(string("Adjusting parameters due to div logic:"));
             Info::Inst()->write(string("Setting limits.stage.memory.buffer to 1 frame"));
             Info::Inst()->write(string("Setting limits.stage.nodes=")+boost::lexical_cast<string>(partitioncomm_.size()));            
-            Info::Inst()->write(string("Setting limits.stage.barrier=1"));            
+            Info::Inst()->write(string("Setting limits.stage.barrier=2"));            
         }
         framesbuffer_maxsize = 1;
         NFN = partitioncomm_.size();
