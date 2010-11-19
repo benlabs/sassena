@@ -132,7 +132,7 @@ void DataStagerByFrame::stage_firstpartition() {
         }
         framesbuffer_maxsize = 1;
         NFN = partitioncomm_.size();
-        Params::Inst()->limits.stage.barrier = 1;
+        Params::Inst()->limits.stage.barrier = 2;
         mode = 1;
     } else {
         Err::Inst()->write(string("Stage mode not understood: ")+Params::Inst()->limits.stage.mode);
