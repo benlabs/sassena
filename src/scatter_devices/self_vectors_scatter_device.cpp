@@ -1,11 +1,10 @@
 /*
- *  scatterdevices.cpp
+ *  This file is part of the software sassena
  *
- *  Created on: Dec 30, 2008
  *  Authors:
  *  Benjamin Lindner, ben@benlabs.net
  *
- *  Copyright 2008,2009 Benjamin Lindner
+ *  Copyright 2008-2010 Benjamin Lindner
  *
  */
 
@@ -108,9 +107,13 @@ void SelfVectorsScatterDevice::stop_workers() {
 
 void SelfVectorsScatterDevice::worker1_task(size_t this_subvector,size_t this_atom) {
     fftw_complex* p_at_local = NULL;
+
+    timer.start("sd:scatter");
     p_at_local=scatter(this_subvector,this_atom);
+    timer.stop("sd:scatter");
     
     // apply dsp
+    timer.start("sd:dsp");
     if (Params::Inst()->scattering.dsp.type=="autocorrelate") {
         if (Params::Inst()->scattering.dsp.method=="direct") {
             smath::auto_correlate_direct(p_at_local,NF);	        
@@ -128,7 +131,12 @@ void SelfVectorsScatterDevice::worker1_task(size_t this_subvector,size_t this_at
         Err::Inst()->write("scattering.dsp.type == autocorrelate, square, plain");        
         throw;	    
 	}
+	timer.stop("sd:dsp");
+    
+    timer.start("sd:dsp:push");
     at1_.push(p_at_local);
+    timer.stop("sd:dsp:push");
+    
 }
                 
 void SelfVectorsScatterDevice::worker1() {
@@ -205,6 +213,7 @@ void SelfVectorsScatterDevice::compute_serial() {
         p_monitor_->update(allcomm_.rank(),progress());                                  
     }
     
+    timer.start("sd:reduce");
     if (NN>1) {
         double* p_atfinal = (double*) &(atfinal_[0][0]);
 
@@ -228,6 +237,7 @@ void SelfVectorsScatterDevice::compute_serial() {
     if (partitioncomm_.rank()==0) {
         smath::multiply_elements(factor,atfinal_,NF);
     }
+    timer.stop("sd:reduce");
 }
 
 void SelfVectorsScatterDevice::compute_threaded() {
@@ -251,6 +261,7 @@ void SelfVectorsScatterDevice::compute_threaded() {
     }
     while (!worker2_done)  worker2_notifier.wait(w2l);
     
+    timer.start("sd:reduce");
     if (NN>1) {
         double* p_atfinal = (double*) &(atfinal_[0][0]);
 
@@ -274,6 +285,8 @@ void SelfVectorsScatterDevice::compute_threaded() {
     if (partitioncomm_.rank()==0) {
         smath::multiply_elements(factor,atfinal_,NF);
     }
+    timer.stop("sd:reduce");
+    
 }
 
 fftw_complex* SelfVectorsScatterDevice::scatter(size_t mi,size_t ai) {
@@ -308,3 +321,5 @@ fftw_complex* SelfVectorsScatterDevice::scatter(size_t mi,size_t ai) {
   
     return p_at_local;
 }
+
+// end of file

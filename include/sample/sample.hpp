@@ -1,14 +1,13 @@
 /*
- *  sample.hpp
+ *  This file is part of the software sassena
  *
- *  Created on: Dec 30, 2008
  *  Authors:
  *  Benjamin Lindner, ben@benlabs.net
  *
- *  Copyright 2008,2009 Benjamin Lindner
+ *  Copyright 2008-2010 Benjamin Lindner
  *
  */
-
+ 
 #ifndef SAMPLE__SAMPLE_HPP_
 #define SAMPLE__SAMPLE_HPP_
 

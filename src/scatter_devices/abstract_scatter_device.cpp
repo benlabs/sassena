@@ -1,11 +1,10 @@
 /*
- *  scatter_device.cpp
+ *  This file is part of the software sassena
  *
- *  Created on: Dec 30, 2008
  *  Authors:
  *  Benjamin Lindner, ben@benlabs.net
  *
- *  Copyright 2008,2009 Benjamin Lindner
+ *  Copyright 2008-2010 Benjamin Lindner
  *
  */
 
@@ -124,15 +123,30 @@ void AbstractScatterDevice::runner() {
     if (threads_on) {
          start_workers();
          while(status()==0) {
+            
+            timer.start("sd:compute");
          	compute_threaded();
-     		write();		    
+            timer.stop("sd:compute"); 
+            
+            timer.start("sd:write");        	
+     		write();
+     		timer.stop("sd:write");
+            		    
             next();
          }             
          stop_workers();
     } else {
         while(status()==0) {
+            
+            timer.start("sd:compute");        	
             compute_serial();
-    		write();		    
+            timer.stop("sd:compute");        	
+            
+            
+            timer.start("sd:write");        	
+     		write();
+     		timer.stop("sd:write");
+     				    
             next();
         }                     
     }
@@ -159,3 +173,5 @@ void AbstractScatterDevice::write() {
         p_hdf5writer_->write(vector,atfinal_,NF);
     }
 }
+
+// end of file

@@ -1,14 +1,13 @@
 /*
- *  scatterdevices.cpp
+ *  This file is part of the software sassena
  *
- *  Created on: Dec 30, 2008
  *  Authors:
  *  Benjamin Lindner, ben@benlabs.net
  *
- *  Copyright 2008,2009 Benjamin Lindner
+ *  Copyright 2008-2010 Benjamin Lindner
  *
  */
-
+ 
 // direct header
 #include "scatter_devices/all_vectors_scatter_device.hpp"
 
@@ -116,7 +115,11 @@ void AllVectorsScatterDevice::stop_workers() {
 void AllVectorsScatterDevice::worker1_task(size_t subvector_index) {
     std::pair<size_t,fftw_complex* > p_a;
     p_a.first = subvector_index;
+    
+    timer.start("sd:scatter");    
     p_a.second = scatter(subvector_index);
+    timer.stop("sd:scatter");    
+    
     at1_.push( p_a );
 }
 
@@ -155,6 +158,7 @@ void AllVectorsScatterDevice::worker2_task(const size_t subvector_index,fftw_com
     size_t target_node = (subvector_index%NN);
     size_t rank = partitioncomm_.rank();
         
+    timer.start("sd:exchange");    
     if (rank==target_node) {
         // allocate an array of size 2*NF, to allow direct fftw operations
         fftw_complex* p_at_allframes = (fftw_complex*) fftw_malloc(2*NF*sizeof(fftw_complex));
@@ -175,6 +179,8 @@ void AllVectorsScatterDevice::worker2_task(const size_t subvector_index,fftw_com
         double* p_at_frames = (double*) &(p_a[0][0]);
         partitioncomm_.send(target_node,0,p_at_frames,2*assignment_.size());
     }
+    timer.stop("sd:exchange");    
+    
     worker2_counter++;
     fftw_free(p_a); p_a=NULL;
 }
@@ -216,6 +222,7 @@ void AllVectorsScatterDevice::worker2() {
 void AllVectorsScatterDevice::worker3_task(fftw_complex* p_a) {
     
 	// correlate or sum up
+    timer.start("sd:dsp");
     if (Params::Inst()->scattering.dsp.type=="autocorrelate") {
         if (Params::Inst()->scattering.dsp.method=="direct") {
             smath::auto_correlate_direct(p_a,NF);	        
@@ -233,10 +240,15 @@ void AllVectorsScatterDevice::worker3_task(fftw_complex* p_a) {
         Err::Inst()->write("scattering.dsp.type == autocorrelate, square, plain");        
         throw;	    
     }
+    timer.stop("sd:dsp");
+
+    timer.start("sd:dsp:push");
     boost::mutex::scoped_lock at3l(at3_mutex);
     smath::add_elements(atfinal_,p_a,NF);
     at3l.unlock();
     fftw_free(p_a); p_a=NULL;
+    timer.stop("sd:dsp:push");
+    
 }
 
 void AllVectorsScatterDevice::worker3() {
@@ -283,6 +295,7 @@ void AllVectorsScatterDevice::compute_serial() {
         p_monitor_->update(allcomm_.rank(),progress());
     }
 
+    timer.start("sd:reduce");
     if (NN>1) {
 
         double* p_atfinal = (double*) &(atfinal_[0][0]);
@@ -306,6 +319,7 @@ void AllVectorsScatterDevice::compute_serial() {
     if (partitioncomm_.rank()==0) {
         smath::multiply_elements(factor,atfinal_,NF);
     }
+    timer.stop("sd:reduce");
 }
 
 
@@ -325,6 +339,7 @@ void AllVectorsScatterDevice::compute_threaded() {
     for(size_t i = 0; i < NM; ++i) at0_.push(i);
     while (!worker3_done)  worker3_notifier.wait(w3l);
 
+    timer.start("sd:reduce");
     if (NN>1) {
 
         double* p_atfinal = (double*) &(atfinal_[0][0]);
@@ -348,6 +363,7 @@ void AllVectorsScatterDevice::compute_threaded() {
     if (partitioncomm_.rank()==0) {
         smath::multiply_elements(factor,atfinal_,NF);
     }
+    timer.stop("sd:reduce");
 }
 
 fftw_complex* AllVectorsScatterDevice::scatter(size_t this_subvector) {
@@ -394,3 +410,4 @@ fftw_complex* AllVectorsScatterDevice::scatter(size_t this_subvector) {
     return p_a;
 }
 
+// end of file

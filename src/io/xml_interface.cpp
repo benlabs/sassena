@@ -1,11 +1,10 @@
 /*
- *  xml_interface.cpp
+ *  This file is part of the software sassena
  *
- *  Created on: Sep 04, 2009
  *  Authors:
  *  Benjamin Lindner, ben@benlabs.net
  *
- *  Copyright 2008,2009 Benjamin Lindner
+ *  Copyright 2008-2010 Benjamin Lindner
  *
  */
 
@@ -180,3 +179,6 @@ vector<XMLElement> XMLInterface::get(std::string xpathexp) {
 
 	return result;
 }
+
+
+// end of file

@@ -1,3 +1,13 @@
+/*
+ *  This file is part of the software sassena
+ *
+ *  Authors:
+ *  Benjamin Lindner, ben@benlabs.net
+ *
+ *  Copyright 2008-2010 Benjamin Lindner
+ *
+ */
+ 
 #include "log/log.hpp"
 
 #include <boost/format.hpp>
@@ -32,3 +42,4 @@ size_t Info::counter=0;
 size_t Warn::counter=0;
 size_t Err::counter=0;
 
+// end of file

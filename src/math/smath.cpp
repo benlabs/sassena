@@ -1,11 +1,10 @@
 /*
- *  smath.cpp
+ *  This file is part of the software sassena
  *
- *  Created on: Dec 30, 2008
  *  Authors:
  *  Benjamin Lindner, ben@benlabs.net
  *
- *  Copyright 2008,2009 Benjamin Lindner
+ *  Copyright 2008-2010 Benjamin Lindner
  *
  */
 
@@ -276,3 +275,6 @@ template std::complex<double> smath::reduce<double>(const std::vector<std::compl
 
 template std::complex<float> smath::reduce<float>(const fftw_complex* data,size_t N);
 template std::complex<double> smath::reduce<double>(const fftw_complex* data,size_t N);
+
+
+// end of file

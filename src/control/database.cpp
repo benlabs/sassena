@@ -1,3 +1,13 @@
+/*
+ *  This file is part of the software sassena
+ *
+ *  Authors:
+ *  Benjamin Lindner, ben@benlabs.net
+ *
+ *  Copyright 2008-2010 Benjamin Lindner
+ *
+ */
+ 
 // direct header
 #include "control/database.hpp"
 
@@ -425,3 +435,5 @@ double DatabaseSFactorsParameters::get(size_t ID,double q) {
     Err::Inst()->write(string("ScatterFactor-type not implemented: type=")+boost::lexical_cast<string>(ft));
     throw;
 }
+
+// end of file

@@ -1,11 +1,10 @@
 /*
- *  services.hpp
+ *  This file is part of the software sassena
  *
- *  Created on: Sep 27, 2010
  *  Authors:
  *  Benjamin Lindner, ben@benlabs.net
  *
- *  Copyright 2008,2009 Benjamin Lindner
+ *  Copyright 2008-2010 Benjamin Lindner
  *
  */
 

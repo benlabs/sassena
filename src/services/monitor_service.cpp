@@ -1,11 +1,10 @@
 /*
- *  monitor_service.cpp
+ *  This file is part of the software sassena
  *
- *  Created on: Sep 04, 2009
  *  Authors:
  *  Benjamin Lindner, ben@benlabs.net
  *
- *  Copyright 2008,2009 Benjamin Lindner
+ *  Copyright 2008-2010 Benjamin Lindner
  *
  */
 
@@ -199,3 +198,5 @@ void MonitorClient::update(size_t rank,double progress) {
         socket.close();
     }
 }
+
+// end of file

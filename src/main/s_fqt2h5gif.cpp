@@ -1,11 +1,10 @@
 /*
- *  sassena.cpp
+ *  This file is part of the software sassena
  *
- *  Created on: Dec 30, 2008
  *  Authors:
  *  Benjamin Lindner, ben@benlabs.net
  *
- *  Copyright 2008,2009 Benjamin Lindner
+ *  Copyright 2008-2010 Benjamin Lindner
  *
  */
 
@@ -333,3 +332,5 @@ int main(int argc,char* argv[])
     
     H5Fclose(h5imagefile);
 }
+
+// end of file

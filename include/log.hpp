@@ -1,11 +1,10 @@
 /*
- *  log.hpp
+ *  This file is part of the software sassena
  *
- *  Created on: May 26, 2008
  *  Authors:
  *  Benjamin Lindner, ben@benlabs.net
  *
- *  Copyright 2008,2009 Benjamin Lindner
+ *  Copyright 2008-2010 Benjamin Lindner
  *
  */
 

@@ -1,11 +1,10 @@
 /*
- *  xml_interface.hpp
- *reg
- *  Created on: June 25, 2009
+ *  This file is part of the software sassena
+ *
  *  Authors:
  *  Benjamin Lindner, ben@benlabs.net
  *
- *  Copyright 2008,2009 Benjamin Lindner
+ *  Copyright 2008-2010 Benjamin Lindner
  *
  */
 
