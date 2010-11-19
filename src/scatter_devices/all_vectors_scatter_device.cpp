@@ -59,7 +59,7 @@ AllVectorsScatterDevice::AllVectorsScatterDevice(
 }
 
 void AllVectorsScatterDevice::stage_data() {
-    DataStagerByFrame data_stager(sample_,allcomm_,partitioncomm_,assignment_);
+    DataStagerByFrame data_stager(sample_,allcomm_,partitioncomm_,assignment_,timer);
     p_coordinates = data_stager.stage();
 }
 

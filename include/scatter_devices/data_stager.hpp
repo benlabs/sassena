@@ -43,6 +43,8 @@ class DataStagerByFrame {
     boost::mpi::communicator& partitioncomm_;
     DivAssignment FC_assignment;
     
+    Timer& timer_;
+    
     size_t NFN;
     size_t NN;
     size_t NNPP;    
@@ -58,7 +60,7 @@ class DataStagerByFrame {
     void stage_fillpartitions();
     
 public:
-    DataStagerByFrame(Sample& sample,boost::mpi::communicator& allcomm,boost::mpi::communicator& partitioncomm, DivAssignment assignment);
+    DataStagerByFrame(Sample& sample,boost::mpi::communicator& allcomm,boost::mpi::communicator& partitioncomm, DivAssignment assignment,Timer& timer);
     coor_t* stage();
     
 };
@@ -69,6 +71,8 @@ class DataStagerByAtom  {
     boost::mpi::communicator& allcomm_;
     boost::mpi::communicator& partitioncomm_;
     DivAssignment FC_assignment;
+    
+    Timer& timer_;
     
     size_t NFN;
     size_t NN;
@@ -95,7 +99,7 @@ class DataStagerByAtom  {
     void stage_fillpartitions();
     
 public:
-    DataStagerByAtom(Sample& sample,boost::mpi::communicator& allcomm,boost::mpi::communicator& partitioncomm, DivAssignment assignment);
+    DataStagerByAtom(Sample& sample,boost::mpi::communicator& allcomm,boost::mpi::communicator& partitioncomm, DivAssignment assignment,Timer& timer);
   
     coor_t* stage();    
 };

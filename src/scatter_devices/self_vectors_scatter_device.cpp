@@ -60,7 +60,7 @@ SelfVectorsScatterDevice::SelfVectorsScatterDevice(
 }
 
 void SelfVectorsScatterDevice::stage_data() {
-    DataStagerByAtom data_stager(sample_,allcomm_,partitioncomm_,assignment_);
+    DataStagerByAtom data_stager(sample_,allcomm_,partitioncomm_,assignment_,timer);
     p_coordinates = data_stager.stage();
 }
 

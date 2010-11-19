@@ -36,11 +36,12 @@ struct binary_max : public binary_function<size_t,size_t,size_t> {
     size_t operator() (size_t a,size_t b) {if (a>b) return a; else return b;}
 };
 
-DataStagerByFrame::DataStagerByFrame(Sample& sample,boost::mpi::communicator& allcomm,boost::mpi::communicator& partitioncomm,DivAssignment assignment) 
+DataStagerByFrame::DataStagerByFrame(Sample& sample,boost::mpi::communicator& allcomm,boost::mpi::communicator& partitioncomm,DivAssignment assignment,Timer& timer) 
     : m_sample(sample),
     allcomm_(allcomm),
     partitioncomm_(partitioncomm),    
-    FC_assignment(assignment)
+    FC_assignment(assignment),
+    timer_(timer)
 {
     NN = allcomm_.size();  
     NNPP = partitioncomm_.size();
@@ -83,9 +84,17 @@ DataStagerByFrame::DataStagerByFrame(Sample& sample,boost::mpi::communicator& al
 }
 
 coor_t* DataStagerByFrame::stage() {
+    
+    timer_.start("sd:stage::first");
     stage_firstpartition();
+    timer_.stop("sd:stage::first");
+
     allcomm_.barrier();
+    
+    timer_.start("sd:stage::fill");
     stage_fillpartitions();
+    timer_.stop("sd:stage::fill");
+    
     return p_coordinates;
 }
 
@@ -144,6 +153,7 @@ void DataStagerByFrame::stage_firstpartition() {
         }
         
         if (rank==s) {
+            timer_.start("stage::load");
             CoordinateSet* p_cset = m_sample.coordinate_sets.load(f);
             coor_t* p_data = &(p_coordinates_buffer[framesbuffer[s].size()*NA*3]);
             
@@ -153,12 +163,15 @@ void DataStagerByFrame::stage_firstpartition() {
                 p_data[3*n+2]=p_cset->c3[n];            
             }
             delete p_cset;
+            timer_.stop("stage::load");
             
         }            
         
         framesbuffer[s].push_back(f);
         if (framesbuffer[s].size()==framesbuffer_maxsize) {
+            timer_.start("stage::distribute");
             distribute_coordinates(p_coordinates_buffer,framesbuffer,s);            
+            timer_.stop("stage::distribute");
             framesbuffer[s].clear();
         }
     }
@@ -167,7 +180,10 @@ void DataStagerByFrame::stage_firstpartition() {
     for(size_t i = 0; i < framesbuffer.size(); ++i)
     {
         if (framesbuffer[i].size()!=0) {
+            timer_.start("stage::distribute");
             distribute_coordinates(p_coordinates_buffer,framesbuffer,i);            
+            timer_.stop("stage::distribute");
+            
             framesbuffer[i].clear();
         }
     }
@@ -230,11 +246,12 @@ void DataStagerByFrame::stage_fillpartitions() {
 // By Atom
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-DataStagerByAtom::DataStagerByAtom(Sample& sample,boost::mpi::communicator& allcomm,boost::mpi::communicator& partitioncomm,DivAssignment assignment) 
+DataStagerByAtom::DataStagerByAtom(Sample& sample,boost::mpi::communicator& allcomm,boost::mpi::communicator& partitioncomm,DivAssignment assignment,Timer& timer) 
     : m_sample(sample),
     allcomm_(allcomm),
     partitioncomm_(partitioncomm),    
-    FC_assignment(assignment)
+    FC_assignment(assignment),
+    timer_(timer)
 {
     NN = allcomm_.size(); 
     NNPP = partitioncomm_.size();    
@@ -281,11 +298,18 @@ DataStagerByAtom::DataStagerByAtom(Sample& sample,boost::mpi::communicator& allc
 coor_t* DataStagerByAtom::stage() {
 
     if (allcomm_.rank()==0) Info::Inst()->write("Staging first partition.");
+    timer_.start("sd:stage::first");
     stage_firstpartition();
+    timer_.stop("sd:stage::first");
+
     allcomm_.barrier();
 
     if (allcomm_.rank()==0) Info::Inst()->write("Staging remaining partitions.");
+
+    timer_.start("sd:stage::fill");
     stage_fillpartitions();
+    timer_.stop("sd:stage::fill");
+
     return p_coordinates;
     
 //    stage_registration();    
@@ -348,6 +372,7 @@ void DataStagerByAtom::stage_firstpartition() {
         }
         
         if (rank==s) {
+            timer_.start("stage::load");
             CoordinateSet* p_cset = m_sample.coordinate_sets.load(f);
             coor_t* p_data = &(p_coordinates_buffer[framesbuffer[s].size()*NA*3]);
             
@@ -357,11 +382,13 @@ void DataStagerByAtom::stage_firstpartition() {
                 p_data[3*n+2]=p_cset->c3[n];            
             }
             delete p_cset;
-            
+            timer_.stop("stage::load");
         }
         framesbuffer[s].push_back(f);
         if (framesbuffer[s].size()==framesbuffer_maxsize) {
+            timer_.start("stage::distribute");
             distribute_coordinates(p_coordinates_buffer,framesbuffer,s);            
+            timer_.stop("stage::distribute");
             framesbuffer[s].clear();
         }   
     }
@@ -371,7 +398,9 @@ void DataStagerByAtom::stage_firstpartition() {
     for(size_t i = 0; i < framesbuffer.size(); ++i)
     {
         if (framesbuffer[i].size()!=0) {
+            timer_.start("stage::distribute");
             distribute_coordinates(p_coordinates_buffer,framesbuffer,i);            
+            timer_.stop("stage::distribute");
             framesbuffer[i].clear();
         }
     }
