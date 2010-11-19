@@ -744,6 +744,7 @@ private:
         ar & memory;
 		ar & nodes;
         ar & sync_barrier;
+        ar & modblock;
         ar & mode;
     }
 	/////////////////// 
@@ -752,6 +753,7 @@ public:
     LimitsStageMemoryParameters memory;
     size_t nodes;
     size_t sync_barrier;
+    size_t modblock;
     std::string mode;
 };
 

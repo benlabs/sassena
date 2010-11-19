@@ -117,8 +117,10 @@ void DataStagerByFrame::stage_firstpartition() {
     if (allcomm_.rank()>=partitioncomm_.size()) firstpartition=false;
 
     size_t mode; // 0 = mod
+    size_t modblock = Params::Inst()->limits.stage.modblock;
     if (Params::Inst()->limits.stage.mode=="mod") {
         if (allcomm_.rank()==0) Info::Inst()->write(string("Setting stage mode to modulo logic (limits.stage.mode)."));
+        if (allcomm_.rank()==0) Info::Inst()->write(string("limits.stage.modblock=")+boost::lexical_cast<string>(modblock));                
         mode = 0;
     } else if (Params::Inst()->limits.stage.mode=="div") {
         if (allcomm_.rank()==0) Info::Inst()->write(string("Setting stage mode to div logic (limits.stage.mode)."));
@@ -132,7 +134,7 @@ void DataStagerByFrame::stage_firstpartition() {
     for(size_t f=0;f<NF;f++) {
         size_t s;
         if (mode==0) {
-            s = f%NFN; // this is the responsible data server            
+            s = (f/modblock)%NFN; // this is the responsible data server            
         } else {
             s = (f*NFN)/NF; // this is the responsible data server                        
         }
@@ -314,9 +316,13 @@ void DataStagerByAtom::stage_firstpartition() {
     std::vector< std::vector<size_t> > framesbuffer(NFN);
     
     size_t mode; // 0 = mod
+    size_t modblock = Params::Inst()->limits.stage.modblock;
     if (Params::Inst()->limits.stage.mode=="mod") {
+        if (allcomm_.rank()==0) Info::Inst()->write(string("Setting stage mode to modulo logic (limits.stage.mode)."));
+        if (allcomm_.rank()==0) Info::Inst()->write(string("limits.stage.modblock=")+boost::lexical_cast<string>(modblock));        
         mode = 0;
     } else if (Params::Inst()->limits.stage.mode=="div") {
+        if (allcomm_.rank()==0) Info::Inst()->write(string("Setting stage mode to div logic (limits.stage.mode)."));
         mode = 1;
     } else {
         Err::Inst()->write(string("Stage mode not understood: ")+Params::Inst()->limits.stage.mode);
@@ -324,10 +330,11 @@ void DataStagerByAtom::stage_firstpartition() {
         throw;
     }
     
+    
     for(size_t f=0;f<NF;f++) {
         size_t s;
         if (mode==0) {
-            s = f%NFN; // this is the responsible data server            
+            s = (f/modblock)%NFN; // this is the responsible data server            
         } else {
             s = (f*NFN)/NF; // this is the responsible data server                        
         }
