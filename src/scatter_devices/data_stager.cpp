@@ -77,7 +77,8 @@ DataStagerByFrame::DataStagerByFrame(Sample& sample,boost::mpi::communicator& al
     }    
     
     if (NFN==0) {
-        if (allcomm_.rank()==0) Info::Inst()->write(string("Setting NFN to parition size (0=automatic,limits.stage.nodes)"));
+        if (allcomm_.rank()==0) Info::Inst()->write(string("Setting limits.stage.nodes to partition size (0=automatic,limits.stage.nodes)"));
+        if (allcomm_.rank()==0) Info::Inst()->write(string("limits.stage.nodes=")+boost::lexical_cast<string>(partitioncomm_.size()));
         NFN=partitioncomm_.size();    
     }
 }
@@ -115,12 +116,6 @@ void DataStagerByFrame::stage_firstpartition() {
         throw;
     }
 
-    if (allcomm_.rank()==0) {
-        Info::Inst()->write(string("Initializing buffer size to: ")+boost::lexical_cast<string>(framesbuffer_maxsize));
-    }
-    coor_t* p_coordinates_buffer = (coor_t*) malloc(framesbuffer_maxsize*NA*3*sizeof(coor_t));
-    std::vector< std::vector<size_t> > framesbuffer(NFN);
-
     size_t mode; // 0 = mod
     size_t modblock = Params::Inst()->limits.stage.modblock;
     if (Params::Inst()->limits.stage.mode=="mod") {
@@ -130,17 +125,27 @@ void DataStagerByFrame::stage_firstpartition() {
     } else if (Params::Inst()->limits.stage.mode=="div") {
         if (allcomm_.rank()==0) {
             Info::Inst()->write(string("limits.stage.mode=div"));
-            if (framesbuffer_maxsize<FC_assignment.size()) {
-                Warn::Inst()->write(string("Buffer to small! Using a small buffer in div logic enforces serial read."));                
-                Warn::Inst()->write(string("Require at least limits.stage.memory.buffer=")+boost::lexical_cast<string>(FC_assignment.size()*frame_bytesize));                
-            }
+            Info::Inst()->write(string("Adjusting parameters due to div logic:"));
+            Info::Inst()->write(string("Setting limits.stage.memory.buffer to 1 frame"));
+            Info::Inst()->write(string("Setting limits.stage.nodes=")+boost::lexical_cast<string>(partitioncomm_.size()));            
+            Info::Inst()->write(string("Setting limits.stage.barrier=")+boost::lexical_cast<string>(partitioncomm_.size()));            
         }
+        framesbuffer_maxsize = 1;
+        NFN = partitioncomm_.size();
+        Params::Inst()->limits.stage.barrier = 1;
         mode = 1;
     } else {
         Err::Inst()->write(string("Stage mode not understood: ")+Params::Inst()->limits.stage.mode);
         Err::Inst()->write(string("limits.stage.mode= mod, div"));
         throw;
     }
+    
+    if (allcomm_.rank()==0) {
+        Info::Inst()->write(string("Initializing buffer size to: ")+boost::lexical_cast<string>(framesbuffer_maxsize));
+    }
+    coor_t* p_coordinates_buffer = (coor_t*) malloc(framesbuffer_maxsize*NA*3*sizeof(coor_t));
+    std::vector< std::vector<size_t> > framesbuffer(NFN);
+    
     
     for(size_t f=0;f<NF;f++) {
         size_t s;
@@ -152,7 +157,14 @@ void DataStagerByFrame::stage_firstpartition() {
         
         if (framesbuffer[s].size()==framesbuffer_maxsize) {
             timer_.start("st:distribute");
-            distribute_coordinates(p_coordinates_buffer,framesbuffer,s);            
+            distribute_coordinates(p_coordinates_buffer,framesbuffer,s);     
+            
+            if (mode==0) {
+                timer_.start("st:wait");
+                allcomm_.barrier();
+                timer_.stop("st:wait");                
+            }
+                   
             timer_.stop("st:distribute");
             framesbuffer[s].clear();
         }
@@ -183,7 +195,12 @@ void DataStagerByFrame::stage_firstpartition() {
     {
         if (framesbuffer[i].size()!=0) {
             timer_.start("st:distribute");
-            distribute_coordinates(p_coordinates_buffer,framesbuffer,i);            
+            distribute_coordinates(p_coordinates_buffer,framesbuffer,i);      
+            
+            timer_.start("st:wait");
+            allcomm_.barrier();
+            timer_.stop("st:wait");
+                  
             timer_.stop("st:distribute");
             
             framesbuffer[i].clear();
@@ -227,10 +244,6 @@ void DataStagerByFrame::distribute_coordinates(coor_t* p_coordinates_buffer,std:
             timer_.stop("st:wait");
         }
     }
-    
-    timer_.start("st:wait");
-    allcomm_.barrier();
-    timer_.stop("st:wait");
 }
 
 
@@ -300,7 +313,8 @@ DataStagerByAtom::DataStagerByAtom(Sample& sample,boost::mpi::communicator& allc
     }
     
     if (NFN==0) {
-        if (allcomm_.rank()==0) Info::Inst()->write(string("Setting NFN to parition size (0=automatic,limits.stage.nodes)"));
+        if (allcomm_.rank()==0) Info::Inst()->write(string("Setting limits.stage.nodes to partition size (0=automatic,limits.stage.nodes)"));
+        if (allcomm_.rank()==0) Info::Inst()->write(string("limits.stage.nodes=")+boost::lexical_cast<string>(partitioncomm_.size()));
         NFN=partitioncomm_.size();    
     }
 }
@@ -359,21 +373,16 @@ void DataStagerByAtom::stage_firstpartition() {
     coor_t* p_coordinates_buffer = (coor_t*) malloc(framesbuffer_maxsize*NA*3*sizeof(coor_t));
     std::vector< std::vector<size_t> > framesbuffer(NFN);
     
-    size_t mode; // 0 = mod
     size_t modblock = Params::Inst()->limits.stage.modblock;
     if (Params::Inst()->limits.stage.mode=="mod") {
         if (allcomm_.rank()==0) {
             Info::Inst()->write(string("limits.stage.mode=mod"));
             Info::Inst()->write(string("limits.stage.modblock=")+boost::lexical_cast<string>(modblock));        
         }
-        mode = 0;
     } else if (Params::Inst()->limits.stage.mode=="div") {
         Info::Inst()->write(string("limits.stage.mode=div"));
-        if (framesbuffer_maxsize<FC_assignment.size()) {
-            Warn::Inst()->write(string("Buffer too small! Using a small buffer in div logic enforces serial read."));                
-            Warn::Inst()->write(string("Require at least limits.stage.memory.buffer=")+boost::lexical_cast<string>(FC_assignment.size()*frame_bytesize));                
-        }
-        mode = 1;
+        Warn::Inst()->write(string("Staging in div logic not supporting for incoherent scattering"));
+        Warn::Inst()->write(string("Reverting to mod logic: limits.stage.mode=mod"));
     } else {
         Err::Inst()->write(string("Stage mode not understood: ")+Params::Inst()->limits.stage.mode);
         Err::Inst()->write(string("limits.stage.mode= mod, div"));
@@ -383,11 +392,7 @@ void DataStagerByAtom::stage_firstpartition() {
     
     for(size_t f=0;f<NF;f++) {
         size_t s;
-        if (mode==0) {
-            s = (f/modblock)%NFN; // this is the responsible data server            
-        } else {
-            s = (f*NFN)/NF; // this is the responsible data server                        
-        }
+        s = (f/modblock)%NFN; // this is the responsible data server            
         
         // exchange before loading new frames, allows parallel load with buffersizes of 1
         if (framesbuffer[s].size()==framesbuffer_maxsize) {

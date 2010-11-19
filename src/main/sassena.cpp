@@ -413,6 +413,9 @@ int main(int argc,char* argv[]) {
     // start computation tasks
     if (world.rank()==0) Info::Inst()->write("Starting scattering...");
 
+    if (world.rank()==0) {
+        Info::Inst()->write("Resetting progress timer (timer includes stage time)...");   
+    }
     if (world.rank()==0) p_monitorservice->timer_reset();
     if (p_ScatterDevice!=NULL) p_ScatterDevice->run();
 
