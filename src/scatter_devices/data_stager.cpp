@@ -105,10 +105,14 @@ void DataStagerByFrame::stage_firstpartition() {
     if (framesbuffer_maxsize==0) {
         if (allcomm_.rank()==0) {
             Err::Inst()->write("Cannot load trajectory into buffer.");
-            Err::Inst()->write(string("limits.memory.data_stager=")+boost::lexical_cast<string>(Params::Inst()->limits.stage.memory.buffer));
+            Err::Inst()->write(string("limits.stage.memory.buffer=")+boost::lexical_cast<string>(Params::Inst()->limits.stage.memory.buffer));
             Err::Inst()->write(string("requested=")+boost::lexical_cast<string>(frame_bytesize));            
         }
         throw;
+    }
+
+    if (allcomm_.rank()==0) {
+        Info::Inst()->write(string("Initializing buffer size to: ")+boost::lexical_cast<string>(framesbuffer_maxsize));
     }
     coor_t* p_coordinates_buffer = (coor_t*) malloc(framesbuffer_maxsize*NA*3*sizeof(coor_t));
     std::vector< std::vector<size_t> > framesbuffer(NFN);
@@ -311,6 +315,10 @@ void DataStagerByAtom::stage_firstpartition() {
             Err::Inst()->write(string("requested=")+boost::lexical_cast<string>(frame_bytesize));            
         }
         throw;
+    }
+    
+    if (allcomm_.rank()==0) {
+        Info::Inst()->write(string("Initializing buffer size to: ")+boost::lexical_cast<string>(framesbuffer_maxsize));
     }
     coor_t* p_coordinates_buffer = (coor_t*) malloc(framesbuffer_maxsize*NA*3*sizeof(coor_t));
     std::vector< std::vector<size_t> > framesbuffer(NFN);
