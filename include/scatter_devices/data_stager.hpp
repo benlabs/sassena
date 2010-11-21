@@ -88,6 +88,8 @@ class DataStagerByAtom  {
     
     void distribute_coordinates(coor_t* p_coordinates_buffer,std::vector<std::vector<size_t> >& framesbuffer,size_t s);
     void fill_coordinates(coor_t* p_localdata,size_t len,std::vector<size_t> frames);
+    void fill_alignedframe(coor_t* p_alignedatoms,size_t block,size_t firstframe);
+    void copyalign_frame(coor_t* p_alignedframe, coor_t* p_frame,size_t block);
 //    void add_client(size_t off,size_t len, size_t client);
     
     coor_t* p_coordinates;

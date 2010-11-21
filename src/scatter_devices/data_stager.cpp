@@ -390,20 +390,19 @@ void DataStagerByAtom::stage_firstpartition() {
         throw;
     }
     
+    // align iteration with number of frames.
+    size_t NFaligned = NF;
+    if ((NF%NNPP)!=0) {
+        size_t cycles = NF/NNPP;
+        NFaligned += ( NF - cycles*NNPP);
+    }
     
-    for(size_t f=0;f<NF;f++) {
+    for(size_t f = 0; f < NFaligned; ++f)
+    {
         size_t s;
         s = (f/modblock)%NFN; // this is the responsible data server            
         
-        // exchange before loading new frames, allows parallel load with buffersizes of 1
-        if (framesbuffer[s].size()==framesbuffer_maxsize) {
-            timer_.start("st:distribute");
-            distribute_coordinates(p_coordinates_buffer,framesbuffer,s);            
-            timer_.stop("st:distribute");
-            framesbuffer[s].clear();
-        }
-        
-        if (rank==s) {
+        if ( (rank==s) && (f<NF) ) {
             timer_.start("st:load");
             CoordinateSet* p_cset = m_sample.coordinate_sets.load(f);
             coor_t* p_data = &(p_coordinates_buffer[framesbuffer[s].size()*NA*3]);
@@ -416,26 +415,55 @@ void DataStagerByAtom::stage_firstpartition() {
             delete p_cset;
             timer_.stop("st:load");
         }
-
+        
         // push frame on buffer
-        framesbuffer[s].push_back(f);  
+        framesbuffer[s].push_back(f);
+        
+        if ( ((NFaligned+1)%NNPP) ==0 ) {
+            timer_.start("st:distribute");
+            distribute_coordinates(p_coordinates_buffer,framesbuffer,rank);
+            timer_.stop("st:distribute");
+            framesbuffer.clear();            
+        }
     }
     
     timer_.start("st:wait");
     allcomm_.barrier();
     timer_.stop("st:wait");        
     
-    for(size_t i = 0; i < framesbuffer.size(); ++i)
+    free(p_coordinates_buffer);
+}
+
+void DataStagerByAtom::copyalign_frame(coor_t* p_alignedframe, coor_t* p_frame,size_t block) {
+    for(size_t i = 0; i < NNPP; ++i)
     {
-        if (framesbuffer[i].size()!=0) {
-            timer_.start("st:distribute");
-            distribute_coordinates(p_coordinates_buffer,framesbuffer,i);            
-            timer_.stop("st:distribute");
-            framesbuffer[i].clear();
+        DivAssignment target_node_assignment(NNPP,i,NA);
+        size_t off = target_node_assignment.offset();
+        size_t len = target_node_assignment.size();
+
+        coor_t* p_from = &(p_frame[off*3]);        
+        coor_t* p_to = &(p_alignedframe[i*block*3]);
+        memcpy(p_to,p_from,len*3*sizeof(coor_t));
+    }
+}
+
+void DataStagerByAtom::fill_alignedframe(coor_t* p_alignedatoms,size_t block,size_t firstframe) {
+    
+    size_t off = FC_assignment.offset();
+    size_t len = FC_assignment.size();
+    
+    for(size_t i = 0; i < NNPP; ++i)
+    {
+        size_t targetframe = firstframe+i;
+        if (targetframe>NF) break;
+        
+        for(size_t n = 0; n < len; ++n)
+        {
+            p_coordinates[ NF*n*3 + targetframe*3 ]     = p_alignedatoms[ i*block*3 + n*3 ];
+            p_coordinates[ NF*n*3 + targetframe*3 + 1 ] = p_alignedatoms[ i*block*3 + n*3 + 1 ];
+            p_coordinates[ NF*n*3 + targetframe*3 + 2 ] = p_alignedatoms[ i*block*3 + n*3 + 2 ];
         }
     }
-    
-    free(p_coordinates_buffer);
 }
 
 void DataStagerByAtom::distribute_coordinates(coor_t* p_coordinates_buffer,std::vector<std::vector<size_t> >& framesbuffer,size_t s) {
@@ -444,61 +472,100 @@ void DataStagerByAtom::distribute_coordinates(coor_t* p_coordinates_buffer,std::
     size_t rank = allcomm_.rank();  
     
     size_t barrier = Params::Inst()->limits.stage.barrier;
+
+    // first nodes always gets maximum number of atoms in div assignment:
+    DivAssignment zero_node_assignment(NNPP,0,NA);
+    size_t maxatoms = zero_node_assignment.size();
+    
+    coor_t* p_alignedframe = (coor_t*) malloc((maxatoms*NNPP)*sizeof(coor_t));
+    coor_t* p_alignedframeOUT = (coor_t*) malloc((maxatoms*NNPP)*sizeof(coor_t));
                     
-    for (size_t i=0;i<NNPP;i++) {
-
-        size_t target_node = i;
-
-        if (rank==s) {
-            
-            DivAssignment target_node_assignment(NNPP,i,NA);
-            size_t off = target_node_assignment.offset();
-            size_t len = target_node_assignment.size();
-            
-            coor_t* p_fsdata = (coor_t*) malloc(LNF*len*3*sizeof(coor_t));
-            for(size_t f = 0; f < LNF; ++f)
-            {
-                coor_t* p_from = &(p_coordinates_buffer[f*NA*3+off*3]);
-                coor_t* p_to = &(p_fsdata[f*len*3]);
-                memcpy(p_to,p_from,len*3*sizeof(coor_t));
-            }
-            
-            if (target_node==s) {                    
-                fill_coordinates(p_fsdata,len,framesbuffer[s]);
-            } else {
-                allcomm_.send(target_node,0,p_fsdata,LNF*len*3);
-            }
-            free(p_fsdata);
-            
-        } else if (target_node==rank) {
-            size_t len = FC_assignment.size();
+    for(size_t f = 0; f < LNF; ++f)
+    {
+        // first frame = frameoffset
+        size_t firstframe = framesbuffer[0][f];
         
-            coor_t* p_localdata = (coor_t*) malloc(LNF*len*3*sizeof(coor_t));
-            allcomm_.recv(s,0,p_localdata,LNF*len*3);
-            fill_coordinates(p_localdata,len,framesbuffer[s]);
-            free(p_localdata);
-        }
+        coor_t* p_from = &(p_coordinates_buffer[f*NA*3]);
+        copyalign_frame(p_alignedframe,p_from,maxatoms);
         
-        if (((i+1)%barrier)==0) {
-            timer_.start("st:wait");
-            allcomm_.barrier();
-            timer_.stop("st:wait");        
-        }
-    }
-
-    timer_.start("st:wait");
-    allcomm_.barrier();
-    timer_.stop("st:wait");        
+        boost::mpi::all_to_all(partitioncomm_,p_alignedframe,maxatoms,p_alignedframeOUT);
+        fill_alignedframe(p_alignedframeOUT,maxatoms,firstframe);
+    }      
 }
+
+//void DataStagerByAtom::distribute_coordinates(coor_t* p_coordinates_buffer,std::vector<std::vector<size_t> >& framesbuffer,size_t s) {
+//    
+//    size_t LNF = framesbuffer[s].size();
+//    size_t rank = allcomm_.rank();  
+//    
+//    size_t barrier = Params::Inst()->limits.stage.barrier;
+//                    
+//    for (size_t i=0;i<NNPP;i++) {
+//
+//        size_t target_node = i;
+//
+//        if (rank==s) {
+//            
+//            DivAssignment target_node_assignment(NNPP,i,NA);
+//            size_t off = target_node_assignment.offset();
+//            size_t len = target_node_assignment.size();
+//            
+//            coor_t* p_fsdata = (coor_t*) malloc(LNF*len*3*sizeof(coor_t));
+//            for(size_t f = 0; f < LNF; ++f)
+//            {
+//                coor_t* p_from = &(p_coordinates_buffer[f*NA*3+off*3]);
+//                coor_t* p_to = &(p_fsdata[f*len*3]);
+//                memcpy(p_to,p_from,len*3*sizeof(coor_t));
+//            }
+//            
+//            if (target_node==s) {       
+//                fill_coordinates(p_fsdata,len,framesbuffer[s]);
+//            } else {
+//                allcomm_.send(target_node,0,p_fsdata,LNF*len*3);
+//            }
+//            free(p_fsdata);
+//            
+//        } else if (target_node==rank) {
+//            size_t len = FC_assignment.size();
+//        
+//            coor_t* p_localdata = (coor_t*) malloc(LNF*len*3*sizeof(coor_t));
+//            allcomm_.recv(s,0,p_localdata,LNF*len*3)
+//            fill_coordinates(p_localdata,len,framesbuffer[s]);
+//            free(p_localdata);
+//        }
+//        
+//        if (((i+1)%barrier)==0) {
+//            timer_.start("st:dist:wait1");
+//            allcomm_.barrier();
+//            timer_.stop("st:dist:wait1");        
+//        }
+//    }
+//
+//    timer_.start("st:dist:wait2");
+//    allcomm_.barrier();
+//    timer_.stop("st:dist:wait2");        
+//}
+
+//void DataStagerByAtom::fill_coordinates(coor_t* p_localdata,size_t len,vector<size_t> frames) {
+//    for(size_t f = 0; f < frames.size(); ++f)
+//    {
+//        for(size_t n = 0; n < len; ++n)
+//        {
+//            p_coordinates[ NF*n*3 + frames[f]*3 ] = p_localdata[ len*f*3 + n*3 ];
+//            p_coordinates[ NF*n*3 + frames[f]*3 + 1 ] = p_localdata[ len*f*3 + n*3 + 1 ];
+//            p_coordinates[ NF*n*3 + frames[f]*3 + 2 ] = p_localdata[ len*f*3 + n*3 + 2 ];
+//        }
+//    }
+//}
 
 void DataStagerByAtom::fill_coordinates(coor_t* p_localdata,size_t len,vector<size_t> frames) {
     for(size_t f = 0; f < frames.size(); ++f)
     {
         for(size_t n = 0; n < len; ++n)
         {
-            p_coordinates[ NF*n*3 + frames[f]*3 ] = p_localdata[ len*f*3 + n*3 ];
-            p_coordinates[ NF*n*3 + frames[f]*3 + 1 ] = p_localdata[ len*f*3 + n*3 + 1 ];
-            p_coordinates[ NF*n*3 + frames[f]*3 + 2 ] = p_localdata[ len*f*3 + n*3 + 2 ];
+            //p_coordinates[ NF*n*3 + frames[f]*3 ] = p_localdata[ len*f*3 + n*3 ];
+            //p_coordinates[ NF*n*3 + frames[f]*3 + 1 ] = p_localdata[ len*f*3 + n*3 + 1 ];
+            //p_coordinates[ NF*n*3 + frames[f]*3 + 2 ] = p_localdata[ len*f*3 + n*3 + 2 ];
         }
     }
 }
