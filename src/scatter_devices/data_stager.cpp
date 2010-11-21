@@ -323,9 +323,11 @@ DataStagerByAtom::DataStagerByAtom(Sample& sample,boost::mpi::communicator& allc
 coor_t* DataStagerByAtom::stage() {
 
     if (allcomm_.rank()==0) Info::Inst()->write("Staging first partition.");
-    timer_.start("st:first");
-    stage_firstpartition();
-    timer_.stop("st:first");
+    if (allcomm_.rank()<partitioncomm_.size()) {
+        timer_.start("st:first");
+        stage_firstpartition();
+        timer_.stop("st:first");
+    } 
 
     timer_.start("st:wait");
     allcomm_.barrier();
@@ -360,7 +362,7 @@ void DataStagerByAtom::stage_firstpartition() {
     size_t framesbuffer_maxsize = buffer_bytesize/frame_bytesize;
     
     if (framesbuffer_maxsize==0) {
-        if (allcomm_.rank()==0) {
+        if (partitioncomm_.rank()==0) {
             Err::Inst()->write("Cannot load trajectory into buffer.");
             Err::Inst()->write(string("limits.memory.data_stager=")+boost::lexical_cast<string>(Params::Inst()->limits.stage.memory.buffer));
             Err::Inst()->write(string("requested=")+boost::lexical_cast<string>(frame_bytesize));            
@@ -368,7 +370,7 @@ void DataStagerByAtom::stage_firstpartition() {
         throw;
     }
     
-    if (allcomm_.rank()==0) {
+    if (partitioncomm_.rank()==0) {
         Info::Inst()->write(string("Initializing buffer size to: ")+boost::lexical_cast<string>(framesbuffer_maxsize));
     }
     coor_t* p_coordinates_buffer = (coor_t*) malloc(framesbuffer_maxsize*NA*3*sizeof(coor_t));
@@ -376,7 +378,7 @@ void DataStagerByAtom::stage_firstpartition() {
     
     size_t modblock = Params::Inst()->limits.stage.modblock;
     if (Params::Inst()->limits.stage.mode=="mod") {
-        if (allcomm_.rank()==0) {
+        if (partitioncomm_.rank()==0) {
             Info::Inst()->write(string("limits.stage.mode=mod"));
             Info::Inst()->write(string("limits.stage.modblock=")+boost::lexical_cast<string>(modblock));        
         }
@@ -394,7 +396,7 @@ void DataStagerByAtom::stage_firstpartition() {
     size_t NFaligned = NF;
     if ((NF%NNPP)!=0) {
         size_t cycles = NF/NNPP;
-        NFaligned += ( NF - cycles*NNPP);
+        NFaligned = (cycles+1)*NNPP;
     }
     
     for(size_t f = 0; f < NFaligned; ++f)
@@ -428,7 +430,7 @@ void DataStagerByAtom::stage_firstpartition() {
     }
     
     timer_.start("st:wait");
-    allcomm_.barrier();
+    partitioncomm_.barrier();
     timer_.stop("st:wait");        
     
     free(p_coordinates_buffer);
@@ -469,7 +471,7 @@ void DataStagerByAtom::fill_alignedframe(coor_t* p_alignedatoms,size_t block,siz
 void DataStagerByAtom::distribute_coordinates(coor_t* p_coordinates_buffer,std::vector<std::vector<size_t> >& framesbuffer,size_t s) {
     
     size_t LNF = framesbuffer[s].size();
-    size_t rank = allcomm_.rank();  
+    size_t rank = partitioncomm_.rank();  
     
     size_t barrier = Params::Inst()->limits.stage.barrier;
 
