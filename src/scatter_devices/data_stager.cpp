@@ -366,7 +366,7 @@ void DataStagerByAtom::stage_firstpartition() {
         Info::Inst()->write(string("Initializing buffer size to: ")+boost::lexical_cast<string>(framesbuffer_maxsize));
     }
     coor_t* p_coordinates_buffer = (coor_t*) malloc(framesbuffer_maxsize*NA*3*sizeof(coor_t));
-    std::vector< std::vector<size_t> > framesbuffer(NFN);
+    std::vector< std::vector<size_t> > framesbuffer(NNPP);
     
     size_t modblock = Params::Inst()->limits.stage.modblock;
     if (Params::Inst()->limits.stage.mode=="mod") {
@@ -394,7 +394,7 @@ void DataStagerByAtom::stage_firstpartition() {
     for(size_t f = 0; f < NFaligned; ++f)
     {
         size_t s;
-        s = (f/modblock)%NFN; // this is the responsible data server            
+        s = (f/modblock)%NNPP; // this is the responsible data server            
         
         if ( (rank==s) && (f<NF) ) {
             timer_.start("st:load");
@@ -413,11 +413,16 @@ void DataStagerByAtom::stage_firstpartition() {
         // push frame on buffer
         framesbuffer[s].push_back(f);
         
-        if ( ((NFaligned+1)%NNPP) ==0 ) {
-            timer_.start("st:distribute");
-            distribute_coordinates(p_coordinates_buffer,framesbuffer,rank);
-            timer_.stop("st:distribute");
-            framesbuffer.clear();            
+        if ( ((f+1)%NNPP) ==0 ) {
+            if (framesbuffer[rank].size()==framesbuffer_maxsize) {
+                timer_.start("st:distribute");
+                distribute_coordinates(p_coordinates_buffer,framesbuffer,rank);
+                timer_.stop("st:distribute");
+                for(size_t i = 0; i < NNPP; ++i)
+                {
+                    framesbuffer[i].clear();                                                
+                }
+            }
         }
     }
     
@@ -473,7 +478,7 @@ void DataStagerByAtom::distribute_coordinates(coor_t* p_coordinates_buffer,std::
     
     coor_t* p_alignedframe = (coor_t*) malloc((maxatoms*NNPP)*3*sizeof(coor_t));
     coor_t* p_alignedframeOUT = (coor_t*) malloc((maxatoms*NNPP)*3*sizeof(coor_t));
-                    
+               
     for(size_t f = 0; f < LNF; ++f)
     {
         // first frame = frameoffset
@@ -485,6 +490,7 @@ void DataStagerByAtom::distribute_coordinates(coor_t* p_coordinates_buffer,std::
         boost::mpi::all_to_all(partitioncomm_,p_alignedframe,maxatoms,p_alignedframeOUT);
         fill_alignedframe(p_alignedframeOUT,maxatoms,firstframe);
     }      
+    
     free(p_alignedframe);
     free(p_alignedframeOUT);    
 }
