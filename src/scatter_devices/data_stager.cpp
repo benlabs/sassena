@@ -503,7 +503,8 @@ void DataStagerByAtom::distribute_coordinates(coor_t* p_coordinates_buffer,std::
     for(size_t f = 0; f < LNF; ++f)
     {
         size_t firstframe = framesbuffer[0][f];
-        fill_alignedframe(p_alignedframeOUT,maxatoms,firstframe);
+        coor_t* p_from = &(p_alignedframeOUT[f*(maxatoms*NNPP)*3]);    
+        fill_alignedframe(p_from,maxatoms,firstframe);
     }
     
     free(p_alignedframe);
