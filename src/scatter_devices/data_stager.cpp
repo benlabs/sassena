@@ -485,6 +485,8 @@ void DataStagerByAtom::distribute_coordinates(coor_t* p_coordinates_buffer,std::
         boost::mpi::all_to_all(partitioncomm_,p_alignedframe,maxatoms,p_alignedframeOUT);
         fill_alignedframe(p_alignedframeOUT,maxatoms,firstframe);
     }      
+    free(p_alignedframe);
+    free(p_alignedframeOUT);    
 }
 
 //void DataStagerByAtom::distribute_coordinates(coor_t* p_coordinates_buffer,std::vector<std::vector<size_t> >& framesbuffer,size_t s) {
