@@ -347,15 +347,7 @@ coor_t* DataStagerByAtom::stage() {
 }
 
 void DataStagerByAtom::stage_firstpartition() {
-    size_t rank = allcomm_.rank();
-    
-    // used by server
-    //size_t frame_bytesize = NA*3*sizeof(double);
-//    coor_t* p_coordinates_buffer = (coor_t*) malloc(NA*3*sizeof(coor_t));
-
-    //std::set<size_t>& assigned_frames = FS_assignment_table[rank];
-
-    // initialize local coordinates buffer
+    size_t rank = partitioncomm_.rank();
     
     size_t buffer_bytesize = Params::Inst()->limits.stage.memory.buffer;
     size_t frame_bytesize = NA*3*sizeof(coor_t);
@@ -573,22 +565,10 @@ void DataStagerByAtom::fill_coordinates(coor_t* p_localdata,size_t len,vector<si
 }
 
 
-void DataStagerByAtom::stage_fillpartitions() {
-    
-    bool firstpartition=true;
-    if (allcomm_.rank()>=partitioncomm_.size()) firstpartition=false;
-    size_t partitions = allcomm_.size()/partitioncomm_.size();
-
-    if (firstpartition) {
-        for(size_t i = 1; i < partitions; ++i)
-        {
-            size_t target_node = i*partitioncomm_.size() + partitioncomm_.rank();
-            allcomm_.send(target_node,0,p_coordinates,FC_assignment.size()*NF*3);            
-        }
-    } else {
-        size_t source_node = partitioncomm_.rank();
-        allcomm_.recv(source_node,0,p_coordinates,FC_assignment.size()*NF*3);            
-    }
+void DataStagerByAtom::stage_fillpartitions() {    
+    // create a communicator to broadcast between partitions.    
+    boost::mpi::communicator interpartitioncomm_ = allcomm_.split(partitioncomm_.rank());
+    boost::mpi::broadcast(interpartitioncomm_,p_coordinates,FC_assignment.size()*NF*3,0);
 }
 
 // end of file
