@@ -119,7 +119,7 @@ DecompositionPlan::DecompositionPlan(size_t nn,size_t nq,size_t naf,size_t elbyt
             Warn::Inst()->write("Partition size larger than NN. Setting NNPP=NN.");	
             Warn::Inst()->write(string("New partition size: ")+boost::lexical_cast<string>(nnpp));	
         }
-        if (Params::Inst()->limits.decomposition.partitions.size<=naf) {
+        if (Params::Inst()->limits.decomposition.partitions.size>naf) {
             nnpp=naf;
             Warn::Inst()->write("Partition size larger than NAF. Setting NNPP=NAF.");	
             Warn::Inst()->write(string("New partition size: ")+boost::lexical_cast<string>(nnpp));	
