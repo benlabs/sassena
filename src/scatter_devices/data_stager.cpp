@@ -494,7 +494,7 @@ void DataStagerByAtom::distribute_coordinates(coor_t* p_coordinates_buffer,std::
         size_t firstframe = framesbuffer[0][f];
         
         coor_t* p_from = &(p_coordinates_buffer[f*NA*3]);
-        coor_t* p_to = &(p_alignedframe[i*(maxatoms*NNPP)*3]);        
+        coor_t* p_to = &(p_alignedframe[f*(maxatoms*NNPP)*3]);        
         copyalign_frame(p_to,p_from,maxatoms);
     }      
 
