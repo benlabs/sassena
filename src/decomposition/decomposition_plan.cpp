@@ -104,10 +104,10 @@ DecompositionPlan::DecompositionPlan(size_t nn,size_t nq,size_t naf,size_t elbyt
     		Err::Inst()->write("Either change the partition size manually or change the number of nodes.");
     		Err::Inst()->write("Beware that size of a partition <= frames / atoms (depends)");
     		Err::Inst()->write("Limits:");
-    		Err::Inst()->write(string("limits.memory.data=")+boost::lexical_cast<string>(nmaxbytesize));
+    		Err::Inst()->write(string("limits.stage.memory.data=")+boost::lexical_cast<string>(nmaxbytesize));
             Err::Inst()->write("Minimal Requirements:");         
             DecompositionParameters dp(nn,nq,naf,npmax,elbytesize);   
-    		Err::Inst()->write(string("limits.memory.data=")+boost::lexical_cast<string>(dp.nbytesize()));            	
+    		Err::Inst()->write(string("limits.stage.memory.data=")+boost::lexical_cast<string>(dp.nbytesize()));            	
     		throw;
         }
         
