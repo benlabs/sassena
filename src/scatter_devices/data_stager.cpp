@@ -426,6 +426,16 @@ void DataStagerByAtom::stage_firstpartition() {
         }
     }
     
+    if (framesbuffer[rank].size()!=0) {
+        timer_.start("st:distribute");
+        distribute_coordinates(p_coordinates_buffer,framesbuffer,rank);
+        timer_.stop("st:distribute");
+        for(size_t i = 0; i < NNPP; ++i)
+        {
+            framesbuffer[i].clear();                                                
+        }
+    }
+    
     timer_.start("st:wait");
     partitioncomm_.barrier();
     timer_.stop("st:wait");        
