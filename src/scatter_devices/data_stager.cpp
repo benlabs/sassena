@@ -68,18 +68,23 @@ DataStagerByFrame::DataStagerByFrame(Sample& sample,boost::mpi::communicator& al
 
 coor_t* DataStagerByFrame::stage() {
     
-    timer_.start("st:first");
-    stage_firstpartition();
-    timer_.stop("st:first");
+    if (allcomm_.rank()==0) Info::Inst()->write("Staging first partition.");
+    if (allcomm_.rank()<partitioncomm_.size()) {
+        timer_.start("st:first");
+        stage_firstpartition();
+        timer_.stop("st:first");
+    } 
 
     timer_.start("st:wait");
     allcomm_.barrier();
     timer_.stop("st:wait");
-    
+
+    if (allcomm_.rank()==0) Info::Inst()->write("Staging remaining partitions.");
+
     timer_.start("st:fill");
     stage_fillpartitions();
     timer_.stop("st:fill");
-    
+
     return p_coordinates;
 }
 
