@@ -274,7 +274,7 @@ void DataStagerByAtom::distribute_coordinates(coor_t* p_coordinates_buffer,std::
     }
 
     // exchange here
-    coor_t* p_alignedframeOUT = (coor_t*) malloc(LNF*(maxatoms*NNPP)*3*sizeof(coor_t));
+    coor_t* p_alignedframeOUT = (coor_t*) malloc( NNPP*(LNF*maxatoms*3*sizeof(coor_t)) );
     boost::mpi::all_to_all(partitioncomm_,p_alignedframe,3*maxatoms*LNF,p_alignedframeOUT);
     free(p_alignedframe);
 
@@ -284,16 +284,15 @@ void DataStagerByAtom::distribute_coordinates(coor_t* p_coordinates_buffer,std::
     {
         for(size_t f = 0; f < LNF; ++f)
         {
-            size_t firstframe = framesbuffer[0][f];
-            size_t targetframe = firstframe+i;
-            if (targetframe>NF) break;
+            size_t frame = framesbuffer[i][f];
+            if (frame>NF) break;
             
-            coor_t* p_from = &(p_alignedframeOUT[i*(maxatoms*LNF)*3]);
+            coor_t* p_from = &(p_alignedframeOUT[ i*(maxatoms*LNF*3) + f*maxatoms*3 ]);
             for(size_t n = 0; n < len; ++n)
             {
-                p_coordinates[ NF*n*3 + targetframe*3 ]     = p_from[ i*maxatoms*3 + n*3 ];
-                p_coordinates[ NF*n*3 + targetframe*3 + 1 ] = p_from[ i*maxatoms*3 + n*3 + 1 ];
-                p_coordinates[ NF*n*3 + targetframe*3 + 2 ] = p_from[ i*maxatoms*3 + n*3 + 2 ];
+                p_coordinates[ NF*n*3 + frame*3 ]     = p_from[ n*3 ];
+                p_coordinates[ NF*n*3 + frame*3 + 1 ] = p_from[ n*3 + 1 ];
+                p_coordinates[ NF*n*3 + frame*3 + 2 ] = p_from[ n*3 + 2 ];
             }
         }
     }
