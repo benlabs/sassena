@@ -64,23 +64,6 @@ DataStagerByFrame::DataStagerByFrame(Sample& sample,boost::mpi::communicator& al
     }
 
     p_coordinates = (coor_t*) malloc(data_bytesize);
-        
-    // determine number of nodes which act as file servers:
-    NFN = Params::Inst()->limits.stage.nodes;
-    
-    if (NFN>NN) NFN=NN; 
-    if (NFN>NF) {
-        NFN=NF;  
-        if (allcomm_.rank()==0) {
-            Info::Inst()->write("Number of data servers limited by number of frames");
-        }
-    }    
-    
-    if (NFN==0) {
-        if (allcomm_.rank()==0) Info::Inst()->write(string("Setting limits.stage.nodes to partition size (0=automatic,limits.stage.nodes)"));
-        if (allcomm_.rank()==0) Info::Inst()->write(string("limits.stage.nodes=")+boost::lexical_cast<string>(partitioncomm_.size()));
-        NFN=partitioncomm_.size();    
-    }
 }
 
 coor_t* DataStagerByFrame::stage() {
@@ -101,169 +84,29 @@ coor_t* DataStagerByFrame::stage() {
 }
 
 void DataStagerByFrame::stage_firstpartition() {
-    size_t rank = allcomm_.rank();
     
-    size_t buffer_bytesize = Params::Inst()->limits.stage.memory.buffer;
-    size_t frame_bytesize = NA*3*sizeof(coor_t);
-    size_t framesbuffer_maxsize = buffer_bytesize/frame_bytesize;
+    size_t LNF = FC_assignment.size();
     
-    if (framesbuffer_maxsize==0) {
-        if (allcomm_.rank()==0) {
-            Err::Inst()->write("Cannot load trajectory into buffer.");
-            Err::Inst()->write(string("limits.stage.memory.buffer=")+boost::lexical_cast<string>(Params::Inst()->limits.stage.memory.buffer));
-            Err::Inst()->write(string("requested=")+boost::lexical_cast<string>(frame_bytesize));            
-        }
-        throw;
-    }
+    for(size_t i=0;i<LNF;i++) {
+        size_t f = FC_assignment[i];
 
-    size_t mode; // 0 = mod
-    size_t modblock = Params::Inst()->limits.stage.modblock;
-    if (Params::Inst()->limits.stage.mode=="mod") {
-        if (allcomm_.rank()==0) Info::Inst()->write(string("limits.stage.mode=mod"));
-        if (allcomm_.rank()==0) Info::Inst()->write(string("limits.stage.modblock=")+boost::lexical_cast<string>(modblock));                
-        mode = 0;
-    } else if (Params::Inst()->limits.stage.mode=="div") {
-        if (allcomm_.rank()==0) {
-            Info::Inst()->write(string("limits.stage.mode=div"));
-            Info::Inst()->write(string("Adjusting parameters due to div logic:"));
-            Info::Inst()->write(string("Setting limits.stage.memory.buffer to 1 frame"));
-            Info::Inst()->write(string("Setting limits.stage.nodes=")+boost::lexical_cast<string>(partitioncomm_.size()));            
-            Info::Inst()->write(string("Setting limits.stage.barrier=2"));            
-        }
-        framesbuffer_maxsize = 1;
-        NFN = partitioncomm_.size();
-        Params::Inst()->limits.stage.barrier = 2;
-        mode = 1;
-    } else {
-        Err::Inst()->write(string("Stage mode not understood: ")+Params::Inst()->limits.stage.mode);
-        Err::Inst()->write(string("limits.stage.mode= mod, div"));
-        throw;
-    }
-    
-    if (allcomm_.rank()==0) {
-        Info::Inst()->write(string("Initializing buffer size to: ")+boost::lexical_cast<string>(framesbuffer_maxsize));
-    }
-    coor_t* p_coordinates_buffer = (coor_t*) malloc(framesbuffer_maxsize*NA*3*sizeof(coor_t));
-    std::vector< std::vector<size_t> > framesbuffer(NFN);
-    
-    
-    for(size_t f=0;f<NF;f++) {
-        size_t s;
-        if (mode==0) {
-            s = (f/modblock)%NFN; // this is the responsible data server            
-        } else {
-            s = (f*NFN)/NF; // this is the responsible data server                        
-        }
-        
-        if (framesbuffer[s].size()==framesbuffer_maxsize) {
-            timer_.start("st:distribute");
-            distribute_coordinates(p_coordinates_buffer,framesbuffer,s);     
+        timer_.start("st:load");
+        CoordinateSet* p_cset = m_sample.coordinate_sets.load(f);
+        coor_t* p_data = &(p_coordinates_buffer[framesbuffer[s].size()*NA*3]);
             
-            if (mode==0) {
-                timer_.start("st:wait");
-                allcomm_.barrier();
-                timer_.stop("st:wait");                
-            }
-                   
-            timer_.stop("st:distribute");
-            framesbuffer[s].clear();
+        for(size_t n=0;n<NA;n++) {
+            p_coordinates[f*3*NA+3*n]=p_cset->c1[n];
+            p_coordinates[f*3*NA+3*n+1]=p_cset->c2[n];
+            p_coordinates[f*3*NA+3*n+2]=p_cset->c3[n];            
         }
-        
-        if (rank==s) {
-            timer_.start("st:load");
-            CoordinateSet* p_cset = m_sample.coordinate_sets.load(f);
-            coor_t* p_data = &(p_coordinates_buffer[framesbuffer[s].size()*NA*3]);
-            
-            for(size_t n=0;n<NA;n++) {
-                p_data[3*n]=p_cset->c1[n];
-                p_data[3*n+1]=p_cset->c2[n];
-                p_data[3*n+2]=p_cset->c3[n];            
-            }
-            delete p_cset;
-            timer_.stop("st:load");
-            
-        }            
-        
-        framesbuffer[s].push_back(f);
-    }
-    
-    timer_.start("st:wait");
-    allcomm_.barrier();
-    timer_.stop("st:wait");
-    
-    for(size_t i = 0; i < framesbuffer.size(); ++i)
-    {
-        if (framesbuffer[i].size()!=0) {
-            timer_.start("st:distribute");
-            distribute_coordinates(p_coordinates_buffer,framesbuffer,i);      
-            
-            if (mode==0) {
-                timer_.start("st:wait");
-                allcomm_.barrier();
-                timer_.stop("st:wait");                
-            }     
-            timer_.stop("st:distribute");
-            
-            framesbuffer[i].clear();
-        }
-    }
-    
-    free(p_coordinates_buffer);
-}
-
-
-void DataStagerByFrame::distribute_coordinates(coor_t* p_coordinates_buffer,std::vector<std::vector<size_t> >& framesbuffer,size_t s) {
-    
-    size_t LNF = framesbuffer[s].size();
-    size_t rank = allcomm_.rank();  
-    
-    size_t barrier = Params::Inst()->limits.stage.barrier;
-
-    for(size_t i = 0; i < framesbuffer[s].size(); ++i)
-    {
-        size_t f = framesbuffer[s][i];
-        size_t target_node = (f*NNPP)/NF;
-
-        if (rank==s) {
-            // send data
-            if (target_node==s) {
-                coor_t* p_localdata = &(p_coordinates[FC_assignment.index(f)*NA*3]);
-                memcpy(p_localdata,p_coordinates_buffer,3*NA*sizeof(coor_t));                
-            } else {
-                allcomm_.send(target_node,0,p_coordinates_buffer,3*NA);
-            }
-        } else {
-            if (rank==target_node) {
-                coor_t* p_localdata = &(p_coordinates[FC_assignment.index(f)*NA*3]);
-                allcomm_.recv(s,0,p_localdata,3*NA); 
-            }
-        }
-       
-        if ( ((i+1)%barrier) == 0) {
-            timer_.start("st:wait");
-            allcomm_.barrier();
-            timer_.stop("st:wait");
-        }
+        timer_.stop("st:load");
     }
 }
-
 
 void DataStagerByFrame::stage_fillpartitions() {
-    
-    bool firstpartition=true;
-    if (allcomm_.rank()>=partitioncomm_.size()) firstpartition=false;
-    size_t partitions = allcomm_.size()/partitioncomm_.size();
-
-    if (firstpartition) {
-        for(size_t i = 1; i < partitions; ++i)
-        {
-            size_t target_node = i*partitioncomm_.size() + partitioncomm_.rank();
-            allcomm_.send(target_node,0,p_coordinates,FC_assignment.size()*NA*3);            
-        }
-    } else {
-        size_t source_node = partitioncomm_.rank();
-        allcomm_.recv(source_node,0,p_coordinates,FC_assignment.size()*NA*3);            
-    }
+    // create a communicator to broadcast between partitions.    
+    boost::mpi::communicator interpartitioncomm_ = allcomm_.split(partitioncomm_.rank());
+    boost::mpi::broadcast(interpartitioncomm_,p_coordinates,FC_assignment.size()*NA*3,0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -299,25 +142,7 @@ DataStagerByAtom::DataStagerByAtom(Sample& sample,boost::mpi::communicator& allc
         throw;
     }
 
-//    Info::Inst()->write(string("Maximum memory allocated for coordinates (bytes): ")+boost::lexical_cast<string>(data_bytesize_indicator_max));
     p_coordinates = (coor_t*) malloc(data_bytesize);
-        
-    // determine number of nodes which act as file servers:
-    NFN = Params::Inst()->limits.stage.nodes;
-        
-    if (NFN>NN) NFN=NN; 
-    if (NFN>NF) {
-        NFN=NF;  
-        if (allcomm_.rank()==0) {
-            Info::Inst()->write("Number of data servers limited by number of frames.");
-        }
-    }
-    
-    if (NFN==0) {
-        if (allcomm_.rank()==0) Info::Inst()->write(string("Setting limits.stage.nodes to partition size (0=automatic,limits.stage.nodes)"));
-        if (allcomm_.rank()==0) Info::Inst()->write(string("limits.stage.nodes=")+boost::lexical_cast<string>(partitioncomm_.size()));
-        NFN=partitioncomm_.size();    
-    }
 }
 
 coor_t* DataStagerByAtom::stage() {
@@ -368,22 +193,6 @@ void DataStagerByAtom::stage_firstpartition() {
     coor_t* p_coordinates_buffer = (coor_t*) malloc(framesbuffer_maxsize*NA*3*sizeof(coor_t));
     std::vector< std::vector<size_t> > framesbuffer(NNPP);
     
-    size_t modblock = Params::Inst()->limits.stage.modblock;
-    if (Params::Inst()->limits.stage.mode=="mod") {
-        if (partitioncomm_.rank()==0) {
-            Info::Inst()->write(string("limits.stage.mode=mod"));
-            Info::Inst()->write(string("limits.stage.modblock=")+boost::lexical_cast<string>(modblock));        
-        }
-    } else if (Params::Inst()->limits.stage.mode=="div") {
-        Info::Inst()->write(string("limits.stage.mode=div"));
-        Warn::Inst()->write(string("Staging in div logic not supporting for incoherent scattering"));
-        Warn::Inst()->write(string("Reverting to mod logic: limits.stage.mode=mod"));
-    } else {
-        Err::Inst()->write(string("Stage mode not understood: ")+Params::Inst()->limits.stage.mode);
-        Err::Inst()->write(string("limits.stage.mode= mod, div"));
-        throw;
-    }
-    
     // align iteration with number of frames.
     size_t NFaligned = NF;
     if ((NF%NNPP)!=0) {
@@ -394,7 +203,7 @@ void DataStagerByAtom::stage_firstpartition() {
     for(size_t f = 0; f < NFaligned; ++f)
     {
         size_t s;
-        s = (f/modblock)%NNPP; // this is the responsible data server            
+        s = f%NNPP; // this is the responsible data server            
         
         if ( (rank==s) && (f<NF) ) {
             timer_.start("st:load");
@@ -410,7 +219,6 @@ void DataStagerByAtom::stage_firstpartition() {
             timer_.stop("st:load");
         }
         
-        // push frame on buffer
         framesbuffer[s].push_back(f);
         
         if ( ((f+1)%NNPP) ==0 ) {
@@ -510,84 +318,6 @@ void DataStagerByAtom::distribute_coordinates(coor_t* p_coordinates_buffer,std::
     free(p_alignedframe);
     free(p_alignedframeOUT);    
 }
-
-//void DataStagerByAtom::distribute_coordinates(coor_t* p_coordinates_buffer,std::vector<std::vector<size_t> >& framesbuffer,size_t s) {
-//    
-//    size_t LNF = framesbuffer[s].size();
-//    size_t rank = allcomm_.rank();  
-//    
-//    size_t barrier = Params::Inst()->limits.stage.barrier;
-//                    
-//    for (size_t i=0;i<NNPP;i++) {
-//
-//        size_t target_node = i;
-//
-//        if (rank==s) {
-//            
-//            DivAssignment target_node_assignment(NNPP,i,NA);
-//            size_t off = target_node_assignment.offset();
-//            size_t len = target_node_assignment.size();
-//            
-//            coor_t* p_fsdata = (coor_t*) malloc(LNF*len*3*sizeof(coor_t));
-//            for(size_t f = 0; f < LNF; ++f)
-//            {
-//                coor_t* p_from = &(p_coordinates_buffer[f*NA*3+off*3]);
-//                coor_t* p_to = &(p_fsdata[f*len*3]);
-//                memcpy(p_to,p_from,len*3*sizeof(coor_t));
-//            }
-//            
-//            if (target_node==s) {       
-//                fill_coordinates(p_fsdata,len,framesbuffer[s]);
-//            } else {
-//                allcomm_.send(target_node,0,p_fsdata,LNF*len*3);
-//            }
-//            free(p_fsdata);
-//            
-//        } else if (target_node==rank) {
-//            size_t len = FC_assignment.size();
-//        
-//            coor_t* p_localdata = (coor_t*) malloc(LNF*len*3*sizeof(coor_t));
-//            allcomm_.recv(s,0,p_localdata,LNF*len*3)
-//            fill_coordinates(p_localdata,len,framesbuffer[s]);
-//            free(p_localdata);
-//        }
-//        
-//        if (((i+1)%barrier)==0) {
-//            timer_.start("st:dist:wait1");
-//            allcomm_.barrier();
-//            timer_.stop("st:dist:wait1");        
-//        }
-//    }
-//
-//    timer_.start("st:dist:wait2");
-//    allcomm_.barrier();
-//    timer_.stop("st:dist:wait2");        
-//}
-
-//void DataStagerByAtom::fill_coordinates(coor_t* p_localdata,size_t len,vector<size_t> frames) {
-//    for(size_t f = 0; f < frames.size(); ++f)
-//    {
-//        for(size_t n = 0; n < len; ++n)
-//        {
-//            p_coordinates[ NF*n*3 + frames[f]*3 ] = p_localdata[ len*f*3 + n*3 ];
-//            p_coordinates[ NF*n*3 + frames[f]*3 + 1 ] = p_localdata[ len*f*3 + n*3 + 1 ];
-//            p_coordinates[ NF*n*3 + frames[f]*3 + 2 ] = p_localdata[ len*f*3 + n*3 + 2 ];
-//        }
-//    }
-//}
-
-void DataStagerByAtom::fill_coordinates(coor_t* p_localdata,size_t len,vector<size_t> frames) {
-    for(size_t f = 0; f < frames.size(); ++f)
-    {
-        for(size_t n = 0; n < len; ++n)
-        {
-            //p_coordinates[ NF*n*3 + frames[f]*3 ] = p_localdata[ len*f*3 + n*3 ];
-            //p_coordinates[ NF*n*3 + frames[f]*3 + 1 ] = p_localdata[ len*f*3 + n*3 + 1 ];
-            //p_coordinates[ NF*n*3 + frames[f]*3 + 2 ] = p_localdata[ len*f*3 + n*3 + 2 ];
-        }
-    }
-}
-
 
 void DataStagerByAtom::stage_fillpartitions() {    
     // create a communicator to broadcast between partitions.    
