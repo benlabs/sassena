@@ -256,7 +256,7 @@ void DataStagerByAtom::distribute_coordinates(coor_t* p_coordinates_buffer,std::
     DivAssignment zero_node_assignment(NNPP,0,NA);
     size_t maxatoms = zero_node_assignment.size();
     
-    coor_t* p_alignedframe = (coor_t*) malloc(LNF*(maxatoms*NNPP)*3*sizeof(coor_t));
+    coor_t* p_alignedframe = (coor_t*) malloc(NNPP*(LNF*maxatoms*3*sizeof(coor_t)));
 
     // copy and align frames
     for(size_t i = 0; i < NNPP; ++i)
@@ -268,7 +268,7 @@ void DataStagerByAtom::distribute_coordinates(coor_t* p_coordinates_buffer,std::
         for(size_t f = 0; f < LNF; ++f)
         {            
             coor_t* p_from = &(p_coordinates_buffer[f*NA*3+off*3]);
-            coor_t* p_to = &(p_alignedframe[i*(maxatoms*LNF)*3 + i*maxatoms*3 ]);        
+            coor_t* p_to = &(p_alignedframe[i*(LNF*maxatoms*3) + f*(maxatoms*3) ]);        
             memcpy(p_to,p_from,len*3*sizeof(coor_t));
         }
     }
