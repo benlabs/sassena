@@ -102,6 +102,7 @@ void DataStagerByFrame::stage_firstpartition() {
             p_coordinates[f*3*NA+3*n+2]=p_cset->c3[n];            
         }
         timer_.stop("st:load");
+        delete p_cset;
     }
 }
 
