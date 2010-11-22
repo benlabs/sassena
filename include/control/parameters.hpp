@@ -741,19 +741,11 @@ private:
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
     {
         ar & memory;
-		ar & nodes;
-        ar & barrier;
-        ar & modblock;
-        ar & mode;
     }
 	/////////////////// 
 
 public:
     LimitsStageMemoryParameters memory;
-    size_t nodes;
-    size_t barrier;
-    size_t modblock;
-    std::string mode;
 };
 
 

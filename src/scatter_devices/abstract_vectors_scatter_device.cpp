@@ -60,7 +60,6 @@ AbstractVectorsScatterDevice::AbstractVectorsScatterDevice(
 void AbstractVectorsScatterDevice::print_pre_stage_info() {
     if (allcomm_.rank()==0) {
         Info::Inst()->write("Staging data...");
-        Info::Inst()->write(("limits.stage.nodes=")+boost::lexical_cast<string>(Params::Inst()->limits.stage.nodes));
     }
 }
 

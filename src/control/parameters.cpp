@@ -479,13 +479,7 @@ void Params::read_xml(std::string filename) {
 
 	// START OF limits section //
 
-    // assign default memory limits:
-    limits.stage.nodes = 0; // 0 = automatic, partition size
-    limits.stage.mode = "mod";    
-    if (scattering.type=="all") limits.stage.mode="div";    
-    limits.stage.modblock = 1;        
-    limits.stage.barrier = 1000;
-    
+    // assign default memory limits:    
     limits.stage.memory.buffer = 100*1024*1024;
     limits.stage.memory.data   = 500*1024*1024;
     
@@ -507,20 +501,7 @@ void Params::read_xml(std::string filename) {
     limits.decomposition.partitions.size = 1; // not used if automatic = true, if false -> this determines the partition size
 
 	if (xmli.exists("//limits")) {       	
-	    if (xmli.exists("//limits/stage")) {
-        	if (xmli.exists("//limits/stage/nodes")) {
-    	        limits.stage.nodes = xmli.get_value<size_t>("//limits/stage/nodes");
-	        }	       
-        	if (xmli.exists("//limits/stage/mode")) {
-    	        limits.stage.mode = xmli.get_value<string>("//limits/stage/mode");
-	        }	       
-        	if (xmli.exists("//limits/stage/barrier")) {
-    	        limits.stage.barrier = xmli.get_value<size_t>("//limits/stage/barrier");
-	        }	       
-        	if (xmli.exists("//limits/stage/modblock")) {
-    	        limits.stage.modblock = xmli.get_value<size_t>("//limits/stage/modblock");
-	        }	       
-	         
+	    if (xmli.exists("//limits/stage")) {	         
         	if (xmli.exists("//limits/stage/memory")) {
             	if (xmli.exists("//limits/stage/memory/buffer")) {
         	        limits.stage.memory.buffer = xmli.get_value<size_t>("//limits/stage/memory/buffer");
