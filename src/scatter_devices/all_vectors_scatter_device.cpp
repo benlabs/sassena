@@ -280,7 +280,8 @@ void AllVectorsScatterDevice::compute_serial() {
 	scatterfactors.update(q); // scatter factors only dependent on length of q, hence we can do it once before the loop
             
     current_subvector_=0;
-    
+    memset(atfinal_,0,NF*sizeof(fftw_complex));
+        
     for(size_t i = 0; i < NM; ++i)
     {
         worker1_task(i);
@@ -331,7 +332,8 @@ void AllVectorsScatterDevice::compute_threaded() {
 	scatterfactors.update(q); // scatter factors only dependent on length of q, hence we can do it once before the loop
             
     current_subvector_=0;
-	
+	memset(atfinal_,0,NF*sizeof(fftw_complex));
+    
     worker2_counter = 0;
     worker3_done = false;
     boost::mutex::scoped_lock w3l(worker3_mutex);
