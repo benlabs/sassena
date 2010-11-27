@@ -41,11 +41,9 @@
 class SelfVectorsScatterDevice : public AbstractVectorsScatterDevice {
 protected:
     
+    fftw_complex* at_;
     // first = q, second = frames
-    concurrent_queue< std::pair<size_t,size_t> > at0_;    
-    concurrent_queue< fftw_complex* > at1_;
-    mutable boost::mutex at2_mutex;
-
+    concurrent_queue< std::pair<size_t,size_t> > atscatter_;    
     coor_t* p_coordinates;
     
     //////////////////////////////
@@ -56,21 +54,17 @@ protected:
     
     void stage_data();
     
-
-    void compute_serial();
-    void compute_threaded();    
-    void worker1_task(size_t this_subvector,size_t this_atom);    
-    void worker2_task(fftw_complex* p_a);
     void start_workers();
     void stop_workers();
-    void worker1();
-    void worker2();
+           
+    void worker_scatter();        
+	void compute();	
+	std::queue<boost::thread*> worker_threads;
+    boost::barrier* scatterbarrier;
 
-    volatile size_t worker2_counter;
-    mutable boost::mutex worker2_mutex;    
-    volatile bool worker2_done;
-    boost::condition_variable worker2_notifier;
-    std::queue<boost::thread*> worker_threads;
+    void scatterblock(size_t atomindex, size_t index,size_t count);
+    void store(fftw_complex* at);
+    void dsp(fftw_complex* at);            
         
     ~SelfVectorsScatterDevice();
     fftw_plan fftw_planF_;

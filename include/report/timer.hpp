@@ -97,7 +97,6 @@ public:
 	bool has_key(std::string tk);
 //	Timer& operator+=( Timer& other);
 //	Timer operator+( Timer& other);
-			
 };
 
 #endif 

@@ -26,10 +26,9 @@
 
 using namespace std;
 
-PerformanceAnalyzer::PerformanceAnalyzer(boost::mpi::communicator thisworld, Timer timer) {
+PerformanceAnalyzer::PerformanceAnalyzer(boost::mpi::communicator thisworld, std::map<size_t,Timer>& timermap) {
 	// aggregate all timer on head node
 //	boost::mpi::gather(thisworld,timer,m_alltimer,0);
-	
 
 	// we need: sum , count, mean , variance, min, max
 	double my_sum, my_count, my_mean, my_variance, my_min, my_max;
@@ -49,23 +48,40 @@ PerformanceAnalyzer::PerformanceAnalyzer(boost::mpi::communicator thisworld, Tim
 	all_keyflags.assign(thisworld.size(),0);
 
 	// first negotiate keys 
-	vector<string> my_keys = timer.keys();
+    set<string> my_keys_set;
+    for(std::map<size_t,Timer>::iterator i = timermap.begin(); i != timermap.end(); ++i)
+    {
+        vector<string> keys = i->second.keys();
+        for(size_t i = 0; i < keys.size(); ++i)
+        {
+            my_keys_set.insert(keys[i]);            
+        }
+    }
+    vector<string> my_keys;
+    for(set<string>::iterator i = my_keys_set.begin(); i != my_keys_set.end(); ++i)
+    {
+        my_keys.push_back(*i);
+    }
+    
 	vector< vector<string> > all_keys(thisworld.size());
 
 	boost::mpi::gather(thisworld ,my_keys,all_keys,0);
 	
-	vector<string> common_keys;
+	set<string> common_keys_set;
 	if (thisworld.rank()==0) {
 		for(size_t i = 0; i < all_keys.size(); ++i)
 		{	
-			for(size_t j = 0; j < all_keys[i].size(); ++j)
+			for(vector<string>::iterator j = all_keys[i].begin(); j != all_keys[i].end(); ++j)
 			{
-				if (find(common_keys.begin(),common_keys.end(),all_keys[i][j])==common_keys.end()) common_keys.push_back(all_keys[i][j]);
+                common_keys_set.insert(*j);
 			}
 		}		
 	}
-	
-	
+	vector<string> common_keys;
+    for(set<string>::iterator i = common_keys_set.begin(); i != common_keys_set.end(); ++i)
+    {
+        common_keys.push_back(*i);
+    }
 	boost::mpi::broadcast(thisworld,common_keys,0);
 		
 	for(vector<string>::iterator ti = common_keys.begin(); ti != common_keys.end(); ++ti)
@@ -78,15 +94,51 @@ PerformanceAnalyzer::PerformanceAnalyzer(boost::mpi::communicator thisworld, Tim
 		pm.min = 0;
 		pm.max = 0;
 
-		if ( find(my_keys.begin(),my_keys.end(),*ti)==my_keys.end() ) my_keyflag = 0; else my_keyflag = 1;
+        // iterate over all timer per node first
+        my_sum = 0; my_count = 0; my_mean = 0; my_variance = 0; my_min = 0; my_max = 0;
+        my_keyflag = 0; 
+    	double this_sum, this_count, this_mean, this_variance, this_min, this_max;
+        size_t timer_count = 0;
+        for(std::map<size_t,Timer>::iterator thistimer = timermap.begin(); thistimer != timermap.end(); ++thistimer)
+        {
+            Timer& timer = thistimer->second;
+            vector<string> keys = timer.keys();
+            size_t this_keyflag = 0;
+            if (find(keys.begin(),keys.end(),*ti)!=keys.end()) {
+                this_keyflag = 1;
+            }
+
+    		if (this_keyflag == 1) {
+                timer_count++;
+                
+    			this_sum = timer.sum(*ti);
+    			this_count = timer.count(*ti);
+    			this_mean = timer.mean(*ti);
+    			this_variance = timer.variance(*ti);
+    			this_min = timer.min(*ti);
+    			this_max = timer.max(*ti);			
+
+                my_sum += this_sum;
+                my_count += this_count;
+                if (my_keyflag == 0 ) {
+                    my_min = this_min;
+                    my_max = this_max;
+                } else {
+                    if (my_min>this_min) my_min = this_min;
+                    if (my_max<this_max) my_max = this_max;   
+                }
+                // this mean has to be weighted by the count
+                // correction has to happen afterwards
+                my_mean += this_mean*this_count;
+                my_variance += this_variance*this_count;
+
+                my_keyflag = 1;
+    		}            
+        }
 
 		if (my_keyflag == 1) {
-			my_sum = timer.sum(*ti);
-			my_count = timer.count(*ti);
-			my_mean = timer.mean(*ti);
-			my_variance = timer.variance(*ti);
-			my_min = timer.min(*ti);
-			my_max = timer.max(*ti);			
+            my_mean /= my_count;
+            my_variance /= my_count;
 		}
 		
 		boost::mpi::gather(thisworld ,my_keyflag  , all_keyflags ,0);		

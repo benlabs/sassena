@@ -88,9 +88,9 @@ AbstractScatterDevice::~AbstractScatterDevice() {
 void AbstractScatterDevice::run() {
         
     print_pre_stage_info();
-    timer.start("sd:stage");
+//    timer_[boost::this_thread::id].start("sd:stage");
     stage_data();
-    timer.stop("sd:stage");
+//    timer_[boost::this_thread::id].stop("sd:stage");
     
     print_post_stage_info();
 
@@ -105,9 +105,9 @@ void AbstractScatterDevice::run() {
     memset(atfinal_,0,NF*sizeof(fftw_complex));
 
     print_pre_runner_info();
-    timer.start("sd:runner");
+//    timer.start("sd:runner");
     runner();
-    timer.stop("sd:runner");
+//    timer.stop("sd:runner");
     print_post_runner_info();
 
     // notify the services to finalize
@@ -115,41 +115,22 @@ void AbstractScatterDevice::run() {
     p_hdf5writer_->flush();        
 }
 
-
 void AbstractScatterDevice::runner() {
  
-    bool threads_on = Params::Inst()->limits.computation.threads.on;
-        
-    if (threads_on) {
-         start_workers();
-         while(status()==0) {
+     start_workers();
+     while(status()==0) {
             
-            timer.start("sd:compute");
-         	compute_threaded();
-            timer.stop("sd:compute"); 
+//            timer.start("sd:compute");
+     	compute();
+//            timer.stop("sd:compute"); 
             
-            timer.start("sd:write");        	
-     		write();
-     		timer.stop("sd:write");
+//            timer.start("sd:write");        	
+ 		write();
+//     		timer.stop("sd:write");
             		    
-            next();
-         }             
-         stop_workers();
-    } else {
-        while(status()==0) {
-            
-            timer.start("sd:compute");        	
-            compute_serial();
-            timer.stop("sd:compute");        	
-            
-            
-            timer.start("sd:write");        	
-     		write();
-     		timer.stop("sd:write");
-     				    
-            next();
-        }                     
-    }
+        next();
+     }             
+     stop_workers();
 }
 
 void AbstractScatterDevice::next() {
@@ -172,6 +153,12 @@ void AbstractScatterDevice::write() {
         CartesianCoor3D vector = vectors_[current_vector_]; 
         p_hdf5writer_->write(vector,atfinal_,NF);
     }
+}
+
+std::map<size_t,Timer>& AbstractScatterDevice::getTimer() {
+    // collect timer information from allcomm_
+    
+    return timer_;    
 }
 
 // end of file

@@ -109,8 +109,7 @@ protected:
     virtual double progress() = 0;
 
 public:
-    Timer timer;
-
+    virtual std::map<size_t,Timer>& getTimer() = 0;
     virtual void run() = 0;
 };
 
@@ -136,7 +135,7 @@ protected:
     ScatterFactors scatterfactors;
         
     virtual void stage_data() = 0;
-    virtual void compute_serial() = 0;
+    virtual void compute() = 0;
 
     void next();
     void write();
@@ -149,7 +148,6 @@ protected:
     virtual void print_post_runner_info() {}
     
     // use by threaded version
-    virtual void compute_threaded() = 0;
     virtual void start_workers() = 0;
     virtual void stop_workers() = 0;
         
@@ -157,8 +155,11 @@ protected:
     size_t status();
     double progress();
     
+    std::map<size_t,Timer> timer_;
+    
 public:
-
+    std::map<size_t,Timer>& getTimer();
+    
     AbstractScatterDevice(
         boost::mpi::communicator allcomm,
         boost::mpi::communicator partitioncomm,

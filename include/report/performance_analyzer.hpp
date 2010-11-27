@@ -49,7 +49,7 @@ class PerformanceAnalyzer {
 	void analyze();
 	
 public:
-	PerformanceAnalyzer(boost::mpi::communicator thisworld, Timer timer);
+	PerformanceAnalyzer(boost::mpi::communicator thisworld,std::map<size_t,Timer>& timer);
 	
 	void report();	
     void report_relative(double totaltime);

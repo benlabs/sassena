@@ -29,6 +29,7 @@
 #include <boost/numeric/ublas/matrix.hpp>
 #include <boost/mpi.hpp>
 #include <boost/thread.hpp>
+#include <boost/thread/barrier.hpp>
 #include <fftw3.h>
 
 // other headers
@@ -42,42 +43,30 @@ class AllVectorsScatterDevice : public AbstractVectorsScatterDevice {
 protected:
 
     // first = q, second = frames
-    concurrent_queue< size_t > at0_;    
-    concurrent_queue< std::pair<size_t,fftw_complex*> > at1_;
-    concurrent_queue< fftw_complex* > at2_;
-    mutable fftw_complex* at3_;
-    mutable boost::mutex at3_mutex;
-	std::queue<boost::thread*> worker_threads;
-    
+    fftw_complex* at_;
+        
 	// data, outer loop by frame, inner by atoms, XYZ entries
     coor_t* p_coordinates;
     
-	fftw_complex* scatter(size_t this_subvector);
+	void scatter(size_t this_subvector);
     
     void stage_data();
         
-    void worker1();
-    void worker2();
-    void worker3();
-
-    void worker1_task(size_t this_subvector);
-    void worker2_task(size_t this_subvector,fftw_complex* p_a);
-    void worker3_task(fftw_complex* p_a);
-    
-    volatile size_t worker2_counter;
-    mutable boost::mutex worker3_mutex;
-    mutable boost::mutex worker2_mutex;    
-    volatile bool worker2_done;
-    volatile bool worker3_done;
-    boost::condition_variable worker3_notifier;
-    boost::condition_variable worker2_notifier;
-    
-	void compute_serial();
-	void compute_threaded();	
 	void start_workers();
     void stop_workers();
+   
+    concurrent_queue< size_t > atscatter_;    
+    void worker_scatter();        
+	void compute();	
+	std::queue<boost::thread*> worker_threads;
+    boost::barrier* scatterbarrier;
 
-
+    void scatterblock(size_t index,size_t count);
+    void store(fftw_complex* at);
+    void dsp(fftw_complex* at);
+    fftw_complex* alignpad(fftw_complex* at);
+    fftw_complex* exchange();
+    
     ~AllVectorsScatterDevice();
     fftw_plan fftw_planF_;
     fftw_plan fftw_planB_;

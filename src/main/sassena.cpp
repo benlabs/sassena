@@ -439,8 +439,8 @@ int main(int argc,char* argv[]) {
 	
 	timer.stop("total");
 	
-    Timer performance_timer;
-    if (p_ScatterDevice!=NULL) performance_timer = p_ScatterDevice->timer;
+    std::map<size_t,Timer> performance_timer;
+    if (p_ScatterDevice!=NULL) performance_timer = p_ScatterDevice->getTimer();
     PerformanceAnalyzer perfanal(world,performance_timer); // collect timing information from everybody.
     if (p_ScatterDevice!=NULL) delete p_ScatterDevice;
         

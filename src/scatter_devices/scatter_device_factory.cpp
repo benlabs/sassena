@@ -121,10 +121,10 @@ IScatterDevice* ScatterDeviceFactory::create(
         return NULL;
     }
     
-    vector<size_t> partitionIDs(all_comm.size());
-    for(size_t i = 0; i < all_comm.size(); ++i)
+    vector<size_t> partitionIDs(allcommsize);
+    for(size_t i = 0; i < allcommsize; ++i)
     {
-        partitionIDs[i]=(i*partitions)/all_comm.size();
+        partitionIDs[i]=(i*partitions)/allcommsize;
     }
     
 	// determine the partition this node lives in:
