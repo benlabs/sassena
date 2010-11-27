@@ -26,7 +26,7 @@
 
 using namespace std;
 
-PerformanceAnalyzer::PerformanceAnalyzer(boost::mpi::communicator thisworld, std::map<size_t,Timer>& timermap) {
+PerformanceAnalyzer::PerformanceAnalyzer(boost::mpi::communicator thisworld, std::map<boost::thread::id,Timer>& timermap) {
 	// aggregate all timer on head node
 //	boost::mpi::gather(thisworld,timer,m_alltimer,0);
 
@@ -49,7 +49,7 @@ PerformanceAnalyzer::PerformanceAnalyzer(boost::mpi::communicator thisworld, std
 
 	// first negotiate keys 
     set<string> my_keys_set;
-    for(std::map<size_t,Timer>::iterator i = timermap.begin(); i != timermap.end(); ++i)
+    for(std::map<boost::thread::id,Timer>::iterator i = timermap.begin(); i != timermap.end(); ++i)
     {
         vector<string> keys = i->second.keys();
         for(size_t i = 0; i < keys.size(); ++i)
@@ -99,7 +99,7 @@ PerformanceAnalyzer::PerformanceAnalyzer(boost::mpi::communicator thisworld, std
         my_keyflag = 0; 
     	double this_sum, this_count, this_mean, this_variance, this_min, this_max;
         size_t timer_count = 0;
-        for(std::map<size_t,Timer>::iterator thistimer = timermap.begin(); thistimer != timermap.end(); ++thistimer)
+        for(std::map<boost::thread::id,Timer>::iterator thistimer = timermap.begin(); thistimer != timermap.end(); ++thistimer)
         {
             Timer& timer = thistimer->second;
             vector<string> keys = timer.keys();

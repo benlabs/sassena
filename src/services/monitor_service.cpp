@@ -28,30 +28,9 @@ MonitorService::MonitorService(boost::asio::io_service& io_service,double from,d
 {
    m_listener = NULL;
    m_listener_status = false;
-   m_current = from;
    m_timerlabel = "progress";
 
-   double m_scale = to-from;
-
-    // create a queue of update thresholds
-    update_thresholds.push(0.0001*m_scale);
-    update_thresholds.push(0.001*m_scale);
-    update_thresholds.push(0.005*m_scale);
-    update_thresholds.push(0.01*m_scale);
-    update_thresholds.push(0.02*m_scale);
-    update_thresholds.push(0.03*m_scale);
-    update_thresholds.push(0.04*m_scale);
-    update_thresholds.push(0.05*m_scale);
-    update_thresholds.push(0.1*m_scale);    
-    update_thresholds.push(0.2*m_scale);
-    update_thresholds.push(0.3*m_scale);
-    update_thresholds.push(0.4*m_scale);
-    update_thresholds.push(0.5*m_scale);
-    update_thresholds.push(0.6*m_scale);
-    update_thresholds.push(0.7*m_scale);
-    update_thresholds.push(0.8*m_scale);
-    update_thresholds.push(0.9*m_scale);
-    update_thresholds.push(1.0*m_scale);
+   reset_state();
 }
 
 void MonitorService::run() {
@@ -79,6 +58,10 @@ void MonitorService::listener() {
         
         if (tag==MONITOR_HANGUP) {
             break;
+        }
+        
+        if (tag==MONITOR_RESET) {
+            reset();
         }
         
         if (tag==MONITOR_UPDATE) {
@@ -116,7 +99,48 @@ void MonitorService::hangup() {
     }
 }
 
-void MonitorService::timer_reset() {
+void MonitorService::reset() {
+    reset_state();
+    reset_timer();
+}
+
+void MonitorService::reset_state() {
+   double m_scale = m_to-m_from;
+    m_current = m_from;
+     // create a queue of update thresholds
+    while (!update_thresholds.empty()) { update_thresholds.pop(); }
+    update_thresholds.push(0.0001*m_scale);
+    update_thresholds.push(0.001*m_scale);
+    update_thresholds.push(0.005*m_scale);
+    update_thresholds.push(0.01*m_scale);
+    update_thresholds.push(0.02*m_scale);
+    update_thresholds.push(0.03*m_scale);
+    update_thresholds.push(0.04*m_scale);
+    update_thresholds.push(0.05*m_scale);
+    update_thresholds.push(0.1*m_scale);    
+    update_thresholds.push(0.2*m_scale);
+    update_thresholds.push(0.3*m_scale);
+    update_thresholds.push(0.4*m_scale);
+    update_thresholds.push(0.5*m_scale);
+    update_thresholds.push(0.6*m_scale);
+    update_thresholds.push(0.7*m_scale);
+    update_thresholds.push(0.8*m_scale);
+    update_thresholds.push(0.9*m_scale);
+    update_thresholds.push(0.9*m_scale);
+    update_thresholds.push(0.95*m_scale);
+    update_thresholds.push(0.96*m_scale);
+    update_thresholds.push(0.97*m_scale);
+    update_thresholds.push(0.98*m_scale);
+    update_thresholds.push(0.99*m_scale);
+    update_thresholds.push(0.99*m_scale);
+    update_thresholds.push(0.99*m_scale);
+    update_thresholds.push(0.995*m_scale);
+    update_thresholds.push(0.999*m_scale);
+    update_thresholds.push(0.9999*m_scale);
+    update_thresholds.push(1.0*m_scale);
+}
+
+void MonitorService::reset_timer() {
     m_timer.stop(m_timerlabel);
     m_timer.clear();
     m_timer.start(m_timerlabel);
@@ -197,6 +221,16 @@ void MonitorClient::update(size_t rank,double progress) {
         socket.write_some(boost::asio::buffer(&progress,sizeof(double)));
         socket.close();
     }
+}
+
+void MonitorClient::reset_server() {
+    boost::asio::io_service io_service;
+    boost::asio::ip::tcp::socket socket( io_service );
+        
+    socket.connect(m_endpoint);
+    MonitorTag tag = MONITOR_RESET;
+    socket.write_some(boost::asio::buffer(&tag,sizeof(MonitorTag)));        
+    socket.close();
 }
 
 // end of file

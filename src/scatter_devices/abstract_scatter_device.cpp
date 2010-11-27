@@ -76,6 +76,9 @@ AbstractScatterDevice::AbstractScatterDevice(
         }
         throw;
     }
+    
+    Timer blank_timer;
+    timer_.insert(map<boost::thread::id,Timer>::value_type(boost::this_thread::get_id(),blank_timer));	    
 }
 
 AbstractScatterDevice::~AbstractScatterDevice() {
@@ -86,12 +89,15 @@ AbstractScatterDevice::~AbstractScatterDevice() {
 }
 
 void AbstractScatterDevice::run() {
-        
-    print_pre_stage_info();
-//    timer_[boost::this_thread::id].start("sd:stage");
-    stage_data();
-//    timer_[boost::this_thread::id].stop("sd:stage");
     
+    Timer& timer = timer_[boost::this_thread::get_id()];
+
+    print_pre_stage_info();
+    allcomm_.barrier();
+    timer.start("sd:stage");
+    stage_data();
+    timer.stop("sd:stage");
+    allcomm_.barrier();    
     print_post_stage_info();
 
     if (allcomm_.rank()==0) {
@@ -105,9 +111,11 @@ void AbstractScatterDevice::run() {
     memset(atfinal_,0,NF*sizeof(fftw_complex));
 
     print_pre_runner_info();
-//    timer.start("sd:runner");
+    allcomm_.barrier();
+    timer.start("sd:runner");
     runner();
-//    timer.stop("sd:runner");
+    timer.stop("sd:runner");
+    allcomm_.barrier();
     print_post_runner_info();
 
     // notify the services to finalize
@@ -116,21 +124,71 @@ void AbstractScatterDevice::run() {
 }
 
 void AbstractScatterDevice::runner() {
+
+    Timer& timer = timer_[boost::this_thread::get_id()];
  
      start_workers();
+     p_monitor_->reset_server();
      while(status()==0) {
             
-//            timer.start("sd:compute");
-     	compute();
-//            timer.stop("sd:compute"); 
+         timer.start("sd:compute");
+ 	     compute();
+         timer.stop("sd:compute"); 
             
-//            timer.start("sd:write");        	
- 		write();
-//     		timer.stop("sd:write");
+         timer.start("sd:write");        	
+	     write();
+	     timer.stop("sd:write");
             		    
         next();
      }             
      stop_workers();
+}
+
+
+void AbstractScatterDevice::start_workers() {
+
+    size_t numthreads = Params::Inst()->limits.computation.threads;
+//    if (worker_threads>NM) {
+//        if (allcomm_.rank()==0) {
+//            Warn::Inst()->write("Number of threads limited by resolution for averaging");
+//            Warn::Inst()->write(string("Number of moments (resolution): ")+boost::lexical_cast<string>(NM));
+//            Warn::Inst()->write(string("Number of threads requested: ")+boost::lexical_cast<string>(worker_threads));
+//            Warn::Inst()->write(string("Setting limits.computation.threads.worker=")+boost::lexical_cast<string>(NM));
+//        }
+//        worker_threads = NM;
+//    }
+    
+    if (allcomm_.rank()==0) {
+        if ( (partitioncomm_.size()!=1) &&  (partitioncomm_.size()<long(numthreads)) ) {
+            Warn::Inst()->write("Partition smaller than number of threads.");
+            Warn::Inst()->write("Can not utilize more threads than partition size.");
+            Warn::Inst()->write(string("Setting limits.computation.threads.worker=")+boost::lexical_cast<string>(partitioncomm_.size()));
+        }
+        numthreads = partitioncomm_.size();
+    }
+
+    workerbarrier = new boost::barrier(numthreads+1);
+
+    Timer blank_timer;
+    for(size_t i = 0; i < numthreads; ++i)
+    {
+        boost::thread* p_t = new boost::thread(boost::bind(&AbstractScatterDevice::worker,this));
+        worker_threads.push(p_t);
+        timer_.insert(map<boost::thread::id,Timer>::value_type(p_t->get_id(),blank_timer));	
+    }
+    
+    workerbarrier->wait();
+}
+
+void AbstractScatterDevice::stop_workers() {
+
+    while (worker_threads.size()>0) {
+        boost::thread* p_thread = worker_threads.front();
+        worker_threads.pop();
+        p_thread->interrupt();
+        delete p_thread;
+    }
+    delete workerbarrier;
 }
 
 void AbstractScatterDevice::next() {
@@ -155,7 +213,7 @@ void AbstractScatterDevice::write() {
     }
 }
 
-std::map<size_t,Timer>& AbstractScatterDevice::getTimer() {
+std::map<boost::thread::id,Timer>& AbstractScatterDevice::getTimer() {
     // collect timer information from allcomm_
     
     return timer_;    

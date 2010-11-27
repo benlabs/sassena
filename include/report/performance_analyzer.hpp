@@ -25,6 +25,7 @@
 #include <boost/accumulators/accumulators.hpp>
 #include <boost/accumulators/statistics.hpp>
 #include <boost/mpi.hpp>
+#include <boost/thread.hpp>
 
 // other headers
 #include "report/timer.hpp"
@@ -49,7 +50,7 @@ class PerformanceAnalyzer {
 	void analyze();
 	
 public:
-	PerformanceAnalyzer(boost::mpi::communicator thisworld,std::map<size_t,Timer>& timer);
+	PerformanceAnalyzer(boost::mpi::communicator thisworld,std::map<boost::thread::id,Timer>& timer);
 	
 	void report();	
     void report_relative(double totaltime);

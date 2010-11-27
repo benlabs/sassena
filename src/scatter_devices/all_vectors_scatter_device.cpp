@@ -20,7 +20,6 @@
 #include <boost/accumulators/accumulators.hpp>
 #include <boost/accumulators/statistics.hpp>
 #include <boost/lexical_cast.hpp>
-#include <boost/thread/barrier.hpp>
 
 // other headers
 #include "math/coor3d.hpp"
@@ -59,7 +58,7 @@ AllVectorsScatterDevice::AllVectorsScatterDevice(
 }
 
 void AllVectorsScatterDevice::stage_data() {
-    Timer timer;
+    Timer& timer = timer_[boost::this_thread::get_id()];
     DataStagerByFrame data_stager(sample_,allcomm_,partitioncomm_,assignment_,timer);
     p_coordinates = data_stager.stage();
 }
@@ -77,54 +76,25 @@ AllVectorsScatterDevice::~AllVectorsScatterDevice() {
     }
 }
 
-void AllVectorsScatterDevice::start_workers() {
+void AllVectorsScatterDevice::worker() {
+      
+    workerbarrier->wait();
 
-    //size_t worker3_threads = 1; // fix this at the moment;
-    size_t worker1_threads = Params::Inst()->limits.computation.threads.scatter;
-
-    // don't allow more worker1 threads than NM are available!
-    if (worker1_threads>NM) worker1_threads = NM;
-    
-    if (allcomm_.rank()==0) {
-        if (partitioncomm_.size()<worker1_threads) {
-            Warn::Inst()->write("Partition smaller than number of threads.");
-            Warn::Inst()->write("Can not utilize more threads than partition size.");
-        }
-    }
-    
-    for(size_t i = 0; i < worker1_threads; ++i)
-    {
-        worker_threads.push( new boost::thread(boost::bind(&AllVectorsScatterDevice::worker_scatter,this) ));	
-    }
-    
-    scatterbarrier = new boost::barrier(worker1_threads+1);
-}
-
-void AllVectorsScatterDevice::stop_workers() {
-
-    // implement hangups , i.e. sentinal values
-
-    while (worker_threads.size()>0) {
-        boost::thread* p_thread = worker_threads.front();
-        worker_threads.pop();
-        p_thread->interrupt();
-        delete p_thread;
-    }
-    delete scatterbarrier;
-}
-
-void AllVectorsScatterDevice::worker_scatter() {
-            
+    Timer& timer = timer_[boost::this_thread::get_id()];
+     
     while (true) {
         size_t subvector_index;
+        timer.start("sd:worker:wait");
         atscatter_.wait_and_pop(subvector_index);  
-//        cerr << "popped " << subvector_index << endl;
-//        sleep(3);
+        timer.stop("sd:worker:wait");
+        
         if (subvector_index<NM) {
+            timer.start("sd:worker:scatter");
             scatter(subvector_index);
+            timer.stop("sd:worker:scatter");
         }
 
-        scatterbarrier->wait();
+        workerbarrier->wait();
     }
 }
 
@@ -197,8 +167,12 @@ void AllVectorsScatterDevice::store(fftw_complex* at) {
 void AllVectorsScatterDevice::compute() {
     CartesianCoor3D q=vectors_[current_vector_];
 
+    Timer& timer = timer_[boost::this_thread::get_id()];
+
+    timer.start("sd:c:init");
     init_subvectors(q);
 	scatterfactors.update(q); // scatter factors only dependent on length of q, hence we can do it once before the loop
+    timer.stop("sd:c:init");
 
     DivAssignment zeronode_assignment(partitioncomm_.size(),0,NF);
     size_t NMAXF = zeronode_assignment.size();
@@ -209,6 +183,7 @@ void AllVectorsScatterDevice::compute() {
 
     size_t NMBLOCK = NNPP;
     
+    timer.start("sd:c:block");
     // special case: 1 core, no exchange required
     if (NMBLOCK==1) {
         size_t NTHREADS = worker_threads.size();
@@ -216,16 +191,24 @@ void AllVectorsScatterDevice::compute() {
         memset(at_,0,NF*NTHREADS*sizeof(fftw_complex));
 
         for(size_t i = 0; i < NM; i+=NTHREADS) {
+            timer.start("sd:c:b:scatter");
             scatterblock(i,std::min(NTHREADS,NM-i));
+            timer.stop("sd:c:b:scatter");
+            
+            timer.start("sd:c:b:dspstore");
             for(size_t j = 0; j < std::min(NTHREADS,NM-i); ++j)
             {
-                size_t offset = (j%NTHREADS)*NF;
+                size_t offset = ((j+i)%NTHREADS)*NF;
                 fftw_complex* pat = &(at_[offset]);
                 fftw_complex* nat = alignpad(pat);
                 dsp(nat);
                 store(nat);         
                 fftw_free(nat); nat=NULL;
             }
+            timer.stop("sd:c:b:dspstore");
+            
+            current_subvector_+=NTHREADS;
+            p_monitor_->update(allcomm_.rank(),progress());
         }
                        
     } else {
@@ -233,10 +216,16 @@ void AllVectorsScatterDevice::compute() {
         memset(at_,0,NMAXF*NMBLOCK*sizeof(fftw_complex));
 
         for(size_t i = 0; i < NM; i+=NMBLOCK) {
+            timer.start("sd:c:b:scatter");
             scatterblock(i,std::min(NMBLOCK,NM-i));
-
+            timer.stop("sd:c:b:scatter");
+            
+            timer.start("sd:c:b:exchange");
             fftw_complex* at = exchange();
-            if (partitioncomm_.rank()<std::min(NMBLOCK,NM-i)) {
+            timer.stop("sd:c:b:exchange");
+                        
+            timer.start("sd:c:b:dspstore");
+            if (partitioncomm_.rank()<long(std::min(NMBLOCK,NM-i))) {
                 fftw_complex* nat = alignpad(at);
                 fftw_free(at); at=NULL;
                 dsp(nat);
@@ -244,15 +233,22 @@ void AllVectorsScatterDevice::compute() {
                 fftw_free(nat); nat=NULL;  
             }
             if (at!=NULL) fftw_free(at); 
+            timer.stop("sd:c:b:dspstore");
+            
+            current_subvector_+=std::min(NMBLOCK,NM-i);
+            p_monitor_->update(allcomm_.rank(),progress());    	
         }
         fftw_free(at_);
     }
+    timer.stop("sd:c:block");
 
     p_monitor_->update(allcomm_.rank(),progress());    	
 
+    timer.start("sd:c:wait");
     partitioncomm_.barrier();
+    timer.stop("sd:c:wait");
     
-    
+    timer.start("sd:c:reduce");
     if (NN>1) {
 
         double* p_atfinal = (double*) &(atfinal_[0][0]);
@@ -271,6 +267,7 @@ void AllVectorsScatterDevice::compute() {
             atfinal_ = (fftw_complex*) p_atlocal;
         }
     }
+    timer.stop("sd:c:reduce");
     
     double factor = 1.0/subvector_index_.size();
     if (partitioncomm_.rank()==0) {
@@ -279,7 +276,7 @@ void AllVectorsScatterDevice::compute() {
 }
 
 void AllVectorsScatterDevice::scatterblock(size_t index,size_t count) {
-    size_t SCATTERBLOCK = Params::Inst()->limits.computation.threads.scatter;
+    size_t SCATTERBLOCK = worker_threads.size();
     
 //    cerr << "loop w/ index=" << index << " , count=" << count << endl;
 //    sleep(3);
@@ -288,7 +285,7 @@ void AllVectorsScatterDevice::scatterblock(size_t index,size_t count) {
         atscatter_.push(index+i);
         
         if (((i+1)%SCATTERBLOCK)==0) {
-            scatterbarrier->wait();
+            workerbarrier->wait();
         }
     }
     
@@ -298,7 +295,7 @@ void AllVectorsScatterDevice::scatterblock(size_t index,size_t count) {
         {
             atscatter_.push(NM); // NM will be ignored, but triggers a barrier            
         }
-        scatterbarrier->wait();
+        workerbarrier->wait();
     }
 }
 

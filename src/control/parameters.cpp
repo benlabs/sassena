@@ -485,10 +485,7 @@ void Params::read_xml(std::string filename) {
     
     limits.signal.chunksize = 10000;
         
-    limits.computation.threads.on = false;
-    limits.computation.threads.scatter = 1;
-    limits.computation.threads.scatter_timeout = 25; // 25 ms
-    limits.computation.threads.dsp = 1;
+    limits.computation.threads = 1;
     limits.computation.memory.signal = 200*1024*1024; // 100MB 
 
     limits.services.signal.memory.server = 100*1024*1024; // 100MB
@@ -520,18 +517,7 @@ void Params::read_xml(std::string filename) {
 
     	if (xmli.exists("//limits/computation")) {
         	if (xmli.exists("//limits/computation/threads")) {
-            	if (xmli.exists("//limits/computation/threads/on")) {
-        	        limits.computation.threads.on = xmli.get_value<bool>("//limits/computation/threads/on");
-    	        }
-            	if (xmli.exists("//limits/computation/threads/scatter")) {
-        	        limits.computation.threads.scatter = xmli.get_value<size_t>("//limits/computation/threads/scatter");
-    	        }
-            	if (xmli.exists("//limits/computation/threads/dsp")) {
-        	        limits.computation.threads.dsp = xmli.get_value<size_t>("//limits/computation/threads/dsp");
-    	        }
-            	if (xmli.exists("//limits/computation/threads/scatter_timeout")) {
-        	        limits.computation.threads.scatter_timeout = xmli.get_value<size_t>("//limits/computation/threads/scatter_timeout");
-    	        }
+    	        limits.computation.threads = xmli.get_value<size_t>("//limits/computation/threads");
 	        }
         	if (xmli.exists("//limits/computation/memory")) {
             	if (xmli.exists("//limits/computation/memory/signal")) {

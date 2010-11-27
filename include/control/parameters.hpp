@@ -620,28 +620,6 @@ public:
     size_t signal;
 };
 
-class LimitsComputationThreadsParameters {
-private:
-	/////////////////// MPI related
-	// make this class serializable to 
-	// allow sample to be transmitted via MPI
-    friend class boost::serialization::access;	
-	template<class Archive> void serialize(Archive & ar, const unsigned int version)
-    {
-		ar & on;
-		ar & scatter;
-		ar & dsp;	
-        ar & scatter_timeout;	
-    }
-	/////////////////// 
-
-public:
-    bool on;
-    size_t scatter;
-    size_t scatter_timeout;
-    size_t dsp;    
-};
-
 
 class LimitsComputationParameters {
 private:
@@ -657,7 +635,7 @@ private:
 	/////////////////// 
 
 public:
-    LimitsComputationThreadsParameters threads;
+    size_t threads;
     LimitsComputationMemoryParameters memory;
 };
 

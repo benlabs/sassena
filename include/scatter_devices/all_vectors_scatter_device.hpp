@@ -51,15 +51,10 @@ protected:
 	void scatter(size_t this_subvector);
     
     void stage_data();
-        
-	void start_workers();
-    void stop_workers();
    
     concurrent_queue< size_t > atscatter_;    
-    void worker_scatter();        
+    void worker();        
 	void compute();	
-	std::queue<boost::thread*> worker_threads;
-    boost::barrier* scatterbarrier;
 
     void scatterblock(size_t index,size_t count);
     void store(fftw_complex* at);

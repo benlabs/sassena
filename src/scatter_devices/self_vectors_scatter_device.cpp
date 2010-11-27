@@ -59,7 +59,7 @@ SelfVectorsScatterDevice::SelfVectorsScatterDevice(
 }
 
 void SelfVectorsScatterDevice::stage_data() {
-    Timer timer;
+    Timer& timer = timer_[boost::this_thread::get_id()];    
     DataStagerByAtom data_stager(sample_,allcomm_,partitioncomm_,assignment_,timer);
     p_coordinates = data_stager.stage();
 }
@@ -74,34 +74,6 @@ SelfVectorsScatterDevice::~SelfVectorsScatterDevice() {
     if (atfinal_!=NULL) {
         fftw_free(atfinal_);
         atfinal_=NULL;
-    }
-}
-
-void SelfVectorsScatterDevice::start_workers() {
-
-    size_t worker1_threads = Params::Inst()->limits.computation.threads.scatter;
-    
-    // don't allow more worker1 threads than NM are available!
-    if (worker1_threads>NM) worker1_threads = NM;
-    
-    
-    for(size_t i = 0; i < worker1_threads; ++i)
-    {
-        worker_threads.push( new boost::thread(boost::bind(&SelfVectorsScatterDevice::worker_scatter,this) ));	
-    }
-    
-    scatterbarrier = new boost::barrier(worker1_threads+1);
-}
-
-void SelfVectorsScatterDevice::stop_workers() {
-
-    // implement hangups , i.e. sentinal values
-
-    while (worker_threads.size()>0) {
-        boost::thread* p_thread = worker_threads.front();
-        worker_threads.pop();
-        p_thread->interrupt();
-        delete p_thread;
     }
 }
 
@@ -135,10 +107,15 @@ void SelfVectorsScatterDevice::store(fftw_complex* at) {
 void SelfVectorsScatterDevice::compute() {
     CartesianCoor3D q=vectors_[current_vector_];
 
+    Timer& timer = timer_[boost::this_thread::get_id()];
+
+    timer.start("sd:c:init");
     init_subvectors(q);
 	scatterfactors.update(q); // scatter factors only dependent on length of q, hence we can do it once before the loop
+    timer.stop("sd:c:init");
             
     current_subvector_=0;
+    current_atomindex_=0;
 	memset(atfinal_,0,NF*sizeof(fftw_complex));
     
     size_t NTHREADS = worker_threads.size();
@@ -146,10 +123,16 @@ void SelfVectorsScatterDevice::compute() {
     at_ = (fftw_complex*) fftw_malloc(2*NF*NTHREADS*sizeof(fftw_complex));
     memset(at_,0,2*NF*NTHREADS*sizeof(fftw_complex));
 
+    timer.start("sd:c:block");
     for(size_t n = 0; n < assignment_.size(); ++n)
     {
+        current_subvector_=0;
         for(size_t i = 0; i < NM; i+=NTHREADS) {
+            timer.start("sd:c:b:scatter");
             scatterblock(n,i,std::min(NTHREADS,NM-i));
+            timer.stop("sd:c:b:scatter");
+
+            timer.start("sd:c:b:dspstore");
             for(size_t j = 0; j < std::min(NTHREADS,NM-i); ++j)
             {
                 size_t offset = ((j+i)%NTHREADS)*2*NF;
@@ -157,14 +140,20 @@ void SelfVectorsScatterDevice::compute() {
                 dsp(pat);
                 store(pat);         
             }
+            timer.stop("sd:c:b:dspstore");
+            
+            current_subvector_+=std::min(NTHREADS,NM-i);
+            p_monitor_->update(allcomm_.rank(),progress());
         }
+        current_atomindex_+=1;
     }
-
-    p_monitor_->update(allcomm_.rank(),progress());    	
-
-    partitioncomm_.barrier();
+    timer.stop("sd:c:block");
     
-//    timer.start("sd:reduce");
+    timer.start("sd:c:wait");
+    partitioncomm_.barrier();
+    timer.stop("sd:c:wait");
+    
+    timer.start("sd:c:reduce");
     if (NN>1) {
         double* p_atfinal = (double*) &(atfinal_[0][0]);
 
@@ -183,18 +172,18 @@ void SelfVectorsScatterDevice::compute() {
             atfinal_ = (fftw_complex*) p_atlocal;
         }        
     }
+    timer.stop("sd:c:reduce");
 
     double factor = 1.0/subvector_index_.size();    
     if (partitioncomm_.rank()==0) {
         smath::multiply_elements(factor,atfinal_,NF);
     }
-//    timer.stop("sd:reduce");
     
 }
 
 
 void SelfVectorsScatterDevice::scatterblock(size_t atomindex, size_t index,size_t count) {
-    size_t SCATTERBLOCK = Params::Inst()->limits.computation.threads.scatter;
+    size_t SCATTERBLOCK = worker_threads.size();
     
 //    cerr << "loop w/ index=" << index << " , count=" << count << endl;
 //    sleep(3);
@@ -203,7 +192,7 @@ void SelfVectorsScatterDevice::scatterblock(size_t atomindex, size_t index,size_
         atscatter_.push(make_pair(index+i,atomindex));
         
         if (((i+1)%SCATTERBLOCK)==0) {
-            scatterbarrier->wait();
+            workerbarrier->wait();
         }
     }
     
@@ -213,22 +202,29 @@ void SelfVectorsScatterDevice::scatterblock(size_t atomindex, size_t index,size_
         {
             atscatter_.push(make_pair(NM,atomindex)); // NM will be ignored, but triggers a barrier            
         }
-        scatterbarrier->wait();
+        workerbarrier->wait();
     }
 }
 
-void SelfVectorsScatterDevice::worker_scatter() {
-            
+void SelfVectorsScatterDevice::worker() {
+
+    workerbarrier->wait();
+
+    Timer& timer = timer_[boost::this_thread::get_id()];
+                
     while (true) {
         std::pair<size_t,size_t> vectoratom;
+        timer.start("sd:worker:wait");        
         atscatter_.wait_and_pop(vectoratom);  
-//        cerr << "popped " << subvector_index << endl;
-//        sleep(3);
+        timer.stop("sd:worker:wait");
+        
         if (vectoratom.first<NM) {
+            timer.start("sd:worker:scatter");
             scatter(vectoratom.first,vectoratom.second);
+            timer.stop("sd:worker:scatter");
         }
 
-        scatterbarrier->wait();
+        workerbarrier->wait();
     }
 }
 
@@ -268,4 +264,15 @@ fftw_complex* SelfVectorsScatterDevice::scatter(size_t mi,size_t ai) {
     return p_at_local;
 }
 
+
+double SelfVectorsScatterDevice::progress() {
+    double scale1 = 1.0/vectors_.size();
+    double scale2 = 1.0/assignment_.size();
+    double scale3 = 1.0/subvector_index_.size();
+    
+    double base1 =  current_vector_*scale1;
+    double base2 =  current_atomindex_*scale1*scale2;
+    double base3 =  current_subvector_*scale1*scale2*scale3;
+    return base1 + base2 + base3;
+}
 // end of file

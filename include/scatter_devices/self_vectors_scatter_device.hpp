@@ -45,6 +45,7 @@ protected:
     // first = q, second = frames
     concurrent_queue< std::pair<size_t,size_t> > atscatter_;    
     coor_t* p_coordinates;
+    size_t current_atomindex_;
     
     //////////////////////////////
     // methods
@@ -52,15 +53,12 @@ protected:
     
     fftw_complex* scatter(size_t qindex,size_t aindex);
     
+    double progress();
+    
     void stage_data();
     
-    void start_workers();
-    void stop_workers();
-           
-    void worker_scatter();        
+    void worker();        
 	void compute();	
-	std::queue<boost::thread*> worker_threads;
-    boost::barrier* scatterbarrier;
 
     void scatterblock(size_t atomindex, size_t index,size_t count);
     void store(fftw_complex* at);

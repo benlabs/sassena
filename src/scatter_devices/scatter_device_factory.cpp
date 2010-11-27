@@ -103,8 +103,9 @@ IScatterDevice* ScatterDeviceFactory::create(
     broadcast(scatter_comm,partitions,0);
     broadcast(scatter_comm,partitionsize,0);
     
-    long allcommsize = partitions*partitionsize;
-    size_t sparenodes = scatter_comm.size()-allcommsize;
+    size_t allcommsize = partitions*partitionsize;
+    size_t scattercommsize = scatter_comm.size();
+    size_t sparenodes = scattercommsize-allcommsize;
 
     if (sparenodes>0) {
         if (scatter_comm.rank()==0) {
@@ -113,7 +114,7 @@ IScatterDevice* ScatterDeviceFactory::create(
     }
     
     size_t allcommflag = 0;
-    if (scatter_comm.rank()<allcommsize) allcommflag = 1;
+    if (scatter_comm.rank()<long(allcommsize)) allcommflag = 1;
     boost::mpi::communicator all_comm = scatter_comm.split( allcommflag );
     
     if (allcommflag==0) {

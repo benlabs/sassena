@@ -109,7 +109,7 @@ protected:
     virtual double progress() = 0;
 
 public:
-    virtual std::map<size_t,Timer>& getTimer() = 0;
+    virtual std::map<boost::thread::id,Timer>& getTimer() = 0;
     virtual void run() = 0;
 };
 
@@ -147,18 +147,19 @@ protected:
     virtual void print_pre_runner_info() {}
     virtual void print_post_runner_info() {}
     
-    // use by threaded version
-    virtual void start_workers() = 0;
-    virtual void stop_workers() = 0;
-        
-    
+    void start_workers();
+    void stop_workers();
+    virtual void worker() = 0;
+    std::queue<boost::thread*> worker_threads;
+    boost::barrier* workerbarrier;
+	
     size_t status();
     double progress();
     
-    std::map<size_t,Timer> timer_;
+    std::map<boost::thread::id,Timer> timer_;
     
 public:
-    std::map<size_t,Timer>& getTimer();
+    std::map<boost::thread::id,Timer>& getTimer();
     
     AbstractScatterDevice(
         boost::mpi::communicator allcomm,

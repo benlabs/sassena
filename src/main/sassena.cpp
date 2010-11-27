@@ -413,15 +413,15 @@ int main(int argc,char* argv[]) {
     // start computation tasks
     if (world.rank()==0) Info::Inst()->write("Starting scattering...");
 
-    if (world.rank()==0) {
-        Info::Inst()->write("Resetting progress timer (timer includes stage time)...");   
-    }
-    if (world.rank()==0) p_monitorservice->timer_reset();
     if (p_ScatterDevice!=NULL) p_ScatterDevice->run();
 
     world.barrier();
     
-    if (world.rank()==0) Info::Inst()->write("Scattering finished...");
+    if (world.rank()==0) {
+        // grace period for the monitor thread to update last progress
+        boost::this_thread::sleep(boost::posix_time::milliseconds(25));
+        Info::Inst()->write("Scattering finished...");
+    }
     
     // shutdown services
     if (scatter_comm.rank()==0) {
@@ -439,7 +439,7 @@ int main(int argc,char* argv[]) {
 	
 	timer.stop("total");
 	
-    std::map<size_t,Timer> performance_timer;
+    std::map<boost::thread::id,Timer> performance_timer;
     if (p_ScatterDevice!=NULL) performance_timer = p_ScatterDevice->getTimer();
     PerformanceAnalyzer perfanal(world,performance_timer); // collect timing information from everybody.
     if (p_ScatterDevice!=NULL) delete p_ScatterDevice;

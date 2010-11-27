@@ -32,7 +32,7 @@
 // other headers
 #include "math/coor3d.hpp"
 
-enum MonitorTag {MONITOR_HANGUP,MONITOR_UPDATE};
+enum MonitorTag {MONITOR_HANGUP,MONITOR_UPDATE,MONITOR_RESET};
 
 class MonitorService {
     boost::asio::io_service& m_io_service;
@@ -53,13 +53,15 @@ class MonitorService {
     void listener();
     void update();
     void print();
+    void reset_timer();
+    void reset_state();
     
 public:
     MonitorService(boost::asio::io_service& io_service,double from,double to);
     
     boost::asio::ip::tcp::endpoint get_endpoint() { return m_acceptor.local_endpoint(); }
     
-    void timer_reset();
+    void reset();
     
     void hangup();
     void run();
@@ -71,6 +73,7 @@ class MonitorClient {
     std::queue<double> update_thresholds;
 public:
     MonitorClient(boost::asio::ip::tcp::endpoint server);
+    void reset_server();
     
     void update(size_t rank,double progress);
 };
