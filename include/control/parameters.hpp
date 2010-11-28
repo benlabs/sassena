@@ -612,11 +612,13 @@ private:
     friend class boost::serialization::access;	
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
     {
+        ar & buffer;
 		ar & signal;
     }
 	/////////////////// 
 
 public:
+    size_t buffer;
     size_t signal;
 };
 

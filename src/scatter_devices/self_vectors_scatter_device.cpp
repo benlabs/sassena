@@ -119,7 +119,22 @@ void SelfVectorsScatterDevice::compute() {
 	memset(atfinal_,0,NF*sizeof(fftw_complex));
     
     size_t NTHREADS = worker_threads.size();
+    
+    // total memory requirements during computation:
+    // atfinal = NF
+    // at_ = NTHREADS*2*NF
+    
     // double allocate for zero padding
+    size_t bufferbytesize = Params::Inst()->limits.computation.memory.buffer;
+    size_t bufferbytesize_requested = 2*NF*NTHREADS*sizeof(fftw_complex);
+    if (bufferbytesize_requested>bufferbytesize) {
+        if (allcomm_.rank()==0) {
+            Err::Inst()->write("Computation buffer too small.");
+            Err::Inst()->write(string("limits.computation.memory.buffer=")+boost::lexical_cast<string>(bufferbytesize));
+            Err::Inst()->write(string("requested: ")+boost::lexical_cast<string>(bufferbytesize_requested));            
+        }
+        throw;
+    }
     at_ = (fftw_complex*) fftw_malloc(2*NF*NTHREADS*sizeof(fftw_complex));
     memset(at_,0,2*NF*NTHREADS*sizeof(fftw_complex));
 
@@ -148,6 +163,8 @@ void SelfVectorsScatterDevice::compute() {
         current_atomindex_+=1;
     }
     timer.stop("sd:c:block");
+    
+    fftw_free(at_);
     
     timer.start("sd:c:wait");
     partitioncomm_.barrier();

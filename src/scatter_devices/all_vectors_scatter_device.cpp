@@ -187,6 +187,18 @@ void AllVectorsScatterDevice::compute() {
     // special case: 1 core, no exchange required
     if (NMBLOCK==1) {
         size_t NTHREADS = worker_threads.size();
+        
+        size_t bufferbytesize = Params::Inst()->limits.computation.memory.buffer;
+        size_t bufferbytesize_requested = NF*NTHREADS*sizeof(fftw_complex);
+        bufferbytesize_requested+=2*NF*sizeof(fftw_complex); // account for alignpad here...
+        if (bufferbytesize_requested>bufferbytesize) {
+            if (allcomm_.rank()==0) {
+                Err::Inst()->write("Computation buffer too small.");
+                Err::Inst()->write(string("limits.computation.memory.buffer=")+boost::lexical_cast<string>(bufferbytesize));
+                Err::Inst()->write(string("requested: ")+boost::lexical_cast<string>(bufferbytesize_requested));            
+            }
+            throw;
+        }
         at_ = (fftw_complex*) fftw_malloc(NF*NTHREADS*sizeof(fftw_complex));
         memset(at_,0,NF*NTHREADS*sizeof(fftw_complex));
 
@@ -210,8 +222,22 @@ void AllVectorsScatterDevice::compute() {
             current_subvector_+=NTHREADS;
             p_monitor_->update(allcomm_.rank(),progress());
         }
-                       
+        fftw_free(at_);        
+        
     } else {
+        size_t bufferbytesize = Params::Inst()->limits.computation.memory.buffer;
+        size_t bufferbytesize_requested=0;
+        bufferbytesize_requested+=NMAXF*NMBLOCK*sizeof(fftw_complex); // initial buffer
+        bufferbytesize_requested+=NMAXF*NMBLOCK*sizeof(fftw_complex); // clone during exchange   
+        bufferbytesize_requested+=2*NF*sizeof(fftw_complex); // account for alignpad here...
+        if (bufferbytesize_requested>bufferbytesize) {
+            if (allcomm_.rank()==0) {
+                Err::Inst()->write("Computation buffer too small.");
+                Err::Inst()->write(string("limits.computation.memory.buffer=")+boost::lexical_cast<string>(bufferbytesize));
+                Err::Inst()->write(string("requested: ")+boost::lexical_cast<string>(bufferbytesize_requested));            
+            }
+            throw;
+        }
         at_ = (fftw_complex*) fftw_malloc(NMAXF*NMBLOCK*sizeof(fftw_complex));
         memset(at_,0,NMAXF*NMBLOCK*sizeof(fftw_complex));
 
