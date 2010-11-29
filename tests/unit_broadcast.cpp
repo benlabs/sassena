@@ -248,19 +248,68 @@ int main(int argc,char* argv[]) {
 	timer.start("sample::communication");
     if (world.rank()==0) Info::Inst()->write("params... ");
 
-	broadcast(world,*params,0);
+    std::stringstream paramsstream;
+    char* paramsbuffer = NULL;
+    size_t paramsbuffersize = 0;
+    if (world.rank()==0) {
+        boost::archive::text_oarchive ar(paramsstream); 
+        ar << *params;
+        paramsbuffer = const_cast<char>(paramsbuffer.rdbuf->c_str());
+        paramsbuffersize = paramsbuffer.str().size();
+    }
+	broadcast(world,&paramsbuffersize,1,0);
+    if (world.rank()!=0) {
+        paramsbuffer = (char*) malloc(paramsbuffersize*sizeof(char));
+    }
+	broadcast(world,paramsbuffer,paramsbuffersize,0);
+    if (world.rank()!=0) {
+        free(paramsbuffer);
+    }
 
 	world.barrier();
 
     if (world.rank()==0) Info::Inst()->write("database... ");
 
-	broadcast(world,*database,0);
+
+    std::stringstream databasestream;
+    char* databasebuffer = NULL;
+    size_t databasebuffersize = 0;
+    if (world.rank()==0) {
+        boost::archive::text_oarchive ar(databasestream); 
+        ar << *database;
+        databasebuffer = const_cast<char>(databasebuffer.rdbuf->c_str());
+        databasebuffersize = databasebuffer.str().size();
+    }
+	broadcast(world,&paramsbuffersize,1,0);
+    if (world.rank()!=0) {
+        databasebuffer = (char*) malloc(databasebuffersize*sizeof(char));
+    }
+	broadcast(world,databasebuffer,databasebuffersize,0);
+    if (world.rank()!=0) {
+        free(databasebuffer);
+    }
 
 	world.barrier();
     if (world.rank()==0) Info::Inst()->write("sample... ");
 
-	broadcast(world,sample,0);
 
+    std::stringstream samplestream;
+    char* samplebuffer = NULL;
+    size_t samplebuffersize = 0;
+    if (world.rank()==0) {
+        boost::archive::text_oarchive ar(samplestream); 
+        ar << *sample;
+        samplebuffer = const_cast<char>(samplebuffer.rdbuf->c_str());
+        samplebuffersize = samplebuffer.str().size();
+    }
+	broadcast(world,&samplebuffersize,1,0);
+    if (world.rank()!=0) {
+        samplebuffer = (char*) malloc(samplebuffersize*sizeof(char));
+    }
+	broadcast(world,samplebuffer,samplebuffersize,0);
+    if (world.rank()!=0) {
+        free(samplebuffer);
+    }
 	world.barrier();
 	
 	timer.stop("sample::communication");
