@@ -114,7 +114,7 @@ IScatterDevice* ScatterDeviceFactory::create(
     }
     
     size_t allcommflag = 0;
-    if (scatter_comm.rank()<long(allcommsize)) allcommflag = 1;
+    if (scatter_comm.rank()<allcommsize) allcommflag = 1;
     boost::mpi::communicator all_comm = scatter_comm.split( allcommflag );
     
     if (allcommflag==0) {

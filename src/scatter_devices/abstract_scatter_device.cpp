@@ -158,8 +158,8 @@ void AbstractScatterDevice::start_workers() {
 //        worker_threads = NM;
 //    }
     
-    if (allcomm_.rank()==0) {
-        if ( (partitioncomm_.size()!=1) &&  (partitioncomm_.size()<long(numthreads)) ) {
+    if ( (partitioncomm_.size()!=1) &&  (partitioncomm_.size()<long(numthreads)) ) {
+        if (allcomm_.rank()==0) {
             Warn::Inst()->write("Partition smaller than number of threads.");
             Warn::Inst()->write("Can not utilize more threads than partition size.");
             Warn::Inst()->write(string("Setting limits.computation.threads.worker=")+boost::lexical_cast<string>(partitioncomm_.size()));

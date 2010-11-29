@@ -251,7 +251,7 @@ void AllVectorsScatterDevice::compute() {
             timer.stop("sd:c:b:exchange");
                         
             timer.start("sd:c:b:dspstore");
-            if (partitioncomm_.rank()<long(std::min(NMBLOCK,NM-i))) {
+            if (partitioncomm_.rank()<std::min(NMBLOCK,NM-i)) {
                 fftw_complex* nat = alignpad(at);
                 fftw_free(at); at=NULL;
                 dsp(nat);
