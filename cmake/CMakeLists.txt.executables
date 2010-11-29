@@ -18,6 +18,11 @@ ADD_EXECUTABLE(s_fqt2h5gif
     src/main/s_fqt2h5gif.cpp
 )
 
+ADD_EXECUTABLE(unit_broadcast 
+	src/common.cpp
+    tests/unit_broadcast.cpp
+)
+
 IF(STATIC)
 SET_TARGET_PROPERTIES(sassena PROPERTIES LINK_SEARCH_END_STATIC 1)
 SET_TARGET_PROPERTIES(s_maketnx PROPERTIES LINK_SEARCH_END_STATIC 1)
@@ -53,7 +58,16 @@ TARGET_LINK_LIBRARIES (s_fqt2h5gif
 	${BOOST_LIBRARIES}
 )
 
+TARGET_LINK_LIBRARIES (unit_broadcast 
+	sass_log
+	sass_controlio
+	sass_sample
+	${BOOST_LIBRARIES}
+)
+
 
 INSTALL(TARGETS sassena RUNTIME DESTINATION bin)
 INSTALL(TARGETS s_maketnx RUNTIME DESTINATION bin)
 INSTALL(TARGETS s_genconf RUNTIME DESTINATION bin)
+
+INSTALL(TARGETS unit_broadcast RUNTIME DESTINATION bin)
