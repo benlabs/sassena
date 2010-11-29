@@ -284,7 +284,7 @@ int main(int argc,char* argv[]) {
         databasebuffer = const_cast<char*>(databasestream.str().c_str());
         databasebuffersize = databasestream.str().size();
     }
-	broadcast(world,&paramsbuffersize,1,0);
+	broadcast(world,&databasebuffersize,1,0);
     if (world.rank()!=0) {
         databasebuffer = (char*) malloc(databasebuffersize*sizeof(char));
     }
