@@ -254,8 +254,8 @@ int main(int argc,char* argv[]) {
     if (world.rank()==0) {
         boost::archive::text_oarchive ar(paramsstream); 
         ar << *params;
-        paramsbuffer = const_cast<char>(paramsbuffer.rdbuf->c_str());
-        paramsbuffersize = paramsbuffer.str().size();
+        paramsbuffer = const_cast<char>(paramsstream.rdbuf()->c_str());
+        paramsbuffersize = paramsstream.str().size();
     }
 	broadcast(world,&paramsbuffersize,1,0);
     if (world.rank()!=0) {
@@ -277,8 +277,8 @@ int main(int argc,char* argv[]) {
     if (world.rank()==0) {
         boost::archive::text_oarchive ar(databasestream); 
         ar << *database;
-        databasebuffer = const_cast<char>(databasebuffer.rdbuf->c_str());
-        databasebuffersize = databasebuffer.str().size();
+        databasebuffer = const_cast<char>(databasestream.rdbuf()->c_str());
+        databasebuffersize = databasestream.str().size();
     }
 	broadcast(world,&paramsbuffersize,1,0);
     if (world.rank()!=0) {
@@ -299,8 +299,8 @@ int main(int argc,char* argv[]) {
     if (world.rank()==0) {
         boost::archive::text_oarchive ar(samplestream); 
         ar << *sample;
-        samplebuffer = const_cast<char>(samplebuffer.rdbuf->c_str());
-        samplebuffersize = samplebuffer.str().size();
+        samplebuffer = const_cast<char>(databasestream.rdbuf()->c_str());
+        samplebuffersize = databasestream.str().size();
     }
 	broadcast(world,&samplebuffersize,1,0);
     if (world.rank()!=0) {
