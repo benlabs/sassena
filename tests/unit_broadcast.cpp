@@ -263,6 +263,10 @@ int main(int argc,char* argv[]) {
     }
 	broadcast(world,paramsbuffer,paramsbuffersize,0);
     if (world.rank()!=0) {
+        std::stringstream in;
+        for(size_t i = 0; i < paramsbuffersize; ++i) in << paramsbuffer[i];
+        boost::archive::text_iarchive ar(in); 
+        ar >> *params;
         free(paramsbuffer);
     }
 
@@ -286,6 +290,10 @@ int main(int argc,char* argv[]) {
     }
 	broadcast(world,databasebuffer,databasebuffersize,0);
     if (world.rank()!=0) {
+        std::stringstream in;
+        for(size_t i = 0; i < databasebuffersize; ++i) in << databasebuffer[i];
+        boost::archive::text_iarchive ar(in); 
+        ar >> *database;
         free(databasebuffer);
     }
 
@@ -298,7 +306,7 @@ int main(int argc,char* argv[]) {
     size_t samplebuffersize = 0;
     if (world.rank()==0) {
         boost::archive::text_oarchive ar(samplestream); 
-        ar << *sample;
+        ar << sample;
         samplebuffer = const_cast<char*>(databasestream.str().c_str());
         samplebuffersize = databasestream.str().size();
     }
@@ -308,6 +316,10 @@ int main(int argc,char* argv[]) {
     }
 	broadcast(world,samplebuffer,samplebuffersize,0);
     if (world.rank()!=0) {
+        std::stringstream in;
+        for(size_t i = 0; i < samplebuffersize; ++i) in << samplebuffer[i];
+        boost::archive::text_iarchive ar(in); 
+        ar >> sample;
         free(samplebuffer);
     }
 	world.barrier();
