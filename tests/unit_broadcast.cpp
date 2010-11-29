@@ -46,6 +46,7 @@
 #include "log.hpp"
 #include "report/performance_analyzer.hpp"
 #include "report/timer.hpp"
+#include "mpi/wrapper.hpp"
 #include "sample/sample.hpp"
 #include "scatter_devices/scatter_device_factory.hpp"
 #include "services.hpp"
@@ -249,79 +250,46 @@ int main(int argc,char* argv[]) {
     if (world.rank()==0) Info::Inst()->write("params... ");
 
     std::stringstream paramsstream;
-    char* paramsbuffer = NULL;
-    size_t paramsbuffersize = 0;
     if (world.rank()==0) {
         boost::archive::text_oarchive ar(paramsstream); 
         ar << *params;
-        paramsbuffer = const_cast<char*>(paramsstream.str().c_str());
-        paramsbuffersize = paramsstream.str().size();
     }
-	broadcast(world,&paramsbuffersize,1,0);
+	mpi::wrapper::broadcast_stream(world,paramsstream,0);
     if (world.rank()!=0) {
-        paramsbuffer = (char*) malloc(paramsbuffersize*sizeof(char));
-    }
-	broadcast(world,paramsbuffer,paramsbuffersize,0);
-    if (world.rank()!=0) {
-        std::stringstream in;
-        for(size_t i = 0; i < paramsbuffersize; ++i) in << paramsbuffer[i];
-        boost::archive::text_iarchive ar(in); 
+        boost::archive::text_iarchive ar(paramsstream); 
         ar >> *params;
-        free(paramsbuffer);
     }
 
 	world.barrier();
 
     if (world.rank()==0) Info::Inst()->write("database... ");
 
-
     std::stringstream databasestream;
-    char* databasebuffer = NULL;
-    size_t databasebuffersize = 0;
     if (world.rank()==0) {
         boost::archive::text_oarchive ar(databasestream); 
         ar << *database;
-        databasebuffer = const_cast<char*>(databasestream.str().c_str());
-        databasebuffersize = databasestream.str().size();
     }
-	broadcast(world,&databasebuffersize,1,0);
+	mpi::wrapper::broadcast_stream(world,databasestream,0);
     if (world.rank()!=0) {
-        databasebuffer = (char*) malloc(databasebuffersize*sizeof(char));
-    }
-	broadcast(world,databasebuffer,databasebuffersize,0);
-    if (world.rank()!=0) {
-        std::stringstream in;
-        for(size_t i = 0; i < databasebuffersize; ++i) in << databasebuffer[i];
-        boost::archive::text_iarchive ar(in); 
+        boost::archive::text_iarchive ar(databasestream); 
         ar >> *database;
-        free(databasebuffer);
     }
 
 	world.barrier();
+    
     if (world.rank()==0) Info::Inst()->write("sample... ");
 
-
     std::stringstream samplestream;
-    char* samplebuffer = NULL;
-    size_t samplebuffersize = 0;
     if (world.rank()==0) {
         boost::archive::text_oarchive ar(samplestream); 
         ar << sample;
-        samplebuffer = const_cast<char*>(samplestream.str().c_str());
-        samplebuffersize = samplestream.str().size();
     }
-	broadcast(world,&samplebuffersize,1,0);
+	mpi::wrapper::broadcast_stream(world,samplestream,0);
     if (world.rank()!=0) {
-        samplebuffer = (char*) malloc(samplebuffersize*sizeof(char));
-    }
-	broadcast(world,samplebuffer,samplebuffersize,0);
-    if (world.rank()!=0) {
-        std::stringstream in;
-        for(size_t i = 0; i < samplebuffersize; ++i) in << samplebuffer[i];
-        boost::archive::text_iarchive ar(in); 
+        boost::archive::text_iarchive ar(samplestream); 
         ar >> sample;
-        free(samplebuffer);
     }
+    
 	world.barrier();
 	
 	timer.stop("sample::communication");

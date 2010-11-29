@@ -62,6 +62,8 @@ TARGET_LINK_LIBRARIES (unit_broadcast
 	sass_log
 	sass_controlio
 	sass_sample
+	sass_report
+	sass_mpi
 	${BOOST_LIBRARIES}
 )
 
