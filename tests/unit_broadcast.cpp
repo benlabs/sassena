@@ -307,8 +307,8 @@ int main(int argc,char* argv[]) {
     if (world.rank()==0) {
         boost::archive::text_oarchive ar(samplestream); 
         ar << sample;
-        samplebuffer = const_cast<char*>(databasestream.str().c_str());
-        samplebuffersize = databasestream.str().size();
+        samplebuffer = const_cast<char*>(samplestream.str().c_str());
+        samplebuffersize = samplestream.str().size();
     }
 	broadcast(world,&samplebuffersize,1,0);
     if (world.rank()!=0) {
