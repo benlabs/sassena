@@ -128,7 +128,17 @@ void AbstractScatterDevice::runner() {
     Timer& timer = timer_[boost::this_thread::get_id()];
  
      start_workers();
-     if (allcomm_.rank()==0) p_monitor_->reset_server();
+     
+     size_t samplingfactor = Params::Inst()->limits.services.monitor.sampling;
+     if (samplingfactor==0) {
+         samplingfactor = allcomm_.size()/100;
+         if (allcomm_.size()<100) samplingfactor=1;
+     }
+     p_monitor_->set_samplingfactor(samplingfactor);
+     if (allcomm_.rank()==0) {
+         p_monitor_->set_samplingfactor_server(samplingfactor);
+         p_monitor_->reset_server();
+     }
      while(status()==0) {
             
          timer.start("sd:compute");
