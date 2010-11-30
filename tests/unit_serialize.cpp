@@ -150,9 +150,9 @@ int main(int argc,char* argv[]) {
 	Err::Inst();
 	Warn::Inst();
 	
-	Info::Inst()->set_prefix(boost::lexical_cast<string>(string(".Info>>"));
-	Warn::Inst()->set_prefix(boost::lexical_cast<string>(string(".Warn>>"));
-	Err::Inst()->set_prefix(boost::lexical_cast<string>(string(".Err>>"));
+	Info::Inst()->set_prefix(boost::lexical_cast<string>(string(".Info>>")));
+	Warn::Inst()->set_prefix(boost::lexical_cast<string>(string(".Warn>>")));
+	Err::Inst()->set_prefix(boost::lexical_cast<string>(string(".Err>>")));
 	
 	Params* params = Params::Inst();
 	Database* database = Database::Inst();

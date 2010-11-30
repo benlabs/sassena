@@ -113,6 +113,9 @@ TARGET_LINK_LIBRARIES (sass_report
 )
 
 TARGET_LINK_LIBRARIES (sass_mpi
+    sass_log	
+	sass_controlio
+	sass_sample
 	${Boost_LIBRARIES}
 )
 

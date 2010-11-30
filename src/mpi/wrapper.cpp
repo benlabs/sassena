@@ -12,6 +12,13 @@
 #include <sstream>
 
 #include <boost/mpi.hpp>
+#include <boost/archive/text_oarchive.hpp>
+#include <boost/archive/text_iarchive.hpp>
+
+#include "control/database.hpp"
+#include "control/parameters.hpp"
+#include "sample.hpp"
+
 using namespace std;
 
 namespace mpi {
@@ -38,19 +45,24 @@ namespace mpi {
             }
         }
         
-        class<T> void broadcast_class(boost::mpi::communicator& comm,T& any, size_t root) {
+        template <class T> void broadcast_class(boost::mpi::communicator& comm,T& any, size_t root) {
             std::stringstream stream;
-            if (world.rank()==0) {
+            if (comm.rank()==root) {
                 boost::archive::text_oarchive ar(stream); 
-                ar << *any;
+                ar << any;
             }
-        	mpi::wrapper::broadcast_stream(world,stream,root);
-            if (world.rank()!=0) {
+        	mpi::wrapper::broadcast_stream(comm,stream,root);
+            if (comm.rank()!=root) {
                 boost::archive::text_iarchive ar(stream); 
-                ar >> *any;
+                ar >> any;
             }
         }
     }
 }
+
+template void mpi::wrapper::broadcast_class<Sample>(boost::mpi::communicator& comm,Sample& any, size_t root);
+template void mpi::wrapper::broadcast_class<Database>(boost::mpi::communicator& comm,Database& any, size_t root);
+template void mpi::wrapper::broadcast_class<Params>(boost::mpi::communicator& comm,Params& any, size_t root);
+
 
 // end of file

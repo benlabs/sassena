@@ -249,7 +249,7 @@ int main(int argc,char* argv[]) {
 	timer.start("sample::communication");
     if (world.rank()==0) Info::Inst()->write("params... ");
 
-    broadcast_class<Params>(world,*params,0);
+    mpi::wrapper::broadcast_class<Params>(world,*params,0);
 
 //    std::stringstream paramsstream;
 //    if (world.rank()==0) {
@@ -266,7 +266,7 @@ int main(int argc,char* argv[]) {
 
     if (world.rank()==0) Info::Inst()->write("database... ");
     
-    broadcast_class<Database>(world,*database,0);
+    mpi::wrapper::broadcast_class<Database>(world,*database,0);
 //    std::stringstream databasestream;
 //    if (world.rank()==0) {
 //        boost::archive::text_oarchive ar(databasestream); 
@@ -282,7 +282,7 @@ int main(int argc,char* argv[]) {
     
     if (world.rank()==0) Info::Inst()->write("sample... ");
 
-    broadcast_class<Sample>(world,sample,0);
+    mpi::wrapper::broadcast_class<Sample>(world,sample,0);
 
 //    std::stringstream samplestream;
 //    if (world.rank()==0) {
