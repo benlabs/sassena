@@ -588,6 +588,26 @@ public:
     LimitsServicesSignalTimesParameters times;    
 };
 
+
+class LimitsServicesMonitorParameters {
+private:
+	/////////////////// MPI related
+	// make this class serializable to 
+	// allow sample to be transmitted via MPI
+    friend class boost::serialization::access;	
+	template<class Archive> void serialize(Archive & ar, const unsigned int version)
+    {
+		ar & delay;
+        ar & sampling;
+    }
+	/////////////////// 
+
+public:
+    size_t delay;
+    size_t sampling;
+};
+
+
 class LimitsServicesParameters {
 private:
 	/////////////////// MPI related
@@ -597,11 +617,13 @@ private:
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
     {
 		ar & signal;
+        ar & monitor;
     }
 	/////////////////// 
 
 public:
     LimitsServicesSignalParameters signal;
+    LimitsServicesMonitorParameters monitor;
 };
 
 class LimitsComputationMemoryParameters {

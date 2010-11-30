@@ -128,7 +128,7 @@ void AbstractScatterDevice::runner() {
     Timer& timer = timer_[boost::this_thread::get_id()];
  
      start_workers();
-     p_monitor_->reset_server();
+     if (allcomm_.rank()==0) p_monitor_->reset_server();
      while(status()==0) {
             
          timer.start("sd:compute");

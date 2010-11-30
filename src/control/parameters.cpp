@@ -493,6 +493,9 @@ void Params::read_xml(std::string filename) {
     limits.services.signal.memory.client = 10*1024*1024; // 10MB
     limits.services.signal.times.serverflush = 600; // 600 seconds
     limits.services.signal.times.clientflush = 600; // 600 seconds
+
+    limits.services.monitor.delay = 1; // 1 second
+    limits.services.monitor.sampling = 1; //  seconds
     
     limits.decomposition.utilization = 0.95; // 5% max loss
     limits.decomposition.partitions.automatic = true; // pick number of independent partitions based on some heuristics
@@ -550,6 +553,17 @@ void Params::read_xml(std::string filename) {
     	        }    	        
 	        }
 	    }
+	    if (xmli.exists("//limits/services")) {
+        	if (xmli.exists("//limits/services/monitor")) {
+            	if (xmli.exists("//limits/services/monitor/delay")) {
+    	            limits.services.monitor.delay = xmli.get_value<size_t>("//limits/services/monitor/delay");
+    	        }    	        
+            	if (xmli.exists("//limits/services/monitor/sampling")) {
+    	            limits.services.monitor.sampling = xmli.get_value<size_t>("//limits/services/monitor/sampling");
+    	        }    	        
+	        }
+	    }	    
+	    
     	if (xmli.exists("//limits/decomposition")) {
         	if (xmli.exists("//limits/decomposition/utilization")) {
 			    limits.decomposition.utilization = xmli.get_value<double>("//limits/decomposition/utilization");

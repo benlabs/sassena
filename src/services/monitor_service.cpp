@@ -14,6 +14,7 @@
 
 #include <boost/lexical_cast.hpp>
 #include <boost/filesystem.hpp>
+#include <boost/random/uniform_int.hpp>
 #include <log.hpp>
 #include <control.hpp>
 #include <report/timer.hpp>
@@ -195,6 +196,9 @@ MonitorClient::MonitorClient(boost::asio::ip::tcp::endpoint server) : m_endpoint
         p+=0.01;
     }
     update_thresholds.push(1.0);
+    
+    lastupdate_ = boost::posix_time::second_clock::universal_time();  
+    updatecounter_ = 0;
 }
 
 void MonitorClient::update(size_t rank,double progress) {
@@ -209,17 +213,38 @@ void MonitorClient::update(size_t rank,double progress) {
         update_thresholds.pop();
         if (update_thresholds.size()<1) break;
     }
+        
+    updatecounter_++;
+    if (update_thresholds.size()!=0) {
+        // first test sampling criteria
+
+        if ((updatecounter_%Params::Inst()->limits.services.monitor.sampling)!=0) return;
+        
+        // then test for minimum time delay
+        if ((boost::posix_time::second_clock::universal_time()-lastupdate_) <=
+            (boost::posix_time::seconds(Params::Inst()->limits.services.monitor.delay)) )
+        {
+                return;
+        }
+    }
+        
     if (update_thresholds.size()!=oldsize) {
         // setup monitoring service
         boost::asio::io_service io_service;
         boost::asio::ip::tcp::socket socket( io_service );
-        
-        socket.connect(m_endpoint);
-        MonitorTag tag = MONITOR_UPDATE;
-        socket.write_some(boost::asio::buffer(&tag,sizeof(MonitorTag)));        
-        socket.write_some(boost::asio::buffer(&rank,sizeof(size_t)));
-        socket.write_some(boost::asio::buffer(&progress,sizeof(double)));
-        socket.close();
+
+        lastupdate_ = boost::posix_time::second_clock::universal_time();        
+        try {
+            socket.connect(m_endpoint);
+            MonitorTag tag = MONITOR_UPDATE;
+            socket.write_some(boost::asio::buffer(&tag,sizeof(MonitorTag)));        
+            socket.write_some(boost::asio::buffer(&rank,sizeof(size_t)));
+            socket.write_some(boost::asio::buffer(&progress,sizeof(double)));
+            socket.close();            
+        } catch(...) {
+            Warn::Inst()->write("Unable to send update to monitor server");
+            Warn::Inst()->write("Increase debug.monitor.update.delay and/or debug.monitor.update.sampling");
+        }
     }
 }
 

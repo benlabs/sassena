@@ -71,6 +71,9 @@ class MonitorClient {
     boost::asio::ip::tcp::endpoint m_endpoint;
     
     std::queue<double> update_thresholds;
+    
+    boost::posix_time::ptime lastupdate_;  
+    size_t updatecounter_;
 public:
     MonitorClient(boost::asio::ip::tcp::endpoint server);
     void reset_server();
