@@ -495,7 +495,7 @@ void Params::read_xml(std::string filename) {
     limits.services.signal.times.clientflush = 600; // 600 seconds
 
     limits.services.monitor.delay = 1; // 1 second
-    limits.services.monitor.sampling = 1; //  seconds
+    limits.services.monitor.sampling = 0; // 0 = automatic 
     
     limits.decomposition.utilization = 0.95; // 5% max loss
     limits.decomposition.partitions.automatic = true; // pick number of independent partitions based on some heuristics
