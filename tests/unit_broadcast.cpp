@@ -191,7 +191,7 @@ int main(int argc,char* argv[]) {
     }
 
 
-    broadcast(world,initstatus,0);            	
+    broadcast(world,&initstatus,1,0);            	
 	// if something went wrong during initialization, exit now.
     if (!initstatus) return 1;
 
@@ -225,7 +225,7 @@ int main(int argc,char* argv[]) {
         }
     }
     
-    broadcast(world,initstatus,0);            	
+    broadcast(world,&initstatus,1,0);            	
 	// if something went wrong during initialization, exit now.
     if (!initstatus) return 1;
     
@@ -251,49 +251,17 @@ int main(int argc,char* argv[]) {
 
     mpi::wrapper::broadcast_class<Params>(world,*params,0);
 
-//    std::stringstream paramsstream;
-//    if (world.rank()==0) {
-//        boost::archive::text_oarchive ar(paramsstream); 
-//        ar << *params;
-//    }
-//	mpi::wrapper::broadcast_stream(world,paramsstream,0);
-//    if (world.rank()!=0) {
-//        boost::archive::text_iarchive ar(paramsstream); 
-//        ar >> *params;
-//    }
-
 	world.barrier();
 
     if (world.rank()==0) Info::Inst()->write("database... ");
     
     mpi::wrapper::broadcast_class<Database>(world,*database,0);
-//    std::stringstream databasestream;
-//    if (world.rank()==0) {
-//        boost::archive::text_oarchive ar(databasestream); 
-//        ar << *database;
-//    }
-//	mpi::wrapper::broadcast_stream(world,databasestream,0);
-//    if (world.rank()!=0) {
-//        boost::archive::text_iarchive ar(databasestream); 
-//        ar >> *database;
-//    }
 
 	world.barrier();
     
     if (world.rank()==0) Info::Inst()->write("sample... ");
 
     mpi::wrapper::broadcast_class<Sample>(world,sample,0);
-
-//    std::stringstream samplestream;
-//    if (world.rank()==0) {
-//        boost::archive::text_oarchive ar(samplestream); 
-//        ar << sample;
-//    }
-//	mpi::wrapper::broadcast_stream(world,samplestream,0);
-//    if (world.rank()!=0) {
-//        boost::archive::text_iarchive ar(samplestream); 
-//        ar >> sample;
-//    }
     
 	world.barrier();
 	

@@ -22,6 +22,7 @@
 
 #include "control.hpp"
 #include "log.hpp"
+#include "mpi/wrapper.hpp"
 #include "report/timer.hpp"
 
 using namespace std;
@@ -82,7 +83,7 @@ PerformanceAnalyzer::PerformanceAnalyzer(boost::mpi::communicator thisworld, std
     {
         common_keys.push_back(*i);
     }
-	boost::mpi::broadcast(thisworld,common_keys,0);
+    mpi::wrapper::broadcast_class<vector<string> >(thisworld,common_keys,0);
 		
 	for(vector<string>::iterator ti = common_keys.begin(); ti != common_keys.end(); ++ti)
 	{

@@ -46,6 +46,7 @@
 #include "log.hpp"
 #include "report/performance_analyzer.hpp"
 #include "report/timer.hpp"
+#include "mpi/wrapper.hpp"
 #include "sample/sample.hpp"
 #include "scatter_devices/scatter_device_factory.hpp"
 #include "services.hpp"
@@ -203,7 +204,7 @@ int main(int argc,char* argv[]) {
     }
 
 
-    broadcast(world,initstatus,0);            	
+    broadcast(world,&initstatus,1,0);            	
 	// if something went wrong during initialization, exit now.
     if (!initstatus) return 1;
 
@@ -237,7 +238,7 @@ int main(int argc,char* argv[]) {
         }
     }
     
-    broadcast(world,initstatus,0);            	
+    broadcast(world,&initstatus,1,0);            	
 	// if something went wrong during initialization, exit now.
     if (!initstatus) return 1;
     
@@ -260,24 +261,15 @@ int main(int argc,char* argv[]) {
 
 	timer.start("sample::communication");
     if (world.rank()==0) Info::Inst()->write("params... ");
-
-	broadcast(world,*params,0);
-
+    mpi::wrapper::broadcast_class<Params>(world,*params,0);
 	world.barrier();
-
     if (world.rank()==0) Info::Inst()->write("database... ");
-
-	broadcast(world,*database,0);
-
+    mpi::wrapper::broadcast_class<Database>(world,*database,0);
 	world.barrier();
     if (world.rank()==0) Info::Inst()->write("sample... ");
-
-	broadcast(world,sample,0);
-
+    mpi::wrapper::broadcast_class<Sample>(world,sample,0);
 	world.barrier();
-	
 	timer.stop("sample::communication");
-
 
 	//------------------------------------------//
 	//
@@ -355,12 +347,12 @@ int main(int argc,char* argv[]) {
             Info::Inst()->write("Broadcasting hangup to all nodes. Have a nice day!");
         }
     }
-    broadcast(world,initstatus,0);            	
+    broadcast(world,&initstatus,1,0);            	
     if (!initstatus) return 1;
     
     // communicate some global parameters
     size_t nq=qvectors.size();
-    broadcast(scatter_comm,nq,0);
+    broadcast(scatter_comm,&nq,1,0);
     if (scatter_comm.rank()!=0) {
         qvectors.resize(nq);
     }
@@ -377,9 +369,10 @@ int main(int argc,char* argv[]) {
     }    
     if (world.rank()==0) Info::Inst()->write("Broadcasting service information");	
 
-    broadcast(scatter_comm,host_str,0);
-    broadcast(scatter_comm,fileservice_port_str,0);
-    broadcast(scatter_comm,monitorservice_port_str,0);
+    mpi::wrapper::broadcast_class<std::string>(scatter_comm,host_str,0);
+    mpi::wrapper::broadcast_class<std::string>(scatter_comm,fileservice_port_str,0);
+    mpi::wrapper::broadcast_class<std::string>(scatter_comm,monitorservice_port_str,0);
+
     if (world.rank()==0) {
         Info::Inst()->write(string("Server host name    : ")+host_str);	
         Info::Inst()->write(string("FileService Port    : ")+fileservice_port_str);	

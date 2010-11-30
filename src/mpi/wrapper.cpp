@@ -12,8 +12,8 @@
 #include <sstream>
 
 #include <boost/mpi.hpp>
-#include <boost/archive/text_oarchive.hpp>
-#include <boost/archive/text_iarchive.hpp>
+#include <boost/archive/binary_oarchive.hpp>
+#include <boost/archive/binary_iarchive.hpp>
 
 #include "control/database.hpp"
 #include "control/parameters.hpp"
@@ -29,34 +29,34 @@ namespace mpi {
             size_t buffersize = 0;
 
             if (comm.rank()==root) {
-                stream.seekg(0,ios_base::beg);                                
-                buffer = const_cast<char*>(stream.str().c_str());
                 stream.seekg(0,ios_base::end);
                 buffersize = stream.tellg();
-                stream.seekg(0,ios_base::beg);                                            
             }
             boost::mpi::broadcast(comm,&buffersize,1,root);
 
-            if (comm.rank()!=root) {
-                buffer = (char*) malloc(buffersize*sizeof(char));
+            buffer = (char*) malloc(buffersize*sizeof(char));
+
+            if (comm.rank()==root) {
+                stream.seekg(0,ios_base::beg);                                            
+                stream.read(buffer,buffersize);
             }
             boost::mpi::broadcast(comm,buffer,buffersize,root);
-
             if (comm.rank()!=root) {
-                for(size_t i = 0; i < buffersize; ++i) stream << buffer[i];
-                free(buffer);
+                stream.write(buffer,buffersize);
             }
+            free(buffer);
+
         }
         
         template <class T> void broadcast_class(boost::mpi::communicator& comm,T& any, size_t root) {
-            std::stringstream stream;
+            std::stringstream stream(stringstream::in|stringstream::out|stringstream::binary);
             if (comm.rank()==root) {
-                boost::archive::text_oarchive ar(stream); 
+                boost::archive::binary_oarchive ar(stream); 
                 ar << any;
             }
         	mpi::wrapper::broadcast_stream(comm,stream,root);
             if (comm.rank()!=root) {
-                boost::archive::text_iarchive ar(stream); 
+                boost::archive::binary_iarchive ar(stream); 
                 ar >> any;
             }
         }
@@ -66,6 +66,7 @@ namespace mpi {
 template void mpi::wrapper::broadcast_class<Sample>(boost::mpi::communicator& comm,Sample& any, size_t root);
 template void mpi::wrapper::broadcast_class<Database>(boost::mpi::communicator& comm,Database& any, size_t root);
 template void mpi::wrapper::broadcast_class<Params>(boost::mpi::communicator& comm,Params& any, size_t root);
-
+template void mpi::wrapper::broadcast_class<std::vector<std::string> >(boost::mpi::communicator& comm,std::vector<std::string>& any, size_t root);
+template void mpi::wrapper::broadcast_class<std::string>(boost::mpi::communicator& comm,std::string& any, size_t root);
 
 // end of file

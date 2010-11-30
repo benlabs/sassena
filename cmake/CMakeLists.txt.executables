@@ -44,6 +44,7 @@ TARGET_LINK_LIBRARIES (sassena
 	sass_report
 	sass_decomposition
 	sass_scatter_devices
+	sass_mpi
 	${BOOST_LIBRARIES}
 )
 

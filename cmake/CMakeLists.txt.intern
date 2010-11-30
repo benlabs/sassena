@@ -106,16 +106,17 @@ TARGET_LINK_LIBRARIES (sass_sample
 	${Boost_LIBRARIES}
 )
 
-TARGET_LINK_LIBRARIES (sass_report
-	sass_log	
-	sass_controlio
-	${Boost_LIBRARIES}
-)
-
 TARGET_LINK_LIBRARIES (sass_mpi
     sass_log	
 	sass_controlio
 	sass_sample
+	${Boost_LIBRARIES}
+)
+
+TARGET_LINK_LIBRARIES (sass_report
+	sass_log	
+	sass_controlio
+	sass_mpi
 	${Boost_LIBRARIES}
 )
 

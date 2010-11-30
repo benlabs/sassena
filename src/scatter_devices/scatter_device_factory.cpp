@@ -100,8 +100,8 @@ IScatterDevice* ScatterDeviceFactory::create(
         partitionsize = dplan.partitionsize();
     }
 
-    broadcast(scatter_comm,partitions,0);
-    broadcast(scatter_comm,partitionsize,0);
+    broadcast(scatter_comm,&partitions,1,0);
+    broadcast(scatter_comm,&partitionsize,1,0);
     
     size_t allcommsize = partitions*partitionsize;
     size_t scattercommsize = scatter_comm.size();
