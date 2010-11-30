@@ -29,8 +29,11 @@ namespace mpi {
             size_t buffersize = 0;
 
             if (comm.rank()==root) {
+                stream.seekg(0,ios_base::beg);                                
                 buffer = const_cast<char*>(stream.str().c_str());
-                buffersize = stream.str().size();
+                stream.seekg(0,ios_base::end);
+                buffersize = stream.tellg();
+                stream.seekg(0,ios_base::beg);                                            
             }
             boost::mpi::broadcast(comm,&buffersize,1,root);
 
