@@ -16,6 +16,8 @@
 namespace mpi {
     namespace wrapper {
         void broadcast_stream(boost::mpi::communicator& comm,std::stringstream& stream, size_t root);        
+        
+        class<T> void broadcast_class(boost::mpi::communicator& comm,T& any, size_t root);
     }
 }
 

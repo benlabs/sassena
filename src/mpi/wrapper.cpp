@@ -37,6 +37,19 @@ namespace mpi {
                 free(buffer);
             }
         }
+        
+        class<T> void broadcast_class(boost::mpi::communicator& comm,T& any, size_t root) {
+            std::stringstream stream;
+            if (world.rank()==0) {
+                boost::archive::text_oarchive ar(stream); 
+                ar << *any;
+            }
+        	mpi::wrapper::broadcast_stream(world,stream,root);
+            if (world.rank()!=0) {
+                boost::archive::text_iarchive ar(stream); 
+                ar >> *any;
+            }
+        }
     }
 }
 

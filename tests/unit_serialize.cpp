@@ -21,7 +21,6 @@
 #include <vector>
 
 // special library headers
-#include <boost/asio.hpp>
 #include <boost/date_time.hpp>
 #include <boost/regex.hpp>
 #include <boost/accumulators/accumulators.hpp>
@@ -30,8 +29,6 @@
 #include <boost/archive/text_iarchive.hpp>
 #include <boost/exception/all.hpp>
 #include <boost/filesystem.hpp>
-#include <boost/mpi.hpp>
-#include <boost/math/special_functions.hpp>
 #include <boost/program_options.hpp>
 #include <boost/serialization/complex.hpp>
 #include <boost/serialization/map.hpp>
@@ -39,17 +36,9 @@
 #include <boost/thread.hpp>
 
 // other headers
-#include "math/coor3d.hpp"
-#include "decomposition/decompose.hpp"
-#include "decomposition/decomposition_plan.hpp"
 #include "control.hpp"
 #include "log.hpp"
-#include "report/performance_analyzer.hpp"
-#include "report/timer.hpp"
-#include "mpi/wrapper.hpp"
 #include "sample/sample.hpp"
-#include "scatter_devices/scatter_device_factory.hpp"
-#include "services.hpp"
 
 #include "SassenaConfig.hpp"
 
@@ -152,14 +141,6 @@ void detect_parameters() {
 
 int main(int argc,char* argv[]) {
 
-	//------------------------------------------//
-	//
-	// MPI Initialization
-	//
-	//------------------------------------------//
-  	boost::mpi::environment env(argc, argv);
-  	boost::mpi::communicator world;
-
     // The rank 0 node is responsible for the progress output and to inform the user
     // compute nodes should be silent all the time, except when errors occur.
     // In that case the size and the rank should be included into the error message in the following way:
@@ -169,71 +150,31 @@ int main(int argc,char* argv[]) {
 	Err::Inst();
 	Warn::Inst();
 	
-	Info::Inst()->set_prefix(boost::lexical_cast<string>(world.rank())+string(".Info>>"));
-	Warn::Inst()->set_prefix(boost::lexical_cast<string>(world.rank())+string(".Warn>>"));
-	Err::Inst()->set_prefix(boost::lexical_cast<string>(world.rank())+string(".Err>>"));
+	Info::Inst()->set_prefix(boost::lexical_cast<string>(string(".Info>>"));
+	Warn::Inst()->set_prefix(boost::lexical_cast<string>(string(".Warn>>"));
+	Err::Inst()->set_prefix(boost::lexical_cast<string>(string(".Err>>"));
 	
 	Params* params = Params::Inst();
 	Database* database = Database::Inst();
 
 	Sample sample;
 	
-	Timer timer;
-	timer.start("total");
-
     bool initstatus = true;
 		
     po::variables_map vm;    
-    if (world.rank()==0) {
-        print_title();
-        print_description();
-        initstatus = init_commandline(argc,argv,vm);
-    }
+    print_title();
+    print_description();
+    initstatus = init_commandline(argc,argv,vm);
 
 
-    broadcast(world,initstatus,0);            	
-	// if something went wrong during initialization, exit now.
-    if (!initstatus) return 1;
-
-    if (world.rank()==0) print_initialization();
-	if (world.rank()==0) {
+print_initialization();
 	    
-		try {
+params->init(vm["config"].as<string>());
+database->init(vm["database"].as<string>());	    
+sample.init();
 
-    		timer.start("sample::setup");
-	    
-            params->init(vm["config"].as<string>());
-
-            database->init(vm["database"].as<string>());
-	    
-            sample.init();
-		
-		    timer.stop("sample::setup");
-		    
-        } catch (boost::exception const& e ) {
-            initstatus = false; 
-            Err::Inst()->write("Caught BOOST error, sending hangup to all nodes");
-            stringstream ss; ss << diagnostic_information(e);
-            Err::Inst()->write(string("Diagnotic information: ") + ss.str());
-        } catch (std::exception const& e) {
-            initstatus = false; 
-            Err::Inst()->write("Caught STD error, sending hangup to all nodes");
-            Err::Inst()->write(string("what() : ") + e.what());
-        } catch (...) {
-            initstatus = false; 
-            Err::Inst()->write("Caught error: UNKNOWN sending hangup to all nodes");
-        }
-    }
-    
-    broadcast(world,initstatus,0);            	
-	// if something went wrong during initialization, exit now.
-    if (!initstatus) return 1;
-    
-    if (world.rank()==0) detect_parameters();
-    
-    if (world.rank()==0) read_parameters(vm);
-    
-	if (world.rank()==0) Info::Inst()->write(string("Set background scattering length density set to ")+boost::lexical_cast<string>(Params::Inst()->scattering.background.factor));
+detect_parameters();    
+read_parameters(vm);
 		
 	//------------------------------------------//
 	//
@@ -242,63 +183,49 @@ int main(int argc,char* argv[]) {
 	//
 	//------------------------------------------//
 
-	if (world.rank()==0) Info::Inst()->write("Exchanging sample, database & params information with compute nodes... ");
-    
-	world.barrier();
+Info::Inst()->write("Exchanging sample, database & params information with compute nodes... ");
+Info::Inst()->write("params... ");
+Info::Inst()->write("database... ");
+Info::Inst()->write("sample... ");
 
-	timer.start("sample::communication");
-    if (world.rank()==0) Info::Inst()->write("params... ");
 
-    broadcast_class<Params>(world,*params,0);
 
-//    std::stringstream paramsstream;
-//    if (world.rank()==0) {
-//        boost::archive::text_oarchive ar(paramsstream); 
-//        ar << *params;
-//    }
-//	mpi::wrapper::broadcast_stream(world,paramsstream,0);
-//    if (world.rank()!=0) {
-//        boost::archive::text_iarchive ar(paramsstream); 
-//        ar >> *params;
-//    }
 
-	world.barrier();
+// params
 
-    if (world.rank()==0) Info::Inst()->write("database... ");
-    
-    broadcast_class<Database>(world,*database,0);
-//    std::stringstream databasestream;
-//    if (world.rank()==0) {
-//        boost::archive::text_oarchive ar(databasestream); 
-//        ar << *database;
-//    }
-//	mpi::wrapper::broadcast_stream(world,databasestream,0);
-//    if (world.rank()!=0) {
-//        boost::archive::text_iarchive ar(databasestream); 
-//        ar >> *database;
-//    }
 
-	world.barrier();
-    
-    if (world.rank()==0) Info::Inst()->write("sample... ");
+// database
 
-    broadcast_class<Sample>(world,sample,0);
+std::stringstream paramsstream;
+{
+    boost::archive::text_oarchive ar(paramsstream);
+    ar << *params;
+}
+{
+    boost::archive::text_iarchive ar(paramsstream);
+    ar >> *params;    
+}
 
-//    std::stringstream samplestream;
-//    if (world.rank()==0) {
-//        boost::archive::text_oarchive ar(samplestream); 
-//        ar << sample;
-//    }
-//	mpi::wrapper::broadcast_stream(world,samplestream,0);
-//    if (world.rank()!=0) {
-//        boost::archive::text_iarchive ar(samplestream); 
-//        ar >> sample;
-//    }
-    
-	world.barrier();
-	
-	timer.stop("sample::communication");
+std::stringstream databasestream;
+{
+    boost::archive::text_oarchive ar(databasestream);
+    ar << *database;
+}
+{
+    boost::archive::text_iarchive ar(databasestream);
+    ar >> *database;    
+}
 
-	if (world.rank()==0) Info::Inst()->write("done");
+std::stringstream samplestream;
+{
+    boost::archive::text_oarchive ar(samplestream);
+    ar << sample;
+}
+{
+    boost::archive::text_iarchive ar(samplestream);
+    ar >> sample;    
+}	
+
+Info::Inst()->write("done");
 
 }
