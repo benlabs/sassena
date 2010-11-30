@@ -262,13 +262,13 @@ void AllVectorsScatterDevice::compute() {
             timer.stop("sd:c:b:dspstore");
             
             current_subvector_+=std::min(NMBLOCK,NM-i);
+            timer.start("sd:c:b:progress");
             p_monitor_->update(allcomm_.rank(),progress());    	
+            timer.stop("sd:c:b:progress");
         }
         fftw_free(at_);
     }
     timer.stop("sd:c:block");
-
-    p_monitor_->update(allcomm_.rank(),progress());    	
 
     timer.start("sd:c:wait");
     partitioncomm_.barrier();

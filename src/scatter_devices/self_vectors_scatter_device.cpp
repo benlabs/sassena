@@ -158,7 +158,11 @@ void SelfVectorsScatterDevice::compute() {
             timer.stop("sd:c:b:dspstore");
             
             current_subvector_+=std::min(NTHREADS,NM-i);
+
+            timer.start("sd:c:b:progress");
             p_monitor_->update(allcomm_.rank(),progress());
+            timer.stop("sd:c:b:progress");
+
         }
         current_atomindex_+=1;
     }
