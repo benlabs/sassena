@@ -38,18 +38,33 @@ void Frames::test_framenumber(size_t framenumber) {
 	}
 }
 
-size_t Frames::add_frameset(const std::string filename,const std::string filetype,size_t first, size_t last, bool last_set, size_t stride,const std::string index_filename) {
+size_t Frames::add_frameset(const std::string filename,const std::string filetype,size_t first, size_t last, bool last_set, size_t stride,const std::string index_filename,size_t clones) {
+	
+    if (clones==0) return 0;
 	
 	// Detect frame type
 	if (filetype=="dcd") {
+        size_t this_number_of_frames =0;
 		// create an empty frameset and then initialize w/ filename
-		Frameset* fsp = new DCDFrameset(filename, number_of_frames);
+		DCDFrameset* fsp = new DCDFrameset(filename, number_of_frames);
         fsp->generate_index();
         fsp->trim_index(first,  last,  last_set,  stride);
 		framesets.push_back(fsp);
+		
+        Frameset* p_frameset = static_cast<Frameset*>(fsp);
+						
 		// increase frame counter
 		number_of_frames += fsp->number_of_frames;
-		return fsp->number_of_frames;
+		this_number_of_frames += fsp->number_of_frames;
+        for(size_t i = 1; i < clones; ++i)
+        {
+    		Frameset* fspc = new CloneFrameset(p_frameset,number_of_frames);
+			framesets.push_back(fspc);
+    		number_of_frames += fspc->number_of_frames;	
+    		this_number_of_frames += fspc->number_of_frames;		    
+		}
+		
+		return this_number_of_frames;
 	}
 	else if (filetype=="dcdlist") {
 		// read text file line by line
@@ -59,12 +74,17 @@ size_t Frames::add_frameset(const std::string filename,const std::string filetyp
 		while (listfile >> line) {
 			// skip empty lines or lines prepended w/ a '#' !
 			if ((line.size() >0) && (line.substr(0,1) == "#")) continue;
-			total_number_of_frames += add_frameset(line.c_str(), "dcd", first,  last,  last_set,  stride,index_filename);
+            for(size_t i = 0; i < clones; ++i)
+            {
+    			total_number_of_frames += add_frameset(line.c_str(), "dcd", first,  last,  last_set,  stride,index_filename,1);                
+            }
 		}
 		return total_number_of_frames;
 	}
 	else if (filetype=="pdb") {
-		Frameset* fsp = new PDBFrameset(filename,number_of_frames);
+        size_t this_number_of_frames =0;
+
+		FileFrameset* fsp = new PDBFrameset(filename,number_of_frames);
 		if (!boost::filesystem::exists(index_filename)) {
             Err::Inst()->write(string("Frameset ")+filename+string(" requires an Index file. "));
             Err::Inst()->write(string("No Frameset Index found at given location: ")+index_filename);
@@ -73,9 +93,21 @@ size_t Frames::add_frameset(const std::string filename,const std::string filetyp
 	    fsp->load_index(index_filename);
         fsp->trim_index(first,  last,  last_set,  stride);
 		framesets.push_back(fsp);
+		
+		Frameset* p_frameset = static_cast<Frameset*>(fsp);
+						
 		// increase frame counter
 		number_of_frames += fsp->number_of_frames;
-		return fsp->number_of_frames;		
+		this_number_of_frames += fsp->number_of_frames;
+        for(size_t i = 1; i < clones; ++i)
+        {
+    		Frameset* fspc = new CloneFrameset(p_frameset,number_of_frames);
+			framesets.push_back(fspc);
+    		number_of_frames += fspc->number_of_frames;	
+    		this_number_of_frames += fspc->number_of_frames;		    
+		}
+		
+		return this_number_of_frames;		
 	}
 	else if (filetype=="pdblist") {
 		// read text file line by line
@@ -84,14 +116,19 @@ size_t Frames::add_frameset(const std::string filename,const std::string filetyp
 		size_t total_number_of_frames = 0;		
 		while (listfile >> line) {
 			// skip empty lines or lines prepended w/ a '#' !
-			if ((line.size() >0) && (line.substr(0,1) == "#")) continue;			
-			total_number_of_frames += add_frameset(line.c_str(), "pdb",first,  last,  last_set,  stride,index_filename);
+			if ((line.size() >0) && (line.substr(0,1) == "#")) continue;
+			for(size_t i = 0; i < clones; ++i)
+            {			
+			    total_number_of_frames += add_frameset(line.c_str(), "pdb",first,  last,  last_set,  stride,index_filename,1);
+			}
 		}
 		return total_number_of_frames;		
 	}
 	else if (filetype=="xtc") {
+        size_t this_number_of_frames =0;
+        	    
 		// create an empty frameset and then initialize w/ filename
-		Frameset* fsp = new XTCFrameset(filename, number_of_frames);
+		FileFrameset* fsp = new XTCFrameset(filename, number_of_frames);
 		if (!boost::filesystem::exists(index_filename)) {
             Err::Inst()->write(string("Frameset ")+filename+string(" requires an Index file. "));
             Err::Inst()->write(string("No Frameset Index found at given location: ")+index_filename);
@@ -101,13 +138,27 @@ size_t Frames::add_frameset(const std::string filename,const std::string filetyp
 		fsp->load_index(index_filename);
 		fsp->trim_index(first,  last,  last_set,  stride);
 		framesets.push_back(fsp);
+		
+		Frameset* p_frameset = static_cast<Frameset*>(fsp);
+						
 		// increase frame counter
 		number_of_frames += fsp->number_of_frames;
-		return fsp->number_of_frames;
+		this_number_of_frames += fsp->number_of_frames;
+        for(size_t i = 1; i < clones; ++i)
+        {
+    		Frameset* fspc = new CloneFrameset(p_frameset,number_of_frames);
+			framesets.push_back(fspc);
+    		number_of_frames += fspc->number_of_frames;	
+    		this_number_of_frames += fspc->number_of_frames;		    
+		}
+		
+		return this_number_of_frames;
 	}	
 	else if (filetype=="trr") {
+        size_t this_number_of_frames =0;
+        	    
 		// create an empty frameset and then initialize w/ filename
-		Frameset* fsp = new TRRFrameset(filename, number_of_frames);
+		FileFrameset* fsp = new TRRFrameset(filename, number_of_frames);
 		if (!boost::filesystem::exists(index_filename)) {
             Err::Inst()->write(string("Frameset ")+filename+string(" requires an Index file. "));
             Err::Inst()->write(string("No Frameset Index found at given location: ")+index_filename);
@@ -117,9 +168,21 @@ size_t Frames::add_frameset(const std::string filename,const std::string filetyp
 		fsp->load_index(index_filename);  
 		fsp->trim_index(first,  last,  last_set,  stride);
 		framesets.push_back(fsp);
+
+		Frameset* p_frameset = static_cast<Frameset*>(fsp);
+						
 		// increase frame counter
 		number_of_frames += fsp->number_of_frames;
-		return fsp->number_of_frames;
+		this_number_of_frames += fsp->number_of_frames;
+        for(size_t i = 1; i < clones; ++i)
+        {
+    		Frameset* fspc = new CloneFrameset(p_frameset,number_of_frames);
+			framesets.push_back(fspc);
+    		number_of_frames += fspc->number_of_frames;	
+    		this_number_of_frames += fspc->number_of_frames;		    
+		}
+		
+		return this_number_of_frames;
 	}
 	else {
 		cerr << "ERROR>> filetype '" << filetype << "' not supported." << endl;
@@ -146,22 +209,17 @@ Frameset& Frames::find_frameset(size_t framenumber) {
 	throw;
 }
 
-size_t Frames::scope_framenumber(size_t framenumber) {
-	Frameset& fs = find_frameset(framenumber);
-	return (framenumber - fs.frame_number_offset);
-}
-
 Frame Frames::load(size_t framenumber) {
 	Frameset& fs = find_frameset(framenumber);
 
 	// prepare empty frame
     Frame cf;		
-	fs.read_frame(scope_framenumber(framenumber),cf);
+	fs.read_frame(framenumber,cf);
 	
     return cf;
 }
 
-void Frameset::trim_index(size_t first,size_t last,bool last_set,size_t stride) {
+void FileFrameset::trim_index(size_t first,size_t last,bool last_set,size_t stride) {
 	
 	vector<std::ios::streamoff> lfo;
 	
@@ -183,7 +241,7 @@ void Frameset::trim_index(size_t first,size_t last,bool last_set,size_t stride) 
     }
     number_of_frames = frameset_index_.size();
 }
-void Frameset::load_index(std::string index_filename) {
+void FileFrameset::load_index(std::string index_filename) {
     
     frameset_index_.load(index_filename);
     std::vector<char> sig = FramesetIndex::generate_signature(filename);
@@ -194,7 +252,7 @@ void Frameset::load_index(std::string index_filename) {
     }    
 }
 
-void Frameset::save_index(std::string index_filename) {
+void FileFrameset::save_index(std::string index_filename) {
     frameset_index_.save(index_filename);
 }
 
@@ -302,7 +360,9 @@ bool DCDFrameset::detect(const string filename) {
 	if ( (memcmp(&buf[0],&fp1[0],4)==0) && (memcmp(&buf[88],&fp1[0],4)==0) && (memcmp(&buf[4],&fp2[0],4)==0) ) return true;	else return false;
 }
 
-void DCDFrameset::read_frame(size_t internalframenumber,Frame& cf) {
+void DCDFrameset::read_frame(size_t framenumber,Frame& cf) {
+
+    size_t internalframenumber = framenumber - frame_number_offset;
 
 	ifstream dcdfile(filename.c_str());
 	
@@ -454,7 +514,9 @@ bool PDBFrameset::detect(const string filename) {
 	if (atomentry) return true; else return false;
 }
 
-void PDBFrameset::read_frame(size_t internalframenumber,Frame& cf) {
+void PDBFrameset::read_frame(size_t framenumber,Frame& cf) {
+
+    size_t internalframenumber = framenumber - frame_number_offset;
 
 	ifstream pdbfile(filename.c_str());
 	
@@ -576,8 +638,10 @@ bool XTCFrameset::detect(const string filename) {
 	if (retval==exdrOK) return true; else return false;
 }
 
-void XTCFrameset::read_frame(size_t internalframenumber,Frame& cf) {
+void XTCFrameset::read_frame(size_t framenumber,Frame& cf) {
 	
+	size_t internalframenumber = framenumber - frame_number_offset;
+    
 	// read a specific frame
     XDRFILE* p_xdrfile =  xdrfile_open(const_cast<char*>(filename.c_str()),"r");	
     if (p_xdrfile==NULL) {
@@ -694,8 +758,10 @@ bool TRRFrameset::detect(const string filename) {
 	if (retval==exdrOK) return true; else return false;
 }
 
-void TRRFrameset::read_frame(size_t internalframenumber,Frame& cf) {
+void TRRFrameset::read_frame(size_t framenumber,Frame& cf) {
 	
+	size_t internalframenumber = framenumber - frame_number_offset;
+    
 	// read a specific frame
     XDRFILE* p_xdrfile =  xdrfile_open(const_cast<char*>(filename.c_str()),"r");	
     if (p_xdrfile==NULL) {
@@ -731,6 +797,20 @@ void TRRFrameset::read_frame(size_t internalframenumber,Frame& cf) {
 	free(coords);
 	
 	xdrfile_close(p_xdrfile);
+}
+
+CloneFrameset::CloneFrameset(Frameset* original, size_t nof) {
+    p_originalframeset = original;
+    frame_number_offset = nof;
+    number_of_frames = original->number_of_frames;
+    number_of_atoms = original->number_of_atoms;
+}
+
+void CloneFrameset::read_frame(size_t framenumber,Frame& cf) {
+    // delegate to original frameset
+    size_t internalframenumber = framenumber - frame_number_offset;
+	
+    p_originalframeset->read_frame(internalframenumber+p_originalframeset->frame_number_offset,cf);
 }
 
 // end of file

@@ -173,7 +173,7 @@ int main(int argc,char* argv[]) {
 
     std::string format = vm["format"].as<string>();
 
-    Frameset* p_fs;
+    FileFrameset* p_fs;
     if (format=="dcd") {
         p_fs = new DCDFrameset(trjpath.string(),0);
     } else if (format=="pdb") {

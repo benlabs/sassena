@@ -36,40 +36,42 @@
 // these constructs are to be used w/ in the code the following way:
 // string fs = Params::Inst()->sample.structure.file
 
- class DatabaseExlusionParameters {
- private:
- 	/////////////////// MPI related
- 	// make this class serializable to 
- 	// allow sample to be transmitted via MPI
-     friend class boost::serialization::access;	
- 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
-     {
- 		ar & m_functiontypes;
- 		ar & m_constants;
- 		ar & m_quicklookup;
- 		ar & quicklookup_counter;
-     }
- 	/////////////////// 
+class DatabaseExlusionParameters {
+friend class Database;      
+private:
+	/////////////////// MPI related
+	// make this class serializable to 
+	// allow sample to be transmitted via MPI
+    friend class boost::serialization::access;	
+	template<class Archive> void serialize(Archive & ar, const unsigned int version)
+    {
+		ar & m_functiontypes;
+		ar & m_constants;
+		ar & m_quicklookup;
+		ar & quicklookup_counter;
+    }
+	/////////////////// 
 
- 	std::map<size_t,size_t> m_functiontypes;
- 	std::map<size_t,std::vector<double> > m_constants;
- 	std::map<size_t,double> m_quicklookup; // use a quicklookup table for 
- 	size_t quicklookup_counter;
+	std::map<size_t,size_t> m_functiontypes;
+	std::map<size_t,std::vector<double> > m_constants;
+	std::map<size_t,double> m_quicklookup; // use a quicklookup table for 
+	size_t quicklookup_counter;
 
- 	void add_quicklookup(size_t ID, double value); 
- 	void clear_quicklookup();
+	void add_quicklookup(size_t ID, double value); 
+	void clear_quicklookup();
 
- public:	
- 	DatabaseExlusionParameters() : quicklookup_counter(0) {}
+public:	
+	DatabaseExlusionParameters() : quicklookup_counter(0) {}
 
- //	void reg(std::string label, std::vector<double> constants,size_t function_type);
- //	double get(std::string label);
- 	void reg(size_t ID, std::vector<double> constants,size_t function_type);
- 	double get(size_t ID,double effvolume,double q);
+//	void reg(std::string label, std::vector<double> constants,size_t function_type);
+//	double get(std::string label);
+	void reg(size_t ID, std::vector<double> constants,size_t function_type);
+	double get(size_t ID,double effvolume,double q);
 
- };
+};
 
 class DatabaseVolumesParameters {
+friend class Database;         
 private:
 	/////////////////// MPI related
 	// make this class serializable to 
@@ -103,6 +105,7 @@ public:
 };
 
 class DatabaseSFactorsParameters {
+friend class Database;     
 private:
 	/////////////////// MPI related
 	// make this class serializable to 
@@ -135,6 +138,7 @@ public:
 };
 
 class DatabaseMassesParameters {
+friend class Database;         
 private:
 	/////////////////// MPI related
 	// make this class serializable to 
@@ -154,6 +158,7 @@ public:
 
 
 class DatabaseAtomIDsParameters {
+friend class Database;    
 private:
 	/////////////////// MPI related
 	// make this class serializable to 
@@ -182,6 +187,7 @@ public:
 };
 
 class DatabaseNamesPDBParameters {
+friend class Database;        
 private:
 	/////////////////// MPI related
 	// make this class serializable to 
@@ -211,6 +217,7 @@ public:
 };
 
 class DatabaseNamesParameters {
+friend class Database;     
 private:
 	/////////////////// MPI related
 	// make this class serializable to 
@@ -223,6 +230,7 @@ private:
 	/////////////////// 
 
 public:
+    
 	DatabaseNamesPDBParameters pdb;
 };
 

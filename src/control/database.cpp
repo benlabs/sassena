@@ -155,7 +155,83 @@ string Database::guessformat(string filename) {
 }
 
 bool Database::check() {
+    
 	// implement a sanity check for the database
+
+	// check whether pdb names resolve to registered atoms
+    Info::Inst()->write("Testing mapping between PDB names and atom labels");
+    for(map<string,string>::iterator pdblabels = names.pdb.m_label2regexp.begin();pdblabels!=names.pdb.m_label2regexp.end();pdblabels++) {
+        string label = pdblabels->first;
+        if (atomIDs.m_IDs.find(label)==atomIDs.m_IDs.end()) {
+            Err::Inst()->write("Database faulty");
+            Err::Inst()->write(string("The following pdb names entry points to a label which has not been registered at all:"));
+            Err::Inst()->write(string("label: ")+ pdblabels->first);
+            Err::Inst()->write(string("regexp: ")+ pdblabels->second);
+            Err::Inst()->write(string("Add a definition with the above label to the definition files for masses,sfactors,..."));            
+            return false;
+        }
+    }
+
+	// check whether the definitions for an atom is complete
+	// masses
+	// sfactors
+	// exclusionfactors
+	// volumes
+	
+	Info::Inst()->write("Testing database completeness for referenced atom labels");
+	// only focus on those which are actually referenced by the pdb mapping
+    for(map<string,string>::iterator pdblabels = names.pdb.m_label2regexp.begin();pdblabels!=names.pdb.m_label2regexp.end();pdblabels++) {
+//    for(map<string,size_t>::iterator atoms = atomIDs.m_IDs.begin();atoms!=atomIDs.m_IDs.end();atoms++) {
+//        string label = atoms->first;
+
+        string label = pdblabels->first;
+        size_t id = atomIDs.get(label);
+        if (masses.m_masses.find(id)==masses.m_masses.end()) {
+            Err::Inst()->write("Database definition incomplete");
+            Err::Inst()->write(string("Atom with label '")+label+string("' is missing a mass entry"));
+            Err::Inst()->write(string("Add the missing definition to proceed"));            
+            return false;
+        }
+        if (volumes.m_functiontypes.find(id)==volumes.m_functiontypes.end()) {
+            Err::Inst()->write("Database definition incomplete");
+            Err::Inst()->write(string("Atom with label '")+label+string("' is missing a function type for the volume entry"));
+            Err::Inst()->write(string("Add the missing definition to proceed"));            
+            return false;
+        }
+        if (volumes.m_constants.find(id)==volumes.m_constants.end()) {
+            Err::Inst()->write("Database definition incomplete");
+            Err::Inst()->write(string("Atom with label '")+label+string("' is missing constants for the volume entry"));
+            Err::Inst()->write(string("Add the missing entries to proceed"));            
+            return false;
+        }
+        if (sfactors.m_functiontypes.find(id)==sfactors.m_functiontypes.end()) {
+            Err::Inst()->write("Database definition incomplete");
+            Err::Inst()->write(string("Atom with label '")+label+string("' is missing a function type for the scattering factor entry"));
+            Err::Inst()->write(string("Add the missing definition to proceed"));            
+            return false;
+        }
+        if (sfactors.m_constants.find(id)==sfactors.m_constants.end()) {
+            Err::Inst()->write("Database definition incomplete");
+            Err::Inst()->write(string("Atom with label '")+label+string("' is missing constants for the scattering factor entry"));
+            Err::Inst()->write(string("Add the missing entries to proceed"));            
+            return false;
+        }
+        if (exclusionfactors.m_functiontypes.find(id)==exclusionfactors.m_functiontypes.end()) {
+            Err::Inst()->write("Database definition incomplete");
+            Err::Inst()->write(string("Atom with label '")+label+string("' is missing a function type for the exclusion factor entry"));
+            Err::Inst()->write(string("Add the missing definition to proceed"));            
+            return false;
+        }
+        if (exclusionfactors.m_constants.find(id)==exclusionfactors.m_constants.end()) {
+            Err::Inst()->write("Database definition incomplete");
+            Err::Inst()->write(string("Atom with label '")+label+string("' is missing constants for the exclusion factor entry"));
+            Err::Inst()->write(string("Add the missing entries to proceed"));            
+            return false;
+        }
+    }
+	
+	
+	
 	return true;
 }
 

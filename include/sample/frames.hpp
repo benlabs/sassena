@@ -35,10 +35,12 @@
 
 // Forward:
 class Frameset;
+class FileFrameset;
 class DCDFrameset;
 class PDBFrameset;
 class TRRFrameset;
 class XTCFrameset;
+class CloneFrameset;
 
 ////////////////////////////////////////////////////////////////////////////////
 // wrapper class to 'store' frames in
@@ -50,6 +52,7 @@ class Frames {
     {
 		ar & number_of_frames;
 		// list all possible derived classes for Frameset
+        ar.register_type(static_cast<CloneFrameset*>(NULL));
         ar.register_type(static_cast<DCDFrameset*>(NULL));
         ar.register_type(static_cast<PDBFrameset*>(NULL));
         ar.register_type(static_cast<XTCFrameset*>(NULL));
@@ -66,8 +69,6 @@ class Frames {
 	// maps a global framenumber to a specific framseet
 	Frameset& find_frameset(size_t framenumber);
 
-	// translate global framenumber into frameset specific one
-	size_t scope_framenumber(size_t framenumber);
 	void test_framenumber(size_t framenumber);
 	
 public:
@@ -78,7 +79,7 @@ public:
 	size_t size();
 	
 	// push a frameset, frameset is specialized
-	size_t add_frameset(const std::string filename,const std::string filetype,size_t first, size_t last, bool last_set, size_t stride,const std::string index_filename);
+	size_t add_frameset(const std::string filename,const std::string filetype,size_t first, size_t last, bool last_set, size_t stride,const std::string index_filename,size_t clones);
 
 	// load a Frame
 	Frame load(size_t framenumber);	
@@ -95,8 +96,25 @@ class Frameset {
     {
 		ar & frame_number_offset;
 		ar & number_of_frames;
-		ar & filename;	
 		ar & number_of_atoms;
+    }
+
+public:
+	size_t frame_number_offset;
+	size_t number_of_frames;
+	size_t number_of_atoms;
+
+    // derived classes have to support this!
+    virtual void read_frame(size_t framenumber,Frame& cf) = 0;
+	
+};
+
+class FileFrameset : public Frameset {
+	friend class boost::serialization::access;	
+	template<class Archive> void serialize(Archive & ar, const unsigned int version)
+    {
+ 		ar & boost::serialization::base_object<Frameset>(*this);
+		ar & filename;	
 		ar & first;
 		ar & last;
 		ar & last_set;
@@ -105,15 +123,12 @@ class Frameset {
     }
 
 public:
-	virtual ~Frameset() {}
+	virtual ~FileFrameset() {}
 	
     FramesetIndex frameset_index_;
 	
-	size_t frame_number_offset;
-	size_t number_of_frames;
 	
 	std::string filename;
-	size_t number_of_atoms;
 	
 	size_t first;
 	size_t last;
@@ -125,9 +140,6 @@ public:
     void save_index(std::string cache_filename);
 
     virtual void generate_index() = 0;
-	
-	// derived classes have to support this!
-    virtual void read_frame(size_t internalframenumber,Frame& cf) = 0;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -150,11 +162,11 @@ public:
 	// size1 == size2
 };
 
-class DCDFrameset : public Frameset {
+class DCDFrameset : public FileFrameset {
 	friend class boost::serialization::access;	
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
     {
-		ar & boost::serialization::base_object<Frameset>(*this);
+		ar & boost::serialization::base_object<FileFrameset>(*this);
 		ar & init_byte_pos;
 		ar & flag_ext_block1;
 		ar & flag_ext_block2;
@@ -189,7 +201,7 @@ public:
 	DCDFrameset(std::string filename, size_t frame_number_offset) { init(filename,frame_number_offset); }
 	
 	// internalframenumber used for positioning file pointer, data loaded into Frame argument
-	void read_frame(size_t internalframenumber,Frame& cf);
+	void read_frame(size_t framenumber,Frame& cf);
 	
 	// fill frame_offsets. non-seekable files have to be scanned completely!
 	void generate_index();
@@ -198,13 +210,13 @@ public:
 
 // PDB Frameset and dependents
 
-class PDBFrameset : public Frameset {
+class PDBFrameset : public FileFrameset {
 	friend class boost::serialization::access;	
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
     {
-		ar & boost::serialization::base_object<Frameset>(*this);
-		ar & default_uc;
-	}
+		ar & boost::serialization::base_object<FileFrameset>(*this);
+        ar & default_uc;
+    }
 
 	std::vector<CartesianCoor3D> default_uc; 
 	
@@ -220,7 +232,7 @@ public:
 	PDBFrameset(std::string filename, size_t frame_number_offset) { init(filename,frame_number_offset); }
 	
 	// internalframenumber used for positioning file pointer, data loaded into Frame argument
-	void read_frame(size_t internalframenumber,Frame& cf);
+	void read_frame(size_t framenumber,Frame& cf);
 
 	// fill frame_offsets. non-seekable files have to be scanned completely!
 	void generate_index();
@@ -229,12 +241,12 @@ public:
 
 // XTC Frameset and dependents
 
-class XTCFrameset : public Frameset {
+class XTCFrameset : public FileFrameset {
 	friend class boost::serialization::access;	
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
     {
-		ar & boost::serialization::base_object<Frameset>(*this);
-	}
+		ar & boost::serialization::base_object<FileFrameset>(*this);
+    }
 	
 	bool detect(const std::string filename);	
 public:
@@ -247,7 +259,7 @@ public:
 	XTCFrameset(std::string filename, size_t frame_number_offset) { init(filename,frame_number_offset); }
 	
 	// internalframenumber used for positioning file pointer, data loaded into Frame argument
-	void read_frame(size_t internalframenumber,Frame& cf);
+	void read_frame(size_t framenumber,Frame& cf);
 
 	// fill frame_offsets. non-seekable files have to be scanned completely!
 	void generate_index();
@@ -256,11 +268,11 @@ public:
 
 // TRR Frameset and dependents
 
-class TRRFrameset : public Frameset {
+class TRRFrameset : public FileFrameset {
 	friend class boost::serialization::access;	
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
     {
-		ar & boost::serialization::base_object<Frameset>(*this);
+		ar & boost::serialization::base_object<FileFrameset>(*this);
     }
 
 	bool detect(const std::string filename);	
@@ -274,10 +286,28 @@ public:
 	TRRFrameset(std::string filename, size_t frame_number_offset) { init(filename,frame_number_offset); }
 	
 	// internalframenumber used for positioning file pointer, data loaded into Frame argument
-	void read_frame(size_t internalframenumber,Frame& cf);
+	void read_frame(size_t framenumber,Frame& cf);
 	
 	// fill frame_offsets. non-seekable files have to be scanned completely!
 	void generate_index();
+};
+
+class CloneFrameset : public Frameset {
+	friend class boost::serialization::access;	
+	template<class Archive> void serialize(Archive & ar, const unsigned int version)
+    {
+		ar & boost::serialization::base_object<Frameset>(*this);
+        ar & p_originalframeset;
+    }
+    
+    Frameset* p_originalframeset;
+    
+public:
+    CloneFrameset() {}
+    CloneFrameset(Frameset* original,size_t nof);
+	// internalframenumber used for positioning file pointer, data loaded into Frame argument
+	void read_frame(size_t framenumber,Frame& cf);
+
 };
 
 #endif

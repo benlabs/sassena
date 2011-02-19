@@ -54,10 +54,7 @@ void CoordinateSets::init() {
     	    Info::Inst()->write(string("Cloning frameset ")+boost::lexical_cast<string>(f.clones)+string(" times"));
     	}
         size_t nof = 0;
-        for(size_t ci = 0; ci < f.clones; ++ci)
-        {
-    	    nof += frames.add_frameset(f.filename,f.type,f.first,f.last,f.last_set,f.stride,f.index);			
-    	}
+	    nof += frames.add_frameset(f.filename,f.type,f.first,f.last,f.last_set,f.stride,f.index,f.clones);			
     	Info::Inst()->write(string("Found ")+boost::lexical_cast<string>(nof)+string(" frames"));			
     }
     
