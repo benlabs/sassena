@@ -163,7 +163,6 @@ CoordinateSet* CoordinateSets::load(size_t framenumber) {
 		string sel = m_prealignments[i].first;
 		string type = m_prealignments[i].second;
         if (type=="center") {
-			p_atoms->assert_selection(sel);
             CartesianCoor3D origin = CenterOfMass(*p_atoms,p_atoms->selections[sel],p_atoms->selections["system"],cset);
             cset.translate(-1.0*origin);
             // m_prealignmentvectors[framenumber].push_back(-1.0*origin);
@@ -176,7 +175,6 @@ CoordinateSet* CoordinateSets::load(size_t framenumber) {
 		string sel = m_motion_walkers[i].first;
 		MotionWalker* p_mw = m_motion_walkers[i].second;
 
-		p_atoms->assert_selection(sel);
 		cset.translate(p_mw->translation(framenumber),p_atoms->selections["system"], p_atoms->selections[sel]);						
 	}		
 
@@ -187,7 +185,6 @@ CoordinateSet* CoordinateSets::load(size_t framenumber) {
 		string sel = m_postalignments[i].first;
 		string type = m_postalignments[i].second;
         if (type=="center") {
-			p_atoms->assert_selection(sel);        
             CartesianCoor3D origin = CenterOfMass(*p_atoms,p_atoms->selections[sel],p_atoms->selections["system"],cset);
             cset.translate(-1.0*origin);            
             // m_postalignmentvectors[framenumber].push_back(-1.0*origin);

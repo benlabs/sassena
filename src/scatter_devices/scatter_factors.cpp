@@ -46,7 +46,6 @@ void ScatterFactors::update_kappas() {
     
     for(size_t i = 0; i < kappas.size(); ++i)
     {
-        p_sample->atoms.assert_selection(kappas[i].selection);
         IAtomselection* selection = p_sample->atoms.selections[kappas[i].selection];
         for(size_t j = 0; j < selection->size(); ++j)
         {

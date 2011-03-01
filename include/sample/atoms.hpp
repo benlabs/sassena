@@ -27,6 +27,7 @@
 // other headers
 #include "sample/atom.hpp"
 #include "sample/atomselection.hpp"
+#include "sample/atomselections.hpp"
 #include "sample/frame.hpp"
 
 class Atom;
@@ -50,7 +51,7 @@ class Atoms {
     std::vector<size_t> ids_;
 public:	
 	
-	std::map<std::string,IAtomselection*> selections;	
+	Atomselections selections;	
     
 	Atoms() {}
 	Atoms(std::string filename, std::string fileformat = "pdb");
@@ -60,10 +61,6 @@ public:
 	void add(std::string filename, std::string fileformat = "pdb");
     
     IAtomselection* select(std::string expression);
-	void push_selection(std::string name, IAtomselection* selection);
-    void clear_selections();
-	
-	void assert_selection(std::string groupname); // throws an exception when groupname isn't found.
 	
     ~Atoms();
     

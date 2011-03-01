@@ -38,9 +38,7 @@ Atoms::Atoms(string filename, string fileformat) {
 	add(filename,fileformat);
 }
 
-Atoms::~Atoms() {
-    clear_selections();
-}
+Atoms::~Atoms() {}
  
 // for the pdb format (ATOM entry look below)
 void Atoms::add(string filename, string fileformat) {
@@ -145,26 +143,6 @@ IAtomselection* Atoms::select(string expression) {
     }
     
     return (new IndexAtomselection(ids));
-}
-
-void Atoms::push_selection(std::string name, IAtomselection* selection) {
-    selections[name] = selection;
-}
-
-
-void Atoms::assert_selection(std::string groupname) {
-	if (selections.find(groupname)==selections.end()) {
-		Err::Inst()->write(string("Assertion of selection: '")+groupname+string("' failed"));
-		throw;
-	}
-}
-
-void Atoms::clear_selections() {
-    for(std::map<std::string,IAtomselection*>::iterator i = selections.begin(); i != selections.end(); ++i)
-    {
-        delete i->second;
-    }
-    selections.clear();
 }
 
 // end of file

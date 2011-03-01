@@ -140,6 +140,8 @@ void Params::read_xml(std::string filename) {
                     string selector = "beta";
                     string expression = "1|1\\.0|1\\.00";
                     
+                    if (xmli.exists("./name")) sname = xmli.get_value<string>("./name") ;
+                    
                     if (xmli.exists("./format")) format = xmli.get_value<string>("./format") ;
 
                     // this is a convenience overwrite for the ndx file format

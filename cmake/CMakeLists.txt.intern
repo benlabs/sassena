@@ -26,6 +26,7 @@ ADD_LIBRARY(sass_sample ${INTERNAL_LIBRARY_TYPE}
 	src/sample/atom.cpp
 	src/sample/atoms.cpp
 	src/sample/atomselection.cpp
+	src/sample/atomselections.cpp	
 	src/sample/atomselection_reader.cpp	
 	src/sample/center_of_mass.cpp	
 	src/sample/coordinate_set.cpp
