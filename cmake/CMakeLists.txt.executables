@@ -18,6 +18,11 @@ ADD_EXECUTABLE(s_fqt2h5gif
     src/main/s_fqt2h5gif.cpp
 )
 
+ADD_EXECUTABLE(s_sqw
+	src/common.cpp
+    src/main/s_sqw.cpp
+)
+
 ADD_EXECUTABLE(unit_broadcast 
 	src/common.cpp
     tests/unit_broadcast.cpp
@@ -84,9 +89,18 @@ TARGET_LINK_LIBRARIES (unit_serialize
 )
 
 
+TARGET_LINK_LIBRARIES (s_sqw
+	sass_log
+	${FFTW3_LIBRARIES} 
+    ${HDF5_LIBRARIES}	
+	${BOOST_LIBRARIES}
+)
+
+
 INSTALL(TARGETS sassena RUNTIME DESTINATION bin)
 INSTALL(TARGETS s_maketnx RUNTIME DESTINATION bin)
 INSTALL(TARGETS s_genconf RUNTIME DESTINATION bin)
+INSTALL(TARGETS s_sqw RUNTIME DESTINATION bin)
 
 INSTALL(TARGETS unit_broadcast RUNTIME DESTINATION bin)
 INSTALL(TARGETS unit_serialize RUNTIME DESTINATION bin)

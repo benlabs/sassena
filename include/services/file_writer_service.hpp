@@ -34,18 +34,24 @@
 
 enum HDF5WriterTag {HANGUP,WRITE};
 
+struct HDF5DataEntry {
+    CartesianCoor3D qvector;
+    std::vector<std::complex<double> >* p_fqt;
+    std::complex<double> fq;
+};
+
 class HDF5WriterClient {
     boost::asio::ip::tcp::endpoint m_endpoint;
     boost::posix_time::ptime m_lastflush;
     
-    std::queue<std::pair<CartesianCoor3D,std::vector<std::complex<double> >*> > data_queue;
+    std::queue<HDF5DataEntry> data_queue;
     
 public:
     HDF5WriterClient(boost::asio::ip::tcp::endpoint server);
     ~HDF5WriterClient();
 
-    void write(CartesianCoor3D qvector,const std::vector<std::complex<double> >& data);
-    void write(CartesianCoor3D qvector,const fftw_complex* data,size_t NF);
+    void write(CartesianCoor3D qvector,const std::vector<std::complex<double> >& data,const std::complex<double> data2);
+    void write(CartesianCoor3D qvector,const fftw_complex* data,size_t NF,const std::complex<double> data2);
     
     void flush();    
 };

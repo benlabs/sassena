@@ -474,7 +474,7 @@ void HDF5WriterService::hangup() {
 }
 
 
-void HDF5WriterClient::write(CartesianCoor3D qvector,const fftw_complex* data,size_t NF) {
+void HDF5WriterClient::write(CartesianCoor3D qvector,const fftw_complex* data,size_t NF,const std::complex<double> data2) {
     
     if (!Params::Inst()->debug.iowrite.write) return;
     
@@ -483,7 +483,9 @@ void HDF5WriterClient::write(CartesianCoor3D qvector,const fftw_complex* data,si
     {
         (*p_data)[i]=std::complex<double>(data[i][0],data[i][1]);
     }
-    data_queue.push(make_pair(qvector,p_data));
+    HDF5DataEntry de;
+    de.qvector = qvector; de.p_fqt = p_data; de.fq = data2;
+    data_queue.push(de);
 
     boost::posix_time::time_period tp(m_lastflush,boost::posix_time::second_clock::universal_time());    
     if ((boost::posix_time::second_clock::universal_time()-m_lastflush) >
@@ -501,13 +503,16 @@ void HDF5WriterClient::write(CartesianCoor3D qvector,const fftw_complex* data,si
     }
 }
 
-void HDF5WriterClient::write(CartesianCoor3D qvector,const std::vector<std::complex<double> >& data) {
+void HDF5WriterClient::write(CartesianCoor3D qvector,const std::vector<std::complex<double> >& data,const std::complex<double> data2) {
     
     if (!Params::Inst()->debug.iowrite.write) return;
     
     std::vector<std::complex<double> >* p_data = new std::vector<std::complex<double> >(data.size());
     *p_data = data;
-    data_queue.push(make_pair(qvector,p_data));
+    
+    HDF5DataEntry de;
+    de.qvector = qvector; de.p_fqt = p_data; de.fq = data2;
+    data_queue.push(de);
 
     boost::posix_time::time_period tp(m_lastflush,boost::posix_time::second_clock::universal_time());    
     if ((boost::posix_time::second_clock::universal_time()-m_lastflush) >
@@ -533,51 +538,34 @@ void HDF5WriterClient::flush() {
     
     if (data_queue.size()>0) {
     
-        // pre-compute fq
-        std::queue<std::complex<double> > data_queue_fq;
-        std::queue<std::pair<CartesianCoor3D,std::vector<std::complex<double> >* > > data_queue_fqt_copy;
-        while (data_queue.size()>0) {
-            std::pair<CartesianCoor3D,std::vector<std::complex<double> >* > el = data_queue.front();
-            data_queue.pop();
-            std::vector<std::complex<double> >* p_data = el.second;
-            data_queue_fqt_copy.push(el);
-            data_queue_fq.push(smath::reduce(*p_data));
-        }
-
         boost::asio::io_service io_service;
         boost::asio::ip::tcp::socket socket( io_service );
 
         socket.connect(m_endpoint);
         
         HDF5WriterTag tag = WRITE;
-        size_t count = data_queue_fqt_copy.size();
+        size_t count = data_queue.size();
         
         boost::asio::write(socket,boost::asio::buffer(&tag,sizeof(HDF5WriterTag)));     
         boost::asio::write(socket,boost::asio::buffer(&count,sizeof(size_t)));     
         
-        while (data_queue_fqt_copy.size()>0) {
-            std::pair<CartesianCoor3D,std::vector<std::complex<double> >* > el = data_queue_fqt_copy.front();
-            data_queue_fqt_copy.pop();
-            complex<double> fq = data_queue_fq.front();
-            data_queue_fq.pop();
-            
-            CartesianCoor3D qvector = el.first;
-            std::vector<std::complex<double> >* p_data = el.second;
+        while (data_queue.size()>0) {
+            HDF5DataEntry de = data_queue.front();
+            data_queue.pop();
 
-            size_t size = 2*p_data->size();
+            size_t size = 2*de.p_fqt->size();
                         
-            boost::asio::write(socket,boost::asio::buffer(&qvector,sizeof(CartesianCoor3D)));
+            boost::asio::write(socket,boost::asio::buffer(&(de.qvector),sizeof(CartesianCoor3D)));
             if (Params::Inst()->scattering.signal.fqt) {
                 boost::asio::write(socket,boost::asio::buffer(&size,sizeof(size_t))); 
-                double* p_doubledata = (double*) &((*p_data)[0]);
+                double* p_doubledata = (double*) &((*de.p_fqt)[0]);
                 boost::asio::write(socket,boost::asio::buffer(p_doubledata,sizeof(double)*size));                 
             } 
             if (Params::Inst()->scattering.signal.fq) {
-                double* p_doubledata2 = (double*) &(fq);
+                double* p_doubledata2 = (double*) &(de.fq);
                 boost::asio::write(socket,boost::asio::buffer(p_doubledata2,sizeof(double)*2));                 
             }
                         
-            delete p_data;
         }
         
         socket.close();

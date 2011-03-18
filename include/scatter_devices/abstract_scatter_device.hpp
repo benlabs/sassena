@@ -130,6 +130,7 @@ protected:
     size_t NN,NF,NA;
     
     fftw_complex* atfinal_;
+    std::complex<double> afinal_;
     DivAssignment assignment_;
     
     ScatterFactors scatterfactors;

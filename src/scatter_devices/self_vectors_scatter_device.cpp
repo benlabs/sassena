@@ -100,6 +100,7 @@ void SelfVectorsScatterDevice::dsp(fftw_complex* at) {
 }
                 
 void SelfVectorsScatterDevice::store(fftw_complex* at) {
+    afinal_ += smath::reduce<double>(at,NF);
     smath::add_elements(atfinal_,at,NF);
 }
 
@@ -117,6 +118,7 @@ void SelfVectorsScatterDevice::compute() {
     current_subvector_=0;
     current_atomindex_=0;
 	memset(atfinal_,0,NF*sizeof(fftw_complex));
+    afinal_=0;
     
     size_t NTHREADS = worker_threads.size();
     
@@ -186,11 +188,16 @@ void SelfVectorsScatterDevice::compute() {
         }
 
         boost::mpi::reduce(partitioncomm_,p_atfinal,2*NF,p_atlocal,std::plus<double>(),0);
+        double* p_afinal = (double*) &(afinal_);
+        std::complex<double> alocal(0);
+        double* p_alocal = (double*) &(alocal);
+        boost::mpi::reduce(partitioncomm_,p_afinal,2,p_alocal,std::plus<double>(),0);
 
         // swap pointers on rank 0 
         if (partitioncomm_.rank()==0) {
             fftw_free(atfinal_); 
             atfinal_ = (fftw_complex*) p_atlocal;
+            afinal_ = alocal;
         }        
     }
     timer.stop("sd:c:reduce");
@@ -199,7 +206,8 @@ void SelfVectorsScatterDevice::compute() {
     if (partitioncomm_.rank()==0) {
         smath::multiply_elements(factor,atfinal_,NF);
     }
-    
+    double factor2 = 1.0/subvector_index_.size()/NF;
+    afinal_ *= factor2;
 }
 
 
