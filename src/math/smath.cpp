@@ -32,7 +32,7 @@ template <class T> void auto_correlate_direct(std::vector<std::complex<T> >& dat
     
     std::vector< std::complex<T> >& complete_a = data_local;
     std::vector< std::complex<T> >& correlated_a = data;
-            
+        
     // direct
     for(size_t tau = 0; tau < NF; ++tau)
     {
@@ -66,8 +66,8 @@ void auto_correlate_direct(fftw_complex* data,size_t N) {
     	{
     		fftw_complex& a1 = data_local[k];
     		fftw_complex& a2 = data_local[k+tau];
-            data[tau][0] += a1[0]*a1[0]+a2[1]*a2[1];
-            data[tau][1] += a1[0]*a2[1]-a1[1]*a2[0];            
+            data[tau][0] += a1[0]*a2[0]+a1[1]*a2[1];
+            data[tau][1] += -a1[0]*a2[1]+a1[1]*a2[0];            
     	}
     	data[tau][0] /= (last_starting_frame); 		
     	data[tau][1] /= (last_starting_frame); 		    	

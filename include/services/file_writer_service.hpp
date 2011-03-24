@@ -38,6 +38,7 @@ struct HDF5DataEntry {
     CartesianCoor3D qvector;
     std::vector<std::complex<double> >* p_fqt;
     std::complex<double> fq;
+    std::complex<double> fq2;    
 };
 
 class HDF5WriterClient {
@@ -50,8 +51,8 @@ public:
     HDF5WriterClient(boost::asio::ip::tcp::endpoint server);
     ~HDF5WriterClient();
 
-    void write(CartesianCoor3D qvector,const std::vector<std::complex<double> >& data,const std::complex<double> data2);
-    void write(CartesianCoor3D qvector,const fftw_complex* data,size_t NF,const std::complex<double> data2);
+    void write(CartesianCoor3D qvector,const std::vector<std::complex<double> >& data,const std::complex<double> data2,const std::complex<double> data3);
+    void write(CartesianCoor3D qvector,const fftw_complex* data,size_t NF,const std::complex<double> data2,const std::complex<double> data3);
     
     void flush();    
 };
@@ -82,6 +83,7 @@ class HDF5WriterService  {
     std::vector< CartesianCoor3D > data_qvectors;    
     std::vector<std::vector<std::complex<double> >*> data_fqt;
     std::vector<std::complex<double> > data_fq;
+    std::vector<std::complex<double> > data_fq2;    
 public:
     
     HDF5WriterService(boost::asio::io_service& io_service, const std::string filename,size_t nf);

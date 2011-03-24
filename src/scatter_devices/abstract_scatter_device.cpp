@@ -48,6 +48,7 @@ AbstractScatterDevice::AbstractScatterDevice(
     current_vector_(0),
     atfinal_(NULL),
     afinal_(0),
+    a2final_(0),    
     assignment_(partitioncomm.size(),partitioncomm.rank(),NAF)
 {
     
@@ -221,7 +222,7 @@ size_t AbstractScatterDevice::status() {
 void AbstractScatterDevice::write() {
     if (partitioncomm_.rank()==0) {
         CartesianCoor3D vector = vectors_[current_vector_]; 
-        p_hdf5writer_->write(vector,atfinal_,NF,afinal_);
+        p_hdf5writer_->write(vector,atfinal_,NF,afinal_,a2final_);
     }
 }
 

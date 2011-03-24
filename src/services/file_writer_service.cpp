@@ -258,6 +258,12 @@ void HDF5WriterService::listener() {
                     boost::asio::read(socket,boost::asio::buffer(p_fq,sizeof(double)*2)); 
                     data_fq.push_back(fq);
                 }
+                if (Params::Inst()->scattering.signal.fq2) {
+                    std::complex<double> fq;
+                    double* p_fq = (double*) &fq;  
+                    boost::asio::read(socket,boost::asio::buffer(p_fq,sizeof(double)*2)); 
+                    data_fq2.push_back(fq);
+                }
             }
         }        
         socket.close();
@@ -418,25 +424,26 @@ void HDF5WriterService::flush() {
             
             H5Dwrite(ds,H5T_NATIVE_DOUBLE,mspace,dspace,H5P_DEFAULT,p_data);
         }
-        
+    }    
+    data_fq.clear();
+
+    if (data_fq2.size()>0) {
+        size_t nq = data_fq2.size();
+
         if (H5LTfind_dataset(h5file,"fq2")==1) {
+
             hsize_t dims[2];hsize_t start[2];hsize_t count[2];
             H5LTget_dataset_info(h5file,"fq2",dims,NULL,NULL);             
             
-            std::vector<std::complex<double> > fq2data(nq);
-            
-            for(size_t i = 0; i < nq; ++i)
-            {
-                fq2data[i]=data_fq[i]*conj(data_fq[i]);
-            }
-            
             dims[0]+=nq;
-            hid_t ds = H5Dopen(h5file,"fq2",H5P_DEFAULT);
+            hid_t ds = H5Dopen(h5file,"fq2",H5P_DEFAULT);            
             H5Dset_extent(ds,dims);
+
             hid_t dspace = H5Dget_space(ds);
 
             hsize_t mdims[2];
             mdims[0]=nq; mdims[1]=2;
+            
             hid_t mspace = H5Screate_simple(2, mdims, NULL);             
 
             start[0]=dims[0]-nq;start[1]=0;
@@ -445,13 +452,13 @@ void HDF5WriterService::flush() {
             start[0]=0;start[1]=0;
             count[0]=nq;count[1]=2;            
             H5Sselect_hyperslab(mspace,H5S_SELECT_SET,start,NULL,count,NULL);
-
-            double* p_data = reinterpret_cast<double*>(&fq2data[0]);
-            H5Dwrite(ds,H5T_NATIVE_DOUBLE,mspace,dspace,H5P_DEFAULT,p_data);
+            double* p_data = reinterpret_cast<double*>(&data_fq2[0]);
             
-        }   
+            H5Dwrite(ds,H5T_NATIVE_DOUBLE,mspace,dspace,H5P_DEFAULT,p_data);
+        }
     }    
-    data_fq.clear();
+    data_fq2.clear();
+
 
     H5Fclose(h5file);    
 }
@@ -474,7 +481,7 @@ void HDF5WriterService::hangup() {
 }
 
 
-void HDF5WriterClient::write(CartesianCoor3D qvector,const fftw_complex* data,size_t NF,const std::complex<double> data2) {
+void HDF5WriterClient::write(CartesianCoor3D qvector,const fftw_complex* data,size_t NF,const std::complex<double> data2,const std::complex<double> data3) {
     
     if (!Params::Inst()->debug.iowrite.write) return;
     
@@ -484,7 +491,7 @@ void HDF5WriterClient::write(CartesianCoor3D qvector,const fftw_complex* data,si
         (*p_data)[i]=std::complex<double>(data[i][0],data[i][1]);
     }
     HDF5DataEntry de;
-    de.qvector = qvector; de.p_fqt = p_data; de.fq = data2;
+    de.qvector = qvector; de.p_fqt = p_data; de.fq = data2;de.fq2=data3;
     data_queue.push(de);
 
     boost::posix_time::time_period tp(m_lastflush,boost::posix_time::second_clock::universal_time());    
@@ -503,7 +510,7 @@ void HDF5WriterClient::write(CartesianCoor3D qvector,const fftw_complex* data,si
     }
 }
 
-void HDF5WriterClient::write(CartesianCoor3D qvector,const std::vector<std::complex<double> >& data,const std::complex<double> data2) {
+void HDF5WriterClient::write(CartesianCoor3D qvector,const std::vector<std::complex<double> >& data,const std::complex<double> data2,const std::complex<double> data3) {
     
     if (!Params::Inst()->debug.iowrite.write) return;
     
@@ -511,7 +518,7 @@ void HDF5WriterClient::write(CartesianCoor3D qvector,const std::vector<std::comp
     *p_data = data;
     
     HDF5DataEntry de;
-    de.qvector = qvector; de.p_fqt = p_data; de.fq = data2;
+    de.qvector = qvector; de.p_fqt = p_data; de.fq = data2; de.fq2=data3;
     data_queue.push(de);
 
     boost::posix_time::time_period tp(m_lastflush,boost::posix_time::second_clock::universal_time());    
@@ -562,10 +569,13 @@ void HDF5WriterClient::flush() {
                 boost::asio::write(socket,boost::asio::buffer(p_doubledata,sizeof(double)*size));                 
             } 
             if (Params::Inst()->scattering.signal.fq) {
-                double* p_doubledata2 = (double*) &(de.fq);
-                boost::asio::write(socket,boost::asio::buffer(p_doubledata2,sizeof(double)*2));                 
+                double* p_doubledata = (double*) &(de.fq);
+                boost::asio::write(socket,boost::asio::buffer(p_doubledata,sizeof(double)*2));                 
             }
-                        
+            if (Params::Inst()->scattering.signal.fq2) {
+                double* p_doubledata = (double*) &(de.fq2);
+                boost::asio::write(socket,boost::asio::buffer(p_doubledata,sizeof(double)*2));                 
+            }                        
         }
         
         socket.close();

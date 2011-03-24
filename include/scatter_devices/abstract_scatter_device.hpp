@@ -131,6 +131,7 @@ protected:
     
     fftw_complex* atfinal_;
     std::complex<double> afinal_;
+    std::complex<double> a2final_;    
     DivAssignment assignment_;
     
     ScatterFactors scatterfactors;

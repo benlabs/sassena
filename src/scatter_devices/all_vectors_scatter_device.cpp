@@ -161,7 +161,9 @@ void AllVectorsScatterDevice::dsp(fftw_complex* at) {
 }
 
 void AllVectorsScatterDevice::store(fftw_complex* at) {
-    afinal_ += smath::reduce<double>(at,NF);
+    complex<double> a = smath::reduce<double>(at,NF) * (1.0/NF);
+    afinal_ += a;
+    a2final_ += a*conj(a);
     smath::add_elements(atfinal_,at,NF);
 }
 
@@ -182,6 +184,7 @@ void AllVectorsScatterDevice::compute() {
     current_subvector_=0;
 	memset(atfinal_,0,NF*sizeof(fftw_complex));
     afinal_ = 0;
+    a2final_ = 0;
     
     size_t NMBLOCK = NNPP;
     
@@ -292,7 +295,11 @@ void AllVectorsScatterDevice::compute() {
         std::complex<double> alocal(0);
         double* p_alocal = (double*) &(alocal);
         boost::mpi::reduce(partitioncomm_,p_afinal,2,p_alocal,std::plus<double>(),0);
-        
+        double* p_a2final = (double*) &(a2final_);
+        std::complex<double> a2local(0);
+        double* p_a2local = (double*) &(a2local);
+        boost::mpi::reduce(partitioncomm_,p_a2final,2,p_a2local,std::plus<double>(),0);
+
         // swap pointers on rank 0 
         if (partitioncomm_.rank()==0) {
             fftw_free(atfinal_); 
@@ -305,9 +312,9 @@ void AllVectorsScatterDevice::compute() {
     double factor = 1.0/subvector_index_.size();
     if (partitioncomm_.rank()==0) {
         smath::multiply_elements(factor,atfinal_,NF);
+        afinal_ *= factor;        
+        a2final_ *= factor;                
     }
-    double factor2 = 1.0/subvector_index_.size()/NF;
-    afinal_ *= factor2;
 }
 
 void AllVectorsScatterDevice::scatterblock(size_t index,size_t count) {
