@@ -49,6 +49,7 @@ CoordinateSet::CoordinateSet(CoordinateSet& cs,IAtomselection* cs_selection, IAt
     size_t csel_iter = 0;
     size_t ssel_iter = 0;
     size_t count =0;
+    
     while( ( csel_iter < csel_total) && (ssel_iter < ssel_total) ) {
         size_t csel_index = csel[csel_iter];
         size_t ssel_index = ssel[ssel_iter];
@@ -65,7 +66,7 @@ CoordinateSet::CoordinateSet(CoordinateSet& cs,IAtomselection* cs_selection, IAt
             ssel_iter++;
         } else if (csel_index<ssel_index) {
             csel_iter++;
-        }
+        }        
     }
     
     m_size = count;
@@ -232,17 +233,23 @@ CylindricalCoordinateSet::CylindricalCoordinateSet() {
     m_size = 0;
 }
 
-CylindricalCoordinateSet::CylindricalCoordinateSet(CartesianCoordinateSet& cs) {
+CylindricalCoordinateSet::CylindricalCoordinateSet(CartesianCoordinateSet& cs,CartesianCoor3D axis) {
     m_representation = CYLINDRICAL;
     m_size = cs.size();
+
+	// constructs a base out of thin air
+    CartesianVectorBase base(axis);            
+                
     for(size_t i = 0; i < m_size; ++i)
     {
         CartesianCoor3D cac(cs.c1[i],cs.c2[i],cs.c3[i]);
-        CylinderCoor3D cyc(cac);
+        
+        CartesianCoor3D cprojected = base.project(cac);
+        CylinderCoor3D ccylinder(cprojected);
                 
-        c1.push_back(cyc.r);
-        c2.push_back(cyc.phi);
-        c3.push_back(cyc.z);
+        c1.push_back(ccylinder.r);
+        c2.push_back(ccylinder.phi);
+        c3.push_back(ccylinder.z);
     }
 }
 

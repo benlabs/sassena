@@ -173,7 +173,7 @@ void AllVectorsScatterDevice::compute() {
     Timer& timer = timer_[boost::this_thread::get_id()];
 
     timer.start("sd:c:init");
-    init_subvectors(q);
+    init_subvectors(q);    
 	scatterfactors.update(q); // scatter factors only dependent on length of q, hence we can do it once before the loop
     timer.stop("sd:c:init");
 
@@ -187,6 +187,7 @@ void AllVectorsScatterDevice::compute() {
     a2final_ = 0;
     
     size_t NMBLOCK = NNPP;
+    
     
     timer.start("sd:c:block");
     // special case: 1 core, no exchange required
@@ -388,9 +389,8 @@ void AllVectorsScatterDevice::scatter(size_t this_subvector) {
 	       z = p_data[3*j+2];
        
            p =  x*qx + y*qy + z*qz;
-           
-           Ar += sfs[j]*cos(p);
-           Ai += sfs[j]*sin(p);
+           Ar += esf*cos(p);
+           Ai += esf*sin(p);
 	   }
        p_a[fi][0] = Ar;
        p_a[fi][1] = Ai;

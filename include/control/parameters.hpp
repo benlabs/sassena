@@ -220,6 +220,29 @@ public:
 	CartesianCoor3D direction;
 };
 
+class SampleAlignmentReferenceParameters {
+private:
+	/////////////////// MPI related
+	// make this class serializable to 
+	// allow sample to be transmitted via MPI
+    friend class boost::serialization::access;	
+	template<class Archive> void serialize(Archive & ar, const unsigned int version)
+    {
+		ar & type;
+		ar & frame;
+        ar & file;
+        ar & format;
+        ar & selection;
+    }
+	/////////////////// 
+
+public:	
+	std::string type;
+	std::string selection;
+	std::string file;
+	std::string format;
+	size_t frame;
+};
 
 class SampleAlignmentParameters {
 private:
@@ -232,10 +255,12 @@ private:
 		ar & type;
 		ar & selection;
         ar & order;
+        ar & reference;
     }
 	/////////////////// 
 
 public:	
+    SampleAlignmentReferenceParameters reference;
 	std::string type;
 	std::string selection;
     std::string order;
@@ -325,7 +350,6 @@ private:
 		ar & algorithm;
 		ar & resolution;
 		ar & file;
-		ar & axis;
 		ar & seed;
     }
 	/////////////////// 
@@ -334,12 +358,35 @@ public:
 	std::string type;
 	std::string algorithm;
 	std::string file;
-	CartesianCoor3D axis;
 	size_t resolution;
 	long seed;
 	
 	void create();
 };
+
+
+class ScatteringAverageOrientationMultipoleMomentsParameters : public std::vector<std::pair<long,long> > {
+private:
+	/////////////////// MPI related
+	// make this class serializable to 
+	// allow sample to be transmitted via MPI
+    friend class boost::serialization::access;	
+	template<class Archive> void serialize(Archive & ar, const unsigned int version)
+    {
+		ar & type;
+		ar & resolution;
+        ar & file;
+    }
+	/////////////////// 
+
+public:	
+	std::string type;
+    long resolution;
+    std::string file;
+
+	void create();
+};
+
 
 class ScatteringAverageOrientationMultipoleParameters {
 private:
@@ -350,15 +397,13 @@ private:
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
     {
 		ar & type;
-		ar & resolution;
-		ar & axis;
+		ar & moments;
     }
 	/////////////////// 
 
 public:	
 	std::string type;
-	long resolution;
-	CartesianCoor3D axis;
+	ScatteringAverageOrientationMultipoleMomentsParameters moments;
 };
 
 class ScatteringAverageOrientationExactParameters {
@@ -386,6 +431,8 @@ private:
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
     {
 		ar & type;
+        ar & axis;
+
 		ar & vectors;
 		ar & multipole;
 		ar & exact;
@@ -394,6 +441,8 @@ private:
 	
 public:		
 	std::string type; 
+	CartesianCoor3D axis;
+	
 	ScatteringAverageOrientationVectorsParameters vectors;
 	ScatteringAverageOrientationMultipoleParameters multipole;
 	ScatteringAverageOrientationExactParameters exact;

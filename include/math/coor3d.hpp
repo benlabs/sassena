@@ -114,6 +114,16 @@ public:
 
 CartesianCoor3D rotate(CartesianCoor3D,std::string axis,coor2_t rad);
 
+
+class CartesianVectorBase {
+    std::vector<CartesianCoor3D> base_;
+public:
+      CartesianVectorBase() {}
+      CartesianVectorBase(CartesianCoor3D axis);
+      std::vector<CartesianCoor3D> get_base() {return base_;}
+      CartesianCoor3D& operator[](size_t index);
+      CartesianCoor3D project(CartesianCoor3D vec);
+};
 #endif
 
 // end of file

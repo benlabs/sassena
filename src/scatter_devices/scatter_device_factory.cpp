@@ -19,6 +19,7 @@
 #include "decomposition/decomposition_plan.hpp"
 #include "scatter_devices/all_vectors_scatter_device.hpp"
 #include "scatter_devices/self_vectors_scatter_device.hpp"
+#include "scatter_devices/multipole_scatter_device.hpp"
 
 using namespace std;
 
@@ -145,8 +146,8 @@ IScatterDevice* ScatterDeviceFactory::create(
     ////////////////////////////////////////////////////////////
 
     // all_comm for inter-partition communication, parition_comm for intra-partition communication
-
     if (Params::Inst()->scattering.type == "self") {
+        Info::Inst()->write("Initializing Scatter Device, Vectors (self)");
     	p_ScatterDevice = new SelfVectorsScatterDevice(
     			all_comm,
     			partition_comm,
@@ -158,6 +159,7 @@ IScatterDevice* ScatterDeviceFactory::create(
     }
     else if (Params::Inst()->scattering.type == "all"){
     	if (Params::Inst()->scattering.average.orientation.type == "vectors") {
+            Info::Inst()->write("Initializing Scatter Device, Vectors (all)");
         	p_ScatterDevice = new AllVectorsScatterDevice(
         			all_comm,
         			partition_comm,
@@ -166,27 +168,31 @@ IScatterDevice* ScatterDeviceFactory::create(
         			NAF,        			
         			fileservice_endpoint,
         			monitorservice_endpoint);
-//    	} else if (Params::Inst()->scattering.average.orientation.type == "multipole") {
-//    		if (Params::Inst()->scattering.average.orientation.multipole.type == "sphere") {
-//            	p_ScatterDevice = new AllMSScatterDevice(
-//            			all_comm,
-//            			partition_comm,
-//            			sample,
-//            			thispartition_QIV,
-//            			fileservice_endpoint,
-//            			monitorservice_endpoint);
-//    		} else if (Params::Inst()->scattering.average.orientation.multipole.type == "cylinder") {
-//            	p_ScatterDevice = new AllMCScatterDevice(
-//            			all_comm,
-//            			partition_comm,
-//            			sample,
-//            			thispartition_QIV,
-//            			fileservice_endpoint,
-//            			monitorservice_endpoint);
-//    		} else {
-//    			Err::Inst()->write(string("scattering.average.orientation.multipole.type not understood: ")+Params::Inst()->scattering.average.orientation.multipole.type);
-//    			throw;
-//    		}
+    	} else if (Params::Inst()->scattering.average.orientation.type == "multipole") {
+    		if (Params::Inst()->scattering.average.orientation.multipole.type == "sphere") {
+                Info::Inst()->write("Initializing Scatter Device, Multipole Sphere");
+            	p_ScatterDevice = new MPSphereScatterDevice(
+        			all_comm,
+        			partition_comm,
+        			sample,
+        			thispartition_QIV,
+        			NAF,        			
+        			fileservice_endpoint,
+        			monitorservice_endpoint);
+    		} else if (Params::Inst()->scattering.average.orientation.multipole.type == "cylinder") {
+                Info::Inst()->write("Initializing Scatter Device, Multipole Cylinder");
+            	p_ScatterDevice = new MPCylinderScatterDevice(
+        			all_comm,
+        			partition_comm,
+        			sample,
+        			thispartition_QIV,
+        			NAF,        			
+        			fileservice_endpoint,
+        			monitorservice_endpoint);
+    		} else {
+    			Err::Inst()->write(string("scattering.average.orientation.multipole.type not understood: ")+Params::Inst()->scattering.average.orientation.multipole.type);
+    			throw;
+    		}
     	} else if (Params::Inst()->scattering.average.orientation.type == "none") {
         	p_ScatterDevice = new AllVectorsScatterDevice(
         			all_comm,

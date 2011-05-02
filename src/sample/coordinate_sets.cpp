@@ -41,6 +41,19 @@ CoordinateSets::~CoordinateSets() {
 	{
 		delete m_motion_walkers[i].second;
 	}
+	for(size_t i = 0; i < m_prealignments.size(); ++i)
+	{
+        if (m_prealignments[i].p_reference!=NULL) {
+            delete m_prealignments[i].p_reference;
+        }
+	}
+	for(size_t i = 0; i < m_postalignments.size(); ++i)
+	{
+        if (m_postalignments[i].p_reference!=NULL) {
+            delete m_postalignments[i].p_reference;
+        }
+	}
+	
 }
 
 void CoordinateSets::init() {
@@ -97,23 +110,63 @@ void CoordinateSets::init() {
 		}
 	}
 	
-    
 	// construct a helper for the alignments:
 	if (Params::Inst()->sample.alignments.size()>0) {
 		for(size_t i = 0; i < Params::Inst()->sample.alignments.size(); ++i)
 		{
-            std::string type = Params::Inst()->sample.alignments[i].type;
-            std::string selection = Params::Inst()->sample.alignments[i].selection;
+            CoordinateSetAlignment a;
             
-            if (Params::Inst()->sample.alignments[i].order=="pre") {
-                m_prealignments.push_back(make_pair(selection,type));
-            } else if (Params::Inst()->sample.alignments[i].order=="post") {
-                m_postalignments.push_back(make_pair(selection,type));                
+            std::string type = Params::Inst()->sample.alignments[i].type;
+            std::string order = Params::Inst()->sample.alignments[i].order;
+            std::string selection = Params::Inst()->sample.alignments[i].selection;
+            std::string rtype = Params::Inst()->sample.alignments[i].reference.type;
+            std::string rselection = Params::Inst()->sample.alignments[i].reference.selection;    
+            
+            a.type = type;
+            a.selection = selection;
+            a.reference_selection = rselection;
+            a.p_reference = NULL;
+
+            // read and store reference now
+            if (rtype=="frame") {
+                size_t framenumber = Params::Inst()->sample.alignments[i].reference.frame;
+                if (framenumber>=this->size()) {
+                    Warn::Inst()->write("reference frame number in alignment larger than size of frameset. Setting to last frame!");
+                    framenumber = this->size()-1;
+                }
+                Frame frame = frames.load(framenumber);
+                a.p_reference = new CartesianCoordinateSet(frame,p_atoms->selections[a.reference_selection]);
+            } else if (rtype=="file") {
+                std::string file = Params::Inst()->sample.alignments[i].reference.file;
+                std::string format = Params::Inst()->sample.alignments[i].reference.format;
+                size_t framenumber = Params::Inst()->sample.alignments[i].reference.frame;
+                if (format=="pdb") {
+                    PDBFrameset fs(file,0);
+                    fs.generate_index();
+                    if (framenumber>=fs.number_of_frames) {
+                        Warn::Inst()->write("reference frame number in alignment larger than size of frameset. Setting to last frame!");
+                        framenumber = fs.number_of_frames-1;
+                    }
+                    Frame cf;		
+                	fs.read_frame(framenumber,cf);
+                	a.p_reference = new CartesianCoordinateSet(cf,p_atoms->selections[a.reference_selection]);
+                } else {
+                    Err::Inst()->write(string("File format for alignment reference not understood, format=") + format);
+                    throw;
+                }
+            } else {
+                Err::Inst()->write(string("Reference type not understood:")+rtype );
+                throw;
+            }
+            
+            if (order=="pre") {
+                m_prealignments.push_back(a);
+            } else if (order=="post") {
+                m_postalignments.push_back(a);                
             } else {
                 Err::Inst()->write("Ordering of alignment not understood. Must be pre or post.");
                 throw;
             }
-            
 		}
 	}	
     
@@ -127,9 +180,9 @@ void CoordinateSets::init() {
 //     return m_postalignmentvectors[framenumber];    
 // }
 
-void CoordinateSets::add_postalignment(std::string selection,std::string type) {
-    m_postalignments.push_back(make_pair(selection,type));
-}
+//void CoordinateSets::add_postalignment(std::string selection,std::string type) {
+//    m_postalignments.push_back(make_pair(selection,type));
+//}
 
 
 void CoordinateSets::set_representation(CoordinateRepresentation representation) {
@@ -148,7 +201,6 @@ CoordinateSet* CoordinateSets::load(size_t framenumber) {
 	
 	Frame frame = frames.load(framenumber);
 	CartesianCoordinateSet cset(frame,p_atoms->selections["system"]);
-	
     if ( frame.x.size() != p_atoms->selections["system"]->size() ) {
         Err::Inst()->write(string("Wrong number of atoms, frame:")+boost::lexical_cast<string>(framenumber));
         Err::Inst()->write(string("Atoms in Frame: ")+boost::lexical_cast<string>(frame.x.size()));
@@ -160,12 +212,27 @@ CoordinateSet* CoordinateSets::load(size_t framenumber) {
     // m_prealignmentvectors[framenumber].clear();
     for(size_t i = 0; i < m_prealignments.size(); ++i)
     {
-		string sel = m_prealignments[i].first;
-		string type = m_prealignments[i].second;
-        if (type=="center") {
-            CartesianCoor3D origin = CenterOfMass(*p_atoms,p_atoms->selections[sel],p_atoms->selections["system"],cset);
-            cset.translate(-1.0*origin);
+        CoordinateSetAlignment& a = m_prealignments[i];
+        if (a.type=="center") {
+            CartesianCoor3D origin = CenterOfMass(*p_atoms,cset,p_atoms->selections["system"],p_atoms->selections[a.reference_selection]);
+            cset.translate(-1.0*origin,p_atoms->selections["system"], p_atoms->selections[a.selection]);
             // m_prealignmentvectors[framenumber].push_back(-1.0*origin);
+        } else if (a.type=="fittrans") {
+            CartesianCoor3D ref = CenterOfMass(*p_atoms,*(a.p_reference),p_atoms->selections[a.reference_selection]);
+            CartesianCoor3D pos = CenterOfMass(*p_atoms,cset,p_atoms->selections["system"],p_atoms->selections[a.reference_selection]);
+            cset.translate(ref-pos,p_atoms->selections["system"], p_atoms->selections[a.selection]);
+        } else if (a.type=="fitrottrans") {
+            Fit(*p_atoms,cset,p_atoms->selections["system"],p_atoms->selections[a.selection],*(a.p_reference),p_atoms->selections[a.reference_selection]);            
+        } else if (a.type=="fitrot") {
+            CartesianCoor3D ref = CenterOfMass(*p_atoms,*(a.p_reference),p_atoms->selections[a.reference_selection]);
+            CartesianCoor3D pos = CenterOfMass(*p_atoms,cset,p_atoms->selections["system"],p_atoms->selections[a.reference_selection]);
+            Fit(*p_atoms,cset,p_atoms->selections["system"],p_atoms->selections[a.selection],*(a.p_reference),p_atoms->selections[a.reference_selection]);            
+            // fit moves the center of mass, for rotational alignment only we have to correct the center of mass
+            cset.translate(pos,p_atoms->selections["system"], p_atoms->selections[a.selection]);
+        } else {
+            Err::Inst()->write(string("Fitting routine not understood: ")+a.type);
+            Err::Inst()->write(string("Use either of: center , fittrans , fitrottrans, fitrot"));
+            throw;
         }
     }
         
@@ -182,13 +249,29 @@ CoordinateSet* CoordinateSets::load(size_t framenumber) {
     // m_postalignmentvectors[framenumber].clear();
     for(size_t i = 0; i < m_postalignments.size(); ++i)
     {
-		string sel = m_postalignments[i].first;
-		string type = m_postalignments[i].second;
-        if (type=="center") {
-            CartesianCoor3D origin = CenterOfMass(*p_atoms,p_atoms->selections[sel],p_atoms->selections["system"],cset);
-            cset.translate(-1.0*origin);            
-            // m_postalignmentvectors[framenumber].push_back(-1.0*origin);
+        CoordinateSetAlignment& a = m_postalignments[i];
+        if (a.type=="center") {
+            CartesianCoor3D origin = CenterOfMass(*p_atoms,cset,p_atoms->selections["system"],p_atoms->selections[a.reference_selection]);
+            cset.translate(-1.0*origin,p_atoms->selections["system"], p_atoms->selections[a.selection]);
+            // m_prealignmentvectors[framenumber].push_back(-1.0*origin);
+        } else if (a.type=="fittrans") {
+            CartesianCoor3D ref = CenterOfMass(*p_atoms,*(a.p_reference),p_atoms->selections[a.reference_selection]);
+            CartesianCoor3D pos = CenterOfMass(*p_atoms,cset,p_atoms->selections["system"],p_atoms->selections[a.reference_selection]);
+            cset.translate(ref-pos,p_atoms->selections["system"], p_atoms->selections[a.selection]);
+        } else if (a.type=="fitrottrans") {
+            Fit(*p_atoms,cset,p_atoms->selections["system"],p_atoms->selections[a.selection],*(a.p_reference),p_atoms->selections[a.reference_selection]);            
+        } else if (a.type=="fitrot") {
+            CartesianCoor3D ref = CenterOfMass(*p_atoms,*(a.p_reference),p_atoms->selections[a.reference_selection]);
+            CartesianCoor3D pos = CenterOfMass(*p_atoms,cset,p_atoms->selections["system"],p_atoms->selections[a.reference_selection]);
+            Fit(*p_atoms,cset,p_atoms->selections["system"],p_atoms->selections[a.selection],*(a.p_reference),p_atoms->selections[a.reference_selection]);            
+            // fit moves the center of mass, for rotational alignment only we have to correct the center of mass
+            cset.translate(pos,p_atoms->selections["system"], p_atoms->selections[a.selection]);
+        } else {
+            Err::Inst()->write(string("Fitting routine not understood: ")+a.type);
+            Err::Inst()->write(string("Use either of: center , fittrans , fitrottrans, fitrot"));
+            throw;
         }
+
     }    
     
     // reduce the coordinate set to the target selection
@@ -200,7 +283,7 @@ CoordinateSet* CoordinateSets::load(size_t framenumber) {
 	} else if (m_representation==SPHERICAL) {
 	    return (new SphericalCoordinateSet(*pcset_reduced) ); 	    
 	} else if (m_representation==CYLINDRICAL) {
-	    return (new CylindricalCoordinateSet(*pcset_reduced) ); 	    
+	    return (new CylindricalCoordinateSet(*pcset_reduced,Params::Inst()->scattering.average.orientation.axis) ); 	    
 	} else {
         Err::Inst()->write("CoordinateSets::load: representation not understood");
         throw;

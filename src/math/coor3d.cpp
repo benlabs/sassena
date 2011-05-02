@@ -169,6 +169,12 @@ CylinderCoor3D CylinderCoor3D::operator-(const CylinderCoor3D& that) {
 //conversion constructor cartesian -> spherical
 SphericalCoor3D::SphericalCoor3D(CartesianCoor3D cc) {	
 	r = sqrt(pow(cc.x,2)+pow(cc.y,2)+pow(cc.z,2));
+    
+    if (r==0) {
+        theta = 0;
+        phi=0;
+        return;
+    }
 
 	theta = acos(cc.z/r);
 	if (theta<0) throw;
@@ -269,6 +275,34 @@ CartesianCoor3D rotate(CartesianCoor3D c,string axis,coor2_t rad) {
 		
 	}
 	return r;
+}
+
+CartesianVectorBase::CartesianVectorBase(CartesianCoor3D axis) {
+    CartesianCoor3D ek(0,0,1);
+    CartesianCoor3D ej(0,1,0);
+    
+    
+    CartesianCoor3D ez = axis/axis.length();
+    CartesianCoor3D ekez = ek.cross_product(ez);
+    if (ekez.length()==0) {
+        ekez = ej.cross_product(ez);
+    }
+    CartesianCoor3D er = ekez/ekez.length();
+    CartesianCoor3D ezer = ez.cross_product(er);
+    CartesianCoor3D ephi = ezer/ezer.length();
+    
+    base_.push_back(er);
+    base_.push_back(ephi);
+    base_.push_back(ez);
+}
+
+CartesianCoor3D& CartesianVectorBase::operator[](size_t index) {
+    return base_.at(index);
+}
+
+// project the vector vec onto the base and return the 3 components along the three basis vectors
+CartesianCoor3D CartesianVectorBase::project(CartesianCoor3D vec) {
+    return CartesianCoor3D(vec*base_[0],vec*base_[1],vec*base_[2]);
 }
 
 // end of file

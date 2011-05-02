@@ -97,11 +97,16 @@ class CylindricalCoordinateSet : public CoordinateSet {
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
     {
 		ar & boost::serialization::base_object<CoordinateSet,CylindricalCoordinateSet>(*this);
+        ar & axis_;
     }
-
+    CartesianCoor3D axis_;
 public:
 	CylindricalCoordinateSet();
-	CylindricalCoordinateSet(CartesianCoordinateSet& cs); 
+	CylindricalCoordinateSet(CartesianCoordinateSet& cs, CartesianCoor3D axis); 
+	
+    CartesianCoor3D get_axis() { return axis_;}
+    void set_axis(CartesianCoor3D axis) {axis_ = axis;}
+    
 };
 
 #endif

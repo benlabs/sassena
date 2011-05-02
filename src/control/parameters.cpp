@@ -102,8 +102,9 @@ void Params::read_xml(std::string filename) {
                     vector<XMLElement> indexes = xmli.get("./index");
                     for(size_t pi = 0; pi < indexes.size(); ++pi)
                     {
-                        xmli.set_current(indexes[i]);
-                        ids.push_back(xmli.get_value<size_t>("."));
+                        xmli.set_current(indexes[pi]);
+                        size_t index = xmli.get_value<size_t>(".");
+                        ids.push_back(index);
                     }                        
 
                     sample.selections[sname] = new SampleIndexSelectionParameters(ids);         
@@ -251,8 +252,30 @@ void Params::read_xml(std::string filename) {
     	    	if (xmli.exists("./selection")) alignment.selection   = xmli.get_value<string>("./selection");
     	    	if (xmli.exists("./order"))  alignment.order   = xmli.get_value<string>("./order");			
 
-    	    	sample.alignments.push_back(alignment);
     	    	Info::Inst()->write(string("Adding additional alignment to sample: type=")+alignment.type+string(", selection=")+alignment.selection+string(", order=")+alignment.order);
+
+                alignment.reference.type = "frame";
+                alignment.reference.frame = 0;
+                alignment.reference.file = sample.structure.file;
+                alignment.reference.format = sample.structure.format;
+                alignment.reference.selection = alignment.selection;
+                
+    	    	if (xmli.exists("./reference")) {
+        	    	if (xmli.exists("./reference/type")) alignment.reference.type   = xmli.get_value<string>("./reference/type");
+        	    	if (xmli.exists("./reference/frame")) alignment.reference.frame   = xmli.get_value<size_t>("./reference/frame");
+        	    	if (xmli.exists("./reference/file")) alignment.reference.file   = xmli.get_value<string>("./reference/file");
+        	    	if (xmli.exists("./reference/format")) alignment.reference.format   = xmli.get_value<string>("./reference/format");
+        	    	if (xmli.exists("./reference/selection")) alignment.reference.selection   = xmli.get_value<string>("./reference/selection");
+	    	    }
+	    	    if (alignment.type=="file") {
+        	    	Info::Inst()->write(string("Reference for alignment: type=")+alignment.reference.type+string(", file=")+alignment.reference.file+string(", format=")+alignment.reference.format+string(", frame=")+boost::lexical_cast<string>(alignment.reference.frame));	    	        
+	    	    } else if (alignment.type=="frame"){
+        	    	Info::Inst()->write(string("Reference for alignment: type=")+alignment.reference.type+string(", frame=")+boost::lexical_cast<string>(alignment.reference.frame));
+        	    	Info::Inst()->write(string("Alignment uses unprocessed coordinates (No alignment and no applied motions)"));
+	    	    }
+	    	    Info::Inst()->write(string("Selection used for alignment with reference=")+alignment.reference.selection);	    	            	    	
+
+    	    	sample.alignments.push_back(alignment);
     	    }
         }	
 	
@@ -266,15 +289,15 @@ void Params::read_xml(std::string filename) {
     scattering.dsp.method="fftw";
 	// defaults
 	scattering.average.orientation.type = "none";
+	scattering.average.orientation.axis = CartesianCoor3D(0,0,1);
 	scattering.average.orientation.vectors.type = "sphere";
 	scattering.average.orientation.vectors.algorithm = "boost_uniform_on_sphere";
 	scattering.average.orientation.vectors.resolution = 100;
 	scattering.average.orientation.vectors.seed = 0;
-	scattering.average.orientation.vectors.axis = CartesianCoor3D(0,0,1);
 	scattering.average.orientation.vectors.file = "qvector-orientations.txt";
 	scattering.average.orientation.multipole.type = "sphere";
-	scattering.average.orientation.multipole.resolution = 20;
-	scattering.average.orientation.multipole.axis = CartesianCoor3D(0,0,1);
+	scattering.average.orientation.multipole.moments.resolution = 20;
+    scattering.average.orientation.multipole.moments.file = "moments.txt";
 	scattering.average.orientation.exact.type = "sphere";
 
     scattering.signal.file = "signal.h5";
@@ -400,6 +423,12 @@ void Params::read_xml(std::string filename) {
     	
 	    if (xmli.exists("//scattering/average")) {
 	    	if (xmli.exists("//scattering/average/orientation")) {
+	    	    if (xmli.exists("//scattering/average/orientation/axis")) { // count vectors ... , or order for multipole...
+    				scattering.average.orientation.axis.x = xmli.get_value<double>("//scattering/average/orientation/axis/x");
+    				scattering.average.orientation.axis.y = xmli.get_value<double>("//scattering/average/orientation/axis/y");
+    				scattering.average.orientation.axis.z = xmli.get_value<double>("//scattering/average/orientation/axis/z");					
+    			}									
+	    	    
 	    		if (xmli.exists("//scattering/average/orientation/type")) { // vectors multipole
 	    			scattering.average.orientation.type = xmli.get_value<string>("//scattering/average/orientation/type");
 	    		}
@@ -425,12 +454,7 @@ void Params::read_xml(std::string filename) {
 	    			if (xmli.exists("//scattering/average/orientation/vectors/file")) { // count vectors ... , or order for multipole...
 	    				scattering.average.orientation.vectors.file = get_filepath(xmli.get_value<string>("//scattering/average/orientation/vectors/file"));
 	    			}		
-	    			if (xmli.exists("//scattering/average/orientation/vectors/axis")) { // count vectors ... , or order for multipole...
-	    				scattering.average.orientation.vectors.axis.x = xmli.get_value<double>("//scattering/average/orientation/vectors/axis/x");
-	    				scattering.average.orientation.vectors.axis.y = xmli.get_value<double>("//scattering/average/orientation/vectors/axis/y");
-	    				scattering.average.orientation.vectors.axis.z = xmli.get_value<double>("//scattering/average/orientation/vectors/axis/z");					
-	    			}						
-	    			
+	    				    			
 	    			scattering.average.orientation.vectors.create();
 	    			
 	    		} else if (scattering.average.orientation.type=="multipole") {			    
@@ -438,15 +462,22 @@ void Params::read_xml(std::string filename) {
 	    				scattering.average.orientation.multipole.type = xmli.get_value<string>("//scattering/average/orientation/multipole/type");
                         Info::Inst()->write(string("scattering.average.orientation.multipole.type=")+scattering.average.orientation.multipole.type);				    
 	    			}
-	    			if (xmli.exists("//scattering/average/orientation/multipole/resolution")) { // count vectors ... , or order for multipole...
-	    				scattering.average.orientation.multipole.resolution = xmli.get_value<long>("//scattering/average/orientation/multipole/resolution");
-                        Info::Inst()->write(string("scattering.average.orientation.multipole.resolution=")+boost::lexical_cast<string>(scattering.average.orientation.multipole.resolution));				    
+	    			if (xmli.exists("//scattering/average/orientation/multipole/moments")) { // count vectors ... , or order for multipole...
+    	    			if (xmli.exists("//scattering/average/orientation/multipole/moments/type")) { // count vectors ... , or order for multipole...
+	    				    scattering.average.orientation.multipole.moments.type = xmli.get_value<string>("//scattering/average/orientation/multipole/moments/type");
+                            Info::Inst()->write(string("scattering.average.orientation.multipole.moments.type=")+boost::lexical_cast<string>(scattering.average.orientation.multipole.moments.type));
+                        }
+    	    			if (xmli.exists("//scattering/average/orientation/multipole/moments/resolution")) { // count vectors ... , or order for multipole...
+	    				    scattering.average.orientation.multipole.moments.resolution = xmli.get_value<long>("//scattering/average/orientation/multipole/moments/resolution");
+                            Info::Inst()->write(string("scattering.average.orientation.multipole.moments.resolution=")+boost::lexical_cast<string>(scattering.average.orientation.multipole.moments.resolution));				    
+                        }
+    	    			if (xmli.exists("//scattering/average/orientation/multipole/moments/file")) { // count vectors ... , or order for multipole...
+	    				    scattering.average.orientation.multipole.moments.file = xmli.get_value<string>("//scattering/average/orientation/multipole/moments/file");
+                            Info::Inst()->write(string("scattering.average.orientation.multipole.moments.file=")+boost::lexical_cast<string>(scattering.average.orientation.multipole.moments.file));				    
+                        }
 	    			}
-	    			if (xmli.exists("//scattering/average/orientation/multipole/axis")) { // count vectors ... , or order for multipole...
-	    				scattering.average.orientation.multipole.axis.x = xmli.get_value<double>("//scattering/average/orientation/multipole/axis/x");
-	    				scattering.average.orientation.multipole.axis.y = xmli.get_value<double>("//scattering/average/orientation/multipole/axis/y");
-	    				scattering.average.orientation.multipole.axis.z = xmli.get_value<double>("//scattering/average/orientation/multipole/axis/z");					
-	    			}						
+	    			
+	    			scattering.average.orientation.multipole.moments.create();
 	    		} else if (scattering.average.orientation.type!="none") {
 	    			Err::Inst()->write(string("Orientation averaging type not understood: ")+scattering.average.orientation.type);
 	    			throw;
@@ -642,7 +673,8 @@ SampleParameters::~SampleParameters() {
 void ScatteringAverageOrientationVectorsParameters::create() {
 	
 	if (type=="file") {
-		
+		Info::Inst()->write(string("Reading orientations for orientational averaging from file: ")+file);
+        
 		ifstream qqqfile(file.c_str());
 	
 		double x,y,z; 
@@ -661,21 +693,61 @@ void ScatteringAverageOrientationVectorsParameters::create() {
 			boost::uniform_on_sphere<double> s(3); // that's my distribution
 			boost::variate_generator<boost::mt19937, boost::uniform_on_sphere<double> > mysphere(rng,s);
 	
+			Info::Inst()->write(string("Generating orientations for orientational averaging using sphere,boost_uniform_on_sphere"));
+    
 			for(size_t i = 0; i < resolution; ++i)
 			{
 				vector<double> r = mysphere();
 				this->push_back( CartesianCoor3D(r[0],r[1],r[2]) );							
 			}
+			// broken:
+//		} else if (algorithm=="quad") {
+//    		double x0,x1,x2,x3;
+//            size_t num = 0;
+//            //boost::mt19937 rng; // that's my random number generator			
+//            //boost::uniform_real<double> s(0,1); // that's my distribution
+//			//boost::variate_generator<boost::mt19937, boost::uniform_real<double> > mygen(rng,s);
+//			
+//    		while (num<resolution) {
+//                x0 = (float)rand()/(float)RAND_MAX;
+//                x1 = (float)rand()/(float)RAND_MAX;
+//                x2 = (float)rand()/(float)RAND_MAX;
+//                x3 = (float)rand()/(float)RAND_MAX;
+//                
+//    			//x0 = (2.0*(rand()*1.0/RAND_MAX)) - 1.0;
+//    			//x1 = (2.0*(rand()*1.0/RAND_MAX)) - 1.0;
+//    			//x2 = (2.0*(rand()*1.0/RAND_MAX)) - 1.0;
+//    			//x3 = (2.0*(rand()*1.0/RAND_MAX)) - 1.0;
+//    			double xl = powf(x0,2) + powf(x1,2) + powf(x2,2) + powf(x3,2);
+//    			if ( xl >= 1.0 ) continue;
+//
+//                double rsign = (float)rand()/(float)RAND_MAX;
+//                double sign = 1;
+//                if (rsign<0.5) sign=-1;
+//                
+//    			double x = 2* (x1*x3+x0*x2) / xl;
+//    			double y = 2* (x2*x3-x0*x1) / xl;
+//    			double z = 2* (powf(x0,2)+powf(x3,2)-powf(x1,2)-powf(x2,2)) / xl;
+//
+//    			SphericalCoor3D s = CartesianCoor3D(x,y,z);
+//    			// take length from scattering vector and angles from unisphere		
+//    			this->push_back( CartesianCoor3D(SphericalCoor3D(s.r,s.phi,sign*s.theta)) );				
+//    			num++;
+//    	    }
 		} else {
 			Err::Inst()->write(string("Vectors algorithm not understood: ")+algorithm);
 			throw;
 		}
+
+		
 	} else if (type=="cylinder") {
 		if (algorithm=="boost_uniform_on_sphere") {
 			boost::mt19937 rng; // that's my random number generator
 			rng.seed(seed);
 			boost::uniform_on_sphere<double> s(2); // that's my distribution
 			boost::variate_generator<boost::mt19937, boost::uniform_on_sphere<double> > mysphere(rng,s);
+	
+			Info::Inst()->write(string("Generating orientations for orientational averaging using cylinder,boost_uniform_on_sphere"));
 	
 			for(size_t i = 0; i < resolution; ++i)
 			{
@@ -686,6 +758,8 @@ void ScatteringAverageOrientationVectorsParameters::create() {
 	
 			const double M_2PI = 2*M_PI;
 			const double radincr = (M_2PI)/(360*resolution);			
+
+			Info::Inst()->write(string("Generating orientations for orientational averaging using cylinder,raster_linear"));
 
 			for (double phi=0;phi<M_2PI;phi+=radincr) {	
 					this->push_back( CartesianCoor3D(cos(phi),sin(phi),0) );	
@@ -698,7 +772,98 @@ void ScatteringAverageOrientationVectorsParameters::create() {
 		Err::Inst()->write(string("Vectors orientation averaging type not understood: ")+type);
 		throw;
 	}
+	
+	Info::Inst()->write(string("Initialized orientational averaging with ")+boost::lexical_cast<string>(size())+string(" vectors."));
 }
+
+
+void ScatteringAverageOrientationMultipoleMomentsParameters::create() {
+	
+	if (type=="file") {
+		Info::Inst()->write(string("Reading multipole moments for orientational averaging from file: ")+file);
+        
+		ifstream mmfile(file.c_str());
+	
+        long major, minor; 
+		while (mmfile >> major >> minor) {
+			this->push_back(make_pair<long,long>(major,minor));
+		}
+		
+	} else if (type=="resolution") {
+		Info::Inst()->write(string("Generating multipole moments for orientational averaging using a maxium major=")+boost::lexical_cast<string>(resolution));
+
+	    if (Params::Inst()->scattering.average.orientation.multipole.type=="sphere") {
+            this->push_back(make_pair<long,long>(0,0));
+            for(long l = 1; l <= resolution; ++l)
+            {
+                for(long m = -l; m <= l; ++m)
+                {
+                    this->push_back(make_pair<long,long>(l,m));
+                }
+            }
+
+	    } else if (Params::Inst()->scattering.average.orientation.multipole.type=="cylinder") {
+	        this->push_back(make_pair<long,long>(0,0));
+            for(long l = 1; l <= resolution; ++l)
+            {
+                this->push_back(make_pair<long,long>(l,0));
+                this->push_back(make_pair<long,long>(l,1));
+                this->push_back(make_pair<long,long>(l,2));
+                this->push_back(make_pair<long,long>(l,3));
+            }
+            
+	    } else {
+            Err::Inst()->write(string("Type not understood: scattering.average.orientation.multipole.moments.type=")+type);
+            throw;
+	    }
+    } else {
+        Err::Inst()->write(string("Type not understood: scattering.average.orientation.multipole.type=")+Params::Inst()->scattering.average.orientation.multipole.type);
+        throw;
+    }
+
+    // check validity of moments
+    Info::Inst()->write(string("Checking multipole moments."));
+    if (Params::Inst()->scattering.average.orientation.multipole.type=="cylinder") {
+        for(size_t i = 0; i < size(); ++i)
+        {
+            std::pair<long,long> mm = this->at(i);
+            if (mm.first<0) {            
+                Err::Inst()->write(string("Major multipole moment must be >= 0!"));
+                Err::Inst()->write(string("major=")+boost::lexical_cast<string>(mm.first)+string(", minor=")+boost::lexical_cast<string>(mm.second));                
+                throw;                
+            }
+            if ((mm.second<0) || (mm.second>3) ) {
+                Err::Inst()->write(string("Minor multipole moment must be between 0 and 3!"));
+                Err::Inst()->write(string("major=")+boost::lexical_cast<string>(mm.first)+string(", minor=")+boost::lexical_cast<string>(mm.second));                
+                throw;
+            }
+            if ((mm.first=0) && (mm.second!=0) ) {
+                Err::Inst()->write(string("Minor multipole moment must be 0 for Major 0!"));
+                Err::Inst()->write(string("major=")+boost::lexical_cast<string>(mm.first)+string(", minor=")+boost::lexical_cast<string>(mm.second));
+                throw;
+                throw;
+            }
+        }
+    } else if (Params::Inst()->scattering.average.orientation.multipole.type=="sphere") {
+        for(size_t i = 0; i < size(); ++i)
+        {
+            std::pair<long,long> mm = this->at(i);
+            if (mm.first<0) {            
+                Err::Inst()->write(string("Major multipole moment must be >= 0!"));
+                Err::Inst()->write(string("major=")+boost::lexical_cast<string>(mm.first));
+                throw;                
+            }            
+            if (abs(mm.second)>mm.first) {
+                Err::Inst()->write(string("Minor multipole moment must be between -Major and +Major!"));
+                Err::Inst()->write(string("major=")+boost::lexical_cast<string>(mm.first)+string(", minor=")+boost::lexical_cast<string>(mm.second));
+                throw;
+            }
+        }
+    }
+    
+	Info::Inst()->write(string("Initialized orientational averaging with ")+boost::lexical_cast<string>(size())+string(" moments."));
+}
+
 
 void ScatteringVectorsParameters::create_from_scans() {
 	// read out the scans and push the results onto the internal vector

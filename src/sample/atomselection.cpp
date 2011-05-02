@@ -46,6 +46,14 @@ size_t IndexAtomselection::size() {
     return ids_.size();
 }
 
+// conversion from range -> indexes
+//IndexAtomselection IndexAtomselection::IndexAtomselection(RangeAtomselection ra) {
+//    for(size_t i = 0; i < ra.size(); ++i)
+//    {
+//        ids_.push_back(ra[i]);
+//    }
+//}
+
 
 RangeAtomselection::RangeAtomselection(size_t from,size_t to) : 
     from_(from), 
@@ -66,5 +74,6 @@ size_t RangeAtomselection::operator[](size_t index) {
 size_t RangeAtomselection::size() {
     return (1+to_)-from_;
 }
+
 
 // end of file

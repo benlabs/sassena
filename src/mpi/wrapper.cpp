@@ -28,7 +28,7 @@ namespace mpi {
             char* buffer = NULL;
             size_t buffersize = 0;
 
-            if (comm.rank()==root) {
+            if (comm.rank()==static_cast<long>(root)) {
                 stream.seekg(0,ios_base::end);
                 buffersize = stream.tellg();
             }
@@ -36,12 +36,12 @@ namespace mpi {
 
             buffer = (char*) malloc(buffersize*sizeof(char));
 
-            if (comm.rank()==root) {
+            if (comm.rank()==static_cast<long>(root)) {
                 stream.seekg(0,ios_base::beg);                                            
                 stream.read(buffer,buffersize);
             }
             boost::mpi::broadcast(comm,buffer,buffersize,root);
-            if (comm.rank()!=root) {
+            if (comm.rank()!=static_cast<long>(root)) {
                 stream.write(buffer,buffersize);
             }
             free(buffer);
@@ -50,12 +50,12 @@ namespace mpi {
         
         template <class T> void broadcast_class(boost::mpi::communicator& comm,T& any, size_t root) {
             std::stringstream stream(stringstream::in|stringstream::out|stringstream::binary);
-            if (comm.rank()==root) {
+            if (comm.rank()==static_cast<long>(root)) {
                 boost::archive::binary_oarchive ar(stream); 
                 ar << any;
             }
         	mpi::wrapper::broadcast_stream(comm,stream,root);
-            if (comm.rank()!=root) {
+            if (comm.rank()!=static_cast<long>(root)) {
                 boost::archive::binary_iarchive ar(stream); 
                 ar >> any;
             }

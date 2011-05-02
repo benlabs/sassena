@@ -34,6 +34,26 @@
 // 
 ////////////////////////////////////////////////////////////////////////////////
 
+class CoordinateSetAlignment {
+protected:
+    friend class boost::serialization::access;	
+	template<class Archive> void serialize(Archive & ar, const unsigned int version)
+    {
+        ar & type;
+        ar & order;    
+        ar & selection; 
+        ar & reference_selection; 
+        ar & p_reference;
+    }
+
+public:
+    std::string type;
+    std::string order;    
+    std::string selection; // atoms to move
+    std::string reference_selection; // selection containing atoms used for fitting/alignment
+    CoordinateSet* p_reference;
+};
+
 // This class is used by Scatterdevices to manage coordinate sets
 class CoordinateSets {
 protected:
@@ -70,8 +90,8 @@ protected:
     // std::map<size_t,std::vector<CartesianCoor3D> > m_postalignmentvectors;
 
 	std::vector< std::pair<std::string,MotionWalker*> > m_motion_walkers;
-	std::vector< std::pair<std::string,std::string> > m_prealignments;
-	std::vector< std::pair<std::string,std::string> > m_postalignments;
+	std::vector< CoordinateSetAlignment > m_prealignments;
+	std::vector< CoordinateSetAlignment > m_postalignments;
 
     Frames frames;
 
@@ -95,8 +115,8 @@ public:
 	
     void set_representation(CoordinateRepresentation representation);
     CoordinateRepresentation get_representation();
-    void add_prealignment(std::string selection,std::string type);
-    void add_postalignment(std::string selection,std::string type);
+    void add_prealignment(CoordinateSetAlignment alignment);
+    void add_postalignment(CoordinateSetAlignment alignment);
 	
     void write_xyz(std::string filename); // dumps coordinates to file in xyz format
 	
