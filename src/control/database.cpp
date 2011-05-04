@@ -235,16 +235,30 @@ bool Database::check() {
 	return true;
 }
 
-void Database::init(std::string filename,std::string format) {
-	if (format=="") {
-		Info::Inst()->write(string("Detecting format of database file: ") + filename);
-		format = guessformat(filename);
-		Info::Inst()->write(string("Detected format: ") + format);
-	}
-	
-	if (format=="xml") {
-		read_xml(filename);
-	}
+void Database::init() {
+
+    if (Params::Inst()->database.type=="file") {
+        if (!boost::filesystem::exists(Params::Inst()->database.file)) {
+            Err::Inst()->write(Params::Inst()->database.file+string(" does not exist!"));            
+            throw;
+        }
+        
+    	if (Params::Inst()->database.format=="") {
+    		Info::Inst()->write(string("Detecting format of database file: ") + Params::Inst()->database.file);
+    		Params::Inst()->database.format = guessformat(Params::Inst()->database.file);
+    		Info::Inst()->write(string("Detected format: ") + Params::Inst()->database.format);
+    	}
+
+    	if (Params::Inst()->database.format=="xml") {
+    		read_xml(Params::Inst()->database.file);
+    	} else {
+    	    Err::Inst()->write(string("Database format not recognized"));
+            throw;
+    	}
+    } else {
+	    Err::Inst()->write(string("Database type not recognized"));
+        throw;
+    }
 
 	Info::Inst()->write("Checking database...");	
 	

@@ -27,7 +27,7 @@
 #include "control.hpp"
 #include "log.hpp"
 #include "sample.hpp"
-#include "scatter_devices/data_stager.hpp"
+#include "stager/data_stager.hpp"
 
 using namespace std;
 

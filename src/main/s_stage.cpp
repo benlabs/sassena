@@ -37,16 +37,16 @@
 #include <boost/serialization/vector.hpp>
 
 // other headers
+#include "exceptions/exceptions.hpp"
 #include "math/coor3d.hpp"
 #include "decomposition/decompose.hpp"
-#include "decomposition/decomposition_plan.hpp"
+#include "stager/data_stager.hpp"
 #include "control.hpp"
 #include "log.hpp"
 #include "report/performance_analyzer.hpp"
 #include "report/timer.hpp"
 #include "mpi/wrapper.hpp"
 #include "sample/sample.hpp"
-#include "scatter_devices/scatter_device_factory.hpp"
 #include "services.hpp"
 
 #include "SassenaConfig.hpp"
@@ -68,13 +68,15 @@ void print_title() {
 	Info::Inst()->write("");
 
 }
+
 void print_description() {
     Info::Inst()->write(".................................................................");
 	Info::Inst()->write("......................D.E.S.C.R.I.P.T.I.O.N......................");
 	Info::Inst()->write(".................................................................");	
 
-	Info::Inst()->write("This binary computes the scattering intensities directly from");	
-	Info::Inst()->write("a molecular dynamics trajectory. ");	
+	Info::Inst()->write("This binary stages the trajectory data on a parallel partition");	
+	Info::Inst()->write("It may be used to test I/O and to generate post-processed");	
+	Info::Inst()->write("trajectories by setting stager.dump=true");		
 	Info::Inst()->write(".................................................................");	
 }
 
@@ -83,6 +85,18 @@ void print_description() {
 void print_initialization() {
     Info::Inst()->write(".................................................................");
 	Info::Inst()->write("...................I.N.I.T.I.A.L.I.Z.A.T.I.O.N...................");
+	Info::Inst()->write(".................................................................");	
+}
+
+void print_computation() {
+    Info::Inst()->write(".................................................................");
+	Info::Inst()->write("......................C.O.M.P.U.T.A.T.I.O.N......................");
+	Info::Inst()->write(".................................................................");	
+}
+
+void print_analysis() {
+    Info::Inst()->write(".................................................................");
+	Info::Inst()->write(".....................R.U.N...A.N.A.L.Y.S.I.S.....................");
 	Info::Inst()->write(".................................................................");	
 }
 
@@ -123,7 +137,7 @@ int main(int argc,char* argv[]) {
     }
 
     bool initstatus = true;
-		
+
     if (world.rank()==0) print_initialization();
 	if (world.rank()==0) {
 	    
@@ -132,13 +146,14 @@ int main(int argc,char* argv[]) {
     		timer.start("sample::setup");
 	    
             params->init(argc,argv);
-
             database->init();
 	    
             sample.init();
 		
 		    timer.stop("sample::setup");
-		    
+		} catch (sassena::terminate_request const& e) {
+            Info::Inst()->write("Hangup requested");
+            initstatus = false; 		    
         } catch (boost::exception const& e ) {
             initstatus = false; 
             Err::Inst()->write("Caught BOOST error, sending hangup to all nodes");
@@ -156,10 +171,11 @@ int main(int argc,char* argv[]) {
     
     broadcast(world,&initstatus,1,0);            	
 	// if something went wrong during initialization, exit now.
-    if (!initstatus) return 1;
-    
-	if (world.rank()==0) Info::Inst()->write(string("Set background scattering length density set to ")+boost::lexical_cast<string>(Params::Inst()->scattering.background.factor));
-		
+    if (!initstatus) {
+        world.barrier();
+        return 0;
+    }
+    		
 	//------------------------------------------//
 	//
 	// Communication of the sample
@@ -171,27 +187,93 @@ int main(int argc,char* argv[]) {
     
 	world.barrier();
 
-	timer.start("sample::communication");
     if (world.rank()==0) Info::Inst()->write("params... ");
-
+	timer.start("params::comm");
     mpi::wrapper::broadcast_class<Params>(world,*params,0);
-
 	world.barrier();
-
+	timer.stop("params::comm");
     if (world.rank()==0) Info::Inst()->write("database... ");
-    
+	timer.start("db::comm");
     mpi::wrapper::broadcast_class<Database>(world,*database,0);
-
 	world.barrier();
-    
+	timer.stop("db::comm");
     if (world.rank()==0) Info::Inst()->write("sample... ");
-
+	timer.start("sample::comm");
     mpi::wrapper::broadcast_class<Sample>(world,sample,0);
-    
 	world.barrier();
+	timer.stop("sample::comm");
+
+	//------------------------------------------//
+	//
+	// Scattering calculation
+	//
+	//------------------------------------------//
+        
+    if (world.rank()==0) Info::Inst()->write("Setting up parallel environment...");	
+
+    if (world.rank()==0) Info::Inst()->write("Starting staging...");	
+    
+    // prepare sample
+    size_t NF = sample.coordinate_sets.size();
+    string target = Params::Inst()->stager.target;
+    size_t NA = sample.atoms.selections[target]->size();
+    {
+        sample.coordinate_sets.set_selection(sample.atoms.selections[target]);
+        sample.coordinate_sets.set_representation(CARTESIAN);        
+    }
+
+    Info::Inst()->write(string("stager.mode=")+Params::Inst()->stager.mode);
 	
-	timer.stop("sample::communication");
+    if (Params::Inst()->stager.mode=="frames") {
+        DivAssignment assignment(world.size(),world.rank(),NF);
+        DataStagerByFrame data_stager(sample,world,world,assignment,timer);
+        coor_t* p_coordinates = data_stager.stage();
+        delete p_coordinates;
+    } else if (Params::Inst()->stager.mode=="atoms") {
+        DivAssignment assignment(world.size(),world.rank(),NA);        
+        DataStagerByAtom data_stager(sample,world,world,assignment,timer);
+        coor_t* p_coordinates = data_stager.stage();
+        delete p_coordinates;        
+    } else {
+        Err::Inst()->write(string("Staging mode not understood stager.mode=")+Params::Inst()->stager.mode);
+        Err::Inst()->write(string("Use 'frames' or 'atoms'"));
+        throw;
+    }
+    
+    if (world.rank()==0) Info::Inst()->write("Staging finishe...");	
+    
+    
+    // start computation tasks
 
-	if (world.rank()==0) Info::Inst()->write("done");
+    world.barrier();
 
+    if (world.rank()==0) print_analysis();
+    
+	if (world.rank()==0) {
+		Info::Inst()->write(string("Aggregating timing information for performance analysis..."));		
+	}
+	
+	timer.stop("total");
+	
+    std::map<boost::thread::id,Timer> performance_timer;
+    performance_timer[boost::this_thread::get_id()]=timer;
+    PerformanceAnalyzer perfanal(world,performance_timer); // collect timing information from everybody.
+        
+    if (world.rank()==0) {
+		perfanal.report();
+		perfanal.report_relative(timer.sum("total")*world.size());
+    	Info::Inst()->write(string("Total runtime (s): ")+boost::lexical_cast<string>(timer.sum("total")));
+    	Info::Inst()->write("Successfully finished... Have a nice day!");
+	}
+
+	//------------------------------------------//
+	//
+	// Finished
+	//
+	//------------------------------------------//	
+
+	return 0;
 }
+
+
+// end of file

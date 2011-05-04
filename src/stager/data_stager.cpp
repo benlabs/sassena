@@ -9,7 +9,7 @@
  */
 
 // direct header
-#include "scatter_devices/data_stager.hpp"
+#include "stager/data_stager.hpp"
 
 // standard header
 #include <complex>
@@ -22,6 +22,7 @@
 #include <boost/thread.hpp>
 
 // other headers
+#include "stager/coordinate_writer.hpp"
 #include "math/coor3d.hpp"
 #include "decomposition/decompose.hpp"
 #include <fftw3.h>
@@ -45,7 +46,7 @@ DataStagerByFrame::DataStagerByFrame(Sample& sample,boost::mpi::communicator& al
     NN = allcomm_.size();  
     NNPP = partitioncomm_.size();
     NF = m_sample.coordinate_sets.size();
-    std::string target = Params::Inst()->scattering.target;
+    std::string target = Params::Inst()->stager.target;
     NA = m_sample.atoms.selections[target]->size();
 
     size_t rank = allcomm_.rank();
@@ -85,6 +86,11 @@ coor_t* DataStagerByFrame::stage() {
     stage_fillpartitions();
     timer_.stop("st:fill");
 
+    if (Params::Inst()->stager.dump) {
+        Info::Inst()->write(string("Dumping coordinates to file: ")+Params::Inst()->stager.file);
+        write(Params::Inst()->stager.file,Params::Inst()->stager.format);
+    }
+
     return p_coordinates;
 }
 
@@ -112,6 +118,37 @@ void DataStagerByFrame::stage_fillpartitions() {
     boost::mpi::broadcast(interpartitioncomm_,p_coordinates,FC_assignment.size()*NA*3,0);
 }
 
+void DataStagerByFrame::write(std::string filename, std::string format) {
+    // use the first partition by default
+    if (allcomm_.rank()<partitioncomm_.size()) {
+        timer_.start("st:dump");
+
+        ICoordinateWriter* p_cw = NULL;
+        if (format=="dcd") {
+            p_cw = new DCDCoordinateWriter(filename);
+        } else {
+            Err::Inst()->write(string("Format for coordinate dumping not known: ")+format);
+            throw;
+        }
+        if (allcomm_.rank()==0) p_cw->init(NF,NA);
+        allcomm_.barrier();
+        p_cw->prepare();
+        allcomm_.barrier();
+
+        // take advantage of blocks being consecutive. can be change and wrapped in a loop here...
+        if (FC_assignment.size()>0) {
+           p_cw->write(p_coordinates,FC_assignment[0],FC_assignment.size());            
+        }
+        timer_.stop("st:dump");
+    }
+
+    timer_.start("st:wait");
+    allcomm_.barrier();
+    timer_.stop("st:wait");
+}
+
+
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // By Atom
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -127,7 +164,7 @@ DataStagerByAtom::DataStagerByAtom(Sample& sample,boost::mpi::communicator& allc
     NNPP = partitioncomm_.size();    
     NP = NN/NNPP;
     NF = m_sample.coordinate_sets.size();
-    std::string target = Params::Inst()->scattering.target;
+    std::string target = Params::Inst()->stager.target;
     NA = m_sample.atoms.selections[target]->size();
 
     size_t rank = allcomm_.rank();
@@ -166,6 +203,11 @@ coor_t* DataStagerByAtom::stage() {
     timer_.start("st:fill");
     stage_fillpartitions();
     timer_.stop("st:fill");
+
+    if (Params::Inst()->stager.dump) {
+        Info::Inst()->write(string("Dumping coordinates to file: ")+Params::Inst()->stager.file);
+        write(Params::Inst()->stager.file,Params::Inst()->stager.format);
+    }
 
     return p_coordinates;
     
@@ -310,6 +352,36 @@ void DataStagerByAtom::stage_fillpartitions() {
     // create a communicator to broadcast between partitions.    
     boost::mpi::communicator interpartitioncomm_ = allcomm_.split(partitioncomm_.rank());
     boost::mpi::broadcast(interpartitioncomm_,p_coordinates,FC_assignment.size()*NF*3,0);
+}
+
+
+void DataStagerByAtom::write(std::string filename, std::string format) {
+    // use the first partition by default
+    if (allcomm_.rank()<partitioncomm_.size()) {
+        timer_.start("st:dump");
+
+        ICoordinateWriter* p_cw = NULL;
+        if (format=="dcd") {
+            p_cw = new DCDCoordinateWriter(filename);
+        } else {
+            Err::Inst()->write(string("Format for coordinate dumping not known: ")+format);
+            throw;
+        }
+        if (allcomm_.rank()==0) p_cw->init(NA,NF);
+        allcomm_.barrier();
+        p_cw->prepare();
+        allcomm_.barrier();
+
+        // take advantage of blocks being consecutive. can be change and wrapped in a loop here...
+        if (FC_assignment.size()>0) {
+           p_cw->write(p_coordinates,FC_assignment[0],FC_assignment.size());            
+        }
+        timer_.stop("st:dump");
+    }
+
+    timer_.start("st:wait");
+    allcomm_.barrier();
+    timer_.stop("st:wait");
 }
 
 // end of file

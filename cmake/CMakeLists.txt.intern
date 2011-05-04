@@ -56,6 +56,11 @@ ADD_LIBRARY(sass_services ${INTERNAL_LIBRARY_TYPE}
 	src/services/monitor_service.cpp	
 )
 
+ADD_LIBRARY(sass_stager ${INTERNAL_LIBRARY_TYPE}
+    src/stager/coordinate_writer.cpp	
+	src/stager/data_stager.cpp		
+)
+
 ADD_LIBRARY(sass_scatter_devices ${INTERNAL_LIBRARY_TYPE}
 	src/scatter_devices/scatter_factors.cpp
 	src/scatter_devices/scatter_device_factory.cpp
@@ -68,7 +73,6 @@ ADD_LIBRARY(sass_scatter_devices ${INTERNAL_LIBRARY_TYPE}
 #	src/scatter_devices/all_multipole_cylinder.cpp
     src/scatter_devices/abstract_scatter_device.cpp
     src/scatter_devices/abstract_vectors_scatter_device.cpp
-	src/scatter_devices/data_stager.cpp
 	src/scatter_devices/self_vectors_scatter_device.cpp	
 #	src/scatter_devices/self_vectors.cpp
 )
@@ -80,6 +84,7 @@ SET_TARGET_PROPERTIES(sass_controlio PROPERTIES LINK_SEARCH_END_STATIC 1)
 SET_TARGET_PROPERTIES(sass_report PROPERTIES LINK_SEARCH_END_STATIC 1)
 SET_TARGET_PROPERTIES(sass_mpi PROPERTIES LINK_SEARCH_END_STATIC 1)
 SET_TARGET_PROPERTIES(sass_decomposition PROPERTIES LINK_SEARCH_END_STATIC 1)
+SET_TARGET_PROPERTIES(sass_stager PROPERTIES LINK_SEARCH_END_STATIC 1)
 SET_TARGET_PROPERTIES(sass_scatter_devices PROPERTIES LINK_SEARCH_END_STATIC 1)
 ENDIF(STATIC)
 
@@ -135,6 +140,15 @@ TARGET_LINK_LIBRARIES (sass_services
     sass_report
 	${Boost_LIBRARIES}
 )
+
+TARGET_LINK_LIBRARIES (sass_stager
+    sass_controlio
+    sass_log
+    sass_sample
+    sass_decomposition
+    sass_report
+    ${Boost_LIBRARIES}
+)
                                    
 TARGET_LINK_LIBRARIES (sass_scatter_devices  
 	sass_math 
@@ -143,6 +157,7 @@ TARGET_LINK_LIBRARIES (sass_scatter_devices
 	sass_services
 	sass_controlio 
 	sass_decomposition
+	sass_stager
 	sass_sample  
 	${Boost_LIBRARIES} 
 )

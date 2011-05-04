@@ -29,7 +29,6 @@
 #include <boost/archive/text_iarchive.hpp>
 #include <boost/exception/all.hpp>
 #include <boost/filesystem.hpp>
-#include <boost/program_options.hpp>
 #include <boost/serialization/complex.hpp>
 #include <boost/serialization/map.hpp>
 #include <boost/serialization/vector.hpp>
@@ -43,8 +42,6 @@
 #include "SassenaConfig.hpp"
 
 using namespace std;
-
-namespace po = boost::program_options;
 
 void print_title() {
     
@@ -80,65 +77,6 @@ void print_initialization() {
 }
 
 
-bool init_commandline(int argc,char** argv,po::variables_map& vm) {
-    
-    po::options_description desc("Allowed options");
-    desc.add_options()
-        ("help", "produce help message")
-        ("config", po::value<string>()->default_value("scatter.xml"),  "name of the xml configuration file")
-        ("database",po::value<string>()->default_value("db.xml"),  "name of the xml database file")   
-
-        ("scattering-signal-file",po::value<string>()->default_value("signal.h5"),"name of the data output file")
-//        ("limits-computation-threads",po::value<string>()->default_value("1"),"threadpool size for orientational averaging")        
-    ;
-    
-    po::store(po::parse_command_line(argc, argv, desc), vm);
-    po::notify(vm);
-    
-    
-    if (vm.find("help")!=vm.end()) {
-        cout << desc << endl;
-        return false;
-    }
-
-    if (vm["config"].defaulted()) {
-        Info::Inst()->write("No configuration file specified. Will try to read from scatter.xml");
-    }
-    if (!boost::filesystem::exists(vm["config"].as<string>())) {
-        Err::Inst()->write(vm["config"].as<string>()+string(" does not exist!"));            
-        return false;
-    }
-        
-    if (vm["database"].defaulted()) {
-        Info::Inst()->write("No database file specified. Will try to read from db.xml");
-    }
-    if (!boost::filesystem::exists(vm["database"].as<string>())) {
-        Err::Inst()->write(vm["database"].as<string>()+string(" does not exist!"));            
-        return false;
-    }
-    
-    return true;
-}
-
-void read_parameters(po::variables_map vm) {
-    Info::Inst()->write("Checking command line for parameter overwrite");
-    // second stage , allow command line parameters to overwrite defaults in the configuration file
-//	if (!vm["limits-computation-threads"].defaulted()) {
-//        Info::Inst()->write(string("Overwrite: limits.computation.threads=")+vm["limits-computation-threads"].as<string>());
- //       Params::Inst()->limits.computation.threads = boost::lexical_cast<size_t>(vm["limits-computation-threads"].as<string>());
-   // }
-    if (!vm["scattering-signal-file"].defaulted()) {
-        Info::Inst()->write(string("Overwrite: scattering.signal.file=")+vm["scattering-signal-file"].as<string>());
-        Params::Inst()->scattering.signal.file = vm["scattering-signal-file"].as<string>();        
-    }
-}
-
-void detect_parameters() {
-    if (boost::thread::hardware_concurrency()!=0) {
-        Info::Inst()->write(string("Detect: Number of Processors per machine: ")+boost::lexical_cast<string>(boost::thread::hardware_concurrency()));   
-    }
-}
-
 int main(int argc,char* argv[]) {
 
     // The rank 0 node is responsible for the progress output and to inform the user
@@ -159,22 +97,15 @@ int main(int argc,char* argv[]) {
 
 	Sample sample;
 	
-    bool initstatus = true;
-		
-    po::variables_map vm;    
     print_title();
     print_description();
-    initstatus = init_commandline(argc,argv,vm);
-
-
-print_initialization();
+    
+    print_initialization();
 	    
-params->init(vm["config"].as<string>());
-database->init(vm["database"].as<string>());	    
-sample.init();
+    params->init(argc,argv);
+    database->init();	    
+    sample.init();
 
-detect_parameters();    
-read_parameters(vm);
 		
 	//------------------------------------------//
 	//

@@ -270,7 +270,7 @@ public:
 	DatabaseSFactorsParameters sfactors;	
 	DatabaseAtomIDsParameters atomIDs;	
 
-	void init(std::string filename, std::string format="");
+	void init();
 	
 	// interface for initiatilzation and interfacing
 	static Database* Inst() { static Database instance; return &instance;}

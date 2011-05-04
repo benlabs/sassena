@@ -8,8 +8,8 @@
  *
  */
 
-#ifndef SCATTER_DEVICES__DATA_STAGER_HPP_
-#define SCATTER_DEVICES__DATA_STAGER_HPP_
+#ifndef STAGER__DATA_STAGER_HPP_
+#define STAGER__DATA_STAGER_HPP_
 
 // common header
 #include "common.hpp"
@@ -33,8 +33,8 @@
 #include "services.hpp"
 #include "math/coor3d.hpp"
 #include "decomposition/assignment.hpp"
-#include "scatter_devices/scatter_factors.hpp"
 #include "report/timer.hpp"
+#include "stager/coordinate_writer.hpp"
 
 class DataStagerByFrame {
     Sample& m_sample;
@@ -62,8 +62,8 @@ public:
     DataStagerByFrame(Sample& sample,boost::mpi::communicator& allcomm,boost::mpi::communicator& partitioncomm, DivAssignment assignment,Timer& timer);
     coor_t* stage();
     
+    void write(std::string filename,std::string format);
 };
-
 
 class DataStagerByAtom  {
     Sample& m_sample;
@@ -101,6 +101,7 @@ public:
     DataStagerByAtom(Sample& sample,boost::mpi::communicator& allcomm,boost::mpi::communicator& partitioncomm, DivAssignment assignment,Timer& timer);
   
     coor_t* stage();    
+    void write(std::string filename,std::string format);
 };
 
 #endif

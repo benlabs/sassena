@@ -25,6 +25,7 @@
 #include <boost/serialization/map.hpp>
 #include <boost/serialization/string.hpp>
 #include <boost/serialization/vector.hpp>
+#include <boost/program_options.hpp>
 
 // other headers
 #include "math/coor3d.hpp"
@@ -562,7 +563,6 @@ private:
     {
         ar & type;
 		ar & dsp;
-		ar & target;
 		ar & qvectors;
 		ar & average;
 		ar & background;
@@ -573,7 +573,6 @@ private:
 public:	
 	std::string type;
 	ScatteringDspParameters dsp;
-	std::string target;
 
 	ScatteringVectorsParameters qvectors;
 	
@@ -581,6 +580,31 @@ public:
 	ScatteringBackgroundParameters background;	
 
 	ScatteringSignalParameters signal;	
+};
+
+
+class StagerParameters {
+private:
+	/////////////////// MPI related
+	// make this class serializable to 
+	// allow sample to be transmitted via MPI
+    friend class boost::serialization::access;	
+	template<class Archive> void serialize(Archive & ar, const unsigned int version)
+    {
+        ar & dump;
+		ar & file;
+		ar & format;
+		ar & target;
+        ar & mode;
+    }
+	/////////////////// 
+
+public:	
+    bool dump;
+	std::string file;
+	std::string format;
+	std::string target;
+    std::string mode;
 };
 
 class LimitsServicesSignalMemoryParameters {
@@ -704,11 +728,15 @@ private:
     {
 		ar & threads;
 		ar & memory;
+        ar & processes;
+        ar & cores;
     }
 	/////////////////// 
 
 public:
     size_t threads;
+    size_t processes;
+    size_t cores;
     LimitsComputationMemoryParameters memory;
 };
 
@@ -900,6 +928,27 @@ public:
 };
 
 
+class DatabaseParameters {
+private:
+	/////////////////// MPI related
+	// make this class serializable to 
+	// allow sample to be transmitted via MPI
+    friend class boost::serialization::access;	
+	template<class Archive> void serialize(Archive & ar, const unsigned int version)
+    {
+		ar & type;
+		ar & file;
+        ar & format;
+    }
+	/////////////////// 
+
+public:
+	std::string type;
+	std::string file;
+	std::string format;
+};
+
+
 
 
 // implement Parameters as a singleton class, this makes it globally available
@@ -916,6 +965,8 @@ private:
 		ar & config_rootpath;
 		ar & sample;
 		ar & scattering;
+        ar & stager;
+        ar & database;
 		ar & limits;
 		ar & debug;
     }
@@ -932,18 +983,21 @@ private:
 	std::string get_filepath(std::string filename);	
 
 	void read_xml(std::string filename);
-	
+    boost::program_options::options_description options();
+    void overwrite_options(boost::program_options::variables_map& vm);
 public: 
 	// interface for parameters
 	SampleParameters sample;
 	ScatteringParameters scattering;
+    StagerParameters stager;
+    DatabaseParameters database;
 	LimitsParameters limits;
 	DebugParameters debug;
 	
 	// interface for initiatilzation and interfacing
 	static Params* Inst() { static Params instance; return &instance;}
 	
-	void init(std::string filename);
+	void init(int argc,char** argv);
 	~Params() {}; // it is said some compilers have problems w/ private destructors.
 	
 	void write_xml(std::string filename);	

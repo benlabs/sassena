@@ -3,6 +3,11 @@ ADD_EXECUTABLE(sassena
     src/main/sassena.cpp
 )
 
+ADD_EXECUTABLE(s_stage 
+	src/common.cpp
+    src/main/s_stage.cpp
+)
+
 ADD_EXECUTABLE(s_maketnx 
 	src/common.cpp
     src/main/s_maketnx.cpp
@@ -36,11 +41,23 @@ ADD_EXECUTABLE(unit_serialize
 
 IF(STATIC)
 SET_TARGET_PROPERTIES(sassena PROPERTIES LINK_SEARCH_END_STATIC 1)
+SET_TARGET_PROPERTIES(s_stage PROPERTIES LINK_SEARCH_END_STATIC 1)
 SET_TARGET_PROPERTIES(s_maketnx PROPERTIES LINK_SEARCH_END_STATIC 1)
 SET_TARGET_PROPERTIES(s_genconf PROPERTIES LINK_SEARCH_END_STATIC 1)
 SET_TARGET_PROPERTIES(unit_broadcast PROPERTIES LINK_SEARCH_END_STATIC 1)
 SET_TARGET_PROPERTIES(unit_serialize PROPERTIES LINK_SEARCH_END_STATIC 1)
 ENDIF(STATIC)
+
+TARGET_LINK_LIBRARIES (s_stage 
+	sass_log
+	sass_controlio
+	sass_sample
+	sass_report
+	sass_decomposition
+	sass_stager
+	sass_mpi
+	${BOOST_LIBRARIES}
+)
 
 TARGET_LINK_LIBRARIES (sassena 
 	sass_log
@@ -49,6 +66,7 @@ TARGET_LINK_LIBRARIES (sassena
 	sass_report
 	sass_decomposition
 	sass_scatter_devices
+	sass_stager
 	sass_mpi
 	${BOOST_LIBRARIES}
 )
@@ -93,6 +111,7 @@ TARGET_LINK_LIBRARIES (s_sqw
 	sass_log
 	${FFTW3_LIBRARIES} 
     ${HDF5_LIBRARIES}	
+	${ZLIB_LIBRARIES}
 	${BOOST_LIBRARIES}
 )
 

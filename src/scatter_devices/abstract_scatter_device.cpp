@@ -28,7 +28,7 @@
 #include "control.hpp"
 #include "log.hpp"
 #include "sample.hpp"
-#include "scatter_devices/data_stager.hpp"
+#include "stager/data_stager.hpp"
 
 using namespace std;
 
@@ -57,7 +57,7 @@ AbstractScatterDevice::AbstractScatterDevice(
     	
     NN = partitioncomm_.size();
 	NF = sample_.coordinate_sets.size();
-	std::string target = Params::Inst()->scattering.target;
+	std::string target = Params::Inst()->stager.target;
 	NA = sample_.atoms.selections[target]->size(); // Number of Atoms
 	
 	sample_.coordinate_sets.set_selection(sample.atoms.selections[target]);

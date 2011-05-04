@@ -22,11 +22,14 @@
 #include <boost/filesystem.hpp>
 #include <boost/math/special_functions/factorials.hpp>
 #include <boost/regex.hpp>
+#include <boost/program_options.hpp>
 #include <boost/random/mersenne_twister.hpp>	
 #include <boost/random/uniform_on_sphere.hpp>	
 #include <boost/random/variate_generator.hpp>	
+#include <boost/thread.hpp>
 
 // other headers
+#include "exceptions/exceptions.hpp"
 #include "log/log.hpp"
 #include "io/xml_interface.hpp"
 
@@ -71,7 +74,7 @@ void Params::read_xml(std::string filename) {
 	// START OF sample section //	
 	XMLInterface xmli(filename);
     
-	Info::Inst()->write("Reading parameters...");
+	Info::Inst()->write(string("Reading parameters from XML file: ")+filename);
 	
 	// now read the parameters
 	
@@ -281,8 +284,32 @@ void Params::read_xml(std::string filename) {
 	
 	}	
 	
+    stager.dump=false;
+    stager.file="dump.dcd";
+    stager.format="dcd";
+    stager.target = "system";
+    stager.mode = "frames";
+
+    if (xmli.exists("//stager")) {
+    	if (xmli.exists("//stager/dump")) {
+    		stager.dump = xmli.get_value<bool>("//stager/dump");
+    	}
+    	if (xmli.exists("//stager/file")) {
+    		stager.file = xmli.get_value<string>("//stager/file");
+    	}
+    	if (xmli.exists("//stager/format")) {
+    		stager.format = xmli.get_value<string>("//stager/format");
+    	}
+    	if (xmli.exists("//stager/target")) {
+    		stager.target = xmli.get_value<string>("//stager/target");        	
+    	}
+    	if (xmli.exists("//stager/mode")) {
+    		stager.mode = xmli.get_value<string>("//stager/mode");
+    	}
+    }
+	Info::Inst()->write(string("stager.target=")+stager.target);		
+	
 	scattering.type="all";
-    scattering.target = "system";
 	scattering.background.factor = 0.0;
 
     scattering.dsp.type="autocorrelate";
@@ -311,13 +338,6 @@ void Params::read_xml(std::string filename) {
     		scattering.type = xmli.get_value<string>("//scattering/type");
     	}
     	Info::Inst()->write(string("scattering.type=")+scattering.type);
-
-
-    	if (xmli.exists("//scattering/target")) {
-    		scattering.target = xmli.get_value<string>("//scattering/target");
-    	}
-    	Info::Inst()->write(string("scattering.target=")+scattering.target);
-
 
     	if (xmli.exists("//scattering/background")) {
     		if (xmli.exists("//scattering/background/factor")) {
@@ -517,7 +537,9 @@ void Params::read_xml(std::string filename) {
     limits.stage.memory.data   = 500*1024*1024;
     
     limits.signal.chunksize = 10000;
-        
+
+    limits.computation.cores = 1;
+    limits.computation.processes = 1;
     limits.computation.threads = 1;
     limits.computation.memory.signal = 200*1024*1024; // 200MB 
     limits.computation.memory.buffer = 200*1024*1024; // 200MB 
@@ -553,6 +575,18 @@ void Params::read_xml(std::string filename) {
 	    }
 
     	if (xmli.exists("//limits/computation")) {
+            size_t cores = boost::thread::hardware_concurrency();
+        	if (xmli.exists("//limits/computation/cores")) {
+    	        limits.computation.cores = xmli.get_value<size_t>("//limits/computation/cores");                
+    	        Info::Inst()->write(string("Assuming ")+boost::lexical_cast<string>(limits.computation.cores)+string(" cores per machine"));
+            } else {                
+                Info::Inst()->write(string("Detect: Number of Processors per machine: ")+boost::lexical_cast<string>(cores));   
+                limits.computation.cores = cores;
+            }
+        	if (xmli.exists("//limits/computation/processes")) {
+    	        limits.computation.processes = xmli.get_value<size_t>("//limits/computation/processes");
+	        }
+
         	if (xmli.exists("//limits/computation/threads")) {
     	        limits.computation.threads = xmli.get_value<size_t>("//limits/computation/threads");
 	        }
@@ -649,19 +683,132 @@ void Params::read_xml(std::string filename) {
 		}
 		
 	}
+	
+    database.type = "file";
+    database.file = "db.xml";
+    database.format = "xml";
+	if (xmli.exists("//database")) {
+	    if (xmli.exists("//database/type")) {
+	        database.type = xmli.get_value<string>("//database/type");
+        }
+	    if (xmli.exists("//database/file")) {
+	        database.file = xmli.get_value<string>("//database/file");
+        }
+	    if (xmli.exists("//database/format")) {
+	        database.format = xmli.get_value<string>("//database/format");
+        }        
+    }
 };
 
-void Params::init(std::string filename) {
-	
-	// make the directory of the main configuration file the root for all others
-	if (boost::filesystem::path(filename).is_complete()) 
-		config_rootpath = boost::filesystem::path(filename).parent_path().string();
-	else 
-		config_rootpath = ( boost::filesystem::initial_path() / boost::filesystem::path(filename).parent_path() ).string();		
 
-	Info::Inst()->write(string("Looking for configuration file: ") + filename);
+boost::program_options::options_description Params::options() {
+
+    namespace po = boost::program_options;
+    po::options_description all("Overwrite options");
+    
+    po::options_description generic("Generic options");
+    generic.add_options()
+        ("help", "produce this help message")
+        ("config", po::value<string>()->default_value("scatter.xml"),  "name of the xml configuration file")
+    ;
+
+    po::options_description sample("Sample related options");
+    sample.add_options()
+        ("sample.structure.file",po::value<string>()->default_value("sample.pdb"), "Structure file name")
+        ("sample.structure.format",po::value<string>()->default_value("pdb"), "Structure file format")
+    ;
+
+    po::options_description stager("Data staging related options");
+    stager.add_options()
+        ("stager.target",po::value<string>()->default_value("system"), "Atom selection producing the signal (must be defined)")
+    ;
+
+
+    po::options_description scattering("Scattering related options");
+    scattering.add_options()
+        ("scattering.signal.file",po::value<string>()->default_value("signal.h5"), "name of the signal file")
+    ;
+
+    po::options_description limits("Computational limits related options");
+    limits.add_options()
+        ("limits.computation.threads",po::value<int>()->default_value(1), "Number of worker threads per process")
+    ;
+    
+    all.add(generic);
+    all.add(sample);
+    all.add(stager);
+    all.add(scattering);
+    all.add(limits);
+
+    return all;
+}
+
+void Params::overwrite_options(boost::program_options::variables_map& vm) {
+    if (!vm["sample.structure.file"].defaulted()) {
+        std::string val = vm["sample.structure.file"].as<string>();
+        Info::Inst()->write(string("OVERWRITE sample.structure.file=")+val);
+        Params::Inst()->sample.structure.file=val;
+    }
+    if (!vm["sample.structure.format"].defaulted()) {
+        std::string val = vm["sample.structure.format"].as<string>();
+        Info::Inst()->write(string("OVERWRITE sample.structure.format=")+val);
+        Params::Inst()->sample.structure.format=val;
+    }
+    if (!vm["stager.target"].defaulted()) {
+        std::string val = vm["stager.target"].as<string>();
+        Info::Inst()->write(string("OVERWRITE stager.target=")+val);
+        Params::Inst()->stager.target=val;
+    }
+    if (!vm["scattering.signal.file"].defaulted()) {
+        std::string val = vm["scattering.signal.file"].as<string>();
+        Info::Inst()->write(string("OVERWRITE scattering.signal.file=")+val);
+        Params::Inst()->scattering.signal.file=val;
+    }
+    if (!vm["limits.computation.threads"].defaulted()) {
+        int val = vm["limits.computation.threads"].as<int>();
+        Info::Inst()->write(string("OVERWRITE limits.computation.threads=")+boost::lexical_cast<string>(val));
+        Params::Inst()->limits.computation.threads=val;
+    }
+}
+
+void Params::init(int argc,char** argv) {
+
+    namespace po = boost::program_options;
+    po::variables_map vm;
+    po::options_description ops = options();
+    
+    po::store(po::parse_command_line(argc, argv, ops), vm);
+    po::notify(vm);
+    
+    if (vm.find("help")!=vm.end()) {
+        cout << ops << endl;
+        throw sassena::terminate_request();
+    }
+
+    if (vm["config"].defaulted()) {
+        Info::Inst()->write("No configuration file specified. Will use default");
+    }
+
+    std::string filename = vm["config"].as<string>();
+    if (boost::filesystem::exists(filename)) {
+	    // make the directory of the main configuration file the root for all others
+	    if (boost::filesystem::path(filename).is_complete()) 
+		    config_rootpath = boost::filesystem::path(filename).parent_path().string();
+	    else 
+		    config_rootpath = ( boost::filesystem::initial_path() / boost::filesystem::path(filename).parent_path() ).string();		
+
+	    Info::Inst()->write(string("Looking for configuration file: ") + filename);
 	
-	read_xml(filename);
+	    read_xml(filename);
+    } else {
+        Err::Inst()->write(vm["config"].as<string>()+string(" does not exist!"));            
+        throw;
+    }
+    
+	
+	Info::Inst()->write(string("Analyzing command line for parameter overwrites"));
+	
+    overwrite_options(vm);
 }
 
 SampleParameters::~SampleParameters() {
