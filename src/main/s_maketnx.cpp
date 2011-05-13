@@ -142,7 +142,7 @@ int main(int argc,char* argv[]) {
     using namespace boost::filesystem;
     path trjpath(vm["trajectory"].as<string>());
     if (!exists(trjpath)) {
-        Err::Inst()->write(string("No trajectory found with that path: ")+trjpath.filename());
+        Err::Inst()->write(string("No trajectory found with that path: ")+trjpath.filename().string());
         return -1;
     }
 
@@ -165,9 +165,9 @@ int main(int argc,char* argv[]) {
 
     if (exists(ipath)) {
         int n=0;
-        while (boost::filesystem::exists(ipath.filename()+".backup-"+boost::lexical_cast<string>(n))) n++;
-        path newidxpath = ipath.filename()+".backup-"+boost::lexical_cast<string>(n);
-        Warn::Inst()->write(string("Moving old index file to ")+newidxpath.filename());        
+        while (boost::filesystem::exists(ipath.filename().string()+".backup-"+boost::lexical_cast<string>(n))) n++;
+        path newidxpath = ipath.filename().string()+".backup-"+boost::lexical_cast<string>(n);
+        Warn::Inst()->write(string("Moving old index file to ")+newidxpath.filename().string());        
         boost::filesystem::rename(ipath,newidxpath);
     }
 

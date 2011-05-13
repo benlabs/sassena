@@ -315,10 +315,10 @@ int main(int argc,char* argv[]) {
     using namespace boost::filesystem;
     path signalpath(vm["signal"].as<string>());
     if (!exists(signalpath)) {
-        Err::Inst()->write(string("Signal file not found with path: ")+signalpath.filename());
+        Err::Inst()->write(string("Signal file not found with path: ")+signalpath.filename().string());
         return -1;
     } else {
-        Info::Inst()->write(string("Reading signal from file: ")+signalpath.filename());        
+        Info::Inst()->write(string("Reading signal from file: ")+signalpath.filename().string());        
     }
 
     boost::filesystem::path sqwpath;
@@ -331,7 +331,7 @@ int main(int argc,char* argv[]) {
         } else {
     		fdir = (initial_path() / fpath).string();    	    
     	}
-		sqwpath = (path(fdir).parent_path() / fpath.stem() ).string()+ string("-sqw.h5");
+		sqwpath = (path(fdir).parent_path() / fpath.stem().string() ).string()+ string("-sqw.h5");
         Warn::Inst()->write("SQW file name not specified. Defaulting to signal filename with -sqw postfix:");
         Warn::Inst()->write(sqwpath.string());
     } else {
@@ -340,9 +340,9 @@ int main(int argc,char* argv[]) {
 
     if (exists(sqwpath)) {
         int n=0;
-        while (boost::filesystem::exists(sqwpath.filename()+".backup-"+boost::lexical_cast<string>(n))) n++;
-        path newsqwpath = sqwpath.filename()+".backup-"+boost::lexical_cast<string>(n);
-        Warn::Inst()->write(string("Moving old sqw file to ")+newsqwpath.filename());        
+        while (boost::filesystem::exists(sqwpath.filename().string()+".backup-"+boost::lexical_cast<string>(n))) n++;
+        path newsqwpath = sqwpath.filename().string()+".backup-"+boost::lexical_cast<string>(n);
+        Warn::Inst()->write(string("Moving old sqw file to ")+newsqwpath.filename().string());        
         boost::filesystem::rename(sqwpath,newsqwpath);
     }
 
@@ -360,7 +360,7 @@ int main(int argc,char* argv[]) {
     {
         // gather size information, get nf
         Info::Inst()->write("Reading information from signal file");
-        nf = fqt_len(signalpath.filename());
+        nf = fqt_len(signalpath.filename().string());
         nfhalf = nf/2;
         Info::Inst()->write(string("signal length nf=")+boost::lexical_cast<string>(nf));
 

@@ -189,7 +189,7 @@ void Params::read_xml(std::string filename) {
                 fset.clones = def_clones;
         		fset.filename = get_filepath(xmli.get_value<string>("./file"));
                 boost::filesystem::path index_path = get_filepath(xmli.get_value<string>("./file"));
-                fset.index = index_path.parent_path().string() +string("/")+ index_path.stem() + (".tnx");
+                fset.index = index_path.parent_path().string() +string("/")+ index_path.stem().string() + (".tnx");
         		if (xmli.exists("./format"))  fset.type = xmli.get_value<string>("./format");
         		if (xmli.exists("./first"))   fset.first  = xmli.get_value<size_t>("./first");
         		if (xmli.exists("./last"))  { fset.last   = xmli.get_value<size_t>("./last"); fset.last_set = true; }
@@ -721,6 +721,9 @@ boost::program_options::options_description Params::options() {
     po::options_description stager("Data staging related options");
     stager.add_options()
         ("stager.target",po::value<string>()->default_value("system"), "Atom selection producing the signal (must be defined)")
+        ("stager.dump",po::value<bool>()->default_value(false), "Do/Don't dump the postprocessed coordinates to a file")        
+        ("stager.file",po::value<string>()->default_value("dump.dcd"), "Name of dump file")        
+        ("stager.format",po::value<string>()->default_value("dcd"), "Format of dump file")        
     ;
 
 
@@ -759,6 +762,22 @@ void Params::overwrite_options(boost::program_options::variables_map& vm) {
         Info::Inst()->write(string("OVERWRITE stager.target=")+val);
         Params::Inst()->stager.target=val;
     }
+    if (!vm["stager.dump"].defaulted()) {
+        bool val = vm["stager.dump"].as<bool>();
+        Info::Inst()->write(string("OVERWRITE stager.dump=")+boost::lexical_cast<string>(val));
+        Params::Inst()->stager.dump=val;
+    }
+    if (!vm["stager.file"].defaulted()) {
+        std::string val = vm["stager.file"].as<string>();
+        Info::Inst()->write(string("OVERWRITE stager.file=")+val);
+        Params::Inst()->stager.file=val;
+    }
+    if (!vm["stager.format"].defaulted()) {
+        std::string val = vm["stager.format"].as<string>();
+        Info::Inst()->write(string("OVERWRITE stager.format=")+val);
+        Params::Inst()->stager.format=val;
+    }
+
     if (!vm["scattering.signal.file"].defaulted()) {
         std::string val = vm["scattering.signal.file"].as<string>();
         Info::Inst()->write(string("OVERWRITE scattering.signal.file=")+val);

@@ -7,7 +7,7 @@ ADD_DEFINITIONS( -fPIC -Wall)
 SET(CMAKE_EXE_LINKER_FLAGS -fPIC)
 
 PROJECT(Sassena)
-
+#enable_language (Fortran)
 INCLUDE(${CMAKE_PROJECT_PATH}/CMakeLists.txt.version)
 
 SET(CMAKE_EXE_LINKER_FLAGS "-Wall ${CMAKE_EXE_LINKER_FLAGS}")
