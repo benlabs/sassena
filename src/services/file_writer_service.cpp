@@ -548,37 +548,43 @@ void HDF5WriterClient::flush() {
         boost::asio::io_service io_service;
         boost::asio::ip::tcp::socket socket( io_service );
 
-        socket.connect(m_endpoint);
-        
-        HDF5WriterTag tag = WRITE;
-        size_t count = data_queue.size();
-        
-        boost::asio::write(socket,boost::asio::buffer(&tag,sizeof(HDF5WriterTag)));     
-        boost::asio::write(socket,boost::asio::buffer(&count,sizeof(size_t)));     
-        
-        while (data_queue.size()>0) {
-            HDF5DataEntry de = data_queue.front();
-            data_queue.pop();
+		try {
+	        socket.connect(m_endpoint);
 
-            size_t size = 2*de.p_fqt->size();
-                        
-            boost::asio::write(socket,boost::asio::buffer(&(de.qvector),sizeof(CartesianCoor3D)));
-            if (Params::Inst()->scattering.signal.fqt) {
-                boost::asio::write(socket,boost::asio::buffer(&size,sizeof(size_t))); 
-                double* p_doubledata = (double*) &((*de.p_fqt)[0]);
-                boost::asio::write(socket,boost::asio::buffer(p_doubledata,sizeof(double)*size));                 
-            } 
-            if (Params::Inst()->scattering.signal.fq) {
-                double* p_doubledata = (double*) &(de.fq);
-                boost::asio::write(socket,boost::asio::buffer(p_doubledata,sizeof(double)*2));                 
-            }
-            if (Params::Inst()->scattering.signal.fq2) {
-                double* p_doubledata = (double*) &(de.fq2);
-                boost::asio::write(socket,boost::asio::buffer(p_doubledata,sizeof(double)*2));                 
-            }                        
-        }
-        
-        socket.close();
+	        HDF5WriterTag tag = WRITE;
+	        size_t count = data_queue.size();
+
+	        boost::asio::write(socket,boost::asio::buffer(&tag,sizeof(HDF5WriterTag)));     
+	        boost::asio::write(socket,boost::asio::buffer(&count,sizeof(size_t)));     
+
+	        while (data_queue.size()>0) {
+	            HDF5DataEntry de = data_queue.front();
+	            data_queue.pop();
+
+	            size_t size = 2*de.p_fqt->size();
+
+	            boost::asio::write(socket,boost::asio::buffer(&(de.qvector),sizeof(CartesianCoor3D)));
+	            if (Params::Inst()->scattering.signal.fqt) {
+	                boost::asio::write(socket,boost::asio::buffer(&size,sizeof(size_t))); 
+	                double* p_doubledata = (double*) &((*de.p_fqt)[0]);
+	                boost::asio::write(socket,boost::asio::buffer(p_doubledata,sizeof(double)*size));                 
+	            } 
+	            if (Params::Inst()->scattering.signal.fq) {
+	                double* p_doubledata = (double*) &(de.fq);
+	                boost::asio::write(socket,boost::asio::buffer(p_doubledata,sizeof(double)*2));                 
+	            }
+	            if (Params::Inst()->scattering.signal.fq2) {
+	                double* p_doubledata = (double*) &(de.fq2);
+	                boost::asio::write(socket,boost::asio::buffer(p_doubledata,sizeof(double)*2));                 
+	            }                        
+	        }
+
+	        socket.close();
+		} catch (std::exception e) {
+			std::cout << e.what() << endl;
+			throw;
+		}
+
     }
 }
 HDF5WriterClient::HDF5WriterClient(boost::asio::ip::tcp::endpoint server) 
