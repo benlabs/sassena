@@ -653,7 +653,7 @@ void Params::read_xml(std::string filename) {
 	debug.barriers = false; // this de-/activates collective barriers before each collective operation, this way all nodes are synchronized before the communication takes place. This is an important step towards analysis of timing.
     debug.monitor.update = true;
     debug.iowrite.write = true;
-    debug.iowrite.buffer = false;
+    debug.iowrite.buffer = true;
     debug.print.orientations = false;
 	if (xmli.exists("//debug")) {
 		if (xmli.exists("//debug/timer")) {
