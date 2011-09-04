@@ -104,7 +104,6 @@ void SelfVectorsScatterDevice::store(fftw_complex* at) {
     complex<double> a = smath::reduce<double>(at,NF) * (1.0/NF);
     afinal_ += a;
     a2final_ += a*conj(a);  
-	std::cout << "a: " << a << std::endl;
     smath::add_elements(atfinal_,at,NF);
 }
 
@@ -290,9 +289,7 @@ fftw_complex* SelfVectorsScatterDevice::scatter(size_t mi,size_t ai) {
 		coor_t x1 = p_data[j*3];
 		coor_t y1 = p_data[j*3 + 1];
 		coor_t z1 = p_data[j*3 + 2];
-		
-		std::cout << "x1,y1,z1=" << x1 << ", " << y1 << ", " << z1 << std::endl;
-		
+
 		double p1 = x1*qx+y1*qy+z1*qz;
         double sp1 = sin(p1);
         double cp1 = cos(p1);
