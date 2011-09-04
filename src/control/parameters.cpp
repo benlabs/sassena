@@ -340,6 +340,12 @@ void Params::read_xml(std::string filename) {
     	if (xmli.exists("//scattering/type")) {
     		scattering.type = xmli.get_value<string>("//scattering/type");
     	}
+
+    	if (xmli.exists("//scattering/target")) {
+			Err::Inst()->write("scattering.target is obsolete. Use stager.target instead.");
+			throw;
+    	}
+
     	Info::Inst()->write(string("scattering.type=")+scattering.type);
 
     	if (xmli.exists("//scattering/background")) {

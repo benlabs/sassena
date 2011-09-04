@@ -252,6 +252,12 @@ void HDF5WriterService::listener() {
                     boost::asio::read(socket,boost::asio::buffer(p_doubledata,sizeof(double)*size));
                     data_fqt.push_back(p_data);
                 }
+                if (Params::Inst()->scattering.signal.fq0) {
+                    std::complex<double> fq0;
+                    double* p_fq0 = (double*) &fq0;  
+                    boost::asio::read(socket,boost::asio::buffer(p_fq0,sizeof(double)*2)); 
+                    data_fq0.push_back(fq0);
+                }
                 if (Params::Inst()->scattering.signal.fq) {
                     std::complex<double> fq;
                     double* p_fq = (double*) &fq;  
@@ -358,26 +364,27 @@ void HDF5WriterService::flush() {
             
             free(p_fqtdata);          
         }  
-        
+    }
+    for(size_t i = 0; i < data_fqt.size(); ++i) delete data_fqt[i];
+    data_fqt.clear();
+
+    if (data_fq0.size()>0) {
+        size_t nq = data_fq0.size();
+
         if (H5LTfind_dataset(h5file,"fq0")==1) {
-            
-            double* p_fq0data = (double*) malloc(sizeof(double)*2*nq);
-            
-            for(size_t i = 0; i < nq; ++i)
-            {
-                memcpy(&p_fq0data[i*2],&((*data_fqt[i])[0]),sizeof(double)*2);
-            }
-                        
+
             hsize_t dims[2];hsize_t start[2];hsize_t count[2];
-            H5LTget_dataset_info(h5file,"fq0",dims,NULL,NULL); 
+            H5LTget_dataset_info(h5file,"fq0",dims,NULL,NULL);             
             
             dims[0]+=nq;
-            hid_t ds = H5Dopen(h5file,"fq0",H5P_DEFAULT);
+            hid_t ds = H5Dopen(h5file,"fq0",H5P_DEFAULT);            
             H5Dset_extent(ds,dims);
+
             hid_t dspace = H5Dget_space(ds);
 
             hsize_t mdims[2];
             mdims[0]=nq; mdims[1]=2;
+            
             hid_t mspace = H5Screate_simple(2, mdims, NULL);             
 
             start[0]=dims[0]-nq;start[1]=0;
@@ -386,15 +393,13 @@ void HDF5WriterService::flush() {
             start[0]=0;start[1]=0;
             count[0]=nq;count[1]=2;            
             H5Sselect_hyperslab(mspace,H5S_SELECT_SET,start,NULL,count,NULL);
-
-            H5Dwrite(ds,H5T_NATIVE_DOUBLE,mspace,dspace,H5P_DEFAULT,p_fq0data);
+            double* p_data = reinterpret_cast<double*>(&data_fq0[0]);
             
-            free(p_fq0data);       
-        }  
-    }
-    for(size_t i = 0; i < data_fqt.size(); ++i) delete data_fqt[i];
-    data_fqt.clear();
-    
+            H5Dwrite(ds,H5T_NATIVE_DOUBLE,mspace,dspace,H5P_DEFAULT,p_data);
+        }
+    }    
+    data_fq0.clear();
+
     if (data_fq.size()>0) {
         size_t nq = data_fq.size();
 
@@ -491,7 +496,7 @@ void HDF5WriterClient::write(CartesianCoor3D qvector,const fftw_complex* data,si
         (*p_data)[i]=std::complex<double>(data[i][0],data[i][1]);
     }
     HDF5DataEntry de;
-    de.qvector = qvector; de.p_fqt = p_data; de.fq = data2;de.fq2=data3;
+	de.qvector = qvector; de.p_fqt = p_data; de.fq = data2;de.fq2=data3; de.fq0=std::complex<double>(data[0][0],data[0][1]);
     data_queue.push(de);
 
     boost::posix_time::time_period tp(m_lastflush,boost::posix_time::second_clock::universal_time());    
@@ -568,7 +573,11 @@ void HDF5WriterClient::flush() {
 	                boost::asio::write(socket,boost::asio::buffer(&size,sizeof(size_t))); 
 	                double* p_doubledata = (double*) &((*de.p_fqt)[0]);
 	                boost::asio::write(socket,boost::asio::buffer(p_doubledata,sizeof(double)*size));                 
-	            } 
+	            }
+	            if (Params::Inst()->scattering.signal.fq0) {
+	                double* p_doubledata = (double*) &(de.fq0);
+	                boost::asio::write(socket,boost::asio::buffer(p_doubledata,sizeof(double)*2));                 
+	            }	
 	            if (Params::Inst()->scattering.signal.fq) {
 	                double* p_doubledata = (double*) &(de.fq);
 	                boost::asio::write(socket,boost::asio::buffer(p_doubledata,sizeof(double)*2));                 

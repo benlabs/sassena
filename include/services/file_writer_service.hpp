@@ -37,6 +37,7 @@ enum HDF5WriterTag {HANGUP,WRITE};
 struct HDF5DataEntry {
     CartesianCoor3D qvector;
     std::vector<std::complex<double> >* p_fqt;
+    std::complex<double> fq0;
     std::complex<double> fq;
     std::complex<double> fq2;    
 };
@@ -82,6 +83,7 @@ class HDF5WriterService  {
 
     std::vector< CartesianCoor3D > data_qvectors;    
     std::vector<std::vector<std::complex<double> >*> data_fqt;
+    std::vector<std::complex<double> > data_fq0;
     std::vector<std::complex<double> > data_fq;
     std::vector<std::complex<double> > data_fq2;    
 public:
