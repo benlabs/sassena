@@ -78,6 +78,9 @@ void Params::read_xml(std::string filename) {
 	
 	// now read the parameters
 	
+	sample.structure.file="sample.pdb";
+	sample.structure.format="pdb";
+    
 	if (xmli.exists("//sample")) {
     	if (xmli.exists("//sample/structure")) {
     	    if (xmli.exists("//sample/structure/file")) {

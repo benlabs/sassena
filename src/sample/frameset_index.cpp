@@ -64,4 +64,13 @@ void FramesetIndex::save(std::string filename) {
     ar << *this; 
 }
 
+void FramesetIndex::select(std::vector<size_t>& selection) {
+	std::vector<std::streamoff> copy;
+	
+	for(size_t i = 0; i < selection.size(); ++i) copy.push_back(selection[i]);
+	this->clear();
+	for(size_t i = 0; i < copy.size(); ++i)	this->push_back(copy[i]);	
+	
+}
+
 // end of file

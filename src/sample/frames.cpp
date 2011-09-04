@@ -263,8 +263,7 @@ void DCDFrameset::generate_index() {
     for(size_t i = 0; i < number_of_frames; ++i)
 	{
         frameset_index_.push_back(i*block_size_byte + init_byte_pos);
-	}
-	
+	}	
 }
 
 // constructor = analyze file and store frame locator information

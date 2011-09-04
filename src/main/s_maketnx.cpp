@@ -83,6 +83,7 @@ bool init_commandline(int argc,char** argv,po::variables_map& vm) {
         ("help", "produce help message")
         ("trajectory",po::value<string>(),"name of the trajectory file")
         ("format",po::value<string>(),"format of the trajectory file")
+        ("selection",po::value<string>(),"name of file containing a sub-selection of frames")
         ("index",po::value<string>(),"name of the trajectory index file (defaults to trajectory file name with txn extension)")          
     ;
     
@@ -188,6 +189,20 @@ int main(int argc,char* argv[]) {
     }
     Info::Inst()->write("generating index ...");
     p_fs->generate_index();
+
+	if (vm.find("selection")!=vm.end()) {
+		std::vector<size_t> frame_selection;
+		ifstream selection_file(vm["selection"].as<string>().c_str());
+		size_t framenumber;
+		while (!selection_file.eof()) {
+			selection_file >> framenumber;
+			frame_selection.push_back(framenumber);
+		}
+		
+	    Info::Inst()->write(string("Reducing the frame index to a number of ")+boost::lexical_cast<string>(frame_selection.size()));		
+		p_fs->frameset_index_.select(frame_selection);		
+	}
+
     Info::Inst()->write(string("writing index to: ")+ipath.string());
     p_fs->save_index(ipath.string());
     

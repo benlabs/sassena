@@ -52,6 +52,7 @@ public:
     
     void load(std::string filename);
     void save(std::string filename);
+	void select(std::vector<size_t>& selection);
 };
 
 #endif
