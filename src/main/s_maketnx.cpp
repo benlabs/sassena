@@ -194,8 +194,9 @@ int main(int argc,char* argv[]) {
 		std::vector<size_t> frame_selection;
 		ifstream selection_file(vm["selection"].as<string>().c_str());
 		size_t framenumber;
-		while (!selection_file.eof()) {
-			selection_file >> framenumber;
+		std::string line;
+		while (std::getline(selection_file,line)) {
+			framenumber = boost::lexical_cast<size_t>(line);
 			frame_selection.push_back(framenumber);
 		}
 		

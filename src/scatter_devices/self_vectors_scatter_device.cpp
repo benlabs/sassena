@@ -60,7 +60,7 @@ SelfVectorsScatterDevice::SelfVectorsScatterDevice(
 
 void SelfVectorsScatterDevice::stage_data() {
     Timer& timer = timer_[boost::this_thread::get_id()];   
-    Info::Inst()->write(string("Forcing stager.mode=atoms")); 
+    if (allcomm_.rank()==0) Info::Inst()->write(string("Forcing stager.mode=atoms")); 
     DataStagerByAtom data_stager(sample_,allcomm_,partitioncomm_,assignment_,timer);
     p_coordinates = data_stager.stage();
 }

@@ -147,7 +147,7 @@ IScatterDevice* ScatterDeviceFactory::create(
 
     // all_comm for inter-partition communication, parition_comm for intra-partition communication
     if (Params::Inst()->scattering.type == "self") {
-        Info::Inst()->write("Initializing Scatter Device, Vectors (self)");
+        if (scatter_comm.rank()==0) Info::Inst()->write("Initializing Scatter Device, Vectors (self)");
     	p_ScatterDevice = new SelfVectorsScatterDevice(
     			all_comm,
     			partition_comm,
@@ -159,7 +159,7 @@ IScatterDevice* ScatterDeviceFactory::create(
     }
     else if (Params::Inst()->scattering.type == "all"){
     	if (Params::Inst()->scattering.average.orientation.type == "vectors") {
-            Info::Inst()->write("Initializing Scatter Device, Vectors (all)");
+            if (scatter_comm.rank()==0) Info::Inst()->write("Initializing Scatter Device, Vectors (all)");
         	p_ScatterDevice = new AllVectorsScatterDevice(
         			all_comm,
         			partition_comm,
@@ -170,7 +170,7 @@ IScatterDevice* ScatterDeviceFactory::create(
         			monitorservice_endpoint);
     	} else if (Params::Inst()->scattering.average.orientation.type == "multipole") {
     		if (Params::Inst()->scattering.average.orientation.multipole.type == "sphere") {
-                Info::Inst()->write("Initializing Scatter Device, Multipole Sphere");
+                if (scatter_comm.rank()==0) Info::Inst()->write("Initializing Scatter Device, Multipole Sphere");
             	p_ScatterDevice = new MPSphereScatterDevice(
         			all_comm,
         			partition_comm,
@@ -180,7 +180,7 @@ IScatterDevice* ScatterDeviceFactory::create(
         			fileservice_endpoint,
         			monitorservice_endpoint);
     		} else if (Params::Inst()->scattering.average.orientation.multipole.type == "cylinder") {
-                Info::Inst()->write("Initializing Scatter Device, Multipole Cylinder");
+                if (scatter_comm.rank()==0) Info::Inst()->write("Initializing Scatter Device, Multipole Cylinder");
             	p_ScatterDevice = new MPCylinderScatterDevice(
         			all_comm,
         			partition_comm,

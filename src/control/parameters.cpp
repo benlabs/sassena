@@ -192,14 +192,17 @@ void Params::read_xml(std::string filename) {
                 fset.clones = def_clones;
         		fset.filename = get_filepath(xmli.get_value<string>("./file"));
                 boost::filesystem::path index_path = get_filepath(xmli.get_value<string>("./file"));
-                fset.index = index_path.parent_path().string() +string("/")+ index_path.stem().string() + (".tnx");
+                fset.index = index_path.parent_path().string() + string("/") + index_path.stem().string() + string(".tnx");
+				fset.index_default = true;
         		if (xmli.exists("./format"))  fset.type = xmli.get_value<string>("./format");
         		if (xmli.exists("./first"))   fset.first  = xmli.get_value<size_t>("./first");
         		if (xmli.exists("./last"))  { fset.last   = xmli.get_value<size_t>("./last"); fset.last_set = true; }
         		if (xmli.exists("./stride"))  fset.stride = xmli.get_value<size_t>("./stride");
         		if (xmli.exists("./clones"))  fset.clones = xmli.get_value<size_t>("./clones");
-        		if (xmli.exists("./index"))  fset.index = get_filepath(xmli.get_value<std::string>("./index"));
-
+        		if (xmli.exists("./index"))  {
+					fset.index = get_filepath(xmli.get_value<std::string>("./index"));
+					fset.index_default = false;
+				}
         		sample.framesets.push_back(fset);
         		Info::Inst()->write(string("Added frames from ")+fset.filename+string(" using format: ")+fset.type);
         		Info::Inst()->write(string("Options: first=")+boost::lexical_cast<string>(fset.first)
@@ -227,7 +230,7 @@ void Params::read_xml(std::string filename) {
 	    		if (xmli.exists("./displace"))  motion.displace   = xmli.get_value<double>("./displace");
 	    		if (xmli.exists("./frequency"))  motion.frequency   = xmli.get_value<double>("./frequency");			
 	    		if (xmli.exists("./seed"))  motion.seed   = xmli.get_value<long>("./seed");			
-	    		if (xmli.exists("./sampling"))  motion.seed   = xmli.get_value<long>("./sampling");			
+	    		if (xmli.exists("./sampling"))  motion.sampling   = xmli.get_value<long>("./sampling");			
 	    		if (xmli.exists("./selection"))  motion.selection   = xmli.get_value<string>("./selection");			
 	    		if (xmli.exists("./direction")) {
 	    			if (xmli.exists("./direction/x")) motion.direction.x   = xmli.get_value<double>("./direction/x");
@@ -1012,7 +1015,7 @@ void ScatteringAverageOrientationMultipoleMomentsParameters::create() {
                 Err::Inst()->write(string("major=")+boost::lexical_cast<string>(mm.first)+string(", minor=")+boost::lexical_cast<string>(mm.second));                
                 throw;
             }
-            if ((mm.first=0) && (mm.second!=0) ) {
+            if ((mm.first==0) && (mm.second!=0) ) {
                 Err::Inst()->write(string("Minor multipole moment must be 0 for Major 0!"));
                 Err::Inst()->write(string("major=")+boost::lexical_cast<string>(mm.first)+string(", minor=")+boost::lexical_cast<string>(mm.second));
                 throw;

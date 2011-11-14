@@ -38,7 +38,7 @@ void Frames::test_framenumber(size_t framenumber) {
 	}
 }
 
-size_t Frames::add_frameset(const std::string filename,const std::string filetype,size_t first, size_t last, bool last_set, size_t stride,const std::string index_filename,size_t clones) {
+size_t Frames::add_frameset(const std::string filename,const std::string filetype,size_t first, size_t last, bool last_set, size_t stride,const std::string index_filename,bool index_default,size_t clones) {
 	
     if (clones==0) return 0;
 	
@@ -47,7 +47,11 @@ size_t Frames::add_frameset(const std::string filename,const std::string filetyp
         size_t this_number_of_frames =0;
 		// create an empty frameset and then initialize w/ filename
 		DCDFrameset* fsp = new DCDFrameset(filename, number_of_frames);
-        fsp->generate_index();
+		if (!index_default) {
+			fsp->load_index(index_filename);		
+		} else {
+	        fsp->generate_index();			
+		}
         fsp->trim_index(first,  last,  last_set,  stride);
 		framesets.push_back(fsp);
 		
@@ -76,7 +80,7 @@ size_t Frames::add_frameset(const std::string filename,const std::string filetyp
 			if ((line.size() >0) && (line.substr(0,1) == "#")) continue;
             for(size_t i = 0; i < clones; ++i)
             {
-    			total_number_of_frames += add_frameset(line.c_str(), "dcd", first,  last,  last_set,  stride,index_filename,1);                
+    			total_number_of_frames += add_frameset(line.c_str(), "dcd", first,  last,  last_set,  stride,index_filename,index_default,1);                
             }
 		}
 		return total_number_of_frames;
@@ -119,7 +123,7 @@ size_t Frames::add_frameset(const std::string filename,const std::string filetyp
 			if ((line.size() >0) && (line.substr(0,1) == "#")) continue;
 			for(size_t i = 0; i < clones; ++i)
             {			
-			    total_number_of_frames += add_frameset(line.c_str(), "pdb",first,  last,  last_set,  stride,index_filename,1);
+			    total_number_of_frames += add_frameset(line.c_str(), "pdb",first,  last,  last_set,  stride,index_filename,index_default,1);
 			}
 		}
 		return total_number_of_frames;		

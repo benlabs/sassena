@@ -59,7 +59,7 @@ AllVectorsScatterDevice::AllVectorsScatterDevice(
 
 void AllVectorsScatterDevice::stage_data() {
     Timer& timer = timer_[boost::this_thread::get_id()];
-    Info::Inst()->write(string("Forcing stager.mode=frames"));
+    if (allcomm_.rank()==0) Info::Inst()->write(string("Forcing stager.mode=frames"));
     DataStagerByFrame data_stager(sample_,allcomm_,partitioncomm_,assignment_,timer);
     p_coordinates = data_stager.stage();
 }

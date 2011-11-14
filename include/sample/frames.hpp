@@ -79,7 +79,7 @@ public:
 	size_t size();
 	
 	// push a frameset, frameset is specialized
-	size_t add_frameset(const std::string filename,const std::string filetype,size_t first, size_t last, bool last_set, size_t stride,const std::string index_filename,size_t clones);
+	size_t add_frameset(const std::string filename,const std::string filetype,size_t first, size_t last, bool last_set, size_t stride,const std::string index_filename,bool index_default,size_t clones);
 
 	// load a Frame
 	Frame load(size_t framenumber);	

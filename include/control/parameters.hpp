@@ -161,6 +161,7 @@ private:
 		ar & type;
         ar & clones;
         ar & index;
+		ar & index_default;
     }
 	/////////////////// 
 
@@ -173,6 +174,7 @@ public:
 	std::string filename;
 	std::string type;
     std::string index;
+	bool index_default;
 };
 
 

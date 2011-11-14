@@ -67,7 +67,7 @@ void CoordinateSets::init() {
     	    Info::Inst()->write(string("Cloning frameset ")+boost::lexical_cast<string>(f.clones)+string(" times"));
     	}
         size_t nof = 0;
-	    nof += frames.add_frameset(f.filename,f.type,f.first,f.last,f.last_set,f.stride,f.index,f.clones);			
+	    nof += frames.add_frameset(f.filename,f.type,f.first,f.last,f.last_set,f.stride,f.index,f.index_default,f.clones);			
     	Info::Inst()->write(string("Found ")+boost::lexical_cast<string>(nof)+string(" frames"));			
     }
     
@@ -77,6 +77,8 @@ void CoordinateSets::init() {
 		{
 			SampleMotionParameters& motion = Params::Inst()->sample.motions[i];
 			MotionWalker* p_mw = NULL;
+			std::cout << "seed: " << motion.seed << std::endl;
+
 			if (motion.type=="linear") {
 				p_mw = new LinearMotionWalker(motion.displace,motion.sampling,motion.direction);
 			}
