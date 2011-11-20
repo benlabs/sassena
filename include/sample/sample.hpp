@@ -1,12 +1,10 @@
-/*
- *  This file is part of the software sassena
- *
- *  Authors:
- *  Benjamin Lindner, ben@benlabs.net
- *
- *  Copyright 2008-2010 Benjamin Lindner
- *
- */
+/** \file
+This file contains a the main sample class which defines structure, coordinates and selections.
+
+\author Benjamin Lindner <ben@benlabs.net>
+\version 1.3.0
+\copyright GNU General Public License
+*/
  
 #ifndef SAMPLE__SAMPLE_HPP_
 #define SAMPLE__SAMPLE_HPP_
@@ -27,8 +25,9 @@
 #include "sample/coordinate_set.hpp"
 #include "sample/coordinate_sets.hpp"
 
-
-// this is our "container", the system, the 'sample'. It contains all the information about the atoms and the time information in form of frames
+/** 
+Managment class for structure and coordinates
+*/
 class Sample {
 	/////////////////// MPI related
 	// make this class serializable to 

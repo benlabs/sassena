@@ -1,12 +1,10 @@
-/*
- *  This file is part of the software sassena
- *
- *  Authors:
- *  Benjamin Lindner, ben@benlabs.net
- *
- *  Copyright 2008-2010 Benjamin Lindner
- *
- */
+/** \file
+This file contains a class which defines a selection mechanism for frames.
+
+\author Benjamin Lindner <ben@benlabs.net>
+\version 1.3.0
+\copyright GNU General Public License
+*/
 
 // direct header
 #include "sample/frameset_index.hpp"
@@ -18,9 +16,6 @@
 // special library headers
 #include <boost/lexical_cast.hpp>
 #include <boost/filesystem.hpp>
-#include "io/xdrfile/xdrfile.h"
-#include "io/xdrfile/xdrfile_xtc.h"
-#include "io/xdrfile/xdrfile_trr.h"
 
 // other headers
 #include "sample/atomselection.hpp"

@@ -1,12 +1,10 @@
-/*
- *  This file is part of the software sassena
- *
- *  Authors:
- *  Benjamin Lindner, ben@benlabs.net
- *
- *  Copyright 2008-2010 Benjamin Lindner
- *
- */
+/** \file
+This file contains a class which defines different types of atomselections.
+
+\author Benjamin Lindner <ben@benlabs.net>
+\version 1.3.0
+\copyright GNU General Public License
+*/
 
 #ifndef SAMPLE__ATOMSELECTION_HPP_
 #define SAMPLE__ATOMSELECTION_HPP_
@@ -22,6 +20,9 @@
 #include <boost/serialization/access.hpp>
 #include <boost/serialization/list.hpp>
 
+/** 
+Interface for atom selections.
+*/
 class IAtomselection {
 protected:
     friend class boost::serialization::access;	
@@ -35,6 +36,9 @@ public:
     virtual size_t size() = 0;
 };
 
+/** 
+An atom selection which is implemented as an array of atom indexes. May use up significant amount of memory.
+*/
 class IndexAtomselection : public IAtomselection {
 	// make this class serializable to 
 	// allow sample to be transmitted via MPI
@@ -55,6 +59,9 @@ public:
     size_t size();	
 };
 
+/** 
+Selects atoms within the given range. No memory requirements and is used e.g. for the system selection.
+*/
 class RangeAtomselection  : public IAtomselection {
 	// make this class serializable to 
 	// allow sample to be transmitted via MPI

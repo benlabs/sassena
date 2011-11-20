@@ -1,12 +1,10 @@
-/*
- *  This file is part of the software sassena
- *
- *  Authors:
- *  Benjamin Lindner, ben@benlabs.net
- *
- *  Copyright 2008-2010 Benjamin Lindner
- *
- */
+/** \file
+This file implements a monitoring service, where clients push updates towards to head node, which then presents the user with up-to-date information about the progress.
+
+\author Benjamin Lindner <ben@benlabs.net>
+\version 1.3.0
+\copyright GNU General Public License
+*/
 
 // direct header
 #include "services/monitor_service.hpp"

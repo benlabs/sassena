@@ -1,12 +1,10 @@
-/*
- *  This file is part of the software sassena
- *
- *  Authors:
- *  Benjamin Lindner, ben@benlabs.net
- *
- *  Copyright 2008-2010 Benjamin Lindner
- *
- */
+/** \file
+This file contains an XML Interface class, which re-interpretates the c style libxml2 interface and maps them to C++ elements. It is meant to parse an XML through the use of XPATH.
+
+\author Benjamin Lindner <ben@benlabs.net>
+\version 1.3.0
+\copyright GNU General Public License
+*/
 
 #ifndef IO__XML_INTERFACE_HPP_
 #define IO__XML_INTERFACE_HPP_
@@ -31,6 +29,9 @@
 // other headers
 #include "log/log.hpp"
 
+/** 
+ Models a XML node and provides convenience functions to access its properties.
+*/
 class XMLElement {
 	xmlNodePtr node_ptr;
 public:
@@ -49,6 +50,9 @@ public:
 	xmlNodePtr get_node_ptr() { return node_ptr; }
 };
 
+/** 
+ Models a XML file and allows access through XPATH.
+*/
 class XMLInterface {
 	
 	xmlDocPtr p_doc;
@@ -70,9 +74,9 @@ public:
 };
 
 
-
-// conversion operator for interpreting elements 
-
+/** 
+ Provides type safe access to content element in XML files through XPATH.
+*/
 template<class convT> convT XMLInterface::get_value(const char* xpathexp) {
 	std::vector<XMLElement> elements = get(xpathexp);
 	// if elements has more than one entry, then xpathexp is ambigious

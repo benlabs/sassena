@@ -1,12 +1,10 @@
-/*
- *  This file is part of the software sassena
- *
- *  Authors:
- *  Benjamin Lindner, ben@benlabs.net
- *
- *  Copyright 2008-2010 Benjamin Lindner
- *
- */
+/** \file
+This file contains an refined version of the abstract scatter device, used for performing vector based orientationally averaged scattering calculations.
+
+\author Benjamin Lindner <ben@benlabs.net>
+\version 1.3.0
+\copyright GNU General Public License
+*/
 
 // direct header
 #include "scatter_devices/abstract_vectors_scatter_device.hpp"
@@ -23,7 +21,6 @@
 
 // other headers
 #include "math/coor3d.hpp"
-#include "decomposition/decompose.hpp"
 #include "control.hpp"
 #include "log.hpp"
 #include "sample.hpp"

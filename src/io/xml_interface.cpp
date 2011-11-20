@@ -1,12 +1,10 @@
-/*
- *  This file is part of the software sassena
- *
- *  Authors:
- *  Benjamin Lindner, ben@benlabs.net
- *
- *  Copyright 2008-2010 Benjamin Lindner
- *
- */
+/** \file
+This file contains an XML Interface class, which re-interpretates the c style libxml2 interface and maps them to C++ elements. It is meant to parse an XML through the use of XPATH.
+
+\author Benjamin Lindner <ben@benlabs.net>
+\version 1.3.0
+\copyright GNU General Public License
+*/
 
 // direct header
 #include "io/xml_interface.hpp"

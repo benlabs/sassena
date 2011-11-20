@@ -1,12 +1,10 @@
-/*
- *  This file is part of the software sassena
- *
- *  Authors:
- *  Benjamin Lindner, ben@benlabs.net
- *
- *  Copyright 2008-2010 Benjamin Lindner
- *
- */
+/** \file
+This file contains a class which defines the contents of a generic frame.
+
+\author Benjamin Lindner <ben@benlabs.net>
+\version 1.3.0
+\copyright GNU General Public License
+*/
 
 #ifndef SAMPLE__FRAME_HPP_
 #define SAMPLE__FRAME_HPP_
@@ -34,10 +32,10 @@
 class Atom;
 class Atoms;
 
-////////////////////////////////////////////////////////////////////////////////
-// 
-////////////////////////////////////////////////////////////////////////////////
 
+/** 
+Stores Frame information and resembles the trajectory data
+*/
 class Frame {
 	friend class boost::serialization::access;	
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)

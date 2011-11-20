@@ -1,12 +1,10 @@
-/*
- *  This file is part of the software sassena
- *
- *  Authors:
- *  Benjamin Lindner, ben@benlabs.net
- *
- *  Copyright 2008-2010 Benjamin Lindner
- *
- */
+/** \file
+This file contains the interface for the application wide database, which, among other things, defines physical constants and atom name mapping.
+
+\author Benjamin Lindner <ben@benlabs.net>
+\version 1.3.0
+\copyright GNU General Public License
+*/
 
 #ifndef CONTROL__DATABASE_HPP_
 #define CONTROL__DATABASE_HPP_
@@ -26,16 +24,11 @@
 #include <boost/serialization/string.hpp>
 #include <boost/serialization/vector.hpp>
 
-// This is a wrapper class to interface the settings implementation. The rational is to 
-// move all possible configuration errors towards the initialization of the software
-// preferably the 'parameters' class checks for all required settings and implementents
-// default values
-// Also, use hardwired constant names to move possible errors to compile time.
-// Basically this class maps the structure of the configuration file, more or less
+// This class follow a strong hierarchy. The root class is located at the end of this file.
 
-// these constructs are to be used w/ in the code the following way:
-// string fs = Params::Inst()->sample.structure.file
-
+/**
+Implements a mapping between integer based atom IDs and exclusion factors. Exclusion factors are a means to scale atomic volumes.
+*/
 class DatabaseExlusionParameters {
 friend class Database;      
 private:
@@ -70,6 +63,9 @@ public:
 
 };
 
+/**
+Implements a mapping between integer based atom IDs and their associated volume.
+*/
 class DatabaseVolumesParameters {
 friend class Database;         
 private:
@@ -104,6 +100,9 @@ public:
 	
 };
 
+/**
+Implements a mapping between integer based atom IDs and their potentially q dependent scattering factors.
+*/
 class DatabaseSFactorsParameters {
 friend class Database;     
 private:
@@ -137,6 +136,9 @@ public:
 	
 };
 
+/**
+Implements a mapping between integer based atom IDs and their masses.
+*/
 class DatabaseMassesParameters {
 friend class Database;         
 private:
@@ -156,7 +158,9 @@ public:
 	double get(size_t ID);		
 };
 
-
+/**
+Implements a mapping between integer based atom IDs and string labels. For efficency, internally all physical constants are associated with integer based atom IDs.
+*/
 class DatabaseAtomIDsParameters {
 friend class Database;    
 private:
@@ -186,6 +190,9 @@ public:
 	size_t size() { return nextID; }
 };
 
+/**
+Support for PDB style atom names
+*/
 class DatabaseNamesPDBParameters {
 friend class Database;        
 private:
@@ -216,6 +223,9 @@ public:
 	
 };
 
+/**
+Implements the name mapping facility of the database
+*/
 class DatabaseNamesParameters {
 friend class Database;     
 private:
@@ -234,6 +244,9 @@ public:
 	DatabaseNamesPDBParameters pdb;
 };
 
+/**
+This singleton class is the root of a strong class hierarchy which implements a software wide database for physical constants and atom labeling. It also performs required computation, e.g. when the scattering factor for an atom is q vector length dependent. 
+*/
 class Database {
 private:
 	/////////////////// MPI related

@@ -1,12 +1,11 @@
-/*
- *  This file is part of the software sassena
- *
- *  Authors:
- *  Benjamin Lindner, ben@benlabs.net
- *
- *  Copyright 2008-2010 Benjamin Lindner
- *
- */
+/** \file
+This file contains the interface definition for all scattering devices and implements an abstract scattering device from which all other devices are derived.
+
+\author Benjamin Lindner <ben@benlabs.net>
+\version 1.3.0
+\copyright GNU General Public License
+*/
+
 
 // direct header
 #include "scatter_devices/abstract_scatter_device.hpp"
@@ -23,7 +22,6 @@
 // other headers
 #include "math/coor3d.hpp"
 #include "decomposition/assignment.hpp"
-#include "decomposition/decompose.hpp"
 #include <fftw3.h>
 #include "control.hpp"
 #include "log.hpp"
@@ -48,8 +46,7 @@ AbstractScatterDevice::AbstractScatterDevice(
     current_vector_(0),
     atfinal_(NULL),
     afinal_(0),
-    a2final_(0),    
-    assignment_(partitioncomm.size(),partitioncomm.rank(),NAF)
+    a2final_(0)
 {
     
     p_hdf5writer_ = boost::shared_ptr<HDF5WriterClient>(new HDF5WriterClient(fileservice_endpoint));

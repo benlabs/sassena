@@ -1,12 +1,10 @@
-/*
- *  This file is part of the software sassena
- *
- *  Authors:
- *  Benjamin Lindner, ben@benlabs.net
- *
- *  Copyright 2008-2010 Benjamin Lindner
- *
- */
+/** \file
+This file contains a class which defines an atom group, i.e. a structure.
+
+\author Benjamin Lindner <ben@benlabs.net>
+\version 1.3.0
+\copyright GNU General Public License
+*/
  
 // direct header
 #include "sample/atoms.hpp"
@@ -32,15 +30,37 @@
 
 using namespace std;
 
-
-// for the pdb format (ATOM entry look below)
 Atoms::Atoms(string filename, string fileformat) {
 	add(filename,fileformat);
 }
 
 Atoms::~Atoms() {}
  
-// for the pdb format (ATOM entry look below)
+
+/** Implemenation details:
+Only PDB supported at the moment. Assumes the following PDB layout:
+Record Format
+
+\verbatim
+COLUMNS        DATA  TYPE    FIELD        DEFINITION
+-------------------------------------------------------------------------------------
+ 1 -  6        Record name   "ATOM  "
+ 7 - 11        Integer       serial       Atom  serial number.
+13 - 16        Atom          name         Atom name.
+17             Character     altLoc       Alternate location indicator.
+18 - 20        Residue name  resName      Residue name.
+22             Character     chainID      Chain identifier.
+23 - 26        Integer       resSeq       Residue sequence number.
+27             AChar         iCode        Code for insertion of residues.
+31 - 38        Real(8.3)     x            Orthogonal coordinates for X in Angstroms.
+39 - 46        Real(8.3)     y            Orthogonal coordinates for Y in Angstroms.
+47 - 54        Real(8.3)     z            Orthogonal coordinates for Z in Angstroms.
+55 - 60        Real(6.2)     occupancy    Occupancy.
+61 - 66        Real(6.2)     tempFactor   Temperature  factor.
+77 - 78        LString(2)    element      Element symbol, right-justified.
+79 - 80        LString(2)    charge       Charge  on the atom.
+
+*/
 void Atoms::add(string filename, string fileformat) {
 
 	ifstream input(filename.c_str());
@@ -64,28 +84,6 @@ void Atoms::add(string filename, string fileformat) {
 		}		
 	}	
 }
-
-/* pdb file format , atom section:
-Record Format
-
-COLUMNS        DATA  TYPE    FIELD        DEFINITION
--------------------------------------------------------------------------------------
- 1 -  6        Record name   "ATOM  "
- 7 - 11        Integer       serial       Atom  serial number.
-13 - 16        Atom          name         Atom name.
-17             Character     altLoc       Alternate location indicator.
-18 - 20        Residue name  resName      Residue name.
-22             Character     chainID      Chain identifier.
-23 - 26        Integer       resSeq       Residue sequence number.
-27             AChar         iCode        Code for insertion of residues.
-31 - 38        Real(8.3)     x            Orthogonal coordinates for X in Angstroms.
-39 - 46        Real(8.3)     y            Orthogonal coordinates for Y in Angstroms.
-47 - 54        Real(8.3)     z            Orthogonal coordinates for Z in Angstroms.
-55 - 60        Real(6.2)     occupancy    Occupancy.
-61 - 66        Real(6.2)     tempFactor   Temperature  factor.
-77 - 78        LString(2)    element      Element symbol, right-justified.
-79 - 80        LString(2)    charge       Charge  on the atom.
-*/
 
 //void Atoms::write(string filename,Frame& frame, string fileformat) {
 //

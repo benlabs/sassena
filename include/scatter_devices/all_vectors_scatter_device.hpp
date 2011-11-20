@@ -1,12 +1,11 @@
-/*
- *  This file is part of the software sassena
- *
- *  Authors:
- *  Benjamin Lindner, ben@benlabs.net
- *
- *  Copyright 2008-2010 Benjamin Lindner
- *
- */
+/** \file 
+This file contains a class which implements the scattering calculation for all scattering.
+
+\author Benjamin Lindner <ben@benlabs.net>
+\version 1.3.0
+\copyright GNU General Public License
+*/
+
 
 #ifndef SCATTER_DEVICES__ALL_VECTORS_SCATTER_DEVICE_HPP_
 #define SCATTER_DEVICES__ALL_VECTORS_SCATTER_DEVICE_HPP_
@@ -39,6 +38,9 @@
 
 #include "scatter_devices/abstract_vectors_scatter_device.hpp"
 
+/** 
+Implements all type scattering using vectors for orientational averaging
+*/
 class AllVectorsScatterDevice : public AbstractVectorsScatterDevice {
 protected:
 

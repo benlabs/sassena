@@ -1,12 +1,10 @@
-/*
- *  This file is part of the software sassena
- *
- *  Authors:
- *  Benjamin Lindner, ben@benlabs.net
- *
- *  Copyright 2008-2010 Benjamin Lindner
- *
- */
+/** \file
+This file contains definitions for coordinate vector types for different coordinate systems.
+
+\author Benjamin Lindner <ben@benlabs.net>
+\version 1.3.0
+\copyright GNU General Public License
+*/
 
 #ifndef MATH__COOR3D_HPP_
 #define MATH__COOR3D_HPP_
@@ -31,6 +29,9 @@ typedef std::pair< CartesianCoor3D,CartesianCoor3D> cartrect;
 //helper funcions:
 inline float sign(float a,float b) { return (b<0.0) ? -a : a; }
 
+/** 
+Type class which represents coordinates in cartesian space. Allows transformation into other coordinate representations and implements some basic linear algebra.
+*/
 class CartesianCoor3D {
 protected:
 	// make this class serializable to 
@@ -72,9 +73,13 @@ CartesianCoor3D operator*(const coor2_t lambda, const CartesianCoor3D& that);
 CartesianCoor3D operator*(const CartesianCoor3D& that,const coor2_t lambda);
 CartesianCoor3D operator/(const CartesianCoor3D& that,const coor2_t lambda);
 
-// cylinder coords have a range:
-// 0 <= r
-// 0 <= phi < 2 M_PI
+/** 
+Type class which represents coordinates in cylinder space. Allows transformation into other coordinate representations and implements some basic linear algebra.
+
+Cylinder coords have a range:
+- r >= 0
+- 0 <= phi < 2 M_PI
+*/
 class CylinderCoor3D {
 public:
 	coor2_t r,phi,z;
@@ -93,7 +98,14 @@ public:
 	~CylinderCoor3D() {}	
 };
 
+/** 
+Type class which represents coordinates in spherical space. Allows transformation into other coordinate representations and implements some basic linear algebra.
 
+Spherical coords have a range:
+- r >= 0
+- 0 <= phi < 2 M_PI
+- 0 <= theta < M_PI
+*/
 class SphericalCoor3D {
 public:	
 	coor2_t r,phi,theta;
@@ -114,7 +126,9 @@ public:
 
 CartesianCoor3D rotate(CartesianCoor3D,std::string axis,coor2_t rad);
 
-
+/** 
+Type class which represents a vector base (3 orthonormal vectors) for cartesian coordinates. Can be constructed out of thin air or from partial vectors.
+*/
 class CartesianVectorBase {
     std::vector<CartesianCoor3D> base_;
 public:

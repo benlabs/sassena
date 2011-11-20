@@ -1,12 +1,10 @@
-/*
- *  This file is part of the software sassena
- *
- *  Authors:
- *  Benjamin Lindner, ben@benlabs.net
- *
- *  Copyright 2008-2010 Benjamin Lindner
- *
- */
+/** \file
+This executable routine is used to generate a frame index file which may be required for certain file formats. Sassena requires trajectory files to be seekable (i.e. the frame offset position has to be known without reading the trajectory first). Since some file format do not allow to precompute the offset positions, they have to be indexed first. 
+
+\author Benjamin Lindner <ben@benlabs.net>
+\version 1.3.0
+\copyright GNU General Public License
+*/
  
 // direct header
 #include "common.hpp"

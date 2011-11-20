@@ -1,12 +1,10 @@
-/*
- *  This file is part of the software sassena
- *
- *  Authors:
- *  Benjamin Lindner, ben@benlabs.net
- *
- *  Copyright 2008-2010 Benjamin Lindner
- *
- */
+/** \file
+This file contains a management class for framesets and specifies framesets for different trajectory types.
+
+\author Benjamin Lindner <ben@benlabs.net>
+\version 1.3.0
+\copyright GNU General Public License
+*/
 
 #ifndef SAMPLE__FRAMES_HPP_
 #define SAMPLE__FRAMES_HPP_
@@ -42,10 +40,9 @@ class TRRFrameset;
 class XTCFrameset;
 class CloneFrameset;
 
-////////////////////////////////////////////////////////////////////////////////
-// wrapper class to 'store' frames in
-////////////////////////////////////////////////////////////////////////////////
-
+/** 
+Management class for framesets. 
+*/
 class Frames {
 	friend class boost::serialization::access;	
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
@@ -86,10 +83,9 @@ public:
 };
 
 
-////////////////////////////////////////////////////////////////////////////////
-// abstraction class. real frameset has to be format dependent
-////////////////////////////////////////////////////////////////////////////////
-
+/** 
+Interface for framesets. Real framesets are based on a particular format.
+*/
 class Frameset {
 	friend class boost::serialization::access;	
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
@@ -109,6 +105,9 @@ public:
 	
 };
 
+/** 
+Derived frameset which implements file access functionality.
+*/
 class FileFrameset : public Frameset {
 	friend class boost::serialization::access;	
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
@@ -146,8 +145,9 @@ public:
 // specialized framesets, format dependent
 ////////////////////////////////////////////////////////////////////////////////
 
-// DCD Frameset and dependents
-
+/** 
+Type class representing the DCD file header structure
+*/
 class DCDHeader {	
 public:
 	int32_t headsize;
@@ -162,6 +162,9 @@ public:
 	// size1 == size2
 };
 
+/** 
+Frameset class for the DCD trajectory file format
+*/
 class DCDFrameset : public FileFrameset {
 	friend class boost::serialization::access;	
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
@@ -208,8 +211,9 @@ public:
 };
 
 
-// PDB Frameset and dependents
-
+/** 
+Frameset class for the PDB trajectory file format, based on VMD animate write
+*/
 class PDBFrameset : public FileFrameset {
 	friend class boost::serialization::access;	
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
@@ -239,8 +243,9 @@ public:
 };
 
 
-// XTC Frameset and dependents
-
+/** 
+Frameset class for the XTC trajectory file format
+*/
 class XTCFrameset : public FileFrameset {
 	friend class boost::serialization::access;	
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
@@ -265,9 +270,9 @@ public:
 	void generate_index();
 };
 
-
-// TRR Frameset and dependents
-
+/** 
+Frameset class for the TRR trajectory file format
+*/
 class TRRFrameset : public FileFrameset {
 	friend class boost::serialization::access;	
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
@@ -292,6 +297,9 @@ public:
 	void generate_index();
 };
 
+/** 
+Pseudo frameset which is a reference to another one and can be used to efficiently multiply coordinates.
+*/
 class CloneFrameset : public Frameset {
 	friend class boost::serialization::access;	
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)

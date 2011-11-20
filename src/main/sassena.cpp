@@ -1,12 +1,39 @@
-/*
- *  This file is part of the software sassena
- *
- *  Authors:
- *  Benjamin Lindner, ben@benlabs.net
- *
- *  Copyright 2008-2010 Benjamin Lindner
- *
- */
+/** \file
+This file is the main executable for the software sassena.
+
+\author Benjamin Lindner <ben@benlabs.net>
+\version 1.3.0
+\copyright GNU General Public License
+*/
+
+/** @mainpage Project: Sassena
+\par Description:
+Sassena is a software to compute X-ray and Neutron Scattering Intensities from Molecular Dynamics Simulation Trajectories. It's purpose is to allow high performance scattering calculations using massively parallel computers which feature superior network infrastructures, e.g. infiniband.
+
+\par License:
+This program is free software; you can redistribute it and/or
+modify it under the terms of the GNU General Public License as
+published by the Free Software Foundation; either version 2 of
+the License, or (at your option) any later version.
+This program is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+General Public License for more details at
+http://www.gnu.org/copyleft/gpl.html
+If you decide to redistribute modifications, please follow the
+scientific honor code and refer to any derived work appropriately.
+Also consider to consult with the original developers first, before
+you start to fork the project.
+
+\par Further Information:
+- If you find bugs file them at http://bugzilla.sassena.org
+- If you want to consult the user community goto http://forum.sassena.org
+- If you want to download support material goto http://www.sassena.org
+
+\par Contact:
+- Benjamin Lindner <ben@benlabs.net> (Original Developer)
+*/
+
 
 // direct header
 #include "common.hpp"
@@ -39,7 +66,6 @@
 // other headers
 #include "exceptions/exceptions.hpp"
 #include "math/coor3d.hpp"
-#include "decomposition/decompose.hpp"
 #include "decomposition/decomposition_plan.hpp"
 #include "control.hpp"
 #include "log.hpp"
@@ -99,6 +125,9 @@ void print_analysis() {
 	Info::Inst()->write(".................................................................");	
 }
 
+/** 
+Entry point for the software sassena
+*/
 int main(int argc,char* argv[]) {
 
 	//------------------------------------------//

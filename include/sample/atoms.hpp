@@ -1,12 +1,10 @@
-/*
- *  This file is part of the software sassena
- *
- *  Authors:
- *  Benjamin Lindner, ben@benlabs.net
- *
- *  Copyright 2008-2010 Benjamin Lindner
- *
- */
+/** \file
+This file contains a class which defines an atom group, i.e. a structure.
+
+\author Benjamin Lindner <ben@benlabs.net>
+\version 1.3.0
+\copyright GNU General Public License
+*/
 
 #ifndef SAMPLE__ATOMS_HPP_
 #define SAMPLE__ATOMS_HPP_
@@ -34,6 +32,9 @@ class Atom;
 class Frame;
 class Atomselection;
 
+/** 
+Type class which represents a structure and manages atom selections.
+*/
 class Atoms {
 	// make this class serializable to 
 	// allow sample to be transmitted via MPI
@@ -54,10 +55,16 @@ public:
 	Atomselections selections;	
     
 	Atoms() {}
+	
+	/** Constructs structural information from a real file
+	 * details....
+	*/
 	Atoms(std::string filename, std::string fileformat = "pdb");
 	
 //	void write( std::string filename,Frame& frame, std::string fileformat = "pdb");
 
+	/** Reads structural information from file
+	*/
 	void add(std::string filename, std::string fileformat = "pdb");
     
     IAtomselection* select(std::string expression);

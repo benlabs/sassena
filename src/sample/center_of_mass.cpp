@@ -1,19 +1,17 @@
-/*
- *  This file is part of the software sassena
- *
- *  Authors:
- *  Benjamin Lindner, ben@benlabs.net
- *
- *  Copyright 2008-2010 Benjamin Lindner
- *
- */
+/** \file
+This file contains a class which defines represents a center of mass calculation based on coordinate input, and related structures used for fitting.
+
+\author Benjamin Lindner <ben@benlabs.net>
+\version 1.3.0
+\copyright GNU General Public License
+*/
  
 // direct header
 #include "sample/center_of_mass.hpp"
 
 // other headers
-#include "boost/numeric/bindings/traits/ublas_matrix.hpp"
-#include "boost/numeric/bindings/lapack/gesvd.hpp"
+#include "../vendor/boost/numeric/bindings/traits/ublas_matrix.hpp"
+#include "../vendor/boost/numeric/bindings/lapack/gesvd.hpp"
 #include <boost/numeric/ublas/vector.hpp>
 #include <boost/numeric/ublas/matrix.hpp>
 #include <boost/numeric/ublas/lu.hpp>

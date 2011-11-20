@@ -1,12 +1,10 @@
-/*
- *  This file is part of the software sassena
- *
- *  Authors:
- *  Benjamin Lindner, ben@benlabs.net
- *
- *  Copyright 2008-2010 Benjamin Lindner
- *
- */
+/** \file
+This file contains the parameters class which contains the settings and values used to adjust the program control flow to the user input files.
+
+\author Benjamin Lindner <ben@benlabs.net>
+\version 1.3.0
+\copyright GNU General Public License
+*/
 
 #ifndef CONTROL__PARAMETERS_HPP_
 #define CONTROL__PARAMETERS_HPP_
@@ -30,20 +28,14 @@
 // other headers
 #include "math/coor3d.hpp"
 
-// This is a wrapper class to interface the settings implementation. The rational is to 
-// move all possible configuration errors towards the initialization of the software
-// preferably the 'parameters' class checks for all required settings and implementents
-// default values
-// Also, use hardwired constant names to move possible errors to compile time.
-// Basically this class maps the structure of the configuration file, more or less
-
-// these constructs are to be used w/ in the code the following way:
-// string fs = Params::Inst()->sample.structure.file
+// This class follow a strong hierarchy. The root class is located at the end of this file.
 
 // resolve dependency:
 class CartesianCoor3D;
 
-
+/**
+Section which defines the structure
+*/
 class SampleStructureParameters {
 private:
 	/////////////////// MPI related
@@ -62,6 +54,9 @@ public:
 	std::string format;
 };
 
+/**
+Section which defines a generic selection (used as parent by specific selections)
+*/
 class SampleSelectionParameters {
     friend class boost::serialization::access;	
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
@@ -76,7 +71,9 @@ public:
     std::string type() { return type_;}
 };
 
-
+/**
+Section which defines a selection based on individual indexes
+*/
 class SampleIndexSelectionParameters : public SampleSelectionParameters {
     friend class boost::serialization::access;	
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
@@ -91,6 +88,9 @@ public:
     SampleIndexSelectionParameters(std::vector<size_t> ids) : SampleSelectionParameters("index"), ids_(ids) {}
 };
 
+/**
+Section which defines a selection based on a given range
+*/
 class SampleRangeSelectionParameters : public SampleSelectionParameters {
     friend class boost::serialization::access;	
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
@@ -108,7 +108,9 @@ public:
     SampleRangeSelectionParameters(size_t from, size_t to) : SampleSelectionParameters("range"), from_(from), to_(to) {}
 };
 
-
+/**
+Section which defines a selection based on a lexical pattern (regular expression matching atom labels)
+*/
 class SampleLexicalSelectionParameters : public SampleSelectionParameters {
     friend class boost::serialization::access;	
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
@@ -124,6 +126,9 @@ public:
     SampleLexicalSelectionParameters(std::string expression) : SampleSelectionParameters("lexical"), expression_(expression) {}
 };
 
+/**
+Section which defines a file based selection
+*/
 class SampleFileSelectionParameters : public SampleSelectionParameters {
     friend class boost::serialization::access;	
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
@@ -145,6 +150,9 @@ public:
     SampleFileSelectionParameters(std::string file, std::string format, std::string selector, std::string expression) : SampleSelectionParameters("file"), file_(file), format_(format), selector_(selector), expression_(expression) {}
 };
 
+/**
+Section which defines a single trajectory file entry
+*/
 class SampleFramesetParameters {
 private:
 	/////////////////// MPI related
@@ -177,7 +185,9 @@ public:
 	bool index_default;
 };
 
-
+/**
+Section which lists the used trajectory files
+*/
 class SampleFramesetsParameters : public std::vector<SampleFramesetParameters > {
 private:
 	/////////////////// MPI related
@@ -193,6 +203,9 @@ private:
 public:	
 };
 
+/**
+Section which defines artificial motions
+*/
 class SampleMotionParameters {
 private:
 	/////////////////// MPI related
@@ -223,6 +236,9 @@ public:
 	CartesianCoor3D direction;
 };
 
+/**
+Section which stores reference information which may be required during some alignment procedures
+*/
 class SampleAlignmentReferenceParameters {
 private:
 	/////////////////// MPI related
@@ -247,6 +263,9 @@ public:
 	size_t frame;
 };
 
+/**
+Section which stores alignment information, which is applied during the staging of the trajectory data
+*/
 class SampleAlignmentParameters {
 private:
 	/////////////////// MPI related
@@ -269,6 +288,9 @@ public:
     std::string order;
 };
 
+/**
+Section which stores sample specific parameters
+*/
 class SampleParameters {
 private:
 	/////////////////// MPI related
@@ -300,6 +322,9 @@ public:
     std::vector<SampleAlignmentParameters> alignments;
 };
 
+/**
+Section which stores selection based scaling factors for background correction
+*/
 class ScatteringBackgroundKappaParameters {
 private:
 	/////////////////// MPI related
@@ -318,6 +343,9 @@ public:
 	double value;
 };
 
+/**
+Section which stores background correction parameters
+*/
 class ScatteringBackgroundParameters {
 private:
 	/////////////////// MPI related
@@ -339,7 +367,9 @@ public:
     std::vector<ScatteringBackgroundKappaParameters> kappas;
 };
 
-
+/**
+Section which is used when vector based orientational averaging is performed
+*/
 class ScatteringAverageOrientationVectorsParameters : public std::vector<CartesianCoor3D> {
 private:
 	/////////////////// MPI related
@@ -367,7 +397,9 @@ public:
 	void create();
 };
 
-
+/**
+Section which is used to store the used multipole identifiers when multipole based orientational averaging is performed
+*/
 class ScatteringAverageOrientationMultipoleMomentsParameters : public std::vector<std::pair<long,long> > {
 private:
 	/////////////////// MPI related
@@ -390,7 +422,9 @@ public:
 	void create();
 };
 
-
+/**
+Section which is used when multipole based orientational averaging is performed
+*/
 class ScatteringAverageOrientationMultipoleParameters {
 private:
 	/////////////////// MPI related
@@ -409,6 +443,9 @@ public:
 	ScatteringAverageOrientationMultipoleMomentsParameters moments;
 };
 
+/**
+Section which is used when exact orientational averaging is performed
+*/
 class ScatteringAverageOrientationExactParameters {
 private:
 	/////////////////// MPI related
@@ -425,6 +462,9 @@ public:
 	std::string type; 
 };
 
+/**
+Section which defines orientational averaging procedures
+*/
 class ScatteringAverageOrientationParameters {
 private:
 	/////////////////// MPI related
@@ -452,6 +492,9 @@ public:
 
 };
 
+/**
+Section which defines averaging procedures
+*/
 class ScatteringAverageParameters {
 private:
 	/////////////////// MPI related
@@ -468,6 +511,9 @@ public:
 	ScatteringAverageOrientationParameters orientation;
 };
 
+/**
+Section which defines further processing of the scattering signal, e.g. autocorrelation
+*/
 class ScatteringDspParameters {
 private:
 	/////////////////// MPI related
@@ -486,6 +532,9 @@ public:
 	std::string method;
 };
 
+/**
+Section which describes a scan entry used to construct the scattering vectors
+*/
 class ScatteringVectorsScanParameters {
 private:
 	/////////////////// MPI related
@@ -512,6 +561,9 @@ public:
 	CartesianCoor3D basevector;
 };
 
+/**
+Section which defines the scattering vectors
+*/
 class ScatteringVectorsParameters : public std::vector<CartesianCoor3D> {
 private:
 	/////////////////// MPI related
@@ -531,6 +583,9 @@ public:
 	void create_from_scans();
 };
 
+/**
+Section which stores parameters used during the writing of the signal file
+*/
 class ScatteringSignalParameters {
 private:
 	/////////////////// MPI related
@@ -555,6 +610,9 @@ public:
     bool fq2;
 };
 
+/**
+Section which stores parameters used during the scattering calculation
+*/
 class ScatteringParameters {
 private:
 	/////////////////// MPI related
@@ -584,7 +642,9 @@ public:
 	ScatteringSignalParameters signal;	
 };
 
-
+/**
+Section which stores parameters used during data staging
+*/
 class StagerParameters {
 private:
 	/////////////////// MPI related
@@ -609,6 +669,9 @@ public:
     std::string mode;
 };
 
+/**
+Section which stores parameters affecting the memory limitations of the file writer service
+*/
 class LimitsServicesSignalMemoryParameters {
 private:
 	/////////////////// MPI related
@@ -627,6 +690,9 @@ public:
     size_t client;
 };
 
+/**
+Section which stores parameters affecting the timing of the file writer service
+*/
 class LimitsServicesSignalTimesParameters {
 private:
 	/////////////////// MPI related
@@ -645,6 +711,9 @@ public:
     size_t clientflush;
 };
 
+/**
+Section which stores parameters affecting the file writer service, which writes results to the signal file
+*/
 class LimitsServicesSignalParameters {
 private:
 	/////////////////// MPI related
@@ -663,7 +732,9 @@ public:
     LimitsServicesSignalTimesParameters times;    
 };
 
-
+/**
+Section which stores parameters affecting the monitoring service, which reports progress to the console
+*/
 class LimitsServicesMonitorParameters {
 private:
 	/////////////////// MPI related
@@ -682,7 +753,9 @@ public:
     size_t sampling;
 };
 
-
+/**
+Section which stores parameters affecting the services
+*/
 class LimitsServicesParameters {
 private:
 	/////////////////// MPI related
@@ -701,6 +774,9 @@ public:
     LimitsServicesMonitorParameters monitor;
 };
 
+/**
+Section which stores memory limits during the computation
+*/
 class LimitsComputationMemoryParameters {
 private:
 	/////////////////// MPI related
@@ -719,7 +795,9 @@ public:
     size_t signal;
 };
 
-
+/**
+Section which stores parameters used during the computation
+*/
 class LimitsComputationParameters {
 private:
 	/////////////////// MPI related
@@ -742,6 +820,9 @@ public:
     LimitsComputationMemoryParameters memory;
 };
 
+/**
+Section which stores parameters determining the computational partition size
+*/
 class LimitsDecompositionPartitionsParameters {
 private:
 	/////////////////// MPI related
@@ -761,6 +842,9 @@ public:
     
 };
 
+/**
+Section which stores parameters used for partitioning the computation among the available compute nodes
+*/
 class LimitsDecompositionParameters {
 private:
 	/////////////////// MPI related
@@ -779,6 +863,9 @@ public:
     LimitsDecompositionPartitionsParameters partitions;
 };
 
+/**
+Section which stores parameters used during the writing of the signal output file
+*/
 class LimitsSignalParameters {
 private:
 	/////////////////// MPI related
@@ -795,6 +882,9 @@ public:
     size_t chunksize;
 };
 
+/**
+Section which stores memory limits during the data staging process.
+*/
 class LimitsStageMemoryParameters {
 private:
 	/////////////////// MPI related
@@ -813,6 +903,9 @@ public:
     size_t buffer;
 };
 
+/**
+Section which stores limits regarding the data staging process.
+*/
 class LimitsStageParameters {
 private:
 	/////////////////// MPI related
@@ -829,7 +922,9 @@ public:
     LimitsStageMemoryParameters memory;
 };
 
-
+/**
+Section which stores computational limitations and performance characteristics.
+*/
 class LimitsParameters {
 private:
 	/////////////////// MPI related
@@ -854,6 +949,9 @@ public:
     LimitsDecompositionParameters decomposition;
 };
 
+/**
+Section which stores parameters influencing the progress monitoring
+*/
 class DebugMonitorParameters {
    private:
    	/////////////////// MPI related
@@ -870,6 +968,9 @@ class DebugMonitorParameters {
    	bool update; 
 };
 
+/**
+Section which stores switches for dumping information to console output.
+*/
 class DebugPrintParameters {
 private:
 	/////////////////// MPI related
@@ -886,7 +987,9 @@ public:
 	bool orientations;
 };
 
-
+/**
+Section which stores IO write specific debug parameters. Used to tune the frequency by which the results are written to the signal file. Can also be used to avoid writing to the signal file. 
+*/
 class DebugIowriteParameters {
 private:
 	/////////////////// MPI related
@@ -905,6 +1008,9 @@ public:
     bool buffer;
 };
 
+/**
+Section which stores debug parameters
+*/
 class DebugParameters {
 private:
 	/////////////////// MPI related
@@ -929,7 +1035,9 @@ public:
     DebugMonitorParameters monitor;
 };
 
-
+/**
+Section which stores a reference to the used database
+*/
 class DatabaseParameters {
 private:
 	/////////////////// MPI related
@@ -951,7 +1059,18 @@ public:
 };
 
 
+/**
+This is a wrapper class to interface the settings implementation. The rational is to 
+move all possible configuration errors towards the initialization of the software
+preferably the 'parameters' class checks for all required settings and implementents
+default values
+Also, use hardwired constant names to move possible errors to compile time.
+Basically this class maps the structure of the configuration file, more or less
 
+these constructs are to be used w/ in the code the following way:
+\verbatim
+string fs = Params::Inst()->sample.structure.file
+*/
 
 // implement Parameters as a singleton class, this makes it globally available
 // it requires the call of the init() function, which also implements all checks

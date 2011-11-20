@@ -1,12 +1,10 @@
-/*
- *  This file is part of the software sassena
- *
- *  Authors:
- *  Benjamin Lindner, ben@benlabs.net
- *
- *  Copyright 2008-2010 Benjamin Lindner
- *
- */
+/** \file
+This file contains a set of artifical motion generators. They are used to superimpose artifical with the specific dynamics provided by the trajectory files.
+
+\author Benjamin Lindner <ben@benlabs.net>
+\version 1.3.0
+\copyright GNU General Public License
+*/
 
 #ifndef MOTION_WALKER_HPP_
 #define MOTION_WALKER_HPP_
@@ -38,6 +36,9 @@
 // other headers
 #include "math/coor3d.hpp"
 
+/** 
+Interface for an artficial motion generator
+*/
 class MotionWalker {
 protected:
     friend class boost::serialization::access;	
@@ -51,8 +52,9 @@ public:
 	virtual CartesianCoor3D translation(size_t timepos) = 0;	
 };
 
-//
-
+/** 
+Generates a linear motion
+*/
 class LinearMotionWalker : public MotionWalker {
 protected:
     friend class boost::serialization::access;	
@@ -72,6 +74,9 @@ public:
 	CartesianCoor3D translation(size_t timepos);
 };
 
+/** 
+No motion. Fixed offset.
+*/
 class FixedMotionWalker : public MotionWalker {
 protected:
     friend class boost::serialization::access;	
@@ -90,6 +95,9 @@ public:
 	CartesianCoor3D translation(size_t timepos);
 };
 
+/** 
+Sinoidal Oscillation with amplitude and frequency.
+*/
 class OscillationMotionWalker : public MotionWalker {
 protected:
     friend class boost::serialization::access;	
@@ -112,7 +120,9 @@ public:
 	CartesianCoor3D translation(size_t timepos);
 };
 
-
+/** 
+Simple random motion in 3D with a constant step size
+*/
 class RandomMotionWalker : public MotionWalker {
 protected:
     friend class boost::serialization::access;	
@@ -148,7 +158,9 @@ public:
 	CartesianCoor3D translation(size_t timepos);
 };
 
-
+/** 
+Brownian motion in 3D which draws the step size from a gaussian distribution for the given mean (displace)
+*/
 class BrownianMotionWalker : public MotionWalker {
 protected:
     friend class boost::serialization::access;	
@@ -188,7 +200,9 @@ public:
 };
 
 
-
+/** 
+Brownian motion in 3D which draws the step size from a gaussian distribution for the given mean (displace) and constrains the motion to the maximum radius.
+*/
 class LocalBrownianMotionWalker : public MotionWalker {
 protected:
     friend class boost::serialization::access;	

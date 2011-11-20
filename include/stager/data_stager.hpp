@@ -1,12 +1,11 @@
-/*
- *  This file is part of the software sassena
- *
- *  Authors:
- *  Benjamin Lindner, ben@benlabs.net
- *
- *  Copyright 2008-2010 Benjamin Lindner
- *
- */
+/** \file 
+This file contains a class which implements the data staging logic for the trajectory data. The first partition reads the trajectory data from disc and distributes the trajectory to any other partition. 
+
+\author Benjamin Lindner <ben@benlabs.net>
+\version 1.3.0
+\copyright GNU General Public License
+*/
+
 
 #ifndef STAGER__DATA_STAGER_HPP_
 #define STAGER__DATA_STAGER_HPP_
@@ -36,11 +35,14 @@
 #include "report/timer.hpp"
 #include "stager/coordinate_writer.hpp"
 
+/** 
+Loads coordinate data, performs frame decomposition of the trajectory data and places it efficiently into the distributed memory of the parallel partition by using div logic. 
+*/
+
 class DataStagerByFrame {
     Sample& m_sample;
     boost::mpi::communicator& allcomm_;
     boost::mpi::communicator& partitioncomm_;
-    DivAssignment FC_assignment;
     
     Timer& timer_;
     
@@ -57,19 +59,21 @@ class DataStagerByFrame {
     void stage_firstpartition();
     void distribute_coordinates(coor_t* p_coordinates_buffer,std::vector<std::vector<size_t> >& framesbuffer,size_t s);
     void stage_fillpartitions();
-    
+
+    void write(std::string filename,std::string format);    
 public:
-    DataStagerByFrame(Sample& sample,boost::mpi::communicator& allcomm,boost::mpi::communicator& partitioncomm, DivAssignment assignment,Timer& timer);
+    DataStagerByFrame(Sample& sample,boost::mpi::communicator& allcomm,boost::mpi::communicator& partitioncomm, Timer& timer);
     coor_t* stage();
     
-    void write(std::string filename,std::string format);
 };
 
+/** 
+Loads coordinate data, performs atom decomposition of the trajectory data and places it efficiently into the distributed memory of the parallel partition by using div logic. 
+*/
 class DataStagerByAtom  {
     Sample& m_sample;
     boost::mpi::communicator& allcomm_;
     boost::mpi::communicator& partitioncomm_;
-    DivAssignment FC_assignment;
     
     Timer& timer_;
     
@@ -80,28 +84,19 @@ class DataStagerByAtom  {
     size_t NA;
     size_t NF;
     
-    //owned by all clients, init in constructor
-//    std::map<size_t, std::set<size_t> > FS_assignment_table;
-//    std::map<size_t,std::vector<size_t> > FS_to_framelist_table;
-
-//    std::vector<std::pair<std::pair<size_t,size_t>,std::vector<size_t> > > AtomOffLen_to_FClist;
-    
-    void distribute_coordinates(coor_t* p_coordinates_buffer,std::vector<std::vector<size_t> >& framesbuffer,size_t s);
     void fill_coordinates(coor_t* p_localdata,size_t len,std::vector<size_t> frames);
-//    void add_client(size_t off,size_t len, size_t client);
     
     coor_t* p_coordinates;
-//    void stage_registration();
-//    void stage_data();
     
     void stage_firstpartition();
     void stage_fillpartitions();
+
+    void write(std::string filename,std::string format);
     
 public:
-    DataStagerByAtom(Sample& sample,boost::mpi::communicator& allcomm,boost::mpi::communicator& partitioncomm, DivAssignment assignment,Timer& timer);
+    DataStagerByAtom(Sample& sample,boost::mpi::communicator& allcomm,boost::mpi::communicator& partitioncomm,Timer& timer);
   
     coor_t* stage();    
-    void write(std::string filename,std::string format);
 };
 
 #endif

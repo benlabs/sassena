@@ -1,12 +1,10 @@
-/*
- *  This file is part of the software sassena
- *
- *  Authors:
- *  Benjamin Lindner, ben@benlabs.net
- *
- *  Copyright 2008-2010 Benjamin Lindner
- *
- */
+/** \file
+This file contains a class which defines a management class for coordinate sets.
+
+\author Benjamin Lindner <ben@benlabs.net>
+\version 1.3.0
+\copyright GNU General Public License
+*/
  
 // direct header
 #include "sample/coordinate_sets.hpp"
@@ -77,7 +75,6 @@ void CoordinateSets::init() {
 		{
 			SampleMotionParameters& motion = Params::Inst()->sample.motions[i];
 			MotionWalker* p_mw = NULL;
-			std::cout << "seed: " << motion.seed << std::endl;
 
 			if (motion.type=="linear") {
 				p_mw = new LinearMotionWalker(motion.displace,motion.sampling,motion.direction);

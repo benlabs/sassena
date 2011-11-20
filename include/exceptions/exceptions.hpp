@@ -1,12 +1,10 @@
-/*
- *  This file is part of the software sassena
- *
- *  Authors:
- *  Benjamin Lindner, ben@benlabs.net
- *
- *  Copyright 2008-2011 Benjamin Lindner
- *
- */
+/** \file
+This file contains exceptions defines within the context of the application.
+
+\author Benjamin Lindner <ben@benlabs.net>
+\version 1.3.0
+\copyright GNU General Public License
+*/
 
 #ifndef EXCEPTIONS__EXCEPTIONS_HPP_
 #define EXCEPTIONS__EXCEPTIONS_HPP_
@@ -22,6 +20,9 @@
 // other headers
 
 namespace sassena {
+	/** 
+	 Signal which should be caught in the main routine to allow a clean termination.
+	*/
     class terminate_request : public std::runtime_error {
     public:
         terminate_request() : std::runtime_error("Terminate requested") {}

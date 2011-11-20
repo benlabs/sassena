@@ -1,12 +1,10 @@
-/*
- *  This file is part of the software sassena
- *
- *  Authors:
- *  Benjamin Lindner, ben@benlabs.net
- *
- *  Copyright 2008-2010 Benjamin Lindner
- *
- */
+/** \file
+This file contains a set of singleton classes, which provide formatted console outputs.
+
+\author Benjamin Lindner <ben@benlabs.net>
+\version 1.3.0
+\copyright GNU General Public License
+*/
 
 #ifndef LOG__LOG_HPP_
 #define LOG__LOG_HPP_
@@ -19,7 +17,9 @@
 #include <map>
 #include <string>
 
-// info, warn and err classes wrap the stdio capabilities. they are singleton
+/** 
+Singelton class for formatted output to stdout, which should be used for information type messages.
+*/
 class Info {
 private:
 	Info() {}
@@ -40,6 +40,9 @@ public:
 	~Info() {}
 };
 
+/** 
+Singelton class for formatted output to stdout, which should be used for warning type messages.
+*/
 class Warn {
 private:
 	Warn() {}
@@ -60,6 +63,9 @@ public:
 	~Warn() {}
 };
 
+/** 
+Singelton class for formatted output to stdout, which should be used for error type messages.
+*/
 class Err {
 private:
 	Err() {}

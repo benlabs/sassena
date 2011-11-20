@@ -13,39 +13,17 @@ ADD_EXECUTABLE(s_maketnx
     src/main/s_maketnx.cpp
 )
 
-ADD_EXECUTABLE(s_genconf 
-	src/common.cpp
-    src/main/s_genconf.cpp
-)
-
-ADD_EXECUTABLE(s_fqt2h5gif 
-	src/common.cpp
-    src/main/s_fqt2h5gif.cpp
-)
-
-ADD_EXECUTABLE(s_sqw
-	src/common.cpp
-    src/main/s_sqw.cpp
-)
-
 ADD_EXECUTABLE(unit_broadcast 
 	src/common.cpp
     tests/unit_broadcast.cpp
 )
 
 
-ADD_EXECUTABLE(unit_serialize
-	src/common.cpp
-    tests/unit_serialize.cpp
-)
-
 IF(STATIC)
 SET_TARGET_PROPERTIES(sassena PROPERTIES LINK_SEARCH_END_STATIC 1)
 SET_TARGET_PROPERTIES(s_stage PROPERTIES LINK_SEARCH_END_STATIC 1)
 SET_TARGET_PROPERTIES(s_maketnx PROPERTIES LINK_SEARCH_END_STATIC 1)
-SET_TARGET_PROPERTIES(s_genconf PROPERTIES LINK_SEARCH_END_STATIC 1)
 SET_TARGET_PROPERTIES(unit_broadcast PROPERTIES LINK_SEARCH_END_STATIC 1)
-SET_TARGET_PROPERTIES(unit_serialize PROPERTIES LINK_SEARCH_END_STATIC 1)
 ENDIF(STATIC)
 
 TARGET_LINK_LIBRARIES (s_stage 
@@ -78,48 +56,17 @@ TARGET_LINK_LIBRARIES (s_maketnx
 	${BOOST_LIBRARIES}
 )
 
-TARGET_LINK_LIBRARIES (s_genconf 
-	sass_log
-	sass_controlio
-	${BOOST_LIBRARIES}
-)
-
-TARGET_LINK_LIBRARIES (s_fqt2h5gif 
-    ${HDF5_LIBRARIES}
-	${ZLIB_LIBRARIES}
-	${BOOST_LIBRARIES}
-)
-
-TARGET_LINK_LIBRARIES (unit_broadcast 
-	sass_log
-	sass_controlio
-	sass_sample
-	sass_report
-	sass_mpi
-	${BOOST_LIBRARIES}
-)
-
-TARGET_LINK_LIBRARIES (unit_serialize
-	sass_log
-	sass_controlio
-	sass_sample
-	${BOOST_LIBRARIES}
-)
-
-
-TARGET_LINK_LIBRARIES (s_sqw
-	sass_log
-	${FFTW3_LIBRARIES} 
-    ${HDF5_LIBRARIES}	
-	${ZLIB_LIBRARIES}
-	${BOOST_LIBRARIES}
-)
-
 
 INSTALL(TARGETS sassena RUNTIME DESTINATION bin)
 INSTALL(TARGETS s_maketnx RUNTIME DESTINATION bin)
-INSTALL(TARGETS s_genconf RUNTIME DESTINATION bin)
-INSTALL(TARGETS s_sqw RUNTIME DESTINATION bin)
+INSTALL(TARGETS s_stage RUNTIME DESTINATION bin)
+
+TARGET_LINK_LIBRARIES (unit_broadcast 
+	sass_log
+	sass_report
+	sass_controlio
+	sass_sample
+	${BOOST_LIBRARIES}
+)
 
 INSTALL(TARGETS unit_broadcast RUNTIME DESTINATION bin)
-INSTALL(TARGETS unit_serialize RUNTIME DESTINATION bin)

@@ -1,12 +1,10 @@
-/*
- *  This file is part of the software sassena
- *
- *  Authors:
- *  Benjamin Lindner, ben@benlabs.net
- *
- *  Copyright 2008-2010 Benjamin Lindner
- *
- */
+/** \file
+This file contains a class which defines coordinates based on a coordinate system.
+
+\author Benjamin Lindner <ben@benlabs.net>
+\version 1.3.0
+\copyright GNU General Public License
+*/
 
 #ifndef SAMPLE__COORDINATESET_HPP_
 #define SAMPLE__COORDINATESET_HPP_
@@ -25,15 +23,16 @@
 
 //forward declaration...
 
-////////////////////////////////////////////////////////////////////////////////
-// 
-////////////////////////////////////////////////////////////////////////////////
-
+/** 
+Defines the three possible coordinate representations
+*/
 enum CoordinateRepresentation { 
     CARTESIAN=10, SPHERICAL=20, CYLINDRICAL=30 
 };
 
-// This class is used by Frame to store selection specific coordinate arrays
+/** 
+A set of coordinates with an associated representation
+*/
 class CoordinateSet {
 protected:
 	friend class boost::serialization::access;	
@@ -60,7 +59,9 @@ public:
     CoordinateRepresentation get_representation() {return m_representation;}
 };
 
-// This class is used by Frame to store selection specific coordinate arrays
+/** 
+Specialized coordinate set which provides addtional functions for translation and rotation.
+*/
 class CartesianCoordinateSet : public CoordinateSet {
 	friend class boost::serialization::access;	
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
@@ -80,6 +81,9 @@ public:
     void rotate(CartesianCoor3D axis1,CartesianCoor3D axis2);
 };
 
+/** 
+Specialized coordinate set for spherical representation
+*/
 class SphericalCoordinateSet : public CoordinateSet {
 	friend class boost::serialization::access;	
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
@@ -92,6 +96,9 @@ public:
 	SphericalCoordinateSet(CartesianCoordinateSet& cs); 
 };
 
+/** 
+Specialized coordinate set for cylindrical representation
+*/
 class CylindricalCoordinateSet : public CoordinateSet {
 	friend class boost::serialization::access;	
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)

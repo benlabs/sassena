@@ -1,12 +1,10 @@
-/*
- *  This file is part of the software sassena
- *
- *  Authors:
- *  Benjamin Lindner, ben@benlabs.net
- *
- *  Copyright 2008-2010 Benjamin Lindner
- *
- */
+/** \file
+This file contains operational classes which mimic data types and encapsulate assignment information. 
+
+\author Benjamin Lindner <ben@benlabs.net>
+\version 1.3.0
+\copyright GNU General Public License
+*/
 
 #ifndef DECOMPOSITION__ASSIGNMENT_HPP_
 #define DECOMPOSITION__ASSIGNMENT_HPP_
@@ -23,6 +21,9 @@
 
 // other headers
 
+/** 
+Interface which represents a generic assignment of a number of tasks towards a number of nodes
+*/
 class Assignment {
 protected:
     size_t NN_;
@@ -43,6 +44,9 @@ public:
     virtual size_t index(size_t i) = 0;
 };
 
+/** 
+Specific assignment class which places tasks according to modulo logic. 
+*/
 class ModAssignment : Assignment {
 
 public:
@@ -52,10 +56,14 @@ public:
     size_t operator[](size_t index);
     size_t size();
     size_t offset();
+	size_t max(); // retreives the maximum size of any possible assignment
     bool contains(size_t i);
     size_t index(size_t i);
 };
 
+/** 
+Specific assignment class which places tasks according to div logic. 
+*/
 class DivAssignment : Assignment {
 
 public:
@@ -63,8 +71,9 @@ public:
     DivAssignment(size_t NN, size_t rank,size_t NAF); 
     
     size_t operator[](size_t index);
-    size_t size();
-    size_t offset();
+    size_t size(); // retrieve the scoped size of the assignment
+    size_t offset(); // retrieves the absolute offset
+	size_t max(); // retreives the maximum size of any possible assignment
     bool contains(size_t i);
     size_t index(size_t i);
 };

@@ -1,12 +1,10 @@
-/*
- *  This file is part of the software sassena
- *
- *  Authors:
- *  Benjamin Lindner, ben@benlabs.net
- *
- *  Copyright 2008-2010 Benjamin Lindner
- *
- */
+/** \file
+This executable routine is used to utilize the parallel data staging capabilities of the software sassena. It sets the partition size to all available nodes and reads and write any trajectory data in parallel. Can be used to benchmark the IO capacities of the hardware or to rewrite trajectory data using the capabilities offered through sassena.
+
+\author Benjamin Lindner <ben@benlabs.net>
+\version 1.3.0
+\copyright GNU General Public License
+*/
 
 // direct header
 #include "common.hpp"
@@ -39,7 +37,6 @@
 // other headers
 #include "exceptions/exceptions.hpp"
 #include "math/coor3d.hpp"
-#include "decomposition/decompose.hpp"
 #include "stager/data_stager.hpp"
 #include "control.hpp"
 #include "log.hpp"
@@ -225,13 +222,11 @@ int main(int argc,char* argv[]) {
     Info::Inst()->write(string("stager.mode=")+Params::Inst()->stager.mode);
 	
     if (Params::Inst()->stager.mode=="frames") {
-        DivAssignment assignment(world.size(),world.rank(),NF);
-        DataStagerByFrame data_stager(sample,world,world,assignment,timer);
+        DataStagerByFrame data_stager(sample,world,world,timer);
         coor_t* p_coordinates = data_stager.stage();
         delete p_coordinates;
     } else if (Params::Inst()->stager.mode=="atoms") {
-        DivAssignment assignment(world.size(),world.rank(),NA);        
-        DataStagerByAtom data_stager(sample,world,world,assignment,timer);
+        DataStagerByAtom data_stager(sample,world,world,timer);
         coor_t* p_coordinates = data_stager.stage();
         delete p_coordinates;        
     } else {

@@ -1,12 +1,10 @@
-/*
- *  This file is part of the software sassena
- *
- *  Authors:
- *  Benjamin Lindner, ben@benlabs.net
- *
- *  Copyright 2008-2010 Benjamin Lindner
- *
- */
+/** \file
+This file contains the class used to encapsulate the paritioning logic. It will find a reasonable partitioning scheme based on some job dependent conditions (number of nodes, number of frames and atoms..)
+
+\author Benjamin Lindner <ben@benlabs.net>
+\version 1.3.0
+\copyright GNU General Public License
+*/
 
 #ifndef DECOMPOSITION__DECOMPOSITIONPLAN_HPP_
 #define DECOMPOSITION__DECOMPOSITIONPLAN_HPP_
@@ -30,8 +28,10 @@
 // other headers
 #include "math/coor3d.hpp"
 
-
- class DecompositionParameters {
+/** 
+Encapsulates a valid decomposition for a 2D partitioning of a NQ x NAF problem onto NN nodes with NP partitions and NNpP nodes per partition. Computes various derived properties upon construction.
+*/
+class DecompositionParameters {
      // initial
 
      size_t m_NN;
@@ -65,6 +65,9 @@
      size_t nbytesize() { return m_nbytesize; }
  };
  
+/** 
+Searches for a valid decomposition for a 2D partitioning of a NQ x NAF problem onto NN nodes with NP partitions and NNpP nodes per partition.
+*/
 class DecompositionPlan {
 
     DecompositionParameters* p_dp_best;

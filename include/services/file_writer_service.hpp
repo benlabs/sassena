@@ -1,12 +1,11 @@
-/*
- *  This file is part of the software sassena
- *
- *  Authors:
- *  Benjamin Lindner, ben@benlabs.net
- *
- *  Copyright 2008-2010 Benjamin Lindner
- *
- */
+/** \file
+This file implements a service for writing results asynchronously to the signal output file and manages the buffered communication between clients and the file server (head node).
+
+\author Benjamin Lindner <ben@benlabs.net>
+\version 1.3.0
+\copyright GNU General Public License
+*/
+
 
 #ifndef IO__FILE_WRITER_SERVICE_HPP_
 #define IO__FILE_WRITER_SERVICE_HPP_
@@ -32,8 +31,14 @@
 // other headers
 #include "math/coor3d.hpp"
 
+/** 
+Defines communication tags between client/server
+*/
 enum HDF5WriterTag {HANGUP,WRITE};
 
+/** 
+Type class which is used to buffer the result data before it is written to file
+*/
 struct HDF5DataEntry {
     CartesianCoor3D qvector;
     std::vector<std::complex<double> >* p_fqt;
@@ -42,6 +47,9 @@ struct HDF5DataEntry {
     std::complex<double> fq2;    
 };
 
+/** 
+Client side code which implements buffered writing of the results and does automatic flushing of the data towards the server
+*/
 class HDF5WriterClient {
     boost::asio::ip::tcp::endpoint m_endpoint;
     boost::posix_time::ptime m_lastflush;
@@ -58,6 +66,9 @@ public:
     void flush();    
 };
 
+/** 
+Server side code which implements buffered writing of the results and does automatic flushing of the data into the signal file
+*/
 class HDF5WriterService  {
     
     std::string m_filename;

@@ -1,12 +1,10 @@
-/*
- *  This file is part of the software sassena
- *
- *  Authors:
- *  Benjamin Lindner, ben@benlabs.net
- *
- *  Copyright 2008-2010 Benjamin Lindner
- *
- */
+/** \file
+This file contains a class which defines a management class for coordinate sets.
+
+\author Benjamin Lindner <ben@benlabs.net>
+\version 1.3.0
+\copyright GNU General Public License
+*/
 
 #ifndef SAMPLE__COORDINATESETS_HPP_
 #define SAMPLE__COORDINATESETS_HPP_
@@ -30,10 +28,9 @@
 
 //forward declaration...
 
-////////////////////////////////////////////////////////////////////////////////
-// 
-////////////////////////////////////////////////////////////////////////////////
-
+/** 
+Stores alignment information which is used during the loading to perform transformation of the original trajectory data
+*/
 class CoordinateSetAlignment {
 protected:
     friend class boost::serialization::access;	
@@ -54,7 +51,9 @@ public:
     CoordinateSet* p_reference;
 };
 
-// This class is used by Scatterdevices to manage coordinate sets
+/** 
+Management class for coordinate sets.
+*/
 class CoordinateSets {
 protected:
     friend class boost::serialization::access;	

@@ -1,12 +1,11 @@
-/*
- *  This file is part of the software sassena
- *
- *  Authors:
- *  Benjamin Lindner, ben@benlabs.net
- *
- *  Copyright 2008-2010 Benjamin Lindner
- *
- */
+/** \file 
+This file contains a class which generates the scattering device based on user input provides through the CONTROL module. The constructing routine only return a pointer to the interface.
+
+\author Benjamin Lindner <ben@benlabs.net>
+\version 1.3.0
+\copyright GNU General Public License
+*/
+
 
 #ifndef SCATTER_DEVICES__SCATTER_DEVICE_FACTORY_HPP_
 #define SCATTER_DEVICES__SCATTER_DEVICE_FACTORY_HPP_
@@ -21,6 +20,9 @@
 #include "sample.hpp"
 #include "scatter_devices/abstract_scatter_device.hpp"
 
+/** 
+Factory class which constructs the proper scattering device based on parameter settings.
+*/
 class ScatterDeviceFactory {
 public: 
     static IScatterDevice* create(

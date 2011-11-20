@@ -1,12 +1,12 @@
-/*
- *  This file is part of the software sassena
- *
- *  Authors:
- *  Benjamin Lindner, ben@benlabs.net
- *
- *  Copyright 2008-2010 Benjamin Lindner
- *
- */
+/** \file
+This file implements a monitoring service, where clients push updates towards to head node, which then presents the user with up-to-date information about the progress.
+
+\author Benjamin Lindner <ben@benlabs.net>
+\version 1.3.0
+\copyright GNU General Public License
+*/
+
+
 #ifndef IO__MONITOR_SERVICE_HPP_
 #define IO__MONITOR_SERVICE_HPP_
 
@@ -32,8 +32,14 @@
 // other headers
 #include "math/coor3d.hpp"
 
+/** 
+Defines communication tags between client/server
+*/
 enum MonitorTag {MONITOR_HANGUP,MONITOR_UPDATE,MONITOR_RESET,MONITOR_SAMPLINGFACTOR};
 
+/** 
+Server side code which implements buffered status updates for monitoring the progress of a calculation
+*/
 class MonitorService {
     boost::asio::io_service& m_io_service;
     boost::asio::ip::tcp::acceptor m_acceptor;
@@ -69,6 +75,9 @@ public:
     void run();
 };
 
+/** 
+Client side code which implements buffered status updates for monitoring the progress of a calculation
+*/
 class MonitorClient {
     boost::asio::ip::tcp::endpoint m_endpoint;
     

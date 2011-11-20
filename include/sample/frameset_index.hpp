@@ -1,12 +1,10 @@
-/*
- *  This file is part of the software sassena
- *
- *  Authors:
- *  Benjamin Lindner, ben@benlabs.net
- *
- *  Copyright 2008-2010 Benjamin Lindner
- *
- */
+/** \file
+This file contains a class which defines a selection mechanism for frames.
+
+\author Benjamin Lindner <ben@benlabs.net>
+\version 1.3.0
+\copyright GNU General Public License
+*/
 
 #ifndef SAMPLE__FRAMESET_INDEX_HPP_
 #define SAMPLE__FRAMESET_INDEX_HPP_
@@ -35,6 +33,9 @@
 #include "sample/atomselection.hpp"
 #include "sample/frame.hpp"
 
+/** 
+Stores frame offset information. Can be generated in advance and is required by some file formats.
+*/
 class FramesetIndex : public std::vector<std::streamoff> {
     friend class boost::serialization::access;	
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)

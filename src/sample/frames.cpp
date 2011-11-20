@@ -1,12 +1,10 @@
-/*
- *  This file is part of the software sassena
- *
- *  Authors:
- *  Benjamin Lindner, ben@benlabs.net
- *
- *  Copyright 2008-2010 Benjamin Lindner
- *
- */
+/** \file
+This file contains a management class for framesets and specifies framesets for different trajectory types.
+
+\author Benjamin Lindner <ben@benlabs.net>
+\version 1.3.0
+\copyright GNU General Public License
+*/
 
 // direct header
 #include "sample/frames.hpp"
@@ -17,9 +15,9 @@
 // special library headers
 #include <boost/lexical_cast.hpp>
 #include <boost/filesystem.hpp>
-#include "io/xdrfile/xdrfile.h"
-#include "io/xdrfile/xdrfile_xtc.h"
-#include "io/xdrfile/xdrfile_trr.h"
+#include "../vendor/xdrfile-1.1.1/include/xdrfile.h"
+#include "../vendor/xdrfile-1.1.1/include/xdrfile_xtc.h"
+#include "../vendor/xdrfile-1.1.1/include/xdrfile_trr.h"
 
 // other headers
 #include "sample/atomselection.hpp"
@@ -384,10 +382,9 @@ void DCDFrameset::read_frame(size_t framenumber,Frame& cf) {
 		cf.unitcell.push_back(CartesianCoor3D(unit_cell_block[3],unit_cell_block[4],unit_cell_block[5]));
 	}
 	else {
-		// signal that there is no unit cell!
-		cerr << "ERROR>> " << " Frames w/o unit cell parameters are not supported" << endl;
-		throw;
-		// cf. = false;
+		cf.unitcell.push_back(CartesianCoor3D(0,0,0));
+		cf.unitcell.push_back(CartesianCoor3D(0,0,0));
+		cf.unitcell.push_back(CartesianCoor3D(0,0,0));		
 	}
 	
 	cf.number_of_atoms = number_of_atoms;
@@ -439,10 +436,11 @@ void PDBFrameset::init(std::string fn,size_t fno) {
 	string line;
 	default_uc.resize(3);
 	size_t number_of_atom_entries=0;
+	bool unitcell=false;
 	while (getline(pdbfile,line)) {
 		// if entry == crystal -> unit cell
 		if ( line.substr(0,6) != "CRYST1" ) continue;
-
+		unitcell=true;
 		double a = atof(line.substr(6,9).c_str());
 		double b = atof(line.substr(15,9).c_str());
 		double c = atof(line.substr(24,9).c_str());
@@ -453,6 +451,12 @@ void PDBFrameset::init(std::string fn,size_t fno) {
 		default_uc[1]=CartesianCoor3D(b*cos(gamma),b*sin(gamma),0);
 		default_uc[2]=CartesianCoor3D(c*cos(beta),c*cos(alpha)*sin(beta),c*sin(alpha)*sin(beta));
 		break;
+	}
+	
+	if (!unitcell) {
+		default_uc[0]=CartesianCoor3D(0,0,0);
+		default_uc[1]=CartesianCoor3D(0,0,0);
+		default_uc[2]=CartesianCoor3D(0,0,0);		
 	}
 	
 	pdbfile.seekg(ios::beg);
@@ -542,7 +546,7 @@ void PDBFrameset::read_frame(size_t framenumber,Frame& cf) {
 			uc[1]=CartesianCoor3D(b*cos(gamma),b*sin(gamma),0);
 			uc[2]=CartesianCoor3D(c*cos(beta),c*cos(alpha)*sin(beta),c*sin(alpha)*sin(beta));
 		}
-						
+								
 		// if entry == atom -> coordinates
 		if ( line.substr(0,6) == "ATOM  " ) {
 			number_of_atom_entries++;			

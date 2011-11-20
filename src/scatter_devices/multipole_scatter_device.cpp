@@ -1,12 +1,10 @@
-/*
- *  This file is part of the software sassena
- *
- *  Authors:
- *  Benjamin Lindner, ben@benlabs.net
- *
- *  Copyright 2008-2010 Benjamin Lindner
- *
- */
+/** \file
+This file contains a class which implements the scattering calculation for multipole moment based orientally averaged scattering ( which is all type scattering ).
+
+\author Benjamin Lindner <ben@benlabs.net>
+\version 1.3.0
+\copyright GNU General Public License
+*/
 
 // direct header
 #include "scatter_devices/multipole_scatter_device.hpp"
@@ -25,7 +23,6 @@
 // other headers
 #include "math/coor3d.hpp"
 #include "math/smath.hpp"
-#include "decomposition/decompose.hpp"
 #include "control.hpp"
 #include "log.hpp"
 #include "sample.hpp"
@@ -103,7 +100,7 @@ void MPSphereScatterDevice::init_moments(CartesianCoor3D& q) {
 void MPSphereScatterDevice::stage_data() {
     Timer& timer = timer_[boost::this_thread::get_id()];
     if (allcomm_.rank()==0) Info::Inst()->write(string("Forcing stager.mode=frames"));
-    DataStagerByFrame data_stager(sample_,allcomm_,partitioncomm_,assignment_,timer);
+    DataStagerByFrame data_stager(sample_,allcomm_,partitioncomm_,timer);
     p_coordinates = data_stager.stage();
 }
 
@@ -407,7 +404,8 @@ void MPSphereScatterDevice::scatter(size_t this_moment) {
        offset = (this_moment%NMBLOCK)*NMAXF;       
    }
 
-   size_t NMYF = assignment_.size();
+	DivAssignment assignment(partitioncomm_.size(),partitioncomm_.rank(),NF);
+   size_t NMYF = assignment.size();
    fftw_complex* p_a = &(at_[offset]);
    
    std::pair<long,long> moment = multipole_index_[this_moment];
@@ -531,7 +529,7 @@ void MPCylinderScatterDevice::init_moments(CartesianCoor3D& q) {
 
 void MPCylinderScatterDevice::stage_data() {
     Timer& timer = timer_[boost::this_thread::get_id()];
-    DataStagerByFrame data_stager(sample_,allcomm_,partitioncomm_,assignment_,timer);
+    DataStagerByFrame data_stager(sample_,allcomm_,partitioncomm_,timer);
     p_coordinates = data_stager.stage();
 }
 
@@ -835,7 +833,8 @@ void MPCylinderScatterDevice::scatter(size_t this_moment) {
        offset = (this_moment%NMBLOCK)*NMAXF;       
    }
 
-   size_t NMYF = assignment_.size();
+	DivAssignment assignment(partitioncomm_.size(),partitioncomm_.rank(),NF);
+   size_t NMYF = assignment.size();
    fftw_complex* p_a = &(at_[offset]);
    
    std::pair<long,long> moment = multipole_index_[this_moment];

@@ -1,12 +1,10 @@
-/*
- *  This file is part of the software sassena
- *
- *  Authors:
- *  Benjamin Lindner, ben@benlabs.net
- *
- *  Copyright 2008-2010 Benjamin Lindner
- *
- */
+/** \file
+This file contains a class which implements the scattering calculation for all scattering.
+
+\author Benjamin Lindner <ben@benlabs.net>
+\version 1.3.0
+\copyright GNU General Public License
+*/
  
 // direct header
 #include "scatter_devices/all_vectors_scatter_device.hpp"
@@ -24,7 +22,6 @@
 // other headers
 #include "math/coor3d.hpp"
 #include "math/smath.hpp"
-#include "decomposition/decompose.hpp"
 #include "control.hpp"
 #include "log.hpp"
 #include "sample.hpp"
@@ -60,7 +57,7 @@ AllVectorsScatterDevice::AllVectorsScatterDevice(
 void AllVectorsScatterDevice::stage_data() {
     Timer& timer = timer_[boost::this_thread::get_id()];
     if (allcomm_.rank()==0) Info::Inst()->write(string("Forcing stager.mode=frames"));
-    DataStagerByFrame data_stager(sample_,allcomm_,partitioncomm_,assignment_,timer);
+    DataStagerByFrame data_stager(sample_,allcomm_,partitioncomm_,timer);
     p_coordinates = data_stager.stage();
 }
 
@@ -365,7 +362,7 @@ void AllVectorsScatterDevice::scatter(size_t this_subvector) {
        offset = (this_subvector%NMBLOCK)*NMAXF;       
    }
 
-   size_t NMYF = assignment_.size();
+   size_t NMYF = DivAssignment(partitioncomm_.size(),partitioncomm_.rank(),NF).size();
    fftw_complex* p_a = &(at_[offset]);
    
    CartesianCoor3D q = subvector_index_[this_subvector];

@@ -1,12 +1,11 @@
-/*
- *  This file is part of the software sassena
- *
- *  Authors:
- *  Benjamin Lindner, ben@benlabs.net
- *
- *  Copyright 2008-2010 Benjamin Lindner
- *
- */
+/** \file 
+This file contains a class which implements the scattering calculation for multipole moment based orientally averaged scattering ( which is all type scattering ).
+
+\author Benjamin Lindner <ben@benlabs.net>
+\version 1.3.0
+\copyright GNU General Public License
+*/
+
 
 #ifndef SCATTER_DEVICES__ABSTRACT_MULTIPOLE_SCATTER_DEVICE_HPP_
 #define SCATTER_DEVICES__ABSTRACT_MULTIPOLE_SCATTER_DEVICE_HPP_
@@ -34,6 +33,9 @@
 #include "report/timer.hpp"
 #include "scatter_devices/abstract_scatter_device.hpp"
 
+/** 
+Implements all type scattering using the multipole method for spherical orientational averaging
+*/
 class MPSphereScatterDevice : public AbstractScatterDevice {
 protected:
     
@@ -94,7 +96,9 @@ public:
         );
 };
 
-
+/** 
+Implements all type scattering using the multipole method for cylindrical orientational averaging
+*/
 class MPCylinderScatterDevice : public AbstractScatterDevice {
 protected:
     

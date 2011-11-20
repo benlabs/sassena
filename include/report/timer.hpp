@@ -1,12 +1,10 @@
-/*
- *  This file is part of the software sassena
- *
- *  Authors:
- *  Benjamin Lindner, ben@benlabs.net
- *
- *  Copyright 2008-2010 Benjamin Lindner
- *
- */
+/** \file
+This file contains an efficient timer class, which is used to retrieve execution times for various parts of the algorithms.
+
+\author Benjamin Lindner <ben@benlabs.net>
+\version 1.3.0
+\copyright GNU General Public License
+*/
 
 #ifndef REPORT__TIMER_HPP_
 #define REPORT__TIMER_HPP_
@@ -34,6 +32,9 @@
 
 using namespace boost::accumulators;
 
+/** 
+Type class which respresents the time value used by the Timer class
+*/
 class Timer_timeval {
 private:
 	/////////////////// MPI related
@@ -55,6 +56,9 @@ public:
 	Timer_timeval& operator=(const timeval& t) { tv_sec = t.tv_sec; tv_usec = t.tv_usec; return (*this); }
 };
 
+/** 
+Basic Timer which provides a start/stop facility measure runtimes. Provides an interface to retrieve statistical information.
+*/
 class Timer {
 	private:
 		/////////////////// MPI related

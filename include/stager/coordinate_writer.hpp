@@ -1,12 +1,11 @@
-/*
- *  This file is part of the software sassena
- *
- *  Authors:
- *  Benjamin Lindner, ben@benlabs.net
- *
- *  Copyright 2008-2010 Benjamin Lindner
- *
- */
+/** \file 
+This file contains a class which contains routines to write the in-memory-stored trajectory to a file. This feature is mainly used for consistency check and visualization of the artifical motions.
+
+\author Benjamin Lindner <ben@benlabs.net>
+\version 1.3.0
+\copyright GNU General Public License
+*/
+
 
 #ifndef STAGER__COORDINATE_WRITER_HPP_
 #define STAGER__COORDINATE_WRITER_HPP_
@@ -21,19 +20,20 @@
 
 // other headers
 
-
-////////////////////////////////////////////////////////////////////////////////
-// 
-////////////////////////////////////////////////////////////////////////////////
-
+/** 
+Interface for writing coordinates staged within the distributed memory into a file.
+*/
 class ICoordinateWriter {
 public:
     // set layout
-    virtual void init(size_t blocks,size_t entries) = 0;    
+    virtual void init() = 0;    
     virtual void prepare() = 0;    
     virtual void write(coor_t* data,size_t blockoffset, size_t myblocks) =0 ;
 };
 
+/** 
+Writes the coordinates staged within the distributed memory as a DCD file
+*/
 class DCDCoordinateWriter : public ICoordinateWriter {
     // filehandle:
     
@@ -44,10 +44,10 @@ class DCDCoordinateWriter : public ICoordinateWriter {
     std::streamoff data_offset_;
     
 public:
-    DCDCoordinateWriter(std::string file); // initializes a file with the trajectory format
+    DCDCoordinateWriter(std::string file,size_t blocks,size_t entries); // initializes a file with the trajectory format
 
     // set layout
-    void init(size_t blocks,size_t entries);
+    void init();
     void prepare();
     void write(coor_t* data,size_t blockoffset, size_t myblocks);
     

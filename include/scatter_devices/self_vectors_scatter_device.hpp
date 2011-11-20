@@ -1,12 +1,11 @@
-/*
- *  This file is part of the software sassena
- *
- *  Authors:
- *  Benjamin Lindner, ben@benlabs.net
- *
- *  Copyright 2008-2010 Benjamin Lindner
- *
- */
+/** \file 
+This file contains a class which implements the scattering calculation for self scattering.
+
+\author Benjamin Lindner <ben@benlabs.net>
+\version 1.3.0
+\copyright GNU General Public License
+*/
+
 
 #ifndef SCATTER_DEVICES__SELF_VECTORS_SCATTER_DEVICE_HPP_
 #define SCATTER_DEVICES__SELF_VECTORS_SCATTER_DEVICE_HPP_
@@ -38,6 +37,9 @@
 
 #include "scatter_devices/abstract_vectors_scatter_device.hpp"
 
+/** 
+Implements self type scattering using vectors for orientational averaging
+*/
 class SelfVectorsScatterDevice : public AbstractVectorsScatterDevice {
 protected:
     
@@ -53,6 +55,8 @@ protected:
     
     fftw_complex* scatter(size_t qindex,size_t aindex);
     
+	ModAssignment assignment_;
+
     double progress();
     
     void stage_data();

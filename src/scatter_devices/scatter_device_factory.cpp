@@ -1,12 +1,10 @@
-/*
- *  This file is part of the software sassena
- *
- *  Authors:
- *  Benjamin Lindner, ben@benlabs.net
- *
- *  Copyright 2008-2010 Benjamin Lindner
- *
- */
+/** \file
+This file contains a class which generates the scattering device based on user input provides through the CONTROL module. The constructing routine only return a pointer to the interface.
+
+\author Benjamin Lindner <ben@benlabs.net>
+\version 1.3.0
+\copyright GNU General Public License
+*/
 
 // direct header
 #include "scatter_devices/scatter_device_factory.hpp"
@@ -15,7 +13,6 @@
 #include "control.hpp"
 #include "log.hpp"
 #include "decomposition/assignment.hpp"
-#include "decomposition/decompose.hpp"
 #include "decomposition/decomposition_plan.hpp"
 #include "scatter_devices/all_vectors_scatter_device.hpp"
 #include "scatter_devices/self_vectors_scatter_device.hpp"

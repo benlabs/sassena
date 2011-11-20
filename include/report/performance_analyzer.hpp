@@ -1,12 +1,10 @@
-/*
- *  This file is part of the software sassena
- *
- *  Authors:
- *  Benjamin Lindner, ben@benlabs.net
- *
- *  Copyright 2008-2010 Benjamin Lindner
- *
- */
+/** \file
+This file contains an performance analysis class, which takes several timers and prepares a formatted output.
+
+\author Benjamin Lindner <ben@benlabs.net>
+\version 1.3.0
+\copyright GNU General Public License
+*/
 
 #ifndef REPORT__PERFORMANCE_ANALYZER_HPP_
 #define REPORT__PERFORMANCE_ANALYZER_HPP_
@@ -32,6 +30,9 @@
 
 using namespace boost::accumulators;
 
+/** 
+Data entry used for performance analysis and contains timer information.
+*/
 struct PerformanceMeasure {
 	double sum;
 	double count;
@@ -41,6 +42,9 @@ struct PerformanceMeasure {
 	double max;
 };
 
+/** 
+Analyzes the information from a set of timers provided at construction and prepares a formatted output of the corresponding statistical information.
+*/
 class PerformanceAnalyzer {
 
 //	Timer m_supertimer; // contains all timing information from all nodes

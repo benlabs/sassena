@@ -1,12 +1,10 @@
-/*
- *  This file is part of the software sassena
- *
- *  Authors:
- *  Benjamin Lindner, ben@benlabs.net
- *
- *  Copyright 2008-2010 Benjamin Lindner
- *
- */
+/** \file
+This file contains a class which implements the scattering calculation for self scattering.
+
+\author Benjamin Lindner <ben@benlabs.net>
+\version 1.3.0
+\copyright GNU General Public License
+*/
 
 // direct header
 #include "scatter_devices/self_vectors_scatter_device.hpp"
@@ -24,7 +22,6 @@
 // other headers
 #include "math/coor3d.hpp"
 #include "math/smath.hpp"
-#include "decomposition/decompose.hpp"
 #include "control.hpp"
 #include "log.hpp"
 #include "sample.hpp"
@@ -49,10 +46,11 @@ SelfVectorsScatterDevice::SelfVectorsScatterDevice(
         NAF,
         fileservice_endpoint,
         monitorservice_endpoint
-    )
+    ),
+    assignment_(partitioncomm_.size(),partitioncomm_.rank(),NAF)
 {    
     atfinal_ = NULL;
-    
+	
     fftw_complex* wspace= NULL;
     fftw_planF_ = fftw_plan_dft_1d(2*NF, wspace, wspace, FFTW_FORWARD, FFTW_ESTIMATE);
     fftw_planB_ = fftw_plan_dft_1d(2*NF, wspace, wspace, FFTW_BACKWARD, FFTW_ESTIMATE);    
@@ -61,7 +59,7 @@ SelfVectorsScatterDevice::SelfVectorsScatterDevice(
 void SelfVectorsScatterDevice::stage_data() {
     Timer& timer = timer_[boost::this_thread::get_id()];   
     if (allcomm_.rank()==0) Info::Inst()->write(string("Forcing stager.mode=atoms")); 
-    DataStagerByAtom data_stager(sample_,allcomm_,partitioncomm_,assignment_,timer);
+    DataStagerByAtom data_stager(sample_,allcomm_,partitioncomm_,timer);
     p_coordinates = data_stager.stage();
 }
 

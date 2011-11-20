@@ -1,7 +1,6 @@
 SET(cmake_policy NO_POLICY_SCOPE)
 
 INCLUDE_DIRECTORIES(${Sassena_SOURCE_DIR}/include)
-INCLUDE_DIRECTORIES(${Sassena_SOURCE_DIR}/include/io/xdrfile)
 
 ADD_LIBRARY(sass_math ${INTERNAL_LIBRARY_TYPE}
 	src/math/coor3d.cpp
@@ -14,9 +13,6 @@ ADD_LIBRARY(sass_log ${INTERNAL_LIBRARY_TYPE}
 
 ADD_LIBRARY(sass_controlio ${INTERNAL_LIBRARY_TYPE}
 	src/io/xml_interface.cpp
-	src/io/xdrfile/xdrfile.c
-	src/io/xdrfile/xdrfile_xtc.c
-	src/io/xdrfile/xdrfile_trr.c
 	src/control/parameters.cpp
 	src/control/database.cpp
 )
@@ -64,17 +60,11 @@ ADD_LIBRARY(sass_stager ${INTERNAL_LIBRARY_TYPE}
 ADD_LIBRARY(sass_scatter_devices ${INTERNAL_LIBRARY_TYPE}
 	src/scatter_devices/scatter_factors.cpp
 	src/scatter_devices/scatter_device_factory.cpp
-#	src/scatter_devices/all.cpp
-#	src/scatter_devices/all_vectors.cpp
-#	src/scatter_devices/all_vectorsthread.cpp	
 	src/scatter_devices/all_vectors_scatter_device.cpp	
 	src/scatter_devices/multipole_scatter_device.cpp	
-#	src/scatter_devices/all_multipole_sphere.cpp
-#	src/scatter_devices/all_multipole_cylinder.cpp
     src/scatter_devices/abstract_scatter_device.cpp
     src/scatter_devices/abstract_vectors_scatter_device.cpp
 	src/scatter_devices/self_vectors_scatter_device.cpp	
-#	src/scatter_devices/self_vectors.cpp
 )
 
 IF(STATIC)
@@ -109,7 +99,9 @@ TARGET_LINK_LIBRARIES (sass_controlio
 TARGET_LINK_LIBRARIES (sass_sample
 	sass_math
 	sass_log	
+    sass_vendor_xdrfile
 	sass_controlio
+	${ZLIB_LIBRARIES}
 	${Boost_LIBRARIES}
 	${LAPACK_LIBRARIES} 	
 )

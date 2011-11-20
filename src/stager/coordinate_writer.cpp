@@ -1,12 +1,10 @@
-/*
- *  This file is part of the software sassena
- *
- *  Authors:
- *  Benjamin Lindner, ben@benlabs.net
- *
- *  Copyright 2008-2010 Benjamin Lindner
- *
- */
+/** \file
+This file contains a class which contains routines to write the in-memory-stored trajectory to a file. This feature is mainly used for consistency check and visualization of the artifical motions.
+
+\author Benjamin Lindner <ben@benlabs.net>
+\version 1.3.0
+\copyright GNU General Public License
+*/
  
 // direct header
 #include "stager/coordinate_writer.hpp"
@@ -28,16 +26,15 @@
 
 using namespace std;
 
-DCDCoordinateWriter::DCDCoordinateWriter(std::string file) :
-    file_(file)
+DCDCoordinateWriter::DCDCoordinateWriter(std::string file,size_t blocks,size_t entries) :
+   	blocks_(blocks),
+	entries_(entries),
+	file_(file)
 {
     
 }
 
-void DCDCoordinateWriter::init(size_t blocks,size_t entries) {
-    blocks_ = blocks;
-    entries_ = entries;
-    
+void DCDCoordinateWriter::init() {    
     std::ofstream out(file_.c_str(),ios_base::binary | ios_base::ate);
     
     int32_t marker = 0; // fortran 4 byte marker		
@@ -48,7 +45,7 @@ void DCDCoordinateWriter::init(size_t blocks,size_t entries) {
 	out.write(p_marker,sizeof(int32_t)); // FORTRAN Marker / head size 1
     std::string ident("CORD");
     out.write(ident.c_str(),sizeof(int32_t)); // MAGIC IDENTIFIER 2
-    int32_t nof = blocks;
+    int32_t nof = blocks_;
     out.write( (char*) (&nof),sizeof(int32_t)); // number of frames 3
     marker= 0; out.write(p_marker,sizeof(int32_t)); // dummy 4
     int32_t one = 1;
@@ -64,7 +61,8 @@ void DCDCoordinateWriter::init(size_t blocks,size_t entries) {
     float dt = 1;
 	out.write((char*) (&dt),sizeof(float)); // size of timestep 12
     int32_t marker_false = 0;
-	out.write((char*)(&marker_false),sizeof(int32_t)); // optional block 1, deactivate 14
+    int32_t marker_true = 1;
+	out.write((char*)(&marker_true),sizeof(int32_t)); // optional block 1, deactivate 14
 	
 	out.write((char*)(&marker_false),sizeof(int32_t)); // optional block 2, deactivate 15
 	out.write(p_marker,sizeof(int32_t)); // unassigned 16
@@ -90,7 +88,7 @@ void DCDCoordinateWriter::init(size_t blocks,size_t entries) {
 	out.write(p_marker,sizeof(int32_t)); // unassigned
     marker= 4;
 	out.write(p_marker,sizeof(int32_t)); // unassigned
-    marker= entries; 
+    marker= entries_; 
 	out.write(p_marker,sizeof(int32_t)); // number of atoms
     marker= 4;
 	out.write(p_marker,sizeof(int32_t)); // unassigned
@@ -110,7 +108,7 @@ void DCDCoordinateWriter::write(coor_t* data,size_t blockoffset, size_t myblocks
     
     std::fstream out;
     out.open(file_.c_str(),ios_base::in | ios_base::out | ios_base::binary);
-    size_t blockbytesize = 3*2*sizeof(int32_t)+ 3*entries_*sizeof(float);
+    size_t blockbytesize = 2*sizeof(int32_t)+ 6*sizeof(double) + 3*2*sizeof(int32_t)+ 3*entries_*sizeof(float);
         
     std::streamoff byteoffset = data_offset_ + blockoffset*blockbytesize;
     out.seekp(byteoffset);
@@ -123,6 +121,12 @@ void DCDCoordinateWriter::write(coor_t* data,size_t blockoffset, size_t myblocks
     // write by blocks
     for(size_t i = 0; i < myblocks; ++i)
     {
+        marker = 6*sizeof(double);
+		double emptycell[6]={0.0,0.0,0.0,0.0,0.0,0.0};
+		char* p_emptycell = (char*) &(emptycell[0]);
+        out.write(p_marker,sizeof(int32_t));
+		out.write(p_emptycell,6*sizeof(double));
+        out.write(p_marker,sizeof(int32_t));	
         // k iterates coordinates X,Y,Z
         for(size_t k = 0; k < 3; ++k)
         {

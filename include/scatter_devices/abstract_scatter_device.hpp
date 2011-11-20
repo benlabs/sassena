@@ -1,12 +1,11 @@
-/*
- *  This file is part of the software sassena
- *
- *  Authors:
- *  Benjamin Lindner, ben@benlabs.net
- *
- *  Copyright 2008-2010 Benjamin Lindner
- *
- */
+/** \file 
+This file contains the interface definition for all scattering devices and implements an abstract scattering device from which all other devices are derived.
+
+\author Benjamin Lindner <ben@benlabs.net>
+\version 1.3.0
+\copyright GNU General Public License
+*/
+
 
 #ifndef SCATTER_DEVICES__ABSTRACT_SCATTER_DEVICE_HPP_
 #define SCATTER_DEVICES__ABSTRACT_SCATTER_DEVICE_HPP_
@@ -38,7 +37,9 @@
 #include "scatter_devices/scatter_factors.hpp"
 
 
-
+/** 
+Efficent Thread-safe version of a queue
+*/
  template<typename Data>
  class concurrent_queue
  {
@@ -100,7 +101,10 @@
          while (!the_queue.empty()) boost::this_thread::sleep(boost::posix_time::milliseconds(25));
      }
  };
- 
+
+/** 
+Interface class to allow for the execution of the scattering calculation
+*/
 class IScatterDevice {
 protected:
     virtual void runner() = 0;
@@ -113,6 +117,9 @@ public:
     virtual void run() = 0;
 };
 
+/** 
+Abstract Scattering Device from which all others are derived. It implements common functionality, e.g. basic control flows. 
+*/
 class AbstractScatterDevice : public IScatterDevice {
 protected:
     coor_t* p_coordinates;
@@ -132,7 +139,6 @@ protected:
     fftw_complex* atfinal_;
     std::complex<double> afinal_;
     std::complex<double> a2final_;    
-    DivAssignment assignment_;
     
     ScatterFactors scatterfactors;
         

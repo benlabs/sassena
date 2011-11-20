@@ -1,12 +1,10 @@
-/*
- *  This file is part of the software sassena
- *
- *  Authors:
- *  Benjamin Lindner, ben@benlabs.net
- *
- *  Copyright 2008-2010 Benjamin Lindner
- *
- */
+/** \file
+This file contains a class which defines represents a center of mass calculation based on coordinate input, and related structures used for fitting.
+
+\author Benjamin Lindner <ben@benlabs.net>
+\version 1.3.0
+\copyright GNU General Public License
+*/
 
 #ifndef SAMPLE__CENTER_OF_MASS_HPP_
 #define SAMPLE__CENTER_OF_MASS_HPP_
@@ -21,7 +19,9 @@
 #include "sample/coordinate_set.hpp"
 #include "sample/frame.hpp"
 
-// this helper class takes Atoms and a Coordinateset and returns a cartesian coordinate
+/** 
+Helper class which takes Atoms and a Coordinate set and returns a cartesian coordinate
+*/
 class CenterOfMass {
 	CartesianCoor3D m_center;
 public:
@@ -32,7 +32,9 @@ public:
 	operator CartesianCoor3D (); //conversion operator
 };
 
-// operational class, modifies arguments
+/** 
+Operational class which takes performs a least squares fit on a structure with a target.
+*/
 class Fit {
 public:
     Fit(

@@ -1,12 +1,10 @@
-/*
- *  This file is part of the software sassena
- *
- *  Authors:
- *  Benjamin Lindner, ben@benlabs.net
- *
- *  Copyright 2008-2010 Benjamin Lindner
- *
- */
+/** \file
+This file contains helper class to generate a icosahedral geodesic sphere.
+
+\author Benjamin Lindner <ben@benlabs.net>
+\version 1.3.0
+\copyright GNU General Public License
+*/
 
 #ifndef MATH__GEOMETRY_HPP_
 #define MATH__GEOMETRY_HPP_
@@ -18,13 +16,13 @@
 #include <vector>
 
 // special library headers
-#include <libconfig.h++>
 
 // other headers
 #include "math/coor3d.hpp"
 
-
-// this class is adapted from code on:http://local.wasp.uwa.edu.au/~pbourke/geometry/platonic/
+/** 
+Helper class which is used to construct evenly distributed grid points on a sphere. This class is adapted from code on:http://local.wasp.uwa.edu.au/~pbourke/geometry/platonic/
+*/
 class DrawSphereHelper {
 public:
 	std::vector<CartesianCoor3D> vectors;
