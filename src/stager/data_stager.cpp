@@ -155,7 +155,6 @@ void DataStagerByFrame::write(std::string filename, std::string format) {
 		{
 		   if (c<assignment.size()) {
 				p_cw->write(&(p_coordinates[c*NA*3]),assignment[c],1);		
-				cout << "c=" << assignment[c] << endl;
 		   }
 		   partitioncomm_.barrier();
 		}
@@ -232,7 +231,9 @@ coor_t* DataStagerByAtom::stage() {
     timer_.stop("st:fill");
 
     if (Params::Inst()->stager.dump) {
-        Info::Inst()->write(string("Dumping coordinates to file: ")+Params::Inst()->stager.file);
+	    if (allcomm_.rank()==0) {
+	        Info::Inst()->write(string("Dumping coordinates to file: ")+Params::Inst()->stager.file);		
+		}
         write(Params::Inst()->stager.file,Params::Inst()->stager.format);
     }
 
@@ -361,7 +362,9 @@ void DataStagerByAtom::write(std::string filename, std::string format) {
         if (format=="dcd") {
             p_cw = new DCDCoordinateWriter(filename,NA,NF);
         } else {
-            Err::Inst()->write(string("Format for coordinate dumping not known: ")+format);
+			if (allcomm_.rank()==0) {
+	            Err::Inst()->write(string("Format for coordinate dumping not known: ")+format);				
+			}
             throw;
         }
         if (partitioncomm_.rank()==0) p_cw->init();
@@ -374,7 +377,6 @@ void DataStagerByAtom::write(std::string filename, std::string format) {
 		{
 		   if (c<assignment.size()) {
 				p_cw->write(&(p_coordinates[c*NF*3]),assignment[c],1);		
-				cout << "c=" << assignment[c] << endl;
 		   }
 		   partitioncomm_.barrier();
 		}

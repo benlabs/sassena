@@ -1,0 +1,26 @@
+SET(cmake_policy NO_POLICY_SCOPE)
+
+INCLUDE_DIRECTORIES(${Sassena_SOURCE_DIR}/vendor)
+
+INCLUDE_DIRECTORIES(${Sassena_SOURCE_DIR}/vendor/xdrfile-1.1.1/include)
+
+
+ADD_LIBRARY(sass_vendor_xdrfile ${INTERNAL_LIBRARY_TYPE}
+    vendor/xdrfile-1.1.1/src/xdrfile.c
+    vendor/xdrfile-1.1.1/src/xdrfile_xtc.c
+    vendor/xdrfile-1.1.1/src/xdrfile_trr.c
+)
+
+IF(STATIC)
+SET_TARGET_PROPERTIES(sass_vendor_xdrfile PROPERTIES LINK_SEARCH_END_STATIC 1)
+ENDIF(STATIC)
+
+TARGET_LINK_LIBRARIES (sass_vendor_xdrfile
+	${ZLIB_LIBRARIES}
+)
+#set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
+#find_library(XDRFILE_LIBRARIES xdrfile PATHS vendor/xdrfile-1.1.1/src NO_DEFAULT_PATH)
+#MESSAGE(STATUS ${XDRFILE_LIBRARIES})
+#
+#find_file(XDRFILE_FILE NAMES libxdrfile.la PATHS vendor/xdrfile-1.1.1/src NO_DEFAULT_PATH)
+#MESSAGE(STATUS ${XDRFILE_FILE})
