@@ -114,10 +114,10 @@ class FileFrameset : public Frameset {
     {
  		ar & boost::serialization::base_object<Frameset>(*this);
 		ar & filename;	
-		ar & first;
-		ar & last;
-		ar & last_set;
-		ar & stride;		
+//		ar & first;
+//		ar & last;
+//		ar & last_set;
+//		ar & stride;		
 		ar & frameset_index_;
     }
 
@@ -129,10 +129,10 @@ public:
 	
 	std::string filename;
 	
-	size_t first;
-	size_t last;
-	bool last_set;
-	size_t stride;
+//	size_t first;
+//	size_t last;
+//	bool last_set;
+//	size_t stride;
 	
     void trim_index(size_t first,size_t last,bool last_set,size_t stride);
     void load_index(std::string cache_filename);
