@@ -551,8 +551,11 @@ void Params::read_xml(std::string filename) {
     limits.computation.cores = 1;
     limits.computation.processes = 1;
     limits.computation.threads = 1;
-    limits.computation.memory.signal = 200*1024*1024; // 200MB 
-    limits.computation.memory.buffer = 200*1024*1024; // 200MB 
+    limits.computation.memory.result_buffer = 100*1024*1024; // 100MB 
+    limits.computation.memory.signal_buffer = 100*1024*1024; // 100MB 
+    limits.computation.memory.exchange_buffer = 100*1024*1024; // 100MB 
+    limits.computation.memory.alignpad_buffer = 200*1024*1024; // 200MB 
+    limits.computation.memory.scale = 1;
 
     limits.services.signal.memory.server = 100*1024*1024; // 100MB
     limits.services.signal.memory.client = 10*1024*1024; // 10MB
@@ -601,12 +604,22 @@ void Params::read_xml(std::string filename) {
     	        limits.computation.threads = xmli.get_value<size_t>("//limits/computation/threads");
 	        }
         	if (xmli.exists("//limits/computation/memory")) {
-            	if (xmli.exists("//limits/computation/memory/signal")) {
-    	            limits.computation.memory.signal = xmli.get_value<size_t>("//limits/computation/memory/signal");
+            	if (xmli.exists("//limits/computation/memory/result_buffer")) {
+    	            limits.computation.memory.result_buffer = xmli.get_value<size_t>("//limits/computation/memory/result_buffer");
     	        }
-            	if (xmli.exists("//limits/computation/memory/buffer")) {
-    	            limits.computation.memory.buffer = xmli.get_value<size_t>("//limits/computation/memory/buffer");
+            	if (xmli.exists("//limits/computation/memory/signal_buffer")) {
+    	            limits.computation.memory.signal_buffer = xmli.get_value<size_t>("//limits/computation/memory/signal_buffer");
     	        }
+            	if (xmli.exists("//limits/computation/memory/exchange_buffer")) {
+    	            limits.computation.memory.exchange_buffer = xmli.get_value<size_t>("//limits/computation/memory/exchange_buffer");
+    	        }
+            	if (xmli.exists("//limits/computation/memory/alignpad_buffer")) {
+    	            limits.computation.memory.alignpad_buffer = xmli.get_value<size_t>("//limits/computation/memory/alignpad_buffer");
+    	        }
+            	if (xmli.exists("//limits/computation/memory/scale")) {
+    	            limits.computation.memory.scale = xmli.get_value<size_t>("//limits/computation/memory/scale");
+    	        }
+
 	        }
 	    }
 	    

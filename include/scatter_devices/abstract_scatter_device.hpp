@@ -155,6 +155,7 @@ protected:
     virtual void print_pre_runner_info() {}
     virtual void print_post_runner_info() {}
     
+	virtual bool ram_check();
     void start_workers();
     void stop_workers();
     virtual void worker() = 0;

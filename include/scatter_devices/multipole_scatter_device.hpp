@@ -57,6 +57,8 @@ protected:
     void print_pre_runner_info();
     void print_post_runner_info();
     
+	bool ram_check();
+	
     // from all vectors scatter device
     
     // first = q, second = frames
@@ -119,6 +121,8 @@ protected:
     void print_pre_runner_info();
     void print_post_runner_info();
     
+	bool ram_check();
+	
     // from all vectors scatter device
     
     // first = q, second = frames

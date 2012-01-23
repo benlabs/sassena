@@ -54,6 +54,76 @@ AllVectorsScatterDevice::AllVectorsScatterDevice(
 //    fftw_free(wspace);
 }
 
+bool AllVectorsScatterDevice::ram_check() {
+	// inherit ram requirements for parent class
+	bool state = AbstractVectorsScatterDevice::ram_check();
+	
+    DivAssignment zeronode_assignment(partitioncomm_.size(),0,NF);
+	size_t NMAXF = zeronode_assignment.max();
+	size_t NNPP = partitioncomm_.size();
+	size_t NTHREADS = Params::Inst()->limits.computation.threads;
+    
+	size_t memscale = Params::Inst()->limits.computation.memory.scale;
+	// direct calculation buffer
+	size_t bytesize_signal_buffer=0;
+	size_t bytesize_exchange_buffer=0;
+	size_t bytesize_alignpad_buffer=0;
+
+	if (NNPP==1) {
+		bytesize_signal_buffer=NF*NTHREADS*sizeof(fftw_complex);
+		bytesize_exchange_buffer=0; // no exchange
+		bytesize_alignpad_buffer=2*NF*sizeof(fftw_complex);
+	} else {
+		bytesize_signal_buffer=NMAXF*NNPP*sizeof(fftw_complex);
+		bytesize_exchange_buffer=NMAXF*NNPP*sizeof(fftw_complex);
+		bytesize_alignpad_buffer=2*NF*sizeof(fftw_complex);
+	}
+
+    if (bytesize_signal_buffer>memscale*Params::Inst()->limits.computation.memory.signal_buffer) {
+        if (allcomm_.rank()==0) {
+            Err::Inst()->write("limits.computation.memory.signal_buffer too small");
+			Err::Inst()->write(string("limits.computation.memory.signal_buffer=")+ boost::lexical_cast<string>(Params::Inst()->limits.computation.memory.signal_buffer));
+			Err::Inst()->write(string("limits.computation.memory.scale=")+ boost::lexical_cast<string>(Params::Inst()->limits.computation.memory.scale));	
+            Err::Inst()->write(string("requested: ")+boost::lexical_cast<string>(bytesize_signal_buffer));            
+        }
+		state=false;
+    }
+    if (bytesize_exchange_buffer>memscale*Params::Inst()->limits.computation.memory.exchange_buffer) {
+        if (allcomm_.rank()==0) {
+            Err::Inst()->write("limits.computation.memory.exchange_buffer too small");
+			Err::Inst()->write(string("limits.computation.memory.exchange_buffer=")+ boost::lexical_cast<string>(Params::Inst()->limits.computation.memory.exchange_buffer));
+			Err::Inst()->write(string("limits.computation.memory.scale=")+ boost::lexical_cast<string>(Params::Inst()->limits.computation.memory.scale));	
+            Err::Inst()->write(string("requested: ")+boost::lexical_cast<string>(bytesize_exchange_buffer));            
+        }
+		state=false;
+    }
+    if (bytesize_alignpad_buffer>memscale*Params::Inst()->limits.computation.memory.alignpad_buffer) {
+        if (allcomm_.rank()==0) {
+            Err::Inst()->write("limits.computation.memory.alignpad_buffer too small");
+			Err::Inst()->write(string("limits.computation.memory.alignpad_buffer=")+ boost::lexical_cast<string>(Params::Inst()->limits.computation.memory.alignpad_buffer));
+			Err::Inst()->write(string("limits.computation.memory.scale=")+ boost::lexical_cast<string>(Params::Inst()->limits.computation.memory.scale));				
+            Err::Inst()->write(string("requested: ")+boost::lexical_cast<string>(bytesize_alignpad_buffer));            
+        }
+		state=false;
+    }
+
+	if (allcomm_.rank()==0) {
+	Info::Inst()->write(string("required limits.computation.memory.signal_buffer=")+
+		boost::lexical_cast<string>(bytesize_signal_buffer));
+	Info::Inst()->write(string("required limits.computation.memory.exchange_buffer=")+
+		boost::lexical_cast<string>(bytesize_exchange_buffer));
+	Info::Inst()->write(string("required limits.computation.memory.alignpad_buffer=")+
+		boost::lexical_cast<string>(bytesize_alignpad_buffer));
+	}
+	// final buffer for reduction:
+	// NF*sizeof(fftw_complex)
+	// however, at that moment the signal_buffer is deallocated
+	// so we can ignore this requirement
+	// since we're interested in the potential peak consumption..
+
+	return state;
+}
+
 void AllVectorsScatterDevice::stage_data() {
     Timer& timer = timer_[boost::this_thread::get_id()];
     if (allcomm_.rank()==0) Info::Inst()->write(string("Forcing stager.mode=frames"));
@@ -101,7 +171,7 @@ fftw_complex* AllVectorsScatterDevice::exchange() {
     size_t NNPP = partitioncomm_.size();
   
     DivAssignment zeronode_assignment(partitioncomm_.size(),0,NF);
-    size_t NMAXF = zeronode_assignment.size();
+    size_t NMAXF = zeronode_assignment.max();
   
     fftw_complex* atOUT = (fftw_complex*) fftw_malloc(NMAXF*NNPP*sizeof(fftw_complex)); 
 
@@ -118,7 +188,7 @@ fftw_complex* AllVectorsScatterDevice::alignpad(fftw_complex* at) {
     size_t NNPP = partitioncomm_.size();
 
     DivAssignment zeronode_assignment(NNPP,0,NF);
-    size_t NMAXF = zeronode_assignment.size();
+    size_t NMAXF = zeronode_assignment.max();
 
     fftw_complex* atOUT = (fftw_complex*) fftw_malloc(2*NF*sizeof(fftw_complex)); 
 
@@ -176,7 +246,7 @@ void AllVectorsScatterDevice::compute() {
     timer.stop("sd:c:init");
 
     DivAssignment zeronode_assignment(partitioncomm_.size(),0,NF);
-    size_t NMAXF = zeronode_assignment.size();
+    size_t NMAXF = zeronode_assignment.max();
     size_t NNPP = partitioncomm_.size();
             
     current_subvector_=0;
@@ -184,25 +254,11 @@ void AllVectorsScatterDevice::compute() {
     afinal_ = 0;
     a2final_ = 0;
     
-    size_t NMBLOCK = NNPP;
-    
-    
     timer.start("sd:c:block");
     // special case: 1 core, no exchange required
-    if (NMBLOCK==1) {
+    if (NNPP==1) {
         size_t NTHREADS = worker_threads.size();
         
-        size_t bufferbytesize = Params::Inst()->limits.computation.memory.buffer;
-        size_t bufferbytesize_requested = NF*NTHREADS*sizeof(fftw_complex);
-        bufferbytesize_requested+=2*NF*sizeof(fftw_complex); // account for alignpad here...
-        if (bufferbytesize_requested>bufferbytesize) {
-            if (allcomm_.rank()==0) {
-                Err::Inst()->write("Computation buffer too small.");
-                Err::Inst()->write(string("limits.computation.memory.buffer=")+boost::lexical_cast<string>(bufferbytesize));
-                Err::Inst()->write(string("requested: ")+boost::lexical_cast<string>(bufferbytesize_requested));            
-            }
-            throw;
-        }
         at_ = (fftw_complex*) fftw_malloc(NF*NTHREADS*sizeof(fftw_complex));
         memset(at_,0,NF*NTHREADS*sizeof(fftw_complex));
 
@@ -229,25 +285,12 @@ void AllVectorsScatterDevice::compute() {
         fftw_free(at_);        
         
     } else {
-        size_t bufferbytesize = Params::Inst()->limits.computation.memory.buffer;
-        size_t bufferbytesize_requested=0;
-        bufferbytesize_requested+=NMAXF*NMBLOCK*sizeof(fftw_complex); // initial buffer
-        bufferbytesize_requested+=NMAXF*NMBLOCK*sizeof(fftw_complex); // clone during exchange   
-        bufferbytesize_requested+=2*NF*sizeof(fftw_complex); // account for alignpad here...
-        if (bufferbytesize_requested>bufferbytesize) {
-            if (allcomm_.rank()==0) {
-                Err::Inst()->write("Computation buffer too small.");
-                Err::Inst()->write(string("limits.computation.memory.buffer=")+boost::lexical_cast<string>(bufferbytesize));
-                Err::Inst()->write(string("requested: ")+boost::lexical_cast<string>(bufferbytesize_requested));            
-            }
-            throw;
-        }
-        at_ = (fftw_complex*) fftw_malloc(NMAXF*NMBLOCK*sizeof(fftw_complex));
-        memset(at_,0,NMAXF*NMBLOCK*sizeof(fftw_complex));
+        at_ = (fftw_complex*) fftw_malloc(NMAXF*NNPP*sizeof(fftw_complex));
+        memset(at_,0,NMAXF*NNPP*sizeof(fftw_complex));
 
-        for(size_t i = 0; i < NM; i+=NMBLOCK) {
+        for(size_t i = 0; i < NM; i+=NNPP) {
             timer.start("sd:c:b:scatter");
-            scatterblock(i,std::min(NMBLOCK,NM-i));
+            scatterblock(i,std::min(NNPP,NM-i));
             timer.stop("sd:c:b:scatter");
             
             timer.start("sd:c:b:exchange");
@@ -255,7 +298,7 @@ void AllVectorsScatterDevice::compute() {
             timer.stop("sd:c:b:exchange");
                         
             timer.start("sd:c:b:dspstore");
-            if (partitioncomm_.rank()<std::min(NMBLOCK,NM-i)) {
+            if (partitioncomm_.rank()<std::min(NNPP,NM-i)) {
                 fftw_complex* nat = alignpad(at);
                 fftw_free(at); at=NULL;
                 dsp(nat);
@@ -265,7 +308,7 @@ void AllVectorsScatterDevice::compute() {
             if (at!=NULL) fftw_free(at); 
             timer.stop("sd:c:b:dspstore");
             
-            current_subvector_+=std::min(NMBLOCK,NM-i);
+            current_subvector_+=std::min(NNPP,NM-i);
             timer.start("sd:c:b:progress");
             p_monitor_->update(allcomm_.rank(),progress());    	
             timer.stop("sd:c:b:progress");
@@ -279,13 +322,13 @@ void AllVectorsScatterDevice::compute() {
     timer.stop("sd:c:wait");
     
     timer.start("sd:c:reduce");
-    if (NN>1) {
+    if (NNPP>1) {
 
         double* p_atfinal = (double*) &(atfinal_[0][0]);
         double* p_atlocal=NULL;
         if (partitioncomm_.rank()==0) {
             fftw_complex* atlocal_ = (fftw_complex*) fftw_malloc(NF*sizeof(fftw_complex));
-            p_atlocal = (double*) &(atlocal_[0][0]);;
+            p_atlocal = (double*) &(atlocal_[0][0]);
             memset(atlocal_,0,NF*sizeof(fftw_complex));        
         }
 
@@ -353,13 +396,12 @@ void AllVectorsScatterDevice::scatter(size_t this_subvector) {
    DivAssignment zeronode_assignment(partitioncomm_.size(),0,NF);
    size_t NMAXF = zeronode_assignment.size();
    size_t NNPP = partitioncomm_.size();
-   size_t NMBLOCK = NNPP;
    size_t offset = 0;
-   if (NMBLOCK==1) {
+   if (NNPP==1) {
        size_t NTHREADS = worker_threads.size();
        offset = (this_subvector%NTHREADS)*NF;
    } else {
-       offset = (this_subvector%NMBLOCK)*NMAXF;       
+       offset = (this_subvector%NNPP)*NMAXF;       
    }
 
    size_t NMYF = DivAssignment(partitioncomm_.size(),partitioncomm_.rank(),NF).size();

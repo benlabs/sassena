@@ -67,7 +67,9 @@ protected:
     void scatterblock(size_t atomindex, size_t index,size_t count);
     void store(fftw_complex* at);
     void dsp(fftw_complex* at);            
-        
+    
+	bool ram_check();
+	 
     ~SelfVectorsScatterDevice();
     fftw_plan fftw_planF_;
     fftw_plan fftw_planB_;

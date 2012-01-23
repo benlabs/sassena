@@ -50,6 +50,8 @@ protected:
     void print_post_stage_info();
     void print_pre_runner_info();
     void print_post_runner_info();
+
+	bool ram_check();
         
 public:
     AbstractVectorsScatterDevice(

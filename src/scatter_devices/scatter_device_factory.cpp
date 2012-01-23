@@ -116,7 +116,6 @@ IScatterDevice* ScatterDeviceFactory::create(
     boost::mpi::communicator all_comm = scatter_comm.split( allcommflag );
     
     if (allcommflag==0) {
-        Warn::Inst()->write("Exiting computation.");        
         return NULL;
     }
     

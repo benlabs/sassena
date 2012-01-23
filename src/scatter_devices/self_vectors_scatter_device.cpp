@@ -76,6 +76,42 @@ SelfVectorsScatterDevice::~SelfVectorsScatterDevice() {
     }
 }
 
+bool SelfVectorsScatterDevice::ram_check() {
+	// inherit ram requirements for parent class
+	bool state = AbstractVectorsScatterDevice::ram_check();
+	
+	// total memory requirements during computation:
+    // atfinal = NF
+    // at_ = NTHREADS*2*NF
+    
+	size_t NTHREADS = Params::Inst()->limits.computation.threads;
+
+	size_t bytesize_signal_buffer=0;
+	size_t memscale = Params::Inst()->limits.computation.memory.scale;
+    
+	bytesize_signal_buffer=2*NF*NTHREADS*sizeof(fftw_complex);
+	
+	if (bytesize_signal_buffer>memscale*Params::Inst()->limits.computation.memory.signal_buffer) {
+        if (allcomm_.rank()==0) {
+            Err::Inst()->write("limits.computation.memory.signal_buffer too small");
+			Err::Inst()->write(string("limits.computation.memory.signal_buffer=")+ boost::lexical_cast<string>(Params::Inst()->limits.computation.memory.signal_buffer));
+			Err::Inst()->write(string("limits.computation.memory.scale=")+ boost::lexical_cast<string>(Params::Inst()->limits.computation.memory.scale));			
+            Err::Inst()->write(string("requested: ")+boost::lexical_cast<string>(bytesize_signal_buffer));            
+        }
+		state=false;
+    }
+    
+	// final buffer for reduction:
+	// NF*sizeof(fftw_complex)
+	// however, at that moment the signal_buffer is deallocated
+	// so we can ignore this requirement
+	// since we're interested in the potential peak consumption..
+	if (allcomm_.rank()==0) {
+	Info::Inst()->write(string("required limits.computation.memory.signal_buffer=")+
+		boost::lexical_cast<string>(bytesize_signal_buffer));
+	}
+	return state;
+}
 void SelfVectorsScatterDevice::dsp(fftw_complex* at) {
     
 	// correlate or sum up
@@ -123,22 +159,7 @@ void SelfVectorsScatterDevice::compute() {
     a2final_=0;
     
     size_t NTHREADS = worker_threads.size();
-    
-    // total memory requirements during computation:
-    // atfinal = NF
-    // at_ = NTHREADS*2*NF
-    
-    // double allocate for zero padding
-    size_t bufferbytesize = Params::Inst()->limits.computation.memory.buffer;
-    size_t bufferbytesize_requested = 2*NF*NTHREADS*sizeof(fftw_complex);
-    if (bufferbytesize_requested>bufferbytesize) {
-        if (allcomm_.rank()==0) {
-            Err::Inst()->write("Computation buffer too small.");
-            Err::Inst()->write(string("limits.computation.memory.buffer=")+boost::lexical_cast<string>(bufferbytesize));
-            Err::Inst()->write(string("requested: ")+boost::lexical_cast<string>(bufferbytesize_requested));            
-        }
-        throw;
-    }
+	size_t NNPP = partitioncomm_.size();
     at_ = (fftw_complex*) fftw_malloc(2*NF*NTHREADS*sizeof(fftw_complex));
     memset(at_,0,2*NF*NTHREADS*sizeof(fftw_complex));
 
@@ -179,7 +200,7 @@ void SelfVectorsScatterDevice::compute() {
     timer.stop("sd:c:wait");
     
     timer.start("sd:c:reduce");
-    if (NN>1) {
+    if (NNPP>1) {
         double* p_atfinal = (double*) &(atfinal_[0][0]);
 
         double* p_atlocal = NULL;

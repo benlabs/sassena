@@ -88,8 +88,9 @@ void print_title() {
 	Info::Inst()->write("franc@cmm.ki.si, Franci Merzel (Methodology)                             ");
 	Info::Inst()->write("For publications include the following references:                       ");
 	Info::Inst()->write(".........................................................................");
-	Info::Inst()->write("1. Sassena - Scattering Calculations on Parallel Computers               ");
-	Info::Inst()->write("   to be published                                                       ");		
+	Info::Inst()->write("1. Sassena - X-ray and Neutron Scattering Calculated                     ");
+	Info::Inst()->write("  from Molecular Dynamics Trajectories using Massively Parallel Computers");		
+	Info::Inst()->write("  published as a Computer Program in Physics Paper                       ");		
 	Info::Inst()->write(".........................................................................");
     Info::Inst()->write(string("Version Information: ") + string(Sassena_VERSIONSTRING));
 	Info::Inst()->write("");
@@ -362,7 +363,13 @@ int main(int argc,char* argv[]) {
     // start computation tasks
     if (world.rank()==0) Info::Inst()->write("Starting scattering...");
 
-    if (p_ScatterDevice!=NULL) p_ScatterDevice->run();
+	try {
+	    if (p_ScatterDevice!=NULL) p_ScatterDevice->run();		
+	} catch(sassena::terminate_request) {
+		Err::Inst()->write("Terminatation requested.");
+		// do a clean hangup here...
+		throw;
+	}
 
     world.barrier();
     

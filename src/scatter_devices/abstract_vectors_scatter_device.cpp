@@ -53,6 +53,11 @@ AbstractVectorsScatterDevice::AbstractVectorsScatterDevice(
 	sample_.coordinate_sets.set_representation(CARTESIAN);		
 }
 
+bool AbstractVectorsScatterDevice::ram_check() {
+	// inherit ram requirements for parent class
+	bool state = AbstractScatterDevice::ram_check();
+	return state;
+}
 
 void AbstractVectorsScatterDevice::print_pre_stage_info() {
     if (allcomm_.rank()==0) {
@@ -108,14 +113,21 @@ void AbstractVectorsScatterDevice::init_subvectors(CartesianCoor3D& q) {
     subvector_index_.clear();	
 	
 	if (Params::Inst()->scattering.average.orientation.vectors.size()>0) {
-		if (Params::Inst()->scattering.average.orientation.vectors.type=="sphere") {
+		if (Params::Inst()->scattering.average.orientation.vectors.type=="file") {
 			double ql = q.length();
 			
 			for(size_t i = 0; i < Params::Inst()->scattering.average.orientation.vectors.size(); ++i)
 			{
 				subvector_index_.push_back(ql*Params::Inst()->scattering.average.orientation.vectors[i]);
 			}					
-		} else if (Params::Inst()->scattering.average.orientation.vectors.type=="cylinder") {
+		} else if (Params::Inst()->scattering.average.orientation.vectors.type=="sphere") {
+		   double ql = q.length();
+           
+		   for(size_t i = 0; i < Params::Inst()->scattering.average.orientation.vectors.size(); ++i)
+		   {
+		   	subvector_index_.push_back(ql*Params::Inst()->scattering.average.orientation.vectors[i]);
+		   }					
+		} else if (Params::Inst()->scattering.average.orientation.vectors.type=="cylinder") {			
 			CartesianCoor3D o = Params::Inst()->scattering.average.orientation.axis;
 			
 			// constructs a base out of thin air

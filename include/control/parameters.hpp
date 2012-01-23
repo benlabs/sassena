@@ -785,14 +785,20 @@ private:
     friend class boost::serialization::access;	
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
     {
-        ar & buffer;
-		ar & signal;
+        ar & result_buffer;
+        ar & alignpad_buffer;
+        ar & exchange_buffer;
+		ar & signal_buffer;
+		ar & scale;
     }
 	/////////////////// 
 
 public:
-    size_t buffer;
-    size_t signal;
+    size_t result_buffer;
+    size_t alignpad_buffer;
+	size_t exchange_buffer;
+	size_t signal_buffer;
+	size_t scale;
 };
 
 /**

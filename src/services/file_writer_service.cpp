@@ -561,8 +561,7 @@ void HDF5WriterClient::flush() {
 	        boost::asio::write(socket,boost::asio::buffer(&count,sizeof(size_t)));     
 
 	        while (data_queue.size()>0) {
-	            HDF5DataEntry de = data_queue.front();
-	            data_queue.pop();
+	            HDF5DataEntry& de = data_queue.front();
 
 	            size_t size = 2*de.p_fqt->size();
 
@@ -583,7 +582,9 @@ void HDF5WriterClient::flush() {
 	            if (Params::Inst()->scattering.signal.fq2) {
 	                double* p_doubledata = (double*) &(de.fq2);
 	                boost::asio::write(socket,boost::asio::buffer(p_doubledata,sizeof(double)*2));                 
-	            }                        
+	            } 
+				delete de.p_fqt;
+	            data_queue.pop();                       
 	        }
 
 	        socket.close();

@@ -20,6 +20,7 @@ This file contains the interface definition for all scattering devices and imple
 #include <boost/lexical_cast.hpp>
 
 // other headers
+#include "exceptions/exceptions.hpp"
 #include "math/coor3d.hpp"
 #include "decomposition/assignment.hpp"
 #include <fftw3.h>
@@ -65,16 +66,6 @@ AbstractScatterDevice::AbstractScatterDevice(
 	
 	// defer memory allocation for scattering data
     atfinal_ = NULL;
-    // atfinal_.resize(NF);
-    // but check limits nevertheless:
-    size_t scattering_databytesize = 3*NF*sizeof(fftw_complex); // peak consumption: 2*NF (padded signal) + 1*NF (integral)
-    if (Params::Inst()->limits.computation.memory.signal<scattering_databytesize) {
-        if (allcomm_.rank()==0) {
-            Err::Inst()->write("Insufficient Buffer size for scattering (limits.computation.memory.signal)");
-            Err::Inst()->write(string("Requested (bytes): ")+boost::lexical_cast<string>(scattering_databytesize));
-        }
-        throw;
-    }
     
     Timer blank_timer;
     timer_.insert(map<boost::thread::id,Timer>::value_type(boost::this_thread::get_id(),blank_timer));	    
@@ -87,9 +78,38 @@ AbstractScatterDevice::~AbstractScatterDevice() {
     }
 }
 
+bool AbstractScatterDevice::ram_check() {
+	bool state = true;
+	
+	size_t memscale = Params::Inst()->limits.computation.memory.scale;
+	
+	// atfinal_
+	size_t bytesize_result_buffer=NF*sizeof(fftw_complex);
+	
+    if (bytesize_result_buffer>memscale*Params::Inst()->limits.computation.memory.result_buffer) {
+        if (allcomm_.rank()==0) {
+            Err::Inst()->write("limits.computation.memory.result_buffer too small");
+			Err::Inst()->write(string("limits.computation.memory.result_buffer=")+ boost::lexical_cast<string>(Params::Inst()->limits.computation.memory.result_buffer));
+			Err::Inst()->write(string("limits.computation.memory.scale=")+ boost::lexical_cast<string>(Params::Inst()->limits.computation.memory.scale));	
+            Err::Inst()->write(string("requested: ")+boost::lexical_cast<string>(bytesize_result_buffer));            
+        }
+		state = false;
+    }
+	if (allcomm_.rank()==0) {
+	Info::Inst()->write(string("required limits.computation.memory.result_buffer=")+
+		boost::lexical_cast<string>(bytesize_result_buffer));
+	}
+	return state;
+}
+
 void AbstractScatterDevice::run() {
     
     Timer& timer = timer_[boost::this_thread::get_id()];
+
+	// check memory requirements here
+	if (allcomm_.rank()==0) Info::Inst()->write("Checking memory requirements for scattering calculation...");
+	if (!ram_check()) throw sassena::terminate_request();	
+	if (allcomm_.rank()==0) Info::Inst()->write("Memory limits ok");
 
     print_pre_stage_info();
     allcomm_.barrier();

@@ -63,6 +63,8 @@ protected:
     void dsp(fftw_complex* at);
     fftw_complex* alignpad(fftw_complex* at);
     fftw_complex* exchange();
+
+	bool ram_check();
     
     ~AllVectorsScatterDevice();
     fftw_plan fftw_planF_;
