@@ -347,6 +347,7 @@ void AllVectorsScatterDevice::compute() {
             fftw_free(atfinal_); 
             atfinal_ = (fftw_complex*) p_atlocal;
             afinal_ = alocal;
+			a2final_ = a2local;
         }
     }
     timer.stop("sd:c:reduce");
@@ -394,7 +395,7 @@ void AllVectorsScatterDevice::scatter(size_t this_subvector) {
    std::vector<double>& sfs = scatterfactors.get_all();
 
    DivAssignment zeronode_assignment(partitioncomm_.size(),0,NF);
-   size_t NMAXF = zeronode_assignment.size();
+   size_t NMAXF = zeronode_assignment.max();
    size_t NNPP = partitioncomm_.size();
    size_t offset = 0;
    if (NNPP==1) {
