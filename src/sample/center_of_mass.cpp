@@ -92,7 +92,7 @@ Fit::Fit(
         u[0]=cs_ref.c1[i] - ref.x;
         u[1]=cs_ref.c2[i] - ref.y;
         u[2]=cs_ref.c3[i] - ref.z;
-        cout << "ref, " << cs_ref.c1[i] << ", "  << cs_ref.c2[i] << ", "  << cs_ref.c3[i] << endl;
+//        cout << "ref, " << cs_ref.c1[i] << ", "  << cs_ref.c2[i] << ", "  << cs_ref.c3[i] << endl;
         
         K +=mi*outer_prod(u, v);
     }
@@ -122,7 +122,7 @@ Fit::Fit(
         before[1] = cs_redcopy.c2[i] - pos.y;
         before[2] = cs_redcopy.c3[i] - pos.z;
         
-        cout << "in, " << cs_redcopy.c1[i] << ", "  << cs_redcopy.c2[i] << ", "  << cs_redcopy.c3[i] << endl;
+//        cout << "in, " << cs_redcopy.c1[i] << ", "  << cs_redcopy.c2[i] << ", "  << cs_redcopy.c3[i] << endl;
         
         after = prod(UPVt,before);
         cs_redcopy.c1[i]=after[0]+ref.x;
@@ -144,7 +144,7 @@ Fit::Fit(
             cs.c1[csel_index]=cs_redcopy.c1[ssel_index];
             cs.c2[csel_index]=cs_redcopy.c2[ssel_index];
             cs.c3[csel_index]=cs_redcopy.c3[ssel_index];
-            cout << "out, " << cs.c1[csel_index] << ", "  << cs.c2[csel_index] << ", "  << cs.c3[csel_index] << endl;
+//            cout << "out, " << cs.c1[csel_index] << ", "  << cs.c2[csel_index] << ", "  << cs.c3[csel_index] << endl;
             ssel_iter++;
             csel_iter++;           
         } else if (csel_index>ssel_index) {
@@ -156,6 +156,7 @@ Fit::Fit(
     //done
 }
 
+// Determines the COFM for a sub-selection of a coordinate set (which may itself be a subselection of the entire system)
 CenterOfMass::CenterOfMass(Atoms& atoms,CoordinateSet& cs, IAtomselection* pcs_selection,  IAtomselection* pcofm_selection) {
 
     IAtomselection& cs_selection = *pcs_selection;
@@ -243,7 +244,7 @@ CenterOfMass::CenterOfMass(Atoms& atoms,Frame& frame,IAtomselection* pselection)
 	m_center =  CartesianCoor3D(xt/m,yt/m,zt/m);
 }
 
-
+// Determines the COFM for the entire selection of a coordinate set
 CenterOfMass::CenterOfMass(Atoms& atoms,CoordinateSet& cset,IAtomselection* pselection) {
 	
     IAtomselection& selection = *pselection;

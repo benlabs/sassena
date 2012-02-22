@@ -27,6 +27,8 @@ This file contains a set of artifical motion generators. They are used to superi
 // special library headers
 #include <boost/accumulators/accumulators.hpp>
 #include <boost/accumulators/statistics.hpp>
+#include <boost/numeric/ublas/vector.hpp>
+#include <boost/numeric/ublas/matrix.hpp>
 
 #include <boost/random/mersenne_twister.hpp>	
 #include <boost/random/normal_distribution.hpp>	
@@ -49,7 +51,7 @@ protected:
 
 public:
 	
-	virtual CartesianCoor3D translation(size_t timepos) = 0;	
+	virtual boost::numeric::ublas::matrix<double> transform(size_t timepos) = 0;	
 };
 
 /** 
@@ -67,11 +69,12 @@ protected:
 	
 	void generate(size_t timepos);
     LinearMotionWalker() {}
+	CartesianCoor3D translation(size_t timepos);
 
 public:
 	LinearMotionWalker(double displace,long sampling, CartesianCoor3D direction);
-	
-	CartesianCoor3D translation(size_t timepos);
+
+	boost::numeric::ublas::matrix<double> transform(size_t timepos);	
 };
 
 /** 
@@ -88,11 +91,12 @@ protected:
     
 	CartesianCoor3D m_translate;
     FixedMotionWalker() {}	
-    
+
+	CartesianCoor3D translation(size_t timepos);    
 public:
 	FixedMotionWalker(double displace,CartesianCoor3D direction);
 	
-	CartesianCoor3D translation(size_t timepos);
+	boost::numeric::ublas::matrix<double> transform(size_t timepos);	
 };
 
 /** 
@@ -114,10 +118,12 @@ protected:
     size_t m_sampling;
 
 	OscillationMotionWalker() {}
+	CartesianCoor3D translation(size_t timepos);
+
 public:
 	OscillationMotionWalker(double displace,double frequency,long sampling, CartesianCoor3D direction);
 	
-	CartesianCoor3D translation(size_t timepos);
+	boost::numeric::ublas::matrix<double> transform(size_t timepos);	
 };
 
 /** 
@@ -150,12 +156,14 @@ protected:
 	void generate(size_t timepos);
 	RandomMotionWalker(): m_init(true) {}    
 
+	CartesianCoor3D translation(size_t timepos);
+
 public:
 	RandomMotionWalker(double displace,long seed,long sampling,  CartesianCoor3D direction);
 	~RandomMotionWalker();
 	
 	
-	CartesianCoor3D translation(size_t timepos);
+	boost::numeric::ublas::matrix<double> transform(size_t timepos);
 };
 
 /** 
@@ -190,13 +198,15 @@ protected:
 	void generate(size_t timepos);
 
     BrownianMotionWalker() : m_init(true) {}	
+	CartesianCoor3D translation(size_t timepos);
+
 public:
 	
 	BrownianMotionWalker(double displace,long seed,long sampling,  CartesianCoor3D direction);
 	~BrownianMotionWalker();
 	
 	
-	CartesianCoor3D translation(size_t timepos);
+	boost::numeric::ublas::matrix<double> transform(size_t timepos);
 };
 
 
@@ -234,15 +244,57 @@ protected:
 	void generate(size_t timepos);
 
     LocalBrownianMotionWalker() : m_init(true) {}	
+	CartesianCoor3D translation(size_t timepos);
+
 public:
 	
 	LocalBrownianMotionWalker(double radius, double displace,long seed,long sampling,  CartesianCoor3D direction);
 	~LocalBrownianMotionWalker();
 	
 	
-	CartesianCoor3D translation(size_t timepos);
+	boost::numeric::ublas::matrix<double> transform(size_t timepos);
 };
 
+
+/** 
+Rotational Brownian motion in 3D which draws the angular step size from a gaussian distribution for the given mean (displace)
+*/
+class RotationalBrownianMotionWalker : public MotionWalker {
+protected:
+    friend class boost::serialization::access;	
+	template<class Archive> void serialize(Archive & ar, const unsigned int version)
+    {
+        transformations.clear();
+        ar & boost::serialization::base_object<MotionWalker, RotationalBrownianMotionWalker>(*this);
+        ar & m_displace;
+        ar & m_seed;
+        ar & m_sampling;
+    }
+	std::map<size_t,boost::numeric::ublas::matrix<double> > transformations;
+
+    bool m_init; // init flag 
+    
+	double m_displace;
+	long m_seed;
+    size_t m_sampling;
+	
+    boost::variate_generator<boost::mt19937, boost::normal_distribution<double> >* p_mynormaldistribution;
+    boost::variate_generator<boost::mt19937, boost::uniform_on_sphere<double> >* p_myspheredistribution;
+	
+    void init();
+    
+	void generate(size_t timepos);
+
+    RotationalBrownianMotionWalker() : m_init(true) {}
+
+public:
+	
+	RotationalBrownianMotionWalker(double displace,long seed,long sampling);
+	~RotationalBrownianMotionWalker();
+	
+	
+	boost::numeric::ublas::matrix<double> transform(size_t timepos);
+};
 #endif
 
 // end of file

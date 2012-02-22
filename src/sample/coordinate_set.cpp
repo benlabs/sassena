@@ -142,6 +142,50 @@ void CartesianCoordinateSet::translate(CartesianCoor3D trans, IAtomselection* pc
     
 }
 
+void CartesianCoordinateSet::transform(boost::numeric::ublas::matrix<double> T, IAtomselection* pcs_selection, IAtomselection* psub_selection) {
+	
+    IAtomselection& csel = *pcs_selection;
+    IAtomselection& ssel = *psub_selection;
+
+    size_t csel_total = csel.size();
+    size_t ssel_total = ssel.size();
+    
+    if (csel_total<1) {
+        return;
+    }
+    if (ssel_total<1) {
+        return;
+    }
+    
+    size_t csel_iter = 0;
+    size_t ssel_iter = 0;
+	boost::numeric::ublas::vector<double> pos(4);
+	pos(3)=1;
+	boost::numeric::ublas::vector<double> newpos(4);
+	
+    while( ( csel_iter < csel_total) && (ssel_iter < ssel_total) ) {
+        size_t csel_index = csel[csel_iter];
+        size_t ssel_index = ssel[ssel_iter];
+        
+        if (csel_index==ssel_index) {
+			pos(0)=c1[csel_iter];
+			pos(1)=c2[csel_iter];
+			pos(2)=c3[csel_iter];
+			newpos=boost::numeric::ublas::prod(pos,T);
+			c1[csel_iter] = newpos(0);
+			c2[csel_iter] = newpos(1);
+			c3[csel_iter] = newpos(2);
+            ssel_iter++;
+            csel_iter++;           
+        } else if (csel_index>ssel_index) {
+            ssel_iter++;
+        } else if (csel_index<ssel_index) {
+            csel_iter++;
+        }
+    }
+    
+}
+
 
 void CartesianCoordinateSet::translate(CartesianCoor3D trans) {
 	for(size_t i = 0; i < m_size; ++i)

@@ -52,6 +52,37 @@ public:
 };
 
 /** 
+Stores motion walker alignment information which is used during the loading to combine the original trajectory data with artificial motions
+*/
+class MotionWalkerAlignment {
+protected:
+    friend class boost::serialization::access;	
+	template<class Archive> void serialize(Archive & ar, const unsigned int version)
+    {
+	    ar.register_type(static_cast<LinearMotionWalker*>(NULL));
+        ar.register_type(static_cast<RandomMotionWalker*>(NULL));
+        ar.register_type(static_cast<FixedMotionWalker*>(NULL));
+        ar.register_type(static_cast<OscillationMotionWalker*>(NULL));
+        ar.register_type(static_cast<BrownianMotionWalker*>(NULL));
+        ar.register_type(static_cast<LocalBrownianMotionWalker*>(NULL));
+        ar.register_type(static_cast<RotationalBrownianMotionWalker*>(NULL));
+    
+        ar & p_mw;
+        ar & selection; 
+        ar & reference_selection; 
+        ar & p_reference;
+    }
+
+public:
+    MotionWalker* p_mw;
+    std::string selection; // atoms to move
+    std::string reference_selection; // selection containing atoms used for fitting/alignment
+    CoordinateSet* p_reference;
+
+};
+
+
+/** 
 Management class for coordinate sets.
 */
 class CoordinateSets {
@@ -61,14 +92,7 @@ protected:
     {
         ar.register_type(static_cast<CoordinateSet*>(NULL));
         ar.register_type(static_cast<Atoms*>(NULL));
-        
-        ar.register_type(static_cast<LinearMotionWalker*>(NULL));
-        ar.register_type(static_cast<RandomMotionWalker*>(NULL));
-        ar.register_type(static_cast<FixedMotionWalker*>(NULL));
-        ar.register_type(static_cast<OscillationMotionWalker*>(NULL));
-        ar.register_type(static_cast<BrownianMotionWalker*>(NULL));
-        ar.register_type(static_cast<LocalBrownianMotionWalker*>(NULL));
-        
+                
         // ar & m_prealignmentvectors;
         // ar & m_postalignmentvectors;
 
@@ -88,7 +112,7 @@ protected:
     // std::map<size_t,std::vector<CartesianCoor3D> > m_prealignmentvectors;
     // std::map<size_t,std::vector<CartesianCoor3D> > m_postalignmentvectors;
 
-	std::vector< std::pair<std::string,MotionWalker*> > m_motion_walkers;
+	std::vector< MotionWalkerAlignment > m_motion_walkers;
 	std::vector< CoordinateSetAlignment > m_prealignments;
 	std::vector< CoordinateSetAlignment > m_postalignments;
 

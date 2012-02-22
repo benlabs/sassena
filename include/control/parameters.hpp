@@ -204,6 +204,32 @@ public:
 };
 
 /**
+Section which stores reference information which may be required during some alignment procedures
+*/
+class SampleMotionReferenceParameters {
+private:
+	/////////////////// MPI related
+	// make this class serializable to 
+	// allow sample to be transmitted via MPI
+    friend class boost::serialization::access;	
+	template<class Archive> void serialize(Archive & ar, const unsigned int version)
+    {
+		ar & type;
+		ar & frame;
+        ar & file;
+        ar & format;
+        ar & selection;
+    }
+	/////////////////// 
+
+public:	
+	std::string type;
+	std::string selection;
+	std::string file;
+	std::string format;
+	size_t frame;
+};
+/**
 Section which defines artificial motions
 */
 class SampleMotionParameters {
@@ -222,6 +248,7 @@ private:
 		ar & selection;
 		ar & seed;
         ar & sampling;
+		ar & reference;
     }
 	/////////////////// 
 
@@ -234,6 +261,7 @@ public:
 	long seed;
 	long sampling;	
 	CartesianCoor3D direction;
+    SampleMotionReferenceParameters reference;
 };
 
 /**

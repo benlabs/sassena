@@ -77,6 +77,7 @@ public:
     // implement transformations in Cartesian Space
 	void translate(CartesianCoor3D trans);
 	void translate(CartesianCoor3D trans, IAtomselection* pcs_selection, IAtomselection* psub_selection);
+	void transform(boost::numeric::ublas::matrix<double> T, IAtomselection* pcs_selection, IAtomselection* psub_selection);
 	
     void rotate(CartesianCoor3D axis1,CartesianCoor3D axis2);
 };

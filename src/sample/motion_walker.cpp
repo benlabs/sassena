@@ -11,6 +11,9 @@ This file contains a set of artifical motion generators. They are used to superi
 #include "control.hpp"
 #include "log.hpp"
 
+#include <boost/numeric/ublas/vector.hpp>
+#include <boost/numeric/ublas/matrix.hpp>
+
 #include <boost/random/mersenne_twister.hpp>	
 #include <boost/random/normal_distribution.hpp>	
 #include <boost/random/uniform_on_sphere.hpp>	
@@ -18,6 +21,80 @@ This file contains a set of artifical motion generators. They are used to superi
 #include <boost/random/variate_generator.hpp>
 
 using namespace std;
+
+
+
+// Angular Brownian Motion
+
+RotationalBrownianMotionWalker::RotationalBrownianMotionWalker(double displace,long seed,long sampling): m_init(true) {
+	m_seed = seed;
+    m_sampling = sampling;
+	m_displace = displace;
+}
+
+void RotationalBrownianMotionWalker::init() {
+	boost::mt19937 brownian_displace_rng; // that's my random number generator
+	brownian_displace_rng.seed(m_seed);
+
+	boost::normal_distribution<double> gauss; // that's my distribution
+
+	p_mynormaldistribution = new boost::variate_generator<boost::mt19937, boost::normal_distribution<double> >(brownian_displace_rng,gauss);
+	
+    m_init = false;
+}
+
+RotationalBrownianMotionWalker::~RotationalBrownianMotionWalker() {
+    if (!m_init) {
+        delete p_mynormaldistribution;        
+    }
+}
+
+boost::numeric::ublas::matrix<double> RotationalBrownianMotionWalker::transform(size_t timepos) {
+	if (transformations.find(timepos)==transformations.end()) {
+		generate(timepos);
+	}
+	return transformations[timepos];
+}
+
+void RotationalBrownianMotionWalker::generate(size_t timepos) {
+    if (m_init) init();    
+	size_t oldtimepos = transformations.size();
+	if (timepos<oldtimepos) return; // don't generate anything if we already have it
+
+	boost::numeric::ublas::matrix<double> oldtransform;
+	oldtransform=boost::numeric::ublas::identity_matrix<double>(4,4);
+	if (oldtimepos>0) {
+		oldtransform = transformations[oldtimepos-1];		
+	}
+    
+	for(size_t ti = oldtimepos; ti <= timepos; ++ti)
+	{
+        double normran1 = (*p_mynormaldistribution)();
+        double normran2 = (*p_mynormaldistribution)();
+        double normran3 = (*p_mynormaldistribution)();
+	    for(size_t i = 0; i < (m_sampling-1); ++i)
+        {
+            (*p_mynormaldistribution)();
+        }
+	    
+        double angle1 = m_displace * normran1 * M_PI / 180; 
+        double angle2 = m_displace * normran2 * M_PI / 180; 
+        double angle3 = m_displace * normran3 * M_PI / 180; 
+
+		boost::numeric::ublas::matrix<double> newtransform,r1,r2,r3,r12; 
+		r1=r2=r3=newtransform=boost::numeric::ublas::identity_matrix<double>(4,4);
+		r1(0,0)=cos(angle1); 	r1(0,1)=sin(angle1);
+		r1(1,0)=-sin(angle1);	r1(1,1)=cos(angle1);
+		r2(0,0)=cos(angle2); 	r2(0,2)=-sin(angle2);
+		r2(2,0)=sin(angle2);	r2(2,2)=cos(angle2);
+		r3(1,1)=cos(angle3); 	r3(1,2)=sin(angle3);
+		r3(2,1)=-sin(angle3);	r3(2,2)=cos(angle3);
+		r12=boost::numeric::ublas::prod(r1,r2);
+		newtransform=boost::numeric::ublas::prod(r12,r3);
+		transformations[ti]= boost::numeric::ublas::prod(oldtransform,newtransform);
+		oldtransform = transformations[ti];
+	}
+}
 
 // Brownian Motion
 
@@ -58,6 +135,16 @@ CartesianCoor3D BrownianMotionWalker::translation(size_t timepos) {
 	return translations[timepos];
 }
 
+boost::numeric::ublas::matrix<double> BrownianMotionWalker::transform(size_t timepos) {
+
+    using namespace boost::numeric::ublas;
+	matrix<double> T(4,4); T= identity_matrix<double>(4);
+	CartesianCoor3D translation = this->translation(timepos);
+	T(3,0)=translation.x;
+	T(3,1)=translation.y;
+	T(3,2)=translation.z;
+	return T;
+}
 
 void BrownianMotionWalker::generate(size_t timepos) {
     if (m_init) init();    
@@ -130,6 +217,16 @@ CartesianCoor3D LocalBrownianMotionWalker::translation(size_t timepos) {
 	return translations[timepos];
 }
 
+boost::numeric::ublas::matrix<double> LocalBrownianMotionWalker::transform(size_t timepos) {
+
+    using namespace boost::numeric::ublas;
+	matrix<double> T(4,4); T= identity_matrix<double>(4);
+	CartesianCoor3D translation = this->translation(timepos);
+	T(3,0)=translation.x;
+	T(3,1)=translation.y;
+	T(3,2)=translation.z;
+	return T;
+}
 
 void LocalBrownianMotionWalker::generate(size_t timepos) {
     if (m_init) init();    
@@ -200,6 +297,16 @@ CartesianCoor3D RandomMotionWalker::translation(size_t timepos) {
 	return translations[timepos];
 }
 
+boost::numeric::ublas::matrix<double> RandomMotionWalker::transform(size_t timepos) {
+
+    using namespace boost::numeric::ublas;
+	matrix<double> T(4,4); T= identity_matrix<double>(4);
+	CartesianCoor3D translation = this->translation(timepos);
+	T(3,0)=translation.x;
+	T(3,1)=translation.y;
+	T(3,2)=translation.z;
+	return T;
+}
 
 void RandomMotionWalker::generate(size_t timepos) {
     if (m_init) init();
@@ -237,6 +344,17 @@ CartesianCoor3D OscillationMotionWalker::translation(size_t timepos) {
 	return m_translate*sin(2*M_PI*timepos*m_frequency*m_sampling);
 }
 
+boost::numeric::ublas::matrix<double> OscillationMotionWalker::transform(size_t timepos) {
+
+    using namespace boost::numeric::ublas;
+	matrix<double> T(4,4); T= identity_matrix<double>(4);
+	CartesianCoor3D translation = this->translation(timepos);
+	T(3,0)=translation.x;
+	T(3,1)=translation.y;
+	T(3,2)=translation.z;
+	return T;
+}
+
 // linear motion
 
 LinearMotionWalker::LinearMotionWalker(double displace,long sampling, CartesianCoor3D direction) {
@@ -247,6 +365,17 @@ CartesianCoor3D LinearMotionWalker::translation(size_t timepos) {
 	return timepos*m_translate;
 }
 
+boost::numeric::ublas::matrix<double> LinearMotionWalker::transform(size_t timepos) {
+
+    using namespace boost::numeric::ublas;
+	matrix<double> T(4,4); T= identity_matrix<double>(4);
+	CartesianCoor3D translation = this->translation(timepos);
+	T(3,0)=translation.x;
+	T(3,1)=translation.y;
+	T(3,2)=translation.z;
+	return T;
+}
+
 // fixed point translation
 
 FixedMotionWalker::FixedMotionWalker(double displace,CartesianCoor3D direction) {
@@ -255,6 +384,17 @@ FixedMotionWalker::FixedMotionWalker(double displace,CartesianCoor3D direction) 
 
 CartesianCoor3D FixedMotionWalker::translation(size_t timepos) {
 	return m_translate;
+}
+
+boost::numeric::ublas::matrix<double> FixedMotionWalker::transform(size_t timepos) {
+
+    using namespace boost::numeric::ublas;
+	matrix<double> T(4,4); T= identity_matrix<double>(4);
+	CartesianCoor3D translation = this->translation(timepos);
+	T(3,0)=translation.x;
+	T(3,1)=translation.y;
+	T(3,2)=translation.z;
+	return T;
 }
 
 // end of file

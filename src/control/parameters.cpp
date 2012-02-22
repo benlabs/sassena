@@ -224,6 +224,13 @@ void Params::read_xml(std::string filename) {
 	    		motion.seed = 0;
 	    		motion.sampling = 1;			
 	    		motion.frequency=0.001; // corresponds to one full cycle per 1000 frames, used for linear oscillation and rotation
+	
+	            motion.reference.type = "instant";
+                motion.reference.frame = 0;
+                motion.reference.file = sample.structure.file;
+                motion.reference.format = sample.structure.format;
+                motion.reference.selection = motion.selection;
+    
 	    		if (xmli.exists("./type"))   motion.type  = xmli.get_value<string>("./type");
 	    		if (xmli.exists("./displace"))  motion.displace   = xmli.get_value<double>("./displace");
 	    		if (xmli.exists("./frequency"))  motion.frequency   = xmli.get_value<double>("./frequency");			
@@ -238,6 +245,24 @@ void Params::read_xml(std::string filename) {
                 motion.radius = motion.displace*10;
 	    		if (xmli.exists("./radius"))  motion.radius   = xmli.get_value<double>("./radius");			
         
+				
+    	    	if (xmli.exists("./reference")) {
+        	    	if (xmli.exists("./reference/type")) motion.reference.type   = xmli.get_value<string>("./reference/type");
+        	    	if (xmli.exists("./reference/frame")) motion.reference.frame   = xmli.get_value<size_t>("./reference/frame");
+        	    	if (xmli.exists("./reference/file")) motion.reference.file   = xmli.get_value<string>("./reference/file");
+        	    	if (xmli.exists("./reference/format")) motion.reference.format   = xmli.get_value<string>("./reference/format");
+        	    	if (xmli.exists("./reference/selection")) motion.reference.selection   = xmli.get_value<string>("./reference/selection");
+	    	    }
+	    	    if (motion.type=="file") {
+        	    	Info::Inst()->write(string("Reference for motion alignment: type=")+motion.reference.type+string(", file=")+motion.reference.file+string(", format=")+motion.reference.format+string(", frame=")+boost::lexical_cast<string>(motion.reference.frame));	    	        
+	    	    } else if (motion.type=="frame"){
+        	    	Info::Inst()->write(string("Reference for motion alignment: type=")+motion.reference.type+string(", frame=")+boost::lexical_cast<string>(motion.reference.frame));
+        	    	Info::Inst()->write(string("Motion Alignment uses unprocessed coordinates (No alignment and no applied motions)"));
+	    	    } else if (motion.type=="instant") {
+        	    	Info::Inst()->write(string("Instant motion alignment (Uses coordinates within the current frame)"));		
+				}
+	    	    Info::Inst()->write(string("Selection used for alignment with reference=")+motion.reference.selection);	    	            	    	
+
 	    		sample.motions.push_back(motion);
 	    		Info::Inst()->write(string("Adding additional motion to sample: type=")+motion.type
 	    		+string(", displacement=")+boost::lexical_cast<string>(motion.displace)
