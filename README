@@ -1,0 +1,27 @@
+Software for Calculating Scattering Diagrams on Massively Parallel Computers
+
+please visit www.sassena.org for details.
+associated paper: http://dx.doi.org/10.1016/j.cpc.2012.02.010
+
+Content (from website)
+=======
+Sassena is a highly scalable parallelized software for calculating neutron and xray scattering intensities from all-atomic molecular dynamics simulations. It enables scientific scattering calculations only attainable through massively large parallel computers. The development of sassena is a consequence of the need to calculate scattering diagrams for systems with thousands of atoms and millions of time steps. These calculations require enormous computing power in the range of thousands of cores and up to terabytes of memory. As a side effect, the overall time for calculating scattering of small systems and short trajectories can be significantly reduced through the use of parallel computers.
+
+The direct computation of scattering diagrams based on (all-atomic) molecular dynamics trajectories allows reconciliation of simulations with experiment. Scattering diagrams also provide a powerful tool to investigate structural and dynamical properties of simulated molecular systems by reducing the amount of information into meaningful structural and dynamical fingerprints.
+
+Sassena was inspired by pre-existing software and integrates their capabilities:
+
+SASSIM (SASSIM: a method for calculating small-angle X-ray and neutron scattering and the associated molecular envelope from explicit-atom models of solvated proteins, F. Merzel and J. C. Smith, 2002, Acta Cryst.. D58, p. 242-249)
+SERENA (SERENA: a program for calculating X-ray diffuse scattering intensities from molecular dynamics trajectories, Micu A.M., Smith J.C., 1995, Computer Physics Communications, 91 (1-3), pp. 331-338.).
+nMoldyn 2, G R. Kneller, V Keiner, M Kneller and M Schiller, "nMoldyn, a program package for the calculation and analysis of neutron scattering spectra from MD simulations" Comp. Phys. Comm., vol. 91, (1995), 191-214., T Róg, K Murzyn, K Hinsen and G R. Kneller, "nMoldyn : A Program Package for a Neutron Scattering Oriented Analysis of Molecular Dynamics Simulations" J. Comp. Chem. no. 5, vol. 24, (2003), 657-667.
+ 
+
+The design goal of the sassena software suite is to enable scientific scattering calculations which are only attainable through the use of massively parallel computers. However, the software also represents a great educational tool for investigating structural and dynamical properties of molecular systems. For this reason this websites contains a collection of tutorials, in-depth information and hosts the sassena user community.
+
+Though the focus of the software is scalability, work is underway to increase single-node performance and optimize IO access.
+
+The inaugural paper is online (http://dx.doi.org/10.1016/j.cpc.2012.02.010) and the source code is available free of charge and open source.
+
+If you use Sassena for your calculations please cite the following reference:
+
+B. Lindner and J.C. Smith, 2012, "Sassena — X-ray and neutron scattering calculated from molecular dynamics trajectories using massively parallel computers", Comp. Phys. Comm., Volume 183, Issue 7, Pages 1491–1501, http://dx.doi.org/10.1016/j.cpc.2012.02.010
