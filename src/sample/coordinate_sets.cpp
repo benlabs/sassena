@@ -61,12 +61,12 @@ void CoordinateSets::init() {
     for(size_t i = 0; i < Params::Inst()->sample.framesets.size(); ++i)
     {
     	SampleFramesetParameters& f = Params::Inst()->sample.framesets[i];
-    	Info::Inst()->write(string("Reading frames from: ")+f.filename);
+    	Info::Inst()->write(string("Reading frames from: ")+f.filepath);
     	if (f.clones!=1) {
     	    Info::Inst()->write(string("Cloning frameset ")+boost::lexical_cast<string>(f.clones)+string(" times"));
     	}
         size_t nof = 0;
-	    nof += frames.add_frameset(f.filename,f.type,f.first,f.last,f.last_set,f.stride,f.index,f.index_default,f.clones);			
+	    nof += frames.add_frameset(f.filepath,f.format,f.first,f.last,f.last_set,f.stride,f.indexpath,f.index_default,f.clones);			
     	Info::Inst()->write(string("Found ")+boost::lexical_cast<string>(nof)+string(" frames"));			
     }
 	

@@ -33,8 +33,8 @@ void Sample::init() {
     	
     Params* params = Params::Inst();
     // create the sample via structure file	
-    Info::Inst()->write(string("Reading structure from file: ")+params->sample.structure.file);
-    add_atoms(params->sample.structure.file,params->sample.structure.format);
+    Info::Inst()->write(string("Reading structure from file: ")+params->sample.structure.filepath);
+    add_atoms(params->sample.structure.filepath,params->sample.structure.format);
     Info::Inst()->write(string("Done. Atoms read: ")+boost::lexical_cast<string>(atoms.size()));
     
     // add selections / groups
@@ -63,14 +63,14 @@ void Sample::init() {
             SampleFileSelectionParameters* p_sampleselection = static_cast<SampleFileSelectionParameters*>(sgpi->second);
 
         	if (p_sampleselection->format_=="ndx") {
-                std::map<std::string,IAtomselection*> sels = AtomselectionReader::read_ndx(p_sampleselection->file_,p_sampleselection->selector_,p_sampleselection->expression_);
+                std::map<std::string,IAtomselection*> sels = AtomselectionReader::read_ndx(p_sampleselection->filepath_,p_sampleselection->selector_,p_sampleselection->expression_);
             	for(std::map<std::string,IAtomselection*>::iterator i = sels.begin(); i != sels.end(); ++i)
             	{
                     atoms.selections.set(i->first,i->second);
                     Info::Inst()->write(string("Created selection ")+i->first+string(" , elements: ")+boost::lexical_cast<string>(i->second->size()));
             	}
         	} else if (p_sampleselection->format_=="pdb") {
-            	IAtomselection* p_sel = AtomselectionReader::read_pdb(p_sampleselection->file_,p_sampleselection->selector_,p_sampleselection->expression_);  	    
+            	IAtomselection* p_sel = AtomselectionReader::read_pdb(p_sampleselection->filepath_,p_sampleselection->selector_,p_sampleselection->expression_);  	    
                 atoms.selections.set(sgpi->first,p_sel);
                 Info::Inst()->write(string("Created selection ")+sgpi->first+string(" , elements: ")+boost::lexical_cast<string>(p_sel->size()));
         	} else {

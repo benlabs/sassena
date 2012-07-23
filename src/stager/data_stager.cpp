@@ -89,8 +89,8 @@ coor_t* DataStagerByFrame::stage() {
     timer_.stop("st:fill");
 
     if (Params::Inst()->stager.dump) {
-        Info::Inst()->write(string("Dumping coordinates to file: ")+Params::Inst()->stager.file);
-        write(Params::Inst()->stager.file,Params::Inst()->stager.format);
+        Info::Inst()->write(string("Dumping coordinates to file: ")+Params::Inst()->stager.filepath);
+        write(Params::Inst()->stager.filepath,Params::Inst()->stager.format);
     }
 
     return p_coordinates;
@@ -232,9 +232,9 @@ coor_t* DataStagerByAtom::stage() {
 
     if (Params::Inst()->stager.dump) {
 	    if (allcomm_.rank()==0) {
-	        Info::Inst()->write(string("Dumping coordinates to file: ")+Params::Inst()->stager.file);		
+	        Info::Inst()->write(string("Dumping coordinates to file: ")+Params::Inst()->stager.filepath);		
 		}
-        write(Params::Inst()->stager.file,Params::Inst()->stager.format);
+        write(Params::Inst()->stager.filepath,Params::Inst()->stager.format);
     }
 
 	ModAssignment assignment(partitioncomm_.size(),partitioncomm_.rank(),NA);

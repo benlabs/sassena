@@ -16,6 +16,7 @@ This file contains an XML Interface class, which re-interpretates the c style li
 #include <iostream>
 #include <map>
 #include <string>
+#include <sstream>
 #include <vector>
 
 // special library headers
@@ -65,6 +66,8 @@ public:
 	std::vector<XMLElement> get(const char* xpathexp);	
 	std::vector<XMLElement> get(std::string xpathexp);
 
+	void dump(std::vector<char>& c);
+	
 	template<class convT> convT get_value(const char* xpathexp);
 
 	bool exists(const char* xpathexp);

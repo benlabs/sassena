@@ -118,6 +118,15 @@ XMLInterface::XMLInterface(std::string filename) {
     
 }
 
+void XMLInterface::dump(std::vector<char>& c) { 
+	int chars;
+	xmlChar * data;
+	xmlDocDumpMemory(p_doc,&data,&chars);
+	std::stringstream ss;
+	for(int i = 0; i < chars; ++i) c.push_back(data[i]);
+	xmlFree(data);
+}
+
 XMLInterface::~XMLInterface() { 
 	
 	xmlXPathFreeContext(p_xpathCtx); 

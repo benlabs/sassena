@@ -43,6 +43,7 @@ string Params::get_filepath(string fname) {
 
 	path fpath(fname);
 	string fdir;
+	
 	if (fpath.parent_path().is_complete()) 
 		fdir = fpath.parent_path().string(); 
 	else if (!config_rootpath.empty())
@@ -52,37 +53,44 @@ string Params::get_filepath(string fname) {
 	return (path(fdir) / fpath.filename()).string();
 }
 
-void Params::write_xml(std::string filename) {
+void Params::write_xml_to_file(std::string filename) {
     std::ofstream conf(filename.c_str());
     
+	conf << write_xml();
+
     conf.close();
 }
 
 void Params::read_xml(std::string filename) {
 	
-	// store the configuration line by line into an internal buffer, 
-	// this is for keeping history
+	// store the configuration in raw format into an internal buffer, 
+	// this is for keeping history and allow for handing through data
 	ifstream conffile(filename.c_str());
-	string line;
-	while (getline(conffile,line)) {
-		carboncopy.push_back(line);
+	while (conffile.good()) {
+		char c=conffile.get();
+		if (conffile.good()) {
+			rawconfig.push_back(c);			
+		}
 	}
 	conffile.close();
-		
+	
 	// START OF sample section //	
 	XMLInterface xmli(filename);
     
 	Info::Inst()->write(string("Reading parameters from XML file: ")+filename);
-	
+
+	xmli.dump(config);
 	// now read the parameters
 	
 	sample.structure.file="sample.pdb";
+	sample.structure.filepath = get_filepath(sample.structure.file);
 	sample.structure.format="pdb";
     
 	if (xmli.exists("//sample")) {
     	if (xmli.exists("//sample/structure")) {
     	    if (xmli.exists("//sample/structure/file")) {
-            	sample.structure.file   = get_filepath(xmli.get_value<std::string>("//sample/structure/file"));
+            	sample.structure.file   = xmli.get_value<std::string>("//sample/structure/file");
+				sample.structure.filepath = get_filepath(sample.structure.file);
 	        }
     	    if (xmli.exists("//sample/structure/format")) {
             	sample.structure.format   = xmli.get_value<std::string>("//sample/structure/format");
@@ -140,7 +148,8 @@ void Params::read_xml(std::string filename) {
                     
                 } else if (type=="file") {
                     string sname = string("_")+boost::lexical_cast<string>(i); // NOT used by ndx file format
-                    string filename = "selection.pdb";
+                    string file = "selection.pdb";
+                    string filepath = get_filepath(file);
                     string format = "pdb";
                     string selector = "beta";
                     string expression = "1|1\\.0|1\\.00";
@@ -155,13 +164,16 @@ void Params::read_xml(std::string filename) {
                         selector = "name";
                         expression = ".*";
                     }
-                    if (xmli.exists("./file")) filename = xmli.get_value<string>("./file") ;
+                    if (xmli.exists("./file")) {
+						file = xmli.get_value<string>("./file") ;
+						filepath = get_filepath(file) ;						
+					}
                     
                     if (xmli.exists("./selector")) selector = xmli.get_value<string>("./selector") ;
                     if (xmli.exists("./expression")) expression = xmli.get_value<string>("./expression") ;
                     
-                    sample.selections[sname] = new SampleFileSelectionParameters(filename,format,selector,expression);                    
-                    Info::Inst()->write(string("Creating File Atomselection: ")+sname+string(" , file: ")+filename+string(", format: ")+format+string(", selector: ")+selector+string(", expression: ")+expression);
+                    sample.selections[sname] = new SampleFileSelectionParameters(filepath,format,selector,expression);                    
+                    Info::Inst()->write(string("Creating File Atomselection: ")+sname+string(" , file: ")+filepath+string(", format: ")+format+string(", selector: ")+selector+string(", expression: ")+expression);
                 }
         	}
 	    }
@@ -172,6 +184,7 @@ void Params::read_xml(std::string filename) {
         	size_t def_stride = 1;
             size_t def_clones = 1;
             string def_format = "dcd";
+			string def_file="sample.dcd";
         	if (xmli.exists("//sample/framesets/first"))   def_first  = xmli.get_value<size_t>("//sample/framesets/first");
         	if (xmli.exists("//sample/framesets/last"))  { def_last   = xmli.get_value<size_t>("//sample/framesets/last"); def_last_set = true; }
         	if (xmli.exists("//sample/framesets/stride"))  def_stride = xmli.get_value<size_t>("//sample/framesets/stride");
@@ -186,23 +199,31 @@ void Params::read_xml(std::string filename) {
         		xmli.set_current(framesets[i]);
         		SampleFramesetParameters fset;	
         		fset.first = def_first;	fset.last = def_last; fset.last_set = def_last_set; fset.stride = def_stride;
-                fset.type = def_format;
+                fset.format = def_format;
                 fset.clones = def_clones;
-        		fset.filename = get_filepath(xmli.get_value<string>("./file"));
-                boost::filesystem::path index_path = get_filepath(xmli.get_value<string>("./file"));
+				fset.file = def_file;
+				fset.filepath = get_filepath(fset.file);
+				
+        		if (xmli.exists("./file")) {	
+					fset.file = xmli.get_value<string>("./file");
+					fset.filepath = get_filepath(fset.file);
+				} 
+                boost::filesystem::path index_path = fset.filepath;
                 fset.index = index_path.parent_path().string() + string("/") + index_path.stem().string() + string(".tnx");
 				fset.index_default = true;
-        		if (xmli.exists("./format"))  fset.type = xmli.get_value<string>("./format");
+				
+        		if (xmli.exists("./format"))  fset.format = xmli.get_value<string>("./format");
         		if (xmli.exists("./first"))   fset.first  = xmli.get_value<size_t>("./first");
         		if (xmli.exists("./last"))  { fset.last   = xmli.get_value<size_t>("./last"); fset.last_set = true; }
         		if (xmli.exists("./stride"))  fset.stride = xmli.get_value<size_t>("./stride");
         		if (xmli.exists("./clones"))  fset.clones = xmli.get_value<size_t>("./clones");
         		if (xmli.exists("./index"))  {
-					fset.index = get_filepath(xmli.get_value<std::string>("./index"));
+					fset.index = xmli.get_value<std::string>("./index");
+					fset.indexpath = get_filepath(fset.index);
 					fset.index_default = false;
 				}
         		sample.framesets.push_back(fset);
-        		Info::Inst()->write(string("Added frames from ")+fset.filename+string(" using format: ")+fset.type);
+        		Info::Inst()->write(string("Added frames from ")+fset.filepath+string(" using format: ")+fset.format);
         		Info::Inst()->write(string("Options: first=")+boost::lexical_cast<string>(fset.first)
         		    +string(", last=")+boost::lexical_cast<string>(fset.last)
         		    +string(", lastset=")+boost::lexical_cast<string>(fset.last_set)
@@ -228,6 +249,7 @@ void Params::read_xml(std::string filename) {
 	            motion.reference.type = "instant";
                 motion.reference.frame = 0;
                 motion.reference.file = sample.structure.file;
+                motion.reference.filepath = get_filepath(motion.reference.file);
                 motion.reference.format = sample.structure.format;
                 motion.reference.selection = motion.selection;
     
@@ -249,12 +271,15 @@ void Params::read_xml(std::string filename) {
     	    	if (xmli.exists("./reference")) {
         	    	if (xmli.exists("./reference/type")) motion.reference.type   = xmli.get_value<string>("./reference/type");
         	    	if (xmli.exists("./reference/frame")) motion.reference.frame   = xmli.get_value<size_t>("./reference/frame");
-        	    	if (xmli.exists("./reference/file")) motion.reference.file   = xmli.get_value<string>("./reference/file");
+        	    	if (xmli.exists("./reference/file")) {
+						motion.reference.file   = xmli.get_value<string>("./reference/file");
+						motion.reference.filepath   = get_filepath(motion.reference.file);						
+					}
         	    	if (xmli.exists("./reference/format")) motion.reference.format   = xmli.get_value<string>("./reference/format");
         	    	if (xmli.exists("./reference/selection")) motion.reference.selection   = xmli.get_value<string>("./reference/selection");
 	    	    }
 	    	    if (motion.type=="file") {
-        	    	Info::Inst()->write(string("Reference for motion alignment: type=")+motion.reference.type+string(", file=")+motion.reference.file+string(", format=")+motion.reference.format+string(", frame=")+boost::lexical_cast<string>(motion.reference.frame));	    	        
+        	    	Info::Inst()->write(string("Reference for motion alignment: type=")+motion.reference.type+string(", file=")+motion.reference.filepath+string(", format=")+motion.reference.format+string(", frame=")+boost::lexical_cast<string>(motion.reference.frame));	    	        
 	    	    } else if (motion.type=="frame"){
         	    	Info::Inst()->write(string("Reference for motion alignment: type=")+motion.reference.type+string(", frame=")+boost::lexical_cast<string>(motion.reference.frame));
         	    	Info::Inst()->write(string("Motion Alignment uses unprocessed coordinates (No alignment and no applied motions)"));
@@ -289,18 +314,22 @@ void Params::read_xml(std::string filename) {
                 alignment.reference.type = "frame";
                 alignment.reference.frame = 0;
                 alignment.reference.file = sample.structure.file;
+				alignment.reference.filepath   = get_filepath(alignment.reference.file);
                 alignment.reference.format = sample.structure.format;
                 alignment.reference.selection = alignment.selection;
                 
     	    	if (xmli.exists("./reference")) {
         	    	if (xmli.exists("./reference/type")) alignment.reference.type   = xmli.get_value<string>("./reference/type");
         	    	if (xmli.exists("./reference/frame")) alignment.reference.frame   = xmli.get_value<size_t>("./reference/frame");
-        	    	if (xmli.exists("./reference/file")) alignment.reference.file   = xmli.get_value<string>("./reference/file");
+        	    	if (xmli.exists("./reference/file")) {
+						alignment.reference.file   = xmli.get_value<string>("./reference/file");
+						alignment.reference.filepath   = get_filepath(alignment.reference.file);						
+					}
         	    	if (xmli.exists("./reference/format")) alignment.reference.format   = xmli.get_value<string>("./reference/format");
         	    	if (xmli.exists("./reference/selection")) alignment.reference.selection   = xmli.get_value<string>("./reference/selection");
 	    	    }
 	    	    if (alignment.type=="file") {
-        	    	Info::Inst()->write(string("Reference for alignment: type=")+alignment.reference.type+string(", file=")+alignment.reference.file+string(", format=")+alignment.reference.format+string(", frame=")+boost::lexical_cast<string>(alignment.reference.frame));	    	        
+        	    	Info::Inst()->write(string("Reference for alignment: type=")+alignment.reference.type+string(", file=")+alignment.reference.filepath+string(", format=")+alignment.reference.format+string(", frame=")+boost::lexical_cast<string>(alignment.reference.frame));	    	        
 	    	    } else if (alignment.type=="frame"){
         	    	Info::Inst()->write(string("Reference for alignment: type=")+alignment.reference.type+string(", frame=")+boost::lexical_cast<string>(alignment.reference.frame));
         	    	Info::Inst()->write(string("Alignment uses unprocessed coordinates (No alignment and no applied motions)"));
@@ -315,6 +344,7 @@ void Params::read_xml(std::string filename) {
 	
     stager.dump=false;
     stager.file="dump.dcd";
+    stager.filepath=get_filepath(stager.file);
     stager.format="dcd";
     stager.target = "system";
     stager.mode = "frames";
@@ -325,6 +355,7 @@ void Params::read_xml(std::string filename) {
     	}
     	if (xmli.exists("//stager/file")) {
     		stager.file = xmli.get_value<string>("//stager/file");
+			stager.filepath=get_filepath(stager.file);
     	}
     	if (xmli.exists("//stager/format")) {
     		stager.format = xmli.get_value<string>("//stager/format");
@@ -351,12 +382,15 @@ void Params::read_xml(std::string filename) {
 	scattering.average.orientation.vectors.resolution = 100;
 	scattering.average.orientation.vectors.seed = 0;
 	scattering.average.orientation.vectors.file = "qvector-orientations.txt";
+	scattering.average.orientation.vectors.filepath = get_filepath(scattering.average.orientation.vectors.file);
 	scattering.average.orientation.multipole.type = "sphere";
 	scattering.average.orientation.multipole.moments.resolution = 20;
     scattering.average.orientation.multipole.moments.file = "moments.txt";
+    scattering.average.orientation.multipole.moments.filepath = get_filepath(scattering.average.orientation.multipole.moments.file);
 	scattering.average.orientation.exact.type = "sphere";
 
     scattering.signal.file = "signal.h5";
+    scattering.signal.filepath = get_filepath(scattering.signal.file);
     scattering.signal.fqt = true;
     scattering.signal.fq0 = true;
     scattering.signal.fq = true;
@@ -507,7 +541,10 @@ void Params::read_xml(std::string filename) {
                         Info::Inst()->write(string("scattering.average.orientation.vectors.seed=")+boost::lexical_cast<string>(scattering.average.orientation.vectors.seed));
 	    			}	
 	    			if (xmli.exists("//scattering/average/orientation/vectors/file")) { // count vectors ... , or order for multipole...
-	    				scattering.average.orientation.vectors.file = get_filepath(xmli.get_value<string>("//scattering/average/orientation/vectors/file"));
+	    				scattering.average.orientation.vectors.file = xmli.get_value<string>("//scattering/average/orientation/vectors/file");
+	    				scattering.average.orientation.vectors.filepath = get_filepath(scattering.average.orientation.vectors.file);
+	                    Info::Inst()->write(string("scattering.average.orientation.vectors.file=")+boost::lexical_cast<string>(scattering.average.orientation.vectors.file));				    
+                        Info::Inst()->write(string("scattering.average.orientation.vectors.filepath=")+boost::lexical_cast<string>(scattering.average.orientation.vectors.filepath));				    
 	    			}		
 	    				    			
 	    			scattering.average.orientation.vectors.create();
@@ -528,7 +565,9 @@ void Params::read_xml(std::string filename) {
                         }
     	    			if (xmli.exists("//scattering/average/orientation/multipole/moments/file")) { // count vectors ... , or order for multipole...
 	    				    scattering.average.orientation.multipole.moments.file = xmli.get_value<string>("//scattering/average/orientation/multipole/moments/file");
+	    				    scattering.average.orientation.multipole.moments.filepath = get_filepath(scattering.average.orientation.multipole.moments.file);
                             Info::Inst()->write(string("scattering.average.orientation.multipole.moments.file=")+boost::lexical_cast<string>(scattering.average.orientation.multipole.moments.file));				    
+                            Info::Inst()->write(string("scattering.average.orientation.multipole.moments.filepath=")+boost::lexical_cast<string>(scattering.average.orientation.multipole.moments.filepath));				    
                         }
 	    			}
 	    			
@@ -543,6 +582,7 @@ void Params::read_xml(std::string filename) {
 	    if (xmli.exists("//scattering/signal")) {
 	        if (xmli.exists("//scattering/signal/file")) {
         		scattering.signal.file = xmli.get_value<string>("//scattering/signal/file");	        
+        		scattering.signal.filepath = get_filepath(scattering.signal.file);	        
 	        } 
 	        if (xmli.exists("//scattering/signal/fqt")) {
         		scattering.signal.fqt = xmli.get_value<bool>("//scattering/signal/fqt");	        
@@ -558,6 +598,7 @@ void Params::read_xml(std::string filename) {
 	        }	         
 	    }
 	    Info::Inst()->write(string("scattering.signal.file=")+scattering.signal.file);	
+	    Info::Inst()->write(string("scattering.signal.filepath=")+scattering.signal.filepath);	
 	    Info::Inst()->write(string("scattering.signal.fqt=")+boost::lexical_cast<string>(scattering.signal.fqt));	
 	    Info::Inst()->write(string("scattering.signal.fq0=")+boost::lexical_cast<string>(scattering.signal.fq0));	            
 	    Info::Inst()->write(string("scattering.signal.fq=")+boost::lexical_cast<string>(scattering.signal.fq));	
@@ -734,6 +775,7 @@ void Params::read_xml(std::string filename) {
 	
     database.type = "file";
     database.file = "db.xml";
+    database.filepath = get_filepath(database.file);
     database.format = "xml";
 	if (xmli.exists("//database")) {
 	    if (xmli.exists("//database/type")) {
@@ -741,6 +783,7 @@ void Params::read_xml(std::string filename) {
         }
 	    if (xmli.exists("//database/file")) {
 	        database.file = xmli.get_value<string>("//database/file");
+	        database.filepath = get_filepath(database.file);
         }
 	    if (xmli.exists("//database/format")) {
 	        database.format = xmli.get_value<string>("//database/format");
@@ -887,9 +930,9 @@ SampleParameters::~SampleParameters() {
 void ScatteringAverageOrientationVectorsParameters::create() {
 	
 	if (type=="file") {
-		Info::Inst()->write(string("Reading orientations for orientational averaging from file: ")+file);
+		Info::Inst()->write(string("Reading orientations for orientational averaging from file: ")+filepath);
         
-		ifstream qqqfile(file.c_str());
+		ifstream qqqfile(filepath.c_str());
 	
 		double x,y,z; 
 		while (qqqfile >> x >> y >> z) {
@@ -994,9 +1037,9 @@ void ScatteringAverageOrientationVectorsParameters::create() {
 void ScatteringAverageOrientationMultipoleMomentsParameters::create() {
 	
 	if (type=="file") {
-		Info::Inst()->write(string("Reading multipole moments for orientational averaging from file: ")+file);
+		Info::Inst()->write(string("Reading multipole moments for orientational averaging from file: ")+filepath);
         
-		ifstream mmfile(file.c_str());
+		ifstream mmfile(filepath.c_str());
 	
         long major, minor; 
 		while (mmfile >> major >> minor) {

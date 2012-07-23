@@ -17,6 +17,7 @@ This file contains the parameters class which contains the settings and values u
 #include <map>
 #include <string>
 #include <vector>
+#include <sstream>
 
 // special library headers
 #include <boost/serialization/access.hpp>
@@ -45,13 +46,21 @@ private:
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
     {
 		ar & file;
+		ar & filepath;
 		ar & format;
     }
 	/////////////////// 
 
 public:	
 	std::string file;
+	std::string filepath; // runtime
 	std::string format;
+	std::string write_xml(int pad=0) {
+		std::stringstream ss;
+		ss << std::string(pad,' ') << "<file>" << file << "</file>" << std::endl;
+		ss << std::string(pad,' ') << "<format>" << format << "</format>" << std::endl;
+		return ss.str();
+	}
 };
 
 /**
@@ -69,6 +78,11 @@ public:
     SampleSelectionParameters(std::string type) : type_(type) {}
     
     std::string type() { return type_;}
+	std::string write_xml(int pad=0) {
+		std::stringstream ss;
+		ss << std::string(pad,' ') << "<type>" << type_ << "</type>" << std::endl;
+		return ss.str();
+	}
 };
 
 /**
@@ -86,6 +100,15 @@ public:
     std::vector<size_t> ids_;
     SampleIndexSelectionParameters() {}    
     SampleIndexSelectionParameters(std::vector<size_t> ids) : SampleSelectionParameters("index"), ids_(ids) {}
+	std::string write_xml(int pad=0) {
+		std::stringstream ss;
+		ss << SampleSelectionParameters::write_xml(pad);
+		for(size_t i = 0; i < ids_.size(); ++i)
+		{
+			ss << std::string(pad,' ') << "<index>" << ids_[i] << "</index>" << std::endl;	
+		}
+		return ss.str();
+	}
 };
 
 /**
@@ -106,6 +129,14 @@ public:
 
     SampleRangeSelectionParameters() {}
     SampleRangeSelectionParameters(size_t from, size_t to) : SampleSelectionParameters("range"), from_(from), to_(to) {}
+	std::string write_xml(int pad=0) {
+		std::stringstream ss;
+		ss << SampleSelectionParameters::write_xml(pad);
+		ss << std::string(pad,' ') << "<from>" << from_ << "</from>" << std::endl;	
+		ss << std::string(pad,' ') << "<to>" << to_ << "</to>" << std::endl;	
+		return ss.str();
+	}
+
 };
 
 /**
@@ -124,6 +155,12 @@ public:
     
     SampleLexicalSelectionParameters() {}
     SampleLexicalSelectionParameters(std::string expression) : SampleSelectionParameters("lexical"), expression_(expression) {}
+	std::string write_xml(int pad=0) {
+		std::stringstream ss;
+		ss << SampleSelectionParameters::write_xml(pad);
+		ss << std::string(pad,' ') << "<expression>" << expression_ << "</expression>" << std::endl;	
+		return ss.str();
+	}
 };
 
 /**
@@ -135,6 +172,7 @@ class SampleFileSelectionParameters : public SampleSelectionParameters {
     {
         ar & boost::serialization::base_object<SampleSelectionParameters, SampleFileSelectionParameters>(*this);
 		ar & file_;
+	    ar & filepath_;
         ar & format_;
         ar & selector_;
         ar & expression_;
@@ -142,12 +180,22 @@ class SampleFileSelectionParameters : public SampleSelectionParameters {
 public:
 
     std::string file_;
+    std::string filepath_; // runtime
     std::string format_;
     std::string selector_;    
     std::string expression_;
     
     SampleFileSelectionParameters() {}
     SampleFileSelectionParameters(std::string file, std::string format, std::string selector, std::string expression) : SampleSelectionParameters("file"), file_(file), format_(format), selector_(selector), expression_(expression) {}
+	std::string write_xml(int pad=0) {
+		std::stringstream ss;
+		ss << SampleSelectionParameters::write_xml(pad);
+		ss << std::string(pad,' ') << "<file>" << file_ << "</file>" << std::endl;	
+		ss << std::string(pad,' ') << "<format>" << format_ << "</format>" << std::endl;	
+		ss << std::string(pad,' ') << "<selector>" << selector_ << "</selector>" << std::endl;	
+		ss << std::string(pad,' ') << "<expression>" << expression_ << "</expression>" << std::endl;	
+		return ss.str();
+	}
 };
 
 /**
@@ -165,10 +213,12 @@ private:
 		ar & last;
 		ar & last_set;
 		ar & stride;
-		ar & filename;
-		ar & type;
+		ar & file;
+		ar & filepath;
+		ar & format;
         ar & clones;
         ar & index;
+        ar & indexpath;
 		ar & index_default;
     }
 	/////////////////// 
@@ -179,10 +229,28 @@ public:
     size_t clones;
 	bool last_set;
 	size_t stride;
-	std::string filename;
-	std::string type;
+	std::string file;
+	std::string filepath; // runtime
+	std::string format;
     std::string index;
+    std::string indexpath;
 	bool index_default;
+	std::string write_xml(int pad=0) {
+		std::stringstream ss;
+		ss << std::string(pad,' ') << "<format>" << format << "</format>" << std::endl;	
+		ss << std::string(pad,' ') << "<file>" << file << "</file>" << std::endl;	
+		// don't write location specific filepath or indexpath! not well defined behavior
+		if (!index_default) {
+			ss << std::string(pad,' ') << "<index>" << index << "</index>" << std::endl;	
+		}
+		ss << std::string(pad,' ') << "<first>" << first << "</first>" << std::endl;
+		if (last_set) {
+			ss << std::string(pad,' ') << "<last>" << last << "</last>" << std::endl;				
+		}	
+		ss << std::string(pad,' ') << "<clones>" << clones << "</clones>" << std::endl;	
+		ss << std::string(pad,' ') << "<stride>" << stride << "</stride>" << std::endl;	
+		return ss.str();
+	}
 };
 
 /**
@@ -201,6 +269,16 @@ private:
 	/////////////////// 
 
 public:	
+	std::string write_xml(int pad=0) {
+		std::stringstream ss;
+		for(size_t i = 0; i < this->size(); ++i)
+		{
+			ss << std::string(pad,' ') << "<frameset>" << std::endl;
+			ss << this->at(i).write_xml(pad+1);
+			ss << std::string(pad,' ') << "</frameset>" << std::endl;	
+		}
+		return ss.str();
+	}
 };
 
 /**
@@ -217,6 +295,7 @@ private:
 		ar & type;
 		ar & frame;
         ar & file;
+        ar & filepath;
         ar & format;
         ar & selection;
     }
@@ -226,8 +305,18 @@ public:
 	std::string type;
 	std::string selection;
 	std::string file;
+	std::string filepath; // runtime
 	std::string format;
 	size_t frame;
+	std::string write_xml(int pad=0) {
+		std::stringstream ss;
+		ss << std::string(pad,' ') << "<type>" << type << "</type>" << std::endl;	
+		ss << std::string(pad,' ') << "<selection>" << selection << "</selection>" << std::endl;	
+		ss << std::string(pad,' ') << "<file>" << file << "</file>" << std::endl;	
+		ss << std::string(pad,' ') << "<format>" << format << "</format>" << std::endl;	
+		ss << std::string(pad,' ') << "<frame>" << frame << "</frame>" << std::endl;	
+		return ss.str();
+	}
 };
 /**
 Section which defines artificial motions
@@ -262,6 +351,20 @@ public:
 	long sampling;	
 	CartesianCoor3D direction;
     SampleMotionReferenceParameters reference;
+	std::string write_xml(int pad=0) {
+		std::stringstream ss;
+		ss << std::string(pad,' ') << "<type>" << type << "</type>" << std::endl;	
+		ss << std::string(pad,' ') << "<displace>" << displace << "</displace>" << std::endl;	
+		ss << std::string(pad,' ') << "<frequency>" << frequency << "</frequency>" << std::endl;	
+		ss << std::string(pad,' ') << "<radius>" << radius << "</radius>" << std::endl;	
+		ss << std::string(pad,' ') << "<selection>" << selection << "</selection>" << std::endl;	
+		ss << std::string(pad,' ') << "<seed>" << seed << "</seed>" << std::endl;	
+		ss << std::string(pad,' ') << "<sampling>" << sampling << "</sampling>" << std::endl;	
+		ss << std::string(pad,' ') << "<referemce>" << std::endl;
+		ss << reference.write_xml(pad+1);
+		ss << std::string(pad,' ') << "</referemce>" << std::endl;
+		return ss.str();
+	}
 };
 
 /**
@@ -278,6 +381,7 @@ private:
 		ar & type;
 		ar & frame;
         ar & file;
+        ar & filepath;
         ar & format;
         ar & selection;
     }
@@ -287,8 +391,18 @@ public:
 	std::string type;
 	std::string selection;
 	std::string file;
+	std::string filepath; // runtime	
 	std::string format;
 	size_t frame;
+	std::string write_xml(int pad=0) {
+		std::stringstream ss;
+		ss << std::string(pad,' ') << "<type>" << type << "</type>" << std::endl;	
+		ss << std::string(pad,' ') << "<selection>" << selection << "</selection>" << std::endl;	
+		ss << std::string(pad,' ') << "<file>" << file << "</file>" << std::endl;	
+		ss << std::string(pad,' ') << "<format>" << format << "</format>" << std::endl;	
+		ss << std::string(pad,' ') << "<frame>" << frame << "</frame>" << std::endl;	
+		return ss.str();
+	}
 };
 
 /**
@@ -314,6 +428,16 @@ public:
 	std::string type;
 	std::string selection;
     std::string order;
+	std::string write_xml(int pad=0) {
+		std::stringstream ss;
+		ss << std::string(pad,' ') << "<type>" << type << "</type>" << std::endl;	
+		ss << std::string(pad,' ') << "<selection>" << selection << "</selection>" << std::endl;	
+		ss << std::string(pad,' ') << "<order>" << order << "</order>" << std::endl;	
+		ss << std::string(pad,' ') << "<referemce>" << std::endl;
+		ss << reference.write_xml(pad+1);
+		ss << std::string(pad,' ') << "</referemce>" << std::endl;
+		return ss.str();
+	}
 };
 
 /**
@@ -348,6 +472,41 @@ public:
 	SampleFramesetsParameters framesets;
 	std::vector<SampleMotionParameters> motions;
     std::vector<SampleAlignmentParameters> alignments;
+	std::string write_xml(int pad=0) {
+		std::stringstream ss;
+		ss << std::string(pad,' ') << "<structure>" << std::endl;
+		ss << structure.write_xml(pad+1);
+		ss << std::string(pad,' ') << "</structure>" << std::endl;
+		ss << std::string(pad,' ') << "<framesets>" << std::endl;
+		ss << framesets.write_xml(pad+1);
+		ss << std::string(pad,' ') << "</framesets>" << std::endl;		
+		ss << std::string(pad,' ') << "<selections>" << std::endl;
+		for(std::map<std::string,SampleSelectionParameters*>::iterator i = selections.begin(); i != selections.end(); ++i)
+		{
+			ss << std::string(pad+1,' ') << "<selection>" << std::endl;
+			ss << std::string(pad+2,' ') << "<name>" << i->first << "</name>" << std::endl;
+			ss << i->second->write_xml(pad+2);
+			ss << std::string(pad+1,' ') << "</selection>" << std::endl;			
+		}
+		ss << std::string(pad,' ') << "</selections>" << std::endl;
+		ss << std::string(pad,' ') << "<motions>" << std::endl;
+		for(size_t i = 0; i < motions.size(); ++i)
+		{
+			ss << std::string(pad+1,' ') << "<motion>" << std::endl;
+			ss << motions[i].write_xml(pad+2);
+			ss << std::string(pad+1,' ') << "</motion>" << std::endl;			
+		}
+		ss << std::string(pad,' ') << "</motions>" << std::endl;
+		ss << std::string(pad,' ') << "<alignments>" << std::endl;
+		for(size_t i = 0; i < alignments.size(); ++i)
+		{
+			ss << std::string(pad+1,' ') << "<alignment>" << std::endl;
+			ss << alignments[i].write_xml(pad+2);
+			ss << std::string(pad+1,' ') << "</alignment>" << std::endl;			
+		}
+		ss << std::string(pad,' ') << "</alignments>" << std::endl;
+		return ss.str();
+	}
 };
 
 /**
@@ -369,6 +528,12 @@ private:
 public:	
 	std::string selection;
 	double value;
+	std::string write_xml(int pad=0) {
+		std::stringstream ss;
+		ss << std::string(pad,' ') << "<selection>" << selection << "</selection>" << std::endl;	
+		ss << std::string(pad,' ') << "<value>" << value << "</value>" << std::endl;	
+		return ss.str();
+	}
 };
 
 /**
@@ -393,6 +558,20 @@ public:
     double factor;
     
     std::vector<ScatteringBackgroundKappaParameters> kappas;
+	std::string write_xml(int pad=0) {
+		std::stringstream ss;
+		ss << std::string(pad,' ') << "<type>" << type << "</type>" << std::endl;	
+		ss << std::string(pad,' ') << "<factor>" << factor << "</factor>" << std::endl;	
+		ss << std::string(pad,' ') << "<kappas>" << std::endl;	
+		for(size_t i = 0; i < kappas.size(); ++i)
+		{
+			ss << std::string(pad+1,' ') << "<kappa>" << std::endl;	
+			ss << kappas[i].write_xml(pad+2);
+			ss << std::string(pad+1,' ') << "</kappa>" << std::endl;	
+		}
+		ss << std::string(pad,' ') << "</kappas>" << std::endl;	
+		return ss.str();
+	}
 };
 
 /**
@@ -411,6 +590,7 @@ private:
 		ar & algorithm;
 		ar & resolution;
 		ar & file;
+		ar & filepath;		
 		ar & seed;
     }
 	/////////////////// 
@@ -419,10 +599,20 @@ public:
 	std::string type;
 	std::string algorithm;
 	std::string file;
+	std::string filepath; // runtime
 	size_t resolution;
 	long seed;
 	
 	void create();
+	std::string write_xml(int pad=0) {
+		std::stringstream ss;
+		ss << std::string(pad,' ') << "<type>" << type << "</type>" << std::endl;	
+		ss << std::string(pad,' ') << "<algorithm>" << algorithm << "</algorithm>" << std::endl;	
+		ss << std::string(pad,' ') << "<resolution>" << resolution << "</resolution>" << std::endl;	
+		ss << std::string(pad,' ') << "<file>" << file << "</file>" << std::endl;	
+		ss << std::string(pad,' ') << "<seed>" << seed << "</seed>" << std::endl;	
+		return ss.str();
+	}
 };
 
 /**
@@ -439,6 +629,7 @@ private:
 		ar & type;
 		ar & resolution;
         ar & file;
+        ar & filepath;
     }
 	/////////////////// 
 
@@ -446,8 +637,16 @@ public:
 	std::string type;
     long resolution;
     std::string file;
+    std::string filepath; // runtime
 
 	void create();
+	std::string write_xml(int pad=0) {
+		std::stringstream ss;
+		ss << std::string(pad,' ') << "<type>" << type << "</type>" << std::endl;	
+		ss << std::string(pad,' ') << "<resolution>" << resolution << "</resolution>" << std::endl;	
+		ss << std::string(pad,' ') << "<file>" << file << "</file>" << std::endl;	
+		return ss.str();
+	}
 };
 
 /**
@@ -469,6 +668,14 @@ private:
 public:	
 	std::string type;
 	ScatteringAverageOrientationMultipoleMomentsParameters moments;
+	std::string write_xml(int pad=0) {
+		std::stringstream ss;
+		ss << std::string(pad,' ') << "<type>" << type << "</type>" << std::endl;
+		
+		ss << moments.write_xml(pad+1);
+
+		return ss.str();
+	}
 };
 
 /**
@@ -488,6 +695,12 @@ private:
 
 public:	
 	std::string type; 
+	std::string write_xml(int pad=0) {
+		std::stringstream ss;
+		ss << std::string(pad,' ') << "<type>" << type << "</type>" << std::endl;
+		return ss.str();
+	}
+	
 };
 
 /**
@@ -517,7 +730,25 @@ public:
 	ScatteringAverageOrientationVectorsParameters vectors;
 	ScatteringAverageOrientationMultipoleParameters multipole;
 	ScatteringAverageOrientationExactParameters exact;
-
+	std::string write_xml(int pad=0) {
+		std::stringstream ss;
+		ss << std::string(pad,' ') << "<type>" << type << "</type>" << std::endl;
+		ss << std::string(pad,' ') << "<axis>" << std::endl;
+		ss << std::string(pad+1,' ') << "<x>" << axis.x << "</x>" << std::endl;
+		ss << std::string(pad+1,' ') << "<y>" << axis.y << "</y>" << std::endl;
+		ss << std::string(pad+1,' ') << "<z>" << axis.z << "</z>" << std::endl;
+		ss << std::string(pad,' ') << "</axis>" << std::endl;
+		ss << std::string(pad,' ') << "<vectors>" << std::endl;
+		ss << vectors.write_xml(pad+1);
+		ss << std::string(pad,' ') << "</vectors>" << std::endl;
+		ss << std::string(pad,' ') << "<multipole>" << std::endl;
+		ss << multipole.write_xml(pad+1);
+		ss << std::string(pad,' ') << "</multipole>" << std::endl;
+		ss << std::string(pad,' ') << "<exact>" << std::endl;
+		ss << exact.write_xml(pad+1);
+		ss << std::string(pad,' ') << "</exact>" << std::endl;
+		return ss.str();
+	}
 };
 
 /**
@@ -537,6 +768,13 @@ private:
 
 public:	
 	ScatteringAverageOrientationParameters orientation;
+	std::string write_xml(int pad=0) {
+		std::stringstream ss;
+		ss << std::string(pad,' ') << "<orientation>" << std::endl;
+		ss << orientation.write_xml(pad+1);
+		ss << std::string(pad,' ') << "</orientation>" << std::endl;
+		return ss.str();
+	}
 };
 
 /**
@@ -558,6 +796,12 @@ private:
 public:	
 	std::string type;
 	std::string method;
+	std::string write_xml(int pad=0) {
+		std::stringstream ss;
+		ss << std::string(pad,' ') << "<type>" << type << "</type>" << std::endl;
+		ss << std::string(pad,' ') << "<method>" << method << "</method>" << std::endl;
+		return ss.str();
+	}
 };
 
 /**
@@ -587,6 +831,19 @@ public:
 	size_t points;
 	double exponent;
 	CartesianCoor3D basevector;
+	std::string write_xml(int pad=0) {
+		std::stringstream ss;
+		ss << std::string(pad,' ') << "<from>" << from << "</from>" << std::endl;
+		ss << std::string(pad,' ') << "<to>" << to << "</to>" << std::endl;
+		ss << std::string(pad,' ') << "<points>" << points << "</points>" << std::endl;
+		ss << std::string(pad,' ') << "<exponent>" << exponent << "</exponent>" << std::endl;
+		ss << std::string(pad,' ') << "<base>" << std::endl;
+		ss << std::string(pad,' ') << "<x>" << basevector.x << "</x>" << std::endl;
+		ss << std::string(pad,' ') << "<y>" << basevector.y << "</y>" << std::endl;
+		ss << std::string(pad,' ') << "<z>" << basevector.z << "</z>" << std::endl;
+		ss << std::string(pad,' ') << "</base>" << std::endl;
+		return ss.str();
+	}
 };
 
 /**
@@ -609,6 +866,18 @@ public:
 	std::vector<ScatteringVectorsScanParameters> scans;
 	
 	void create_from_scans();
+	std::string write_xml(int pad=0) {
+		std::stringstream ss;
+		ss << std::string(pad,' ') << "<scans>" << std::endl;
+		for(size_t i = 0; i < scans.size(); ++i)
+		{
+			ss << std::string(pad+1,' ') << "<scan>" << std::endl;			
+			ss << scans[i].write_xml(pad+2);
+			ss << std::string(pad+1,' ') << "</scan>" << std::endl;			
+		}
+		ss << std::string(pad,' ') << "</scans>" << std::endl;
+		return ss.str();
+	}
 };
 
 /**
@@ -623,6 +892,7 @@ private:
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
     {
 		ar & file;
+		ar & filepath;		
         ar & fqt;
         ar & fq;
         ar & fq0;
@@ -632,10 +902,20 @@ private:
 
 public:
 	std::string file;
+	std::string filepath; // runtime	
     bool fqt;
     bool fq;
     bool fq0;
     bool fq2;
+	std::string write_xml(int pad=0) {
+		std::stringstream ss;
+		ss << std::string(pad,' ') << "<file>" << file << "</file>"<< std::endl;
+		ss << std::string(pad,' ') << "<fqt>" << fqt << "</fqt>"<< std::endl;
+		ss << std::string(pad,' ') << "<fq>" << fq << "</fq>"<< std::endl;
+		ss << std::string(pad,' ') << "<fq0>" << fq0 << "</fq0>"<< std::endl;
+		ss << std::string(pad,' ') << "<fq2>" << fq2 << "</fq2>"<< std::endl;
+		return ss.str();
+	}
 };
 
 /**
@@ -668,6 +948,26 @@ public:
 	ScatteringBackgroundParameters background;	
 
 	ScatteringSignalParameters signal;	
+	std::string write_xml(int pad=0) {
+		std::stringstream ss;
+		ss << std::string(pad,' ') << "<type>" << type << "</type>"<< std::endl;
+		ss << std::string(pad,' ') << "<dsp>" << std::endl;
+		ss << dsp.write_xml(pad+1);
+		ss << std::string(pad,' ') << "</dsp>" << std::endl;
+		ss << std::string(pad,' ') << "<vectors>" << std::endl;
+		ss << qvectors.write_xml(pad+1);
+		ss << std::string(pad,' ') << "</vectors>" << std::endl;
+		ss << std::string(pad,' ') << "<average>" << std::endl;
+		ss << average.write_xml(pad+1);
+		ss << std::string(pad,' ') << "</average>" << std::endl;
+		ss << std::string(pad,' ') << "<background>" << std::endl;
+		ss << background.write_xml(pad+1);
+		ss << std::string(pad,' ') << "</background>" << std::endl;
+		ss << std::string(pad,' ') << "<signal>" << std::endl;
+		ss << signal.write_xml(pad+1);
+		ss << std::string(pad,' ') << "</signal>" << std::endl;
+		return ss.str();
+	}
 };
 
 /**
@@ -683,6 +983,7 @@ private:
     {
         ar & dump;
 		ar & file;
+		ar & filepath;		
 		ar & format;
 		ar & target;
         ar & mode;
@@ -692,9 +993,19 @@ private:
 public:	
     bool dump;
 	std::string file;
+	std::string filepath; // runtime	
 	std::string format;
 	std::string target;
     std::string mode;
+	std::string write_xml(int pad=0) {
+		std::stringstream ss;
+		ss << std::string(pad,' ') << "<dump>" << dump << "</dump>"<< std::endl;
+		ss << std::string(pad,' ') << "<file>" << file << "</file>"<< std::endl;
+		ss << std::string(pad,' ') << "<format>" << format << "</format>"<< std::endl;
+		ss << std::string(pad,' ') << "<target>" << target << "</target>"<< std::endl;
+		ss << std::string(pad,' ') << "<mode>" << mode << "</mode>"<< std::endl;
+		return ss.str();
+	}
 };
 
 /**
@@ -716,6 +1027,12 @@ private:
 public:
     size_t server;
     size_t client;
+	std::string write_xml(int pad=0) {
+		std::stringstream ss;
+		ss << std::string(pad,' ') << "<server>" << server << "</server>"<< std::endl;
+		ss << std::string(pad,' ') << "<client>" << client << "</client>"<< std::endl;
+		return ss.str();
+	}
 };
 
 /**
@@ -737,6 +1054,12 @@ private:
 public:
     size_t serverflush;
     size_t clientflush;
+	std::string write_xml(int pad=0) {
+		std::stringstream ss;
+		ss << std::string(pad,' ') << "<serverflush>" << serverflush << "</serverflush>"<< std::endl;
+		ss << std::string(pad,' ') << "<clientflush>" << clientflush << "</clientflush>"<< std::endl;
+		return ss.str();
+	}
 };
 
 /**
@@ -758,6 +1081,16 @@ private:
 public:
     LimitsServicesSignalMemoryParameters memory;
     LimitsServicesSignalTimesParameters times;    
+	std::string write_xml(int pad=0) {
+		std::stringstream ss;
+		ss << std::string(pad,' ') << "<memory>" << std::endl;
+		ss << memory.write_xml(pad+1);		
+		ss << std::string(pad,' ') << "</memory>" << std::endl;
+		ss << std::string(pad,' ') << "<times>" << std::endl;
+		ss << times.write_xml(pad+1);	
+		ss << std::string(pad,' ') << "</times>" << std::endl;						
+		return ss.str();
+	}
 };
 
 /**
@@ -779,6 +1112,12 @@ private:
 public:
     size_t delay;
     size_t sampling;
+	std::string write_xml(int pad=0) {
+		std::stringstream ss;
+		ss << std::string(pad,' ') << "<delay>" << delay << "</delay>"<< std::endl;
+		ss << std::string(pad,' ') << "<sampling>" << sampling << "</sampling>"<< std::endl;
+		return ss.str();
+	}
 };
 
 /**
@@ -800,6 +1139,16 @@ private:
 public:
     LimitsServicesSignalParameters signal;
     LimitsServicesMonitorParameters monitor;
+	std::string write_xml(int pad=0) {
+		std::stringstream ss;
+		ss << std::string(pad,' ') << "<signal>" << std::endl;
+		ss << signal.write_xml(pad+1);		
+		ss << std::string(pad,' ') << "</signal>" << std::endl;
+		ss << std::string(pad,' ') << "<monitor>" << std::endl;
+		ss << monitor.write_xml(pad+1);	
+		ss << std::string(pad,' ') << "</monitor>" << std::endl;						
+		return ss.str();
+	}
 };
 
 /**
@@ -827,6 +1176,15 @@ public:
 	size_t exchange_buffer;
 	size_t signal_buffer;
 	size_t scale;
+	std::string write_xml(int pad=0) {
+		std::stringstream ss;
+		ss << std::string(pad,' ') << "<result_buffer>" << result_buffer << "</result_buffer>"<< std::endl;
+		ss << std::string(pad,' ') << "<alignpad_buffer>" << alignpad_buffer << "</alignpad_buffer>"<< std::endl;
+		ss << std::string(pad,' ') << "<exchange_buffer>" << exchange_buffer << "</exchange_buffer>"<< std::endl;
+		ss << std::string(pad,' ') << "<signal_buffer>" << signal_buffer << "</signal_buffer>"<< std::endl;
+		ss << std::string(pad,' ') << "<scale>" << scale << "</scale>"<< std::endl;
+		return ss.str();
+	}
 };
 
 /**
@@ -852,6 +1210,16 @@ public:
     size_t processes;
     size_t cores;
     LimitsComputationMemoryParameters memory;
+	std::string write_xml(int pad=0) {
+		std::stringstream ss;
+		ss << std::string(pad,' ') << "<threads>" << threads << "</threads>"<< std::endl;
+		ss << std::string(pad,' ') << "<processes>" << processes << "</processes>"<< std::endl;
+		ss << std::string(pad,' ') << "<cores>" << cores << "</cores>"<< std::endl;
+		ss << std::string(pad,' ') << "<memory>" << std::endl;
+		ss << memory.write_xml(pad+1);	
+		ss << std::string(pad,' ') << "</memory>" << std::endl;
+		return ss.str();
+	}
 };
 
 /**
@@ -873,7 +1241,12 @@ private:
 public:
     bool automatic;
     size_t size;
-    
+    std::string write_xml(int pad=0) {
+		std::stringstream ss;
+		ss << std::string(pad,' ') << "<automatic>" << automatic << "</automatic>"<< std::endl;
+		ss << std::string(pad,' ') << "<size>" << size << "</size>"<< std::endl;
+		return ss.str();
+	}
 };
 
 /**
@@ -895,6 +1268,14 @@ private:
 public:
     double utilization;
     LimitsDecompositionPartitionsParameters partitions;
+	std::string write_xml(int pad=0) {
+		std::stringstream ss;
+		ss << std::string(pad,' ') << "<utilization>" << utilization << "</utilization>"<< std::endl;
+		ss << std::string(pad,' ') << "<partitions>" << std::endl;
+		ss << partitions.write_xml(pad+1);	
+		ss << std::string(pad,' ') << "</partitions>" << std::endl;
+		return ss.str();
+	}
 };
 
 /**
@@ -914,6 +1295,11 @@ private:
 
 public:
     size_t chunksize;
+	std::string write_xml(int pad=0) {
+		std::stringstream ss;
+		ss << std::string(pad,' ') << "<chunksize>" << chunksize << "</chunksize>"<< std::endl;
+		return ss.str();
+	}
 };
 
 /**
@@ -935,6 +1321,12 @@ private:
 public:
     size_t data;
     size_t buffer;
+	std::string write_xml(int pad=0) {
+		std::stringstream ss;
+		ss << std::string(pad,' ') << "<data>" << data << "</data>"<< std::endl;
+		ss << std::string(pad,' ') << "<buffer>" << buffer << "</buffer>"<< std::endl;
+		return ss.str();
+	}
 };
 
 /**
@@ -954,6 +1346,13 @@ private:
 
 public:
     LimitsStageMemoryParameters memory;
+	std::string write_xml(int pad=0) {
+		std::stringstream ss;
+		ss << std::string(pad,' ') << "<memory>" << std::endl;
+		ss << memory.write_xml(pad+1);	
+		ss << std::string(pad,' ') << "</memory>" << std::endl;
+		return ss.str();
+	}
 };
 
 /**
@@ -981,6 +1380,25 @@ public:
     LimitsServicesParameters services;    
     LimitsComputationParameters computation;    
     LimitsDecompositionParameters decomposition;
+	std::string write_xml(int pad=0) {
+		std::stringstream ss;
+		ss << std::string(pad,' ') << "<stage>" << std::endl;
+		ss << stage.write_xml(pad+1);	
+		ss << std::string(pad,' ') << "</stage>" << std::endl;
+		ss << std::string(pad,' ') << "<signal>" << std::endl;
+		ss << signal.write_xml(pad+1);	
+		ss << std::string(pad,' ') << "</signal>" << std::endl;
+		ss << std::string(pad,' ') << "<services>" << std::endl;
+		ss << services.write_xml(pad+1);	
+		ss << std::string(pad,' ') << "</services>" << std::endl;
+		ss << std::string(pad,' ') << "<computation>" << std::endl;
+		ss << computation.write_xml(pad+1);	
+		ss << std::string(pad,' ') << "</computation>" << std::endl;
+		ss << std::string(pad,' ') << "<decomposition>" << std::endl;
+		ss << decomposition.write_xml(pad+1);	
+		ss << std::string(pad,' ') << "</decomposition>" << std::endl;
+		return ss.str();
+	}
 };
 
 /**
@@ -1000,6 +1418,11 @@ class DebugMonitorParameters {
 
    public:
    	bool update; 
+	std::string write_xml(int pad=0) {
+		std::stringstream ss;
+		ss << std::string(pad,' ') << "<update>" << update << "</update>"<< std::endl;
+		return ss.str();
+	}
 };
 
 /**
@@ -1019,6 +1442,11 @@ private:
 
 public:
 	bool orientations;
+	std::string write_xml(int pad=0) {
+		std::stringstream ss;
+		ss << std::string(pad,' ') << "<orientations>" << orientations << "</orientations>"<< std::endl;
+		return ss.str();
+	}
 };
 
 /**
@@ -1040,6 +1468,12 @@ private:
 public:
 	bool write;
     bool buffer;
+	std::string write_xml(int pad=0) {
+		std::stringstream ss;
+		ss << std::string(pad,' ') << "<write>" << write << "</write>"<< std::endl;
+		ss << std::string(pad,' ') << "<buffer>" << buffer << "</buffer>"<< std::endl;
+		return ss.str();
+	}
 };
 
 /**
@@ -1067,6 +1501,21 @@ public:
     DebugIowriteParameters iowrite;
     DebugPrintParameters print;
     DebugMonitorParameters monitor;
+	std::string write_xml(int pad=0) {
+		std::stringstream ss;
+		ss << std::string(pad,' ') << "<timer>" << timer << "</timer>"<< std::endl;
+		ss << std::string(pad,' ') << "<barriers>" << barriers << "</barriers>"<< std::endl;
+		ss << std::string(pad,' ') << "<iowrite>" << std::endl;
+		ss << iowrite.write_xml(pad+1);	
+		ss << std::string(pad,' ') << "</iowrite>" << std::endl;
+		ss << std::string(pad,' ') << "<print>" << std::endl;
+		ss << print.write_xml(pad+1);	
+		ss << std::string(pad,' ') << "</print>" << std::endl;
+		ss << std::string(pad,' ') << "<monitor>" << std::endl;
+		ss << monitor.write_xml(pad+1);	
+		ss << std::string(pad,' ') << "</monitor>" << std::endl;
+		return ss.str();
+	}
 };
 
 /**
@@ -1082,6 +1531,7 @@ private:
     {
 		ar & type;
 		ar & file;
+		ar & filepath;		
         ar & format;
     }
 	/////////////////// 
@@ -1089,7 +1539,15 @@ private:
 public:
 	std::string type;
 	std::string file;
+	std::string filepath;	
 	std::string format;
+	std::string write_xml(int pad=0) {
+		std::stringstream ss;
+		ss << std::string(pad,' ') << "<type>" << type << "</type>"<< std::endl;
+		ss << std::string(pad,' ') << "<file>" << file << "</file>"<< std::endl;
+		ss << std::string(pad,' ') << "<format>" << format << "</format>"<< std::endl;
+		return ss.str();
+	}
 };
 
 
@@ -1116,7 +1574,8 @@ private:
     friend class boost::serialization::access;	
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
     {
-		ar & carboncopy;
+		ar & rawconfig;
+		ar & config;
 		ar & config_rootpath;
 		ar & sample;
 		ar & scattering;
@@ -1131,7 +1590,8 @@ private:
 	Params(const Params&);
 	Params& operator=(const Params&);
 
-	std::vector<std::string> carboncopy;
+	std::vector<char> rawconfig; // contains raw copy of the input configuration
+	std::vector<char> config; // contains complete text copy of the input configuration
 	
 	std::string config_rootpath;
 	
@@ -1152,10 +1612,39 @@ public:
 	// interface for initiatilzation and interfacing
 	static Params* Inst() { static Params instance; return &instance;}
 	
+	void get_rawconfig(std::vector<char>& rc) { rc = rawconfig; }
+	void get_config(std::vector<char>& c) { c=config; }
+	
 	void init(int argc,char** argv);
 	~Params() {}; // it is said some compilers have problems w/ private destructors.
 	
-	void write_xml(std::string filename);	
+	void write_xml_to_file(std::string filename);
+	std::string write_xml(int pad=0) {
+		std::stringstream ss;
+		ss << std::string(pad,' ') << "<root>" << std::endl;
+		
+		ss << std::string(pad+1,' ') << "<sample>" << std::endl;
+		ss << sample.write_xml(pad+2);	
+		ss << std::string(pad+1,' ') << "</sample>" << std::endl;
+		ss << std::string(pad+1,' ') << "<scattering>" << std::endl;
+		ss << scattering.write_xml(pad+2);	
+		ss << std::string(pad+1,' ') << "</scattering>" << std::endl;
+		ss << std::string(pad+1,' ') << "<stager>" << std::endl;
+		ss << stager.write_xml(pad+2);	
+		ss << std::string(pad+1,' ') << "</stager>" << std::endl;
+		ss << std::string(pad+1,' ') << "<database>" << std::endl;
+		ss << database.write_xml(pad+2);	
+		ss << std::string(pad+1,' ') << "</database>" << std::endl;
+		ss << std::string(pad+1,' ') << "<limits>" << std::endl;
+		ss << limits.write_xml(pad+2);	
+		ss << std::string(pad+1,' ') << "</limits>" << std::endl;
+		ss << std::string(pad+1,' ') << "<debug>" << std::endl;
+		ss << debug.write_xml(pad+2);	
+		ss << std::string(pad+1,' ') << "</debug>" << std::endl;
+
+		ss << std::string(pad,' ') << "</root>" << std::endl;
+		return ss.str();
+	}	
 };
 
 #endif 

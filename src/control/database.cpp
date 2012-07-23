@@ -31,17 +31,20 @@ using namespace std;
 void Database::read_xml(std::string filename) {
 		
 	
-	// store the database line by line into an internal buffer, 
+	// store the database in raw format into an internal buffer, 
 	// this is for keeping history
 	ifstream dbfile(filename.c_str());
-	string line;
-	while (getline(dbfile,line)) {
-		carboncopy.push_back(line);
+	while (dbfile.good()) {
+		char c=dbfile.get();
+		if (dbfile.good()) {
+			rawconfig.push_back(c);
+		}
 	}
 	dbfile.close();
 	
 	XMLInterface xmli(filename);
 
+	xmli.dump(config);
     Info::Inst()->write("Reading database...");
 	// now read the database
 	
@@ -236,19 +239,19 @@ bool Database::check() {
 void Database::init() {
 
     if (Params::Inst()->database.type=="file") {
-        if (!boost::filesystem::exists(Params::Inst()->database.file)) {
-            Err::Inst()->write(Params::Inst()->database.file+string(" does not exist!"));            
+        if (!boost::filesystem::exists(Params::Inst()->database.filepath)) {
+            Err::Inst()->write(Params::Inst()->database.filepath+string(" does not exist!"));            
             throw;
         }
         
     	if (Params::Inst()->database.format=="") {
-    		Info::Inst()->write(string("Detecting format of database file: ") + Params::Inst()->database.file);
-    		Params::Inst()->database.format = guessformat(Params::Inst()->database.file);
+    		Info::Inst()->write(string("Detecting format of database file: ") + Params::Inst()->database.filepath);
+    		Params::Inst()->database.format = guessformat(Params::Inst()->database.filepath);
     		Info::Inst()->write(string("Detected format: ") + Params::Inst()->database.format);
     	}
 
     	if (Params::Inst()->database.format=="xml") {
-    		read_xml(Params::Inst()->database.file);
+    		read_xml(Params::Inst()->database.filepath);
     	} else {
     	    Err::Inst()->write(string("Database format not recognized"));
             throw;

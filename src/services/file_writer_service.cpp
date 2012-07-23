@@ -47,25 +47,42 @@ void HDF5WriterService::init_new(size_t nf)
     hid_t h5file = H5Fcreate( filename.c_str(),H5F_ACC_TRUNC,H5P_DEFAULT, H5P_DEFAULT);   
 
     double fill_val_double = 0;
+	// store the carbon copy of the configuration file	
+	{
+		hid_t metagroup = H5Gcreate(h5file,"meta",H5P_DEFAULT,H5P_DEFAULT,H5P_DEFAULT);
 
-    // qvectors
-    hsize_t dims[2];hsize_t mdims[2];hsize_t cdims[2];
-    dims[0]=0;              dims[1]=3;
-    mdims[0]=H5S_UNLIMITED; mdims[1]=3;
-    cdims[0]=Params::Inst()->limits.signal.chunksize;         cdims[1]=3;
-    hid_t lcpl = H5Pcreate(H5P_LINK_CREATE);
-    hid_t dcpl = H5Pcreate(H5P_DATASET_CREATE);
-    hid_t dapl = H5Pcreate(H5P_DATASET_ACCESS);
-    H5Pset_chunk( dcpl, 2, cdims);
-    H5Pset_fill_value(dcpl, H5T_NATIVE_DOUBLE, &fill_val_double);
-    H5Pset_alloc_time(dcpl,H5D_ALLOC_TIME_DEFAULT);
-    hid_t dspace = H5Screate_simple(2, dims, mdims); 
-    hid_t ds = H5Dcreate(h5file, "qvectors", H5T_NATIVE_DOUBLE, dspace,lcpl,dcpl,dapl);
-    H5Pclose(lcpl);
-    H5Pclose(dcpl);
-    H5Pclose(dapl);
-    H5Sclose(dspace);
-    H5Dclose(ds);
+		std::vector<char> raw; Params::Inst()->get_rawconfig(raw);
+		hsize_t rawsize = raw.size();
+		H5LTmake_dataset_char(metagroup,"rawconfig",1,&rawsize,&raw[0]);
+
+		std::vector<char> config; Params::Inst()->get_config(config);
+		H5LTmake_dataset_string(metagroup,"config",&config[0]);
+
+		std::vector<char> database; Database::Inst()->get_config(database);
+		H5LTmake_dataset_string(metagroup,"database",&database[0]);
+		H5Gclose(metagroup);
+	}
+	
+	{
+		// qvectors
+		hsize_t dims[2];hsize_t mdims[2];hsize_t cdims[2];
+		dims[0]=0;              dims[1]=3;
+		mdims[0]=H5S_UNLIMITED; mdims[1]=3;
+		cdims[0]=Params::Inst()->limits.signal.chunksize;         cdims[1]=3;
+		hid_t lcpl = H5Pcreate(H5P_LINK_CREATE);
+		hid_t dcpl = H5Pcreate(H5P_DATASET_CREATE);
+		hid_t dapl = H5Pcreate(H5P_DATASET_ACCESS);
+		H5Pset_chunk( dcpl, 2, cdims);
+		H5Pset_fill_value(dcpl, H5T_NATIVE_DOUBLE, &fill_val_double);
+		H5Pset_alloc_time(dcpl,H5D_ALLOC_TIME_DEFAULT);
+		hid_t dspace = H5Screate_simple(2, dims, mdims); 
+		hid_t ds = H5Dcreate(h5file, "qvectors", H5T_NATIVE_DOUBLE, dspace,lcpl,dcpl,dapl);
+		H5Pclose(lcpl);
+		H5Pclose(dcpl);
+		H5Pclose(dapl);
+		H5Sclose(dspace);
+		H5Dclose(ds);
+	}
 
     if (Params::Inst()->scattering.signal.fqt) {
         hsize_t dims[3];hsize_t mdims[3];hsize_t cdims[3];

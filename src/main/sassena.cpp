@@ -253,7 +253,7 @@ int main(int argc,char* argv[]) {
     // prepare services
     if (world.rank()==0) {
         Info::Inst()->write("Initializing data file service...");	
-        p_hdf5writer = new HDF5WriterService(io_service, Params::Inst()->scattering.signal.file,sample.coordinate_sets.size());
+        p_hdf5writer = new HDF5WriterService(io_service, Params::Inst()->scattering.signal.filepath,sample.coordinate_sets.size());
         Info::Inst()->write("Initializing monitor service...");	
         p_monitorservice = new MonitorService(io_service, 0, scatter_comm.size());        
     }
@@ -273,7 +273,7 @@ int main(int argc,char* argv[]) {
     vector<CartesianCoor3D> qvectors;
     if (world.rank()==0) {
         
-        Info::Inst()->write(string("Checking ")+Params::Inst()->scattering.signal.file + string(" for old results."));
+        Info::Inst()->write(string("Checking ")+Params::Inst()->scattering.signal.filepath + string(" for old results."));
         vector<CartesianCoor3D> oldqvectors = p_hdf5writer->get_qvectors();
         set<CartesianCoor3D> oldqvectors_set;
         for(size_t i = 0; i < oldqvectors.size(); ++i)

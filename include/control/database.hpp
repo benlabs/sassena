@@ -17,6 +17,7 @@ This file contains the interface for the application wide database, which, among
 #include <map>
 #include <string>
 #include <vector>
+#include <sstream>
 
 // special library headers
 #include <boost/serialization/access.hpp>
@@ -255,7 +256,8 @@ private:
     friend class boost::serialization::access;	
 	template<class Archive> void serialize(Archive & ar, const unsigned int version)
     {
-		ar & carboncopy;
+		ar & rawconfig;
+		ar & config;
 		ar & names;
 		ar & masses;
 		ar & volumes;
@@ -268,7 +270,8 @@ private:
 	Database(const Database&);
 	Database& operator=(const Database&);
 
-	std::vector<std::string> carboncopy;
+	std::vector<char> rawconfig;
+	std::vector<char> config;
 
 	void read_xml(std::string filename);
 
@@ -285,6 +288,9 @@ public:
 
 	void init();
 	
+	void get_rawconfig(std::vector<char>& rc) { rc = rawconfig; }
+	void get_config(std::vector<char>& c) { c=config; }
+		
 	// interface for initiatilzation and interfacing
 	static Database* Inst() { static Database instance; return &instance;}
 	
