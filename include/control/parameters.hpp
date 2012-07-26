@@ -347,7 +347,7 @@ public:
 	double frequency;
     double radius;
 	std::string selection;
-	long seed;
+	unsigned long seed;
 	long sampling;	
 	CartesianCoor3D direction;
     SampleMotionReferenceParameters reference;
@@ -601,7 +601,7 @@ public:
 	std::string file;
 	std::string filepath; // runtime
 	size_t resolution;
-	long seed;
+	unsigned long seed;
 	
 	void create();
 	std::string write_xml(int pad=0) {

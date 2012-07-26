@@ -26,7 +26,7 @@ using namespace std;
 
 // Angular Brownian Motion
 
-RotationalBrownianMotionWalker::RotationalBrownianMotionWalker(double displace,long seed,long sampling): m_init(true) {
+RotationalBrownianMotionWalker::RotationalBrownianMotionWalker(double displace,unsigned long seed,long sampling): m_init(true) {
 	m_seed = seed;
     m_sampling = sampling;
 	m_displace = displace;
@@ -98,7 +98,7 @@ void RotationalBrownianMotionWalker::generate(size_t timepos) {
 
 // Brownian Motion
 
-BrownianMotionWalker::BrownianMotionWalker(double displace,long seed,long sampling, CartesianCoor3D direction): m_init(true) {
+BrownianMotionWalker::BrownianMotionWalker(double displace,unsigned long seed,long sampling, CartesianCoor3D direction): m_init(true) {
 	m_seed = seed;
     m_sampling = sampling;
 	m_direction = direction;
@@ -174,7 +174,7 @@ void BrownianMotionWalker::generate(size_t timepos) {
 
 // Localized Brownian Motion
 
-LocalBrownianMotionWalker::LocalBrownianMotionWalker(double radius, double displace,long seed,long sampling, CartesianCoor3D direction): m_init(true) {
+LocalBrownianMotionWalker::LocalBrownianMotionWalker(double radius, double displace,unsigned long seed,long sampling, CartesianCoor3D direction): m_init(true) {
 	m_seed = seed;
     m_radius = radius;
     m_sampling = sampling;
@@ -263,7 +263,7 @@ void LocalBrownianMotionWalker::generate(size_t timepos) {
 
 // random walk 
 
-RandomMotionWalker::RandomMotionWalker(double displace,long seed,long sampling, CartesianCoor3D direction): m_init(true) {
+RandomMotionWalker::RandomMotionWalker(double displace,unsigned long seed,long sampling, CartesianCoor3D direction): m_init(true) {
 	m_seed = seed;
     m_sampling = sampling;
 	m_direction = direction;

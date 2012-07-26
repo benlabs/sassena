@@ -146,7 +146,7 @@ protected:
     bool m_init; // init flag 
 	
 	double m_displace;
-	long m_seed;
+	unsigned long m_seed;
     size_t m_sampling;
     	
 	CartesianCoor3D m_direction;
@@ -159,7 +159,7 @@ protected:
 	CartesianCoor3D translation(size_t timepos);
 
 public:
-	RandomMotionWalker(double displace,long seed,long sampling,  CartesianCoor3D direction);
+	RandomMotionWalker(double displace,unsigned long seed,long sampling,  CartesianCoor3D direction);
 	~RandomMotionWalker();
 	
 	
@@ -186,7 +186,7 @@ protected:
     bool m_init; // init flag 
     
 	double m_displace;
-	long m_seed;
+	unsigned long m_seed;
     size_t m_sampling;
 	
 	CartesianCoor3D m_direction;
@@ -202,7 +202,7 @@ protected:
 
 public:
 	
-	BrownianMotionWalker(double displace,long seed,long sampling,  CartesianCoor3D direction);
+	BrownianMotionWalker(double displace,unsigned long seed,long sampling,  CartesianCoor3D direction);
 	~BrownianMotionWalker();
 	
 	
@@ -232,7 +232,7 @@ protected:
     
     double m_radius;
 	double m_displace;
-	long m_seed;
+	unsigned long m_seed;
     size_t m_sampling;
 	
 	CartesianCoor3D m_direction;
@@ -248,7 +248,7 @@ protected:
 
 public:
 	
-	LocalBrownianMotionWalker(double radius, double displace,long seed,long sampling,  CartesianCoor3D direction);
+	LocalBrownianMotionWalker(double radius, double displace,unsigned long seed,long sampling,  CartesianCoor3D direction);
 	~LocalBrownianMotionWalker();
 	
 	
@@ -275,7 +275,7 @@ protected:
     bool m_init; // init flag 
     
 	double m_displace;
-	long m_seed;
+	unsigned long m_seed;
     size_t m_sampling;
 	
     boost::variate_generator<boost::mt19937, boost::normal_distribution<double> >* p_mynormaldistribution;
@@ -289,7 +289,7 @@ protected:
 
 public:
 	
-	RotationalBrownianMotionWalker(double displace,long seed,long sampling);
+	RotationalBrownianMotionWalker(double displace,unsigned long seed,long sampling);
 	~RotationalBrownianMotionWalker();
 	
 	

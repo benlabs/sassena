@@ -256,7 +256,7 @@ void Params::read_xml(std::string filename) {
 	    		if (xmli.exists("./type"))   motion.type  = xmli.get_value<string>("./type");
 	    		if (xmli.exists("./displace"))  motion.displace   = xmli.get_value<double>("./displace");
 	    		if (xmli.exists("./frequency"))  motion.frequency   = xmli.get_value<double>("./frequency");			
-	    		if (xmli.exists("./seed"))  motion.seed   = xmli.get_value<long>("./seed");			
+	    		if (xmli.exists("./seed"))  motion.seed   = xmli.get_value<unsigned long>("./seed");			
 	    		if (xmli.exists("./sampling"))  motion.sampling   = xmli.get_value<long>("./sampling");			
 	    		if (xmli.exists("./selection"))  motion.selection   = xmli.get_value<string>("./selection");			
 	    		if (xmli.exists("./direction")) {
@@ -537,7 +537,7 @@ void Params::read_xml(std::string filename) {
                         Info::Inst()->write(string("scattering.average.orientation.vectors.resolution=")+boost::lexical_cast<string>(scattering.average.orientation.vectors.resolution));				    
 	    			}
 	    			if (xmli.exists("//scattering/average/orientation/vectors/seed")) { // count vectors ... , or order for multipole...
-	    				scattering.average.orientation.vectors.seed = xmli.get_value<long>("//scattering/average/orientation/vectors/seed");
+	    				scattering.average.orientation.vectors.seed = xmli.get_value<unsigned long>("//scattering/average/orientation/vectors/seed");
                         Info::Inst()->write(string("scattering.average.orientation.vectors.seed=")+boost::lexical_cast<string>(scattering.average.orientation.vectors.seed));
 	    			}	
 	    			if (xmli.exists("//scattering/average/orientation/vectors/file")) { // count vectors ... , or order for multipole...
