@@ -18,18 +18,11 @@ ADD_EXECUTABLE(unit_broadcast
     tests/unit_broadcast.cpp
 )
 
-ADD_EXECUTABLE(unit_parameters 
-	src/common.cpp
-    tests/unit_parameters.cpp
-)
-
-
 IF(STATIC)
 SET_TARGET_PROPERTIES(sassena PROPERTIES LINK_SEARCH_END_STATIC 1)
 SET_TARGET_PROPERTIES(s_stage PROPERTIES LINK_SEARCH_END_STATIC 1)
 SET_TARGET_PROPERTIES(s_maketnx PROPERTIES LINK_SEARCH_END_STATIC 1)
-SET_TARGET_PROPERTIES(unit_broadcast PROPERTIES LINK_SEARCH_END_STATIC 1)
-SET_TARGET_PROPERTIES(unit_parameters PROPERTIES LINK_SEARCH_END_STATIC 1)
+SET_TARGET_PROPERTIES(unit_broadcast PROPERTIES LINK_SEARCH_END_STATIC 1)\
 ENDIF(STATIC)
 
 TARGET_LINK_LIBRARIES (s_stage 
@@ -86,12 +79,6 @@ TARGET_LINK_LIBRARIES (unit_broadcast
 	sass_report
 	sass_controlio
 	sass_sample
-	${BOOST_LIBRARIES}
-)
-
-TARGET_LINK_LIBRARIES (unit_parameters 
-	sass_log
-	sass_controlio
 	${BOOST_LIBRARIES}
 )
 
