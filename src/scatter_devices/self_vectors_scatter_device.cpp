@@ -246,7 +246,7 @@ void SelfVectorsScatterDevice::scatterblock(size_t atomindex, size_t index,size_
 //    sleep(3);
     for(size_t i = 0; i < count; ++i)
     {
-        atscatter_.push(make_pair(index+i,atomindex));
+        atscatter_.push(std::make_pair(index+i,atomindex));
         
         if (((i+1)%SCATTERBLOCK)==0) {
             workerbarrier->wait();
@@ -257,7 +257,7 @@ void SelfVectorsScatterDevice::scatterblock(size_t atomindex, size_t index,size_
         size_t rest = SCATTERBLOCK - (count%SCATTERBLOCK);
         for(size_t i = 0; i < rest; ++i)
         {
-            atscatter_.push(make_pair(NM,atomindex)); // NM will be ignored, but triggers a barrier            
+            atscatter_.push(std::make_pair(NM,atomindex)); // NM will be ignored, but triggers a barrier            
         }
         workerbarrier->wait();
     }

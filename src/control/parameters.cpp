@@ -900,7 +900,7 @@ void Params::init(int argc,char** argv) {
     }
 
     std::string filename = vm["config"].as<string>();
-    if (boost::filesystem::exists(filename)) {
+    if (boost::filesystem::exists(boost::filesystem::path(filename))) {
 	    // make the directory of the main configuration file the root for all others
 	    if (boost::filesystem::path(filename).is_complete()) 
 		    config_rootpath = boost::filesystem::path(filename).parent_path().string();
@@ -1043,30 +1043,30 @@ void ScatteringAverageOrientationMultipoleMomentsParameters::create() {
 	
         long major, minor; 
 		while (mmfile >> major >> minor) {
-			this->push_back(make_pair<long,long>(major,minor));
+			this->push_back(std::make_pair(major,minor));
 		}
 		
 	} else if (type=="resolution") {
 		Info::Inst()->write(string("Generating multipole moments for orientational averaging using a maxium major=")+boost::lexical_cast<string>(resolution));
 
 	    if (Params::Inst()->scattering.average.orientation.multipole.type=="sphere") {
-            this->push_back(make_pair<long,long>(0,0));
+            this->push_back(std::make_pair(0L,0L));
             for(long l = 1; l <= resolution; ++l)
             {
                 for(long m = -l; m <= l; ++m)
                 {
-                    this->push_back(make_pair<long,long>(l,m));
+                    this->push_back(std::make_pair(l,m));
                 }
             }
 
 	    } else if (Params::Inst()->scattering.average.orientation.multipole.type=="cylinder") {
-	        this->push_back(make_pair<long,long>(0,0));
+	        this->push_back(std::make_pair(0L,0L));
             for(long l = 1; l <= resolution; ++l)
             {
-                this->push_back(make_pair<long,long>(l,0));
-                this->push_back(make_pair<long,long>(l,1));
-                this->push_back(make_pair<long,long>(l,2));
-                this->push_back(make_pair<long,long>(l,3));
+                this->push_back(std::make_pair(l,0L));
+                this->push_back(std::make_pair(l,1L));
+                this->push_back(std::make_pair(l,2L));
+                this->push_back(std::make_pair(l,3L));
             }
             
 	    } else {
@@ -1110,7 +1110,7 @@ void ScatteringAverageOrientationMultipoleMomentsParameters::create() {
                 Err::Inst()->write(string("major=")+boost::lexical_cast<string>(mm.first));
                 throw;                
             }            
-            if (abs(mm.second)>mm.first) {
+            if (labs(mm.second)>mm.first) {
                 Err::Inst()->write(string("Minor multipole moment must be between -Major and +Major!"));
                 Err::Inst()->write(string("major=")+boost::lexical_cast<string>(mm.first)+string(", minor=")+boost::lexical_cast<string>(mm.second));
                 throw;
