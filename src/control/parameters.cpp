@@ -209,7 +209,7 @@ void Params::read_xml(std::string filename) {
 					fset.filepath = get_filepath(fset.file);
 				} 
                 boost::filesystem::path index_path = fset.filepath;
-                fset.index = index_path.parent_path().string() + string("/") + index_path.stem().string() + string(".tnx");
+				fset.index = (index_path.parent_path() / index_path.stem()).string() + string(".tnx");
 				fset.index_default = true;
 				
         		if (xmli.exists("./format"))  fset.format = xmli.get_value<string>("./format");
