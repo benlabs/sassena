@@ -165,8 +165,14 @@ int main(int argc,char* argv[]) {
 
     if (exists(ipath)) {
         int n=0;
-        while (boost::filesystem::exists((ipath.filename()+=".backup-")+=boost::lexical_cast<string>(n))) n++;
-        path newidxpath = (ipath.filename()+=".backup-")+=boost::lexical_cast<string>(n);
+		std::stringstream ssindex;
+        while (true) {
+			ssindex.str("");
+			ssindex << ipath.filename() << ".backup-0"<< boost::lexical_cast<string>(n);
+			if (!boost::filesystem::exists(ssindex.str()) break;
+			n++;
+		}
+        path newidxpath = ssindex.str();
         std::stringstream ss; ss << "Moving old index file to " << newidxpath.filename();
         Warn::Inst()->write(ss.str());
         boost::filesystem::rename(ipath,newidxpath);
