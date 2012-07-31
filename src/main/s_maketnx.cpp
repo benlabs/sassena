@@ -169,7 +169,7 @@ int main(int argc,char* argv[]) {
         while (true) {
 			ssindex.str("");
 			ssindex << ipath.filename() << ".backup-0"<< boost::lexical_cast<string>(n);
-			if (!boost::filesystem::exists(ssindex.str()) break;
+			if (!boost::filesystem::exists(ssindex.str())) break;
 			n++;
 		}
         path newidxpath = ssindex.str();
