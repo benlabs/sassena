@@ -288,8 +288,11 @@ void DCDFrameset::init(std::string fn,size_t fno) {
 	// if this is a dcd file just go ahead, otherwise assume a text file
 	// where each line represents the path of a dcdfile.
 	// this concept can be nested...
-
-	ifstream dcdfile(fn.c_str());
+	if (!dcdfile.is_open()) {
+		dcdfile.open(filename.c_str(),ios::binary);
+	} else {
+		dcdfile.seekg(0,ios_base::beg);
+	}
 	DCDHeader dcdheader;
 	dcdfile.read((char*) &dcdheader,sizeof(dcdheader));
 	dcdfile.seekg(23*sizeof(int32_t),ios_base::beg);
@@ -354,18 +357,37 @@ void DCDFrameset::init(std::string fn,size_t fno) {
 }
 
 bool DCDFrameset::detect(const string filename) {
-	ifstream dcdfile(filename.c_str(),ios::binary);
+	if (!dcdfile.is_open()) {
+		dcdfile.open(filename.c_str(),ios::binary);
+	} else {
+		dcdfile.seekg(0,ios_base::beg);
+	}
+	
 	char fp1[4];fp1[0]=0x54;fp1[1]=0x00;fp1[2]=0x00;fp1[3]=0x00;
 	char fp2[4];fp2[0]=0x43;fp2[1]=0x4f;fp2[2]=0x52;fp2[3]=0x44;
 	char buf[92]; dcdfile.read(buf,92);
 	if ( (memcmp(&buf[0],&fp1[0],4)==0) && (memcmp(&buf[88],&fp1[0],4)==0) && (memcmp(&buf[4],&fp2[0],4)==0) ) return true;	else return false;
 }
 
+void DCDFrameset::close() {
+	dcdfile.close();
+}
+
+DCDFrameset::~DCDFrameset() {
+	try {
+		close();
+	} catch (...) {
+		Warn::Inst()->write("File close operation failed!");
+	}
+}
+
 void DCDFrameset::read_frame(size_t framenumber,Frame& cf) {
 
     size_t internalframenumber = framenumber - frame_number_offset;
 
-	ifstream dcdfile(filename.c_str());
+	if (!dcdfile.is_open()) {
+		dcdfile.open(filename.c_str(),ios::binary);
+	}
 	
 	double unit_cell_block[6];
 	
@@ -593,11 +615,13 @@ void XTCFrameset::init(std::string fn,size_t fno) {
 void XTCFrameset::generate_index() {
 	
     std::vector<size_t> frame_byte_offsets;
-    XDRFILE* p_xdrfile =  xdrfile_open(const_cast<char*>(filename.c_str()),"r");	
-    if (p_xdrfile==NULL) {
-        Err::Inst()->write(string("Unable to open file: ")+filename);
-        throw;
-    }
+	if (p_xdrfile==NULL) {
+	    p_xdrfile =  xdrfile_open(const_cast<char*>(filename.c_str()),"r");	
+	    if (p_xdrfile==NULL) {
+	        Err::Inst()->write(string("Unable to open file: ")+filename);
+	        throw;
+	    }		
+	}
 	FILE* fp = get_filepointer(p_xdrfile);
 	int step =0; float t =0;
 	float prec =  1000.0;
@@ -625,7 +649,6 @@ void XTCFrameset::generate_index() {
 	}
 	
 	free(coords);
-	xdrfile_close(p_xdrfile);
 	
 	frameset_index_.clear();
     frameset_index_.set_signature(FramesetIndex::generate_signature(filename));
@@ -645,16 +668,31 @@ bool XTCFrameset::detect(const string filename) {
 	if (retval==exdrOK) return true; else return false;
 }
 
+void XTCFrameset::close() {
+	xdrfile_close(p_xdrfile);
+	p_xdrfile=NULL;
+}
+
+XTCFrameset::~XTCFrameset() {
+	try {
+		close();
+	} catch (...) {
+		Warn::Inst()->write("File close operation failed!");
+	}
+}
+
 void XTCFrameset::read_frame(size_t framenumber,Frame& cf) {
 	
 	size_t internalframenumber = framenumber - frame_number_offset;
     
 	// read a specific frame
-    XDRFILE* p_xdrfile =  xdrfile_open(const_cast<char*>(filename.c_str()),"r");	
-    if (p_xdrfile==NULL) {
-        Err::Inst()->write(string("Unable to open file: ")+filename);
-        throw;
-    }
+	if (p_xdrfile==NULL) {
+	    p_xdrfile =  xdrfile_open(const_cast<char*>(filename.c_str()),"r");	
+	    if (p_xdrfile==NULL) {
+	        Err::Inst()->write(string("Unable to open file: ")+filename);
+	        throw;
+	    }		
+	}
 	FILE* fp = get_filepointer(p_xdrfile);
 	int step =0; float t =0;
 	float prec =  1000.0;
@@ -682,8 +720,6 @@ void XTCFrameset::read_frame(size_t framenumber,Frame& cf) {
 	cf.number_of_atoms = number_of_atoms;
 	
 	free(coords);
-	
-	xdrfile_close(p_xdrfile);
 }
 
 
@@ -714,11 +750,13 @@ void TRRFrameset::init(std::string fn,size_t fno) {
 void TRRFrameset::generate_index() {
 	
     std::vector<std::streamoff> frame_byte_offsets;
-    XDRFILE* p_xdrfile =  xdrfile_open(const_cast<char*>(filename.c_str()),"r");	
-    if (p_xdrfile==NULL) {
-        Err::Inst()->write(string("Unable to open file: ")+filename);
-        throw;
-    }
+	if (p_xdrfile==NULL) {
+	    p_xdrfile =  xdrfile_open(const_cast<char*>(filename.c_str()),"r");	
+	    if (p_xdrfile==NULL) {
+	        Err::Inst()->write(string("Unable to open file: ")+filename);
+	        throw;
+	    }		
+	}
 	FILE* fp = get_filepointer(p_xdrfile);
 	int step =0; float t =0;
 	float lambda =  0.0;
@@ -745,7 +783,6 @@ void TRRFrameset::generate_index() {
 	}
 	
 	free(coords);
-	xdrfile_close(p_xdrfile);
 	
 	frameset_index_.clear();
     frameset_index_.set_signature(FramesetIndex::generate_signature(filename));
@@ -765,16 +802,31 @@ bool TRRFrameset::detect(const string filename) {
 	if (retval==exdrOK) return true; else return false;
 }
 
+void TRRFrameset::close() {
+	xdrfile_close(p_xdrfile);
+	p_xdrfile=NULL;
+}
+
+TRRFrameset::~TRRFrameset() {
+	try {
+		close();
+	} catch (...) {
+		Warn::Inst()->write("File close operation failed!");
+	}
+}
+
 void TRRFrameset::read_frame(size_t framenumber,Frame& cf) {
 	
 	size_t internalframenumber = framenumber - frame_number_offset;
     
 	// read a specific frame
-    XDRFILE* p_xdrfile =  xdrfile_open(const_cast<char*>(filename.c_str()),"r");	
-    if (p_xdrfile==NULL) {
-        Err::Inst()->write(string("Unable to open file: ")+filename);
-        throw;
-    }
+	if (p_xdrfile==NULL) {
+	    p_xdrfile =  xdrfile_open(const_cast<char*>(filename.c_str()),"r");	
+	    if (p_xdrfile==NULL) {
+	        Err::Inst()->write(string("Unable to open file: ")+filename);
+	        throw;
+	    }		
+	}
 	FILE* fp = get_filepointer(p_xdrfile);
 	int step =0; float t =0;
 	float lambda = 0;
@@ -803,7 +855,6 @@ void TRRFrameset::read_frame(size_t framenumber,Frame& cf) {
 	
 	free(coords);
 	
-	xdrfile_close(p_xdrfile);
 }
 
 CloneFrameset::CloneFrameset(Frameset* original, size_t nof) {

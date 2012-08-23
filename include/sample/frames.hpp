@@ -24,6 +24,7 @@ This file contains a management class for framesets and specifies framesets for 
 #include <boost/serialization/vector.hpp>
 #include <boost/serialization/map.hpp>
 #include <boost/serialization/serialization.hpp>
+#include "../vendor/xdrfile-1.1.1/include/xdrfile.h"
 
 // other headers
 #include "sample/atoms.hpp"
@@ -192,12 +193,15 @@ class DCDFrameset : public FileFrameset {
 	std::streamoff z_byte_offset;
 	std::streamoff block1_byte_offset;
 	std::streamoff block2_byte_offset;
+	
+	std::ifstream dcdfile;
 
 	bool detect(const std::string filename);	
 public:
 	
 	// allow construction w/o reading file -> call init manually
 	DCDFrameset() {}
+	~DCDFrameset();
 	void init(std::string filename,size_t framenumber_offset);
 
 	// this constructor should be called by default
@@ -208,6 +212,7 @@ public:
 	
 	// fill frame_offsets. non-seekable files have to be scanned completely!
 	void generate_index();
+	void close(); // closes the associated filestream
 };
 
 
@@ -253,11 +258,13 @@ class XTCFrameset : public FileFrameset {
 		ar & boost::serialization::base_object<FileFrameset>(*this);
     }
 	
-	bool detect(const std::string filename);	
+	bool detect(const std::string filename);
+	XDRFILE* p_xdrfile;
 public:
 	
 	// allow construction w/o reading file -> call init manually
-	XTCFrameset() {}
+	XTCFrameset() : p_xdrfile(NULL) {}
+	~XTCFrameset();
 	void init(std::string filename,size_t framenumber_offset);	
 
 	// this constructor should be called by default
@@ -268,6 +275,7 @@ public:
 
 	// fill frame_offsets. non-seekable files have to be scanned completely!
 	void generate_index();
+	void close(); // closes the associated filepointer
 };
 
 /** 
@@ -280,11 +288,13 @@ class TRRFrameset : public FileFrameset {
 		ar & boost::serialization::base_object<FileFrameset>(*this);
     }
 
-	bool detect(const std::string filename);	
+	bool detect(const std::string filename);
+	XDRFILE* p_xdrfile;	
 public:
 	
 	// allow construction w/o reading file -> call init manually
-	TRRFrameset() {}
+	TRRFrameset() : p_xdrfile(NULL) {}
+	~TRRFrameset();
 	void init(std::string filename,size_t framenumber_offset);
 
 	// this constructor should be called by default
@@ -295,6 +305,7 @@ public:
 	
 	// fill frame_offsets. non-seekable files have to be scanned completely!
 	void generate_index();
+	void close(); // closes the associated filepointer
 };
 
 /** 
